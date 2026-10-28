@@ -8,7 +8,8 @@
 |---|---|
 | [产品上下文](../../PRODUCT.md) | 产品目的、已有能力和当前约束 |
 | [全局设计原则](../../DESIGN.md) | 品牌、易用性、被理解的体验与反馈准则 |
-| [桌面后端与会话导入设计](../superpowers/specs/2026-10-29-conversation-import-design.md) | Electron、SQLite 共享消息表、解析器集合复用、增量追加与单会话事务；方向已确认，完整设计草案待审阅，尚未编码 |
+| [桌面后端与会话导入设计](../superpowers/specs/2026-10-29-conversation-import-design.md) | Electron、SQLite 共享消息表、解析器集合复用、增量追加与单会话事务；完整设计已确认，尚未编码 |
+| [桌面后端与会话导入实施计划](../superpowers/plans/2026-10-29-conversation-import.md) | 桌面运行、格式转换、事务恢复与前端接入的实施顺序和验证要求；计划待审阅，勾选项不代表已完成 |
 | [总览入口与透视封面](whomi-overview-entry.md) | 个人总览菜单位于分析上方，Hello 悬停透视、主区点击及渐隐；110 项测试、类型与构建通过，正式入口保持空状态 |
 | [自我理解体验](whomi-self-understanding-design.md) | 已确认的会话分析、个人总览、Spark、解惑和 AI 对话；同步本轮总览视觉、解惑独立入口及前端与业务边界 |
 | [个人总览实现](whomi-personal-overview-implementation.md) | 2026-10-28 总览前端、来源范围、反馈接口及开发预览；75 项测试、类型与构建通过，真实数据与完整解惑未接入 |
