@@ -1,16 +1,22 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
 
 const sidebarStorageKey = 'whomi:sidebar-open'
 const unavailableDestinations = [
-  '数据导入',
-  '会话资料库',
   '分析',
-  '个人仪表台',
   '设置',
 ]
+
+beforeEach(() => {
+  const mediaQuery = window.matchMedia('(max-width: 640px)')
+  vi.spyOn(window, 'matchMedia').mockImplementation((query: string) => ({
+    ...mediaQuery,
+    media: query,
+    matches: query === '(prefers-reduced-motion: reduce)',
+  }))
+})
 
 describe('Whomi 首页', () => {
   it('展开时收起按钮位于顶部，Logo 保留返回首页操作', () => {
@@ -53,7 +59,12 @@ describe('Whomi 首页', () => {
 
   it.each([false, true])('展开后点击 Logo 返回首页并保持展开，窄屏：%s', async (isMobile) => {
     const mediaQuery = window.matchMedia('(max-width: 640px)')
-    vi.spyOn(window, 'matchMedia').mockReturnValue({ ...mediaQuery, matches: isMobile })
+    vi.spyOn(window, 'matchMedia').mockImplementation((query: string) => ({
+      ...mediaQuery,
+      media: query,
+      matches: query === '(prefers-reduced-motion: reduce)' ||
+        (query === '(max-width: 640px)' && isMobile),
+    }))
     const user = userEvent.setup()
     render(<App />)
     if (isMobile) await user.click(screen.getByRole('button', { name: '展开侧栏' }))
@@ -76,6 +87,9 @@ describe('Whomi 首页', () => {
 
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
       `Hello，${displayName}`,
+    )
+    expect(screen.getByRole('button', { name: /进入个人总览/ })).toHaveAccessibleName(
+      new RegExp(`^Hello，${displayName}`),
     )
   })
 

@@ -11,8 +11,10 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@gsap/react": "^2.1.2",
     "@radix-ui/react-tooltip": "^1.4.1",
     "clsx": "^2.1.1",
+    "gsap": "^3.15.0",
     "lucide-react": "^1.61.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"

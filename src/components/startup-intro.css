@@ -1,0 +1,19 @@
+.startup-intro {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  overflow: hidden;
+  isolation: isolate;
+  mix-blend-mode: multiply;
+}
+.startup-intro:focus { outline: none; }
+
+.intro-canvas { position: absolute; inset: 0; background: var(--surface); }
+.intro-scene { position: absolute; transform-origin: top left; will-change: transform; }
+.intro-parts, .intro-face, .intro-search { position: absolute; inset: 0; }
+.intro-scene img { display: block; width: 100%; height: 100%; max-width: none; }
+.intro-face { transform-origin: 45.056% 46.252%; opacity: 0; }
+.intro-search { opacity: 0; }
+
+.startup-running .sidebar, .startup-running .home { opacity: 0; }
+.startup-running .brand-symbol { visibility: hidden; }

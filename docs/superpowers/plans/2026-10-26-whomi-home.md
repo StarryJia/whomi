@@ -1,5 +1,7 @@
 # Whomi Homepage Implementation Plan
 
+> 历史计划：对应首页已完成的实现阶段，以下任务和授权不作为新业务的执行指令。2026-10-28 新设计见[自我理解体验](../../designs/whomi-self-understanding-design.md)，本轮未实现。
+
 > 执行方式：本会话直接实现，独立子代理提供行为测试及最终审查；用户已明确批准进入实现，无需重复确认。
 
 **Goal:** 完成可在本地运行的 Whomi 首页与可折叠侧栏。
