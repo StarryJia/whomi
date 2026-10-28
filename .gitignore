@@ -7,3 +7,7 @@ coverage/
 .gstack/
 artifacts/
 *.tsbuildinfo
+out/
+release/
+test-results/
+playwright-report/

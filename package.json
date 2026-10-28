@@ -8,11 +8,21 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview --host 127.0.0.1",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "desktop:dev": "electron-vite dev",
+    "desktop:build": "electron-vite build",
+    "desktop:pack": "npm run desktop:build && electron-builder --dir --win --x64",
+    "desktop:dist": "npm run desktop:build && electron-builder --win --x64",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.electron.json",
+    "test:backend": "vitest run --config vitest.backend.config.ts",
+    "test:desktop": "node scripts/desktop-smoke.mjs",
+    "native:node": "npm rebuild better-sqlite3 --registry=https://registry.npmjs.org --offline=false",
+    "native:electron": "electron-rebuild -f -w better-sqlite3"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",
     "@radix-ui/react-tooltip": "^1.4.1",
+    "better-sqlite3": "13.0.3",
     "clsx": "^2.1.1",
     "gsap": "^3.15.0",
     "lucide-react": "^1.61.0",
@@ -20,16 +30,23 @@
     "react-dom": "^19.3.1"
   },
   "devDependencies": {
+    "@electron/rebuild": "4.2.1",
+    "@playwright/test": "1.64.1",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.8",
+    "@types/better-sqlite3": "9.6.0",
     "@types/node": "^26.6.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
+    "electron": "45.1.0",
+    "electron-builder": "26.18.0",
+    "electron-vite": "6.0.0",
     "jsdom": "^29.1.1",
     "typescript": "^7.0.2",
     "vite": "^8.3.5",
     "vitest": "^5.0.5"
-  }
+  },
+  "main": "out/main/index.cjs"
 }

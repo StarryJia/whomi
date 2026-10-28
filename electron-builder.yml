@@ -1,0 +1,15 @@
+appId: local.whomi.desktop
+productName: Whomi
+directories:
+  output: release
+files:
+  - out/**
+  - package.json
+asar: true
+asarUnpack:
+  - '**/*.node'
+win:
+  target: nsis
+  signAndEditExecutable: false
+npmRebuild: false
+publish: null
