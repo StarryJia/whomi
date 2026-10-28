@@ -1,10 +1,11 @@
 import Database from 'better-sqlite3'
-import { mkdirSync, realpathSync } from 'node:fs'
-import { join, basename, dirname } from 'node:path'
-import { tmpdir } from 'node:os'
+import { mkdirSync } from 'node:fs'
+import { join } from 'node:path'
 import { createRequire } from 'node:module'
+import { validateRuntimeTestDirectory } from '../runtime-test-directory'
 
-const directory = process.argv[2]
+const probeEnabled = process.argv.includes('--runtime-probe')
+const directory = probeEnabled ? validateRuntimeTestDirectory(process.argv[2]) : process.argv[2]
 mkdirSync(directory, { recursive: true })
 const database = new Database(join(directory, 'whomi.db'))
 database.pragma('journal_mode = WAL')
@@ -19,7 +20,7 @@ reader.pragma('foreign_keys = ON')
 reader.pragma('busy_timeout = 5000')
 const parent = (process as unknown as { parentPort: { on(event: string, callback: (event: { data: { id: number; method: string } }) => void): void; postMessage(value: unknown): void } }).parentPort
 // 辅助探针来自测试临时目录，正式安装资源不包含探针。
-const probe = process.argv.includes('--runtime-probe') && basename(directory).startsWith('whomi-runtime-') && realpathSync(dirname(directory)) === realpathSync(tmpdir())
+const probe = probeEnabled
   ? createRequire(join(directory, 'runtime.cjs'))(join(directory, 'probe.cjs'))(database, reader) as (method: string) => unknown
   : undefined
 parent.on('message', async ({ data }) => {

@@ -1,14 +1,20 @@
 import { app, BrowserWindow, session } from 'electron'
-import { join, resolve, dirname, basename } from 'node:path'
-import { tmpdir } from 'node:os'
-import { realpathSync } from 'node:fs'
+import { join } from 'node:path'
+import { validateRuntimeTestDirectory } from '../runtime-test-directory'
 import { startDataHost } from './data-host'
 import type { DataHost } from './data-host'
 
 // 测试资料必须是操作系统临时目录下的独立目录。
-const testDirectory = process.env.WHOMI_RUNTIME_TEST
-const probeEnabled = Boolean(process.argv.includes('--whomi-runtime-test') && testDirectory && basename(testDirectory).startsWith('whomi-runtime-') && realpathSync(dirname(testDirectory)) === realpathSync(tmpdir()))
-if (probeEnabled) app.setPath('userData', resolve(testDirectory!))
+let testDirectory: string | undefined
+if (process.argv.includes('--whomi-runtime-test')) {
+  try { testDirectory = validateRuntimeTestDirectory(process.env.WHOMI_RUNTIME_TEST) }
+  catch { app.exit(1) }
+}
+const probeEnabled = Boolean(testDirectory)
+if (testDirectory) {
+  process.env.WHOMI_RUNTIME_TEST = testDirectory
+  app.setPath('userData', testDirectory)
+}
 else if (!app.isPackaged) app.setPath('userData', join(app.getPath('appData'), 'Whomi Development'))
 let dataHost: DataHost | undefined
 let quitting = false
