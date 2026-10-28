@@ -2,6 +2,12 @@
 .sidebar-navigation { flex: 1 1 auto; min-height: 0; overflow: hidden; }
 .conversation-navigation { display: flex; flex-direction: column; min-height: 0; }
 .conversation-toolbar { display: flex; align-items: center; flex: 0 0 auto; }
+.conversation-menu-wide { border-radius: var(--radius-control); background: var(--canvas); }
+.conversation-menu-wide .conversation-toggle { border-radius: var(--radius-control) 0 0 var(--radius-control); }
+.conversation-menu-wide .conversation-toggle:hover { background: var(--hover); }
+.conversation-menu-wide .conversation-tool { flex-basis: 40px; width: 40px; min-height: 48px; border-radius: 8px; }
+.conversation-menu-wide .conversation-tool:last-child { margin-right: 4px; }
+.conversation-menu-wide .conversation-tool:hover { background: var(--pressed); }
 .conversation-toggle { flex: 1 1 auto; min-width: 48px; }
 .drawer-chevron { transition: transform 200ms var(--ease-sidebar); }
 .drawer-chevron.is-expanded { transform: rotate(90deg); }
@@ -53,6 +59,14 @@
 .message-self .message-meta { justify-content: flex-end; }
 .message-self .message-text { border-radius: 12px 0 12px 12px; background: #fff0e5; }
 .reader-empty { text-align: center; color: var(--text-muted); line-height: 1.6; }
+.reader-return { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin: -8px 0 8px; padding: 8px 10px; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--text-muted); cursor: pointer; }
+.reader-return svg { width: 18px; height: 18px; }
+.reader-return:hover { background: var(--hover); color: var(--text); }
+.reader-return:active { background: var(--pressed); }
+.reader-source-note { margin: 8px 0 0; color: var(--text-muted); font-size: 14px; line-height: 1.6; }
+.message-source .message-text { outline: 1px solid var(--focus); outline-offset: 3px; }
+.message-source:focus-visible { outline-offset: 8px; border-radius: 4px; }
+.source-range-label { color: var(--focus); font-weight: 550; }
 
 @media (max-width: 640px) {
   .file-drop-target { min-height: 320px; padding: 32px 16px; }

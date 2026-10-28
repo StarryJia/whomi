@@ -1,0 +1,12 @@
+{
+  "date": "2026-10-28",
+  "branch": "main",
+  "approved_variant": "A",
+  "approved_path": "variant-A.png",
+  "screen": "Whomi 设置工作区",
+  "feedback": "用户明确选择 A 专注分栏，并要求返回文案、关于whomi名称、服务商图片与预置清单、数据说明四项修订。",
+  "approved_scope": "整体结构与四项标注；不包含默认参数、保存方式或服务商名单",
+  "revision_preview": "../../previews/settings/index.html",
+  "revision_status": "已交付独立演示，待用户审阅",
+  "pending": ["常规服务商清单", "开关初始状态", "规则默认选择", "合并参数与范围", "正式保存方式", "恢复默认范围", "项目许可证"]
+}

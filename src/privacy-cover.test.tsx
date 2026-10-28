@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import gsap from 'gsap'
@@ -27,7 +27,7 @@ beforeEach(() => {
 })
 
 describe('Hello 隐私封面', () => {
-  it('默认只显示问候，侧栏不提供直接进入个人总览的入口', () => {
+  it('封面只显示问候，侧栏在分析上方提供个人总览入口', () => {
     render(<App />)
 
     const main = screen.getByRole('main')
@@ -36,8 +36,30 @@ describe('Hello 隐私封面', () => {
     expect(within(main).queryByRole('button', { name: '返回 Hello' })).not.toBeInTheDocument()
     const navigation = within(screen.getByRole('navigation', { name: '主导航' }))
     expect(navigation.queryByRole('button', { name: '个人仪表台' })).not.toBeInTheDocument()
-    expect(navigation.queryByRole('button', { name: '个人总览' })).not.toBeInTheDocument()
+    const destinations = navigation.getAllByRole('button')
+    expect(destinations[0]).toHaveAccessibleName('个人总览')
+    expect(destinations[1]).toHaveAccessibleName('分析')
+    expect(within(main).queryByText('点击任意位置，进入个人总览')).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: '个人总览' })).not.toBeInTheDocument()
+  })
+
+  it.each([false, true])('侧栏可直接进入总览并聚焦标题，窄屏：%s', async (isMobile) => {
+    const mediaQuery = window.matchMedia('(max-width: 640px)')
+    vi.spyOn(window, 'matchMedia').mockImplementation((query: string) => ({
+      ...mediaQuery, media: query,
+      matches: query === '(prefers-reduced-motion: reduce)' || (query === '(max-width: 640px)' && isMobile),
+    }))
+    const user = userEvent.setup()
+    render(<App />)
+    if (isMobile) await user.click(screen.getByRole('button', { name: '展开侧栏' }))
+
+    const overviewMenu = screen.getByRole('button', { name: '个人总览' })
+    await user.click(overviewMenu)
+
+    await waitFor(() => expect(screen.getByRole('heading', { name: '个人总览' })).toHaveFocus())
+    expect(overviewMenu).toHaveAttribute('aria-current', 'page')
+    expect(screen.queryByRole('dialog', { name: '导航面板' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: isMobile ? '展开侧栏' : '收起侧栏' })).toBeInTheDocument()
   })
 
   it('聚焦 Hello 时保留封面', () => {
@@ -117,6 +139,24 @@ describe('Hello 隐私封面', () => {
     expect(screen.getByRole('button', { name: /进入个人总览/ })).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: '个人总览' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '返回 Hello' })).not.toBeInTheDocument()
+  })
+
+  it('封面进入动画中点击品牌会取消进入，旧回调不会再次打开总览', () => {
+    enableStartupMotion()
+    render(<App />)
+    act(() => { gsap.getById('whomi-startup')?.pause().time(3.8, false) })
+    vi.useFakeTimers()
+    try {
+      fireEvent.click(screen.getByRole('button', { name: /进入个人总览/ }))
+      expect(document.querySelector('.hello-cover')).toHaveClass('is-revealing')
+      fireEvent.click(screen.getByRole('link', { name: 'Whomi 首页' }))
+      act(() => { vi.advanceTimersByTime(1000) })
+      expect(screen.getByRole('button', { name: /进入个人总览/ })).toBeInTheDocument()
+      expect(document.querySelector('.hello-cover')).not.toHaveClass('is-revealing')
+      expect(screen.queryByRole('heading', { name: '个人总览' })).not.toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('开场期间隔离背景，自动结束后可进入总览且品牌返回不重播', async () => {

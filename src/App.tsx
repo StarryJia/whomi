@@ -1,6 +1,8 @@
 import { useCallback, useLayoutEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react'
 import {
   ChartNoAxesCombined,
+  LayoutDashboard,
+  MessageCircleQuestion,
   PanelLeftClose,
   PanelLeftOpen,
   Settings,
@@ -10,8 +12,15 @@ import clsx from 'clsx'
 import { SidebarProvider, useSidebar } from './components/ui/sidebar'
 import { Tooltip, TooltipProvider } from './components/ui/tooltip'
 import { StartupIntro } from './components/startup-intro'
-import { ConversationNavigation, ConversationReader, type Conversation } from './components/conversations'
+import { HelloCover } from './components/hello-cover'
+import { ConversationNavigation, ConversationReader, resolveSourceRange, type Conversation } from './components/conversations'
 import { FileImport } from './components/file-import'
+import { PersonalOverview } from './components/overview/personal-overview'
+import { useOverviewFeedback } from './components/overview/use-overview-feedback'
+import type { FeedbackSaver, OverviewData, SourceReference } from './components/overview/types'
+import { ClarificationPage } from './components/clarification/clarification-page'
+import { useClarification } from './components/clarification/use-clarification'
+import type { ClarificationAdapter, ClarificationModel, ClarificationQuestion } from './components/clarification/types'
 import symbol from '../assets/branding/whomi-symbol.png'
 import wordmark from '../assets/branding/whomi-wordmark.png'
 import './styles.css'
@@ -38,9 +47,19 @@ function UnavailableDestination({ label, icon: Icon }: { label: string; icon: Lu
   )
 }
 
-interface AppProps { displayName?: string; conversations?: readonly Conversation[] }
+export interface AppProps {
+  displayName?: string
+  conversations?: readonly Conversation[]
+  overview?: OverviewData
+  saveFeedback?: FeedbackSaver
+  clarificationQuestion?: ClarificationQuestion
+  clarificationModels?: readonly ClarificationModel[]
+  clarificationAdapter?: ClarificationAdapter
+  preview?: boolean
+}
 
-function HomeShell({ displayName = '', conversations = [] }: AppProps) {
+function HomeShell({ displayName = '', conversations = [], overview, saveFeedback,
+  clarificationQuestion, clarificationModels = [], clarificationAdapter, preview = false }: AppProps) {
   const { open, isMobile, toggle, closeMobile } = useSidebar()
   const toggleRef = useRef<HTMLButtonElement>(null)
   const restoreToggleFocus = useRef(false)
@@ -48,8 +67,14 @@ function HomeShell({ displayName = '', conversations = [] }: AppProps) {
   const brandImageRef = useRef<HTMLImageElement>(null)
   const greetingRef = useRef<HTMLButtonElement>(null)
   const overviewTitleRef = useRef<HTMLHeadingElement>(null)
-  const [view, setView] = useState<'cover' | 'overview' | 'import' | 'conversation'>('cover')
+  const clarificationTitleRef = useRef<HTMLHeadingElement>(null)
+  const [view, setView] = useState<'cover' | 'overview' | 'import' | 'conversation' | 'clarification'>('cover')
+  const [coverKey, setCoverKey] = useState(0)
   const [activeId, setActiveId] = useState<string>()
+  const [source, setSource] = useState<SourceReference>()
+  const [sourceOrigin, setSourceOrigin] = useState<'overview' | 'clarification'>('overview')
+  const feedback = useOverviewFeedback(saveFeedback)
+  const clarification = useClarification(clarificationAdapter)
   const activeConversation = conversations.find(conversation => conversation.id === activeId)
   const [introActive, setIntroActive] = useState(
     () => !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
@@ -101,12 +126,14 @@ function HomeShell({ displayName = '', conversations = [] }: AppProps) {
 
   function goHome(event: MouseEvent<HTMLAnchorElement>) {
     const link = event.currentTarget
+    setCoverKey(key => key + 1)
     setView('cover')
     requestAnimationFrame(() => (mobileDialog ? link : greetingRef.current)?.focus())
   }
 
   function enterOverview() {
     setView('overview')
+    closeMobile()
     requestAnimationFrame(() => overviewTitleRef.current?.focus())
   }
 
@@ -122,11 +149,36 @@ function HomeShell({ displayName = '', conversations = [] }: AppProps) {
   }
 
   function openConversation(id: string) {
+    setSource(undefined)
     setActiveId(id)
     setView('conversation')
     closeMobile()
     requestAnimationFrame(() => mainRef.current?.querySelector<HTMLHeadingElement>('#conversation-title')?.focus())
   }
+
+  function openSource(reference: SourceReference, origin: 'overview' | 'clarification' = 'overview') {
+    const resolved = resolveSourceRange(conversations, reference)
+    if (!resolved) return
+    setSource(reference)
+    setSourceOrigin(origin)
+    setActiveId(resolved.conversation.id)
+    setView('conversation')
+    closeMobile()
+  }
+
+  function openClarification() {
+    setView('clarification')
+    closeMobile()
+    requestAnimationFrame(() => clarificationTitleRef.current?.focus())
+  }
+
+  const overviewContent = <>
+    {preview && <p className="overview-preview-label">开发预览 · 全部内容为虚构示例 · 未写入真实存储</p>}
+    <PersonalOverview data={overview ?? { materialStatus: conversations.length ? 'unanalysed' : 'none', discoveries: [] }}
+      headingRef={overviewTitleRef} onReturnToCover={returnToCover} onImport={openImport}
+      onOpenSource={openSource} isSourceAvailable={reference => resolveSourceRange(conversations, reference) !== null}
+      feedback={feedback} />
+  </>
 
   return (
     <div className={clsx('app-shell', open && 'sidebar-open', introActive && 'startup-running')}>
@@ -188,7 +240,19 @@ function HomeShell({ displayName = '', conversations = [] }: AppProps) {
           )}
         </header>
         <nav className="sidebar-navigation" aria-label="主导航">
+          <Tooltip content="个人总览">
+            <button className="nav-control" type="button" aria-label="个人总览" aria-current={view === 'overview' ? 'page' : undefined} onClick={enterOverview}>
+              <span className="control-icon"><LayoutDashboard aria-hidden="true" /></span>
+              <span className="control-label" aria-hidden="true">个人总览</span>
+            </button>
+          </Tooltip>
           {destinations.map((destination) => <UnavailableDestination key={destination.label} {...destination} />)}
+          <Tooltip content="解惑">
+            <button className="nav-control" type="button" aria-label="解惑" aria-current={view === 'clarification' ? 'page' : undefined} onClick={openClarification}>
+              <span className="control-icon"><MessageCircleQuestion aria-hidden="true" /></span>
+              <span className="control-label" aria-hidden="true">解惑</span>
+            </button>
+          </Tooltip>
           <ConversationNavigation wide={open} conversations={conversations} activeId={view === 'conversation' ? activeId : undefined}
             onImport={openImport} onSelect={openConversation} />
         </nav>
@@ -196,20 +260,17 @@ function HomeShell({ displayName = '', conversations = [] }: AppProps) {
           <UnavailableDestination label="设置" icon={Settings} />
         </footer>
       </aside>
-      <main id="main-content" ref={mainRef} className={clsx('home', view === 'overview' && 'overview-home', view === 'conversation' && 'reading-home')} tabIndex={-1} inert={mobileDialog || introActive}>
-        {view === 'cover' ? <>
-          <h1 className="greeting">
-            <button ref={greetingRef} className="greeting-action" type="button" aria-label={`Hello${name ? `，${name}` : ''}，进入个人总览`} onClick={enterOverview}>
-              Hello{name && <>，<span className="greeting-name">{name}</span></>}
-            </button>
-          </h1>
-        </> : view === 'import' ? <FileImport /> : view === 'conversation' && activeConversation ? <ConversationReader key={activeConversation.id} conversation={activeConversation} /> : (
-          <section className="overview-empty" aria-labelledby="overview-title">
-            <h1 id="overview-title" ref={overviewTitleRef} tabIndex={-1}>个人总览</h1>
-            <p>还没有可查看的总览。</p>
-            <button className="return-cover" type="button" onClick={returnToCover}>返回 Hello</button>
-          </section>
-        )}
+      <main id="main-content" ref={mainRef} className={clsx('home', view === 'cover' && 'cover-home', (view === 'overview' || view === 'clarification') && 'overview-home', view === 'conversation' && 'reading-home')} tabIndex={-1} inert={mobileDialog || introActive}>
+        {view === 'cover' ? <HelloCover key={coverKey} name={name} buttonRef={greetingRef} onEnter={enterOverview}>{overviewContent}</HelloCover>
+          : view === 'import' ? <FileImport /> : view === 'conversation' && activeConversation ? <ConversationReader
+          key={`${activeConversation.id}-${source?.id ?? ''}`} conversation={activeConversation}
+          sourceRange={source} onReturn={source ? (sourceOrigin === 'clarification' ? openClarification : enterOverview) : undefined}
+          returnLabel={sourceOrigin === 'clarification' ? '返回解惑' : '返回个人总览'} /> : view === 'clarification' ? (
+          <ClarificationPage question={clarificationQuestion} models={clarificationModels} controller={clarification}
+            headingRef={clarificationTitleRef} preview={preview}
+            onOpenSource={reference => openSource(reference, 'clarification')}
+            isSourceAvailable={reference => resolveSourceRange(conversations, reference) !== null} />
+        ) : overviewContent}
       </main>
       {introActive && <StartupIntro targetRef={brandImageRef} onComplete={finishIntro} />}
     </div>

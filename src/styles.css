@@ -194,6 +194,7 @@ button { color: inherit; }
 }
 .home:focus { outline: none; }
 .home:focus-visible { outline: 2px solid var(--focus); outline-offset: -6px; }
+.home.overview-home { display: block; }
 .greeting {
   margin: 0;
   max-width: 22ch;
@@ -206,19 +207,6 @@ button { color: inherit; }
   text-wrap: balance;
 }
 .greeting-name { word-break: normal; }
-.greeting-action {
-  position: relative;
-  padding: 12px 16px;
-  border: 0;
-  border-radius: var(--radius-control);
-  background: transparent;
-  line-height: inherit;
-  letter-spacing: inherit;
-  cursor: pointer;
-  transition: color 160ms ease-out;
-}
-.greeting-action:is(:hover, :focus-visible) { color: var(--focus); }
-.greeting-action:active { color: #802d10; }
 .overview-empty { max-width: 36rem; text-align: center; }
 .overview-empty h1 { margin: 0; font-size: clamp(26px, 3vw, 34px); font-weight: 550; line-height: 1.4; }
 .overview-empty h1:focus { outline: none; }
@@ -233,6 +221,8 @@ button { color: inherit; }
 }
 .return-cover:hover { background: var(--hover); }
 .return-cover:active { background: var(--pressed); }
+.nav-control[aria-current='page'] { color: var(--focus); background: var(--hover); }
+.overview-preview-label { width: min(100%, 1100px); margin: 0 auto 16px; color: var(--focus); font-size: 13px; line-height: 1.6; }
 
 .tooltip {
   z-index: 50;

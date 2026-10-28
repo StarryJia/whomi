@@ -1,0 +1,55 @@
+.aw-page { width: min(100%, 900px); margin: 0 auto; padding: 36px 44px 48px; color: var(--text); }
+.aw-page-heading h1 { margin: 0; font-size: 25px; line-height: 1.4; font-weight: 650; letter-spacing: -.025em; }
+.aw-identity { display: flex; align-items: center; flex-direction: column; padding: 42px 0 36px; text-align: center; }
+.aw-symbol { display: block; width: 96px; height: 96px; object-fit: contain; mix-blend-mode: multiply; }
+.aw-wordmark { position: relative; display: block; overflow: hidden; width: 132px; height: 39px; margin-top: 8px; mix-blend-mode: multiply; }
+.aw-wordmark img { position: absolute; display: block; width: 158px; height: 79px; max-width: none; left: -13px; top: -22px; }
+.aw-version { margin: 9px 0 0; font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.aw-introduction { margin: 18px 0 0; font-size: 14px; line-height: 1.75; color: var(--text-muted); }
+.aw-information { border-top: 1px solid var(--line); }
+.aw-information-row { display: flex; align-items: center; justify-content: space-between; gap: 24px; width: 100%; min-height: 61px; padding: 16px 0; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; color: var(--text); background: transparent; font: inherit; font-size: 14px; line-height: 1.6; text-align: left; text-decoration: none; cursor: pointer; }
+.aw-information-row:is(a, button):hover { background: var(--hover); }
+.aw-information-row:is(a, button):active { background: var(--pressed); }
+.aw-information-row > span { min-width: 0; overflow-wrap: anywhere; }
+.aw-information-row > svg { flex-shrink: 0; color: var(--text-muted); }
+.aw-link-value { display: inline-flex; align-items: center; gap: 6px; color: var(--focus); font-size: 13px; }
+.aw-link-value svg { flex-shrink: 0; }
+.aw-information-static { cursor: default; }
+.aw-muted { color: var(--text-muted); font-size: 13px; }
+.aw-debug { margin-top:32px; }
+.aw-debug h2 { margin:0 0 8px; font-size:14px; line-height:1.6; font-weight:600; }
+.aw-debug-control { display:flex; align-items:center; justify-content:space-between; gap:20px; min-height:48px; }
+.aw-debug-switch { position:relative; flex:0 0 44px; width:44px; height:44px; border:0; padding:0; background:transparent; cursor:pointer; }
+.aw-debug-switch::before { content:''; position:absolute; inset:10px 0; border-radius:20px; background:#8d96a2; }
+.aw-debug-switch > span { position:absolute; left:3px; top:13px; width:18px; height:18px; border-radius:50%; background:#fff; transition:transform 150ms ease-out; }
+.aw-debug-switch[aria-checked=true]::before { background:var(--focus); }
+.aw-debug-switch[aria-checked=true] > span { transform:translateX(20px); }
+.aw-debug-content { padding:16px 0 0; border-top:1px solid var(--line); }
+.aw-debug-content > p { margin:0 0 12px; font-size:12px; color:var(--text-muted); }
+.aw-debug-content dl { margin:0; font-size:13px; line-height:1.7; }
+.aw-debug-content dl > div { display:flex; flex-wrap:wrap; justify-content:space-between; gap:8px 24px; margin:8px 0; }
+.aw-debug-content dt { color:var(--text-muted); }
+.aw-debug-content dd { margin:0; overflow-wrap:anywhere; }
+.aw-dialog { width: min(760px, calc(100vw - 32px)); max-height: min(780px, calc(100svh - 32px)); margin: auto; padding: 0; border: 0; border-radius: 16px; color: var(--text); background: var(--surface); box-shadow: 0 18px 64px #17213030; overflow: auto; scroll-padding-block: 88px 24px; }
+.aw-dialog::backdrop { background: #1c253b55; }
+.aw-dialog-content { padding: 0 28px 28px; }
+.aw-dialog-heading { position: sticky; top: 0; display: flex; align-items: center; justify-content: space-between; gap: 20px; min-height: 80px; padding-block: 18px; background: var(--surface); z-index: 1; }
+.aw-dialog-heading h2 { margin: 0; font-size: 19px; line-height: 1.5; font-weight: 650; }
+.aw-close { display: inline-grid; place-items: center; flex: 0 0 44px; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 8px; color: var(--text-muted); background: transparent; cursor: pointer; }
+.aw-close:hover { background: var(--hover); color: var(--text); }
+.aw-close:active { background: var(--pressed); }
+.aw-notices-source { margin: 0 0 22px; color: var(--text-muted); font-size: 12px; line-height: 1.75; overflow-wrap: anywhere; }
+.aw-notices-text { margin: 0; font: inherit; color: var(--text); font-size: 13px; line-height: 1.85; white-space: pre-wrap; overflow-wrap: anywhere; }
+@media (max-width: 680px) {
+  .aw-page { padding: 24px 20px 36px; }
+  .aw-page-heading h1 { font-size: 23px; }
+  .aw-identity { padding-block: 32px; }
+  .aw-information-row { gap: 16px; }
+  .aw-link-value { font-size: 12px; }
+  .aw-dialog-content { padding-inline: 20px; }
+}
+.aw-notices-text h2,.aw-notices-text h3,.aw-notices-text h4 { margin:28px 0 12px; line-height:1.5; font-size:16px; font-family:inherit; }
+.aw-notices-text h2 { font-size:18px; }
+.aw-notices-text p { white-space:pre-wrap; margin:0 0 16px; }
+.aw-notices-text a { color:var(--focus); text-underline-offset:4px; overflow-wrap:anywhere; }
+.aw-notices-text code { font-family:inherit; font-size:inherit; padding:1px 4px; border-radius:3px; background:var(--hover); }

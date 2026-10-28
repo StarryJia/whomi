@@ -1,25 +1,226 @@
-import { StrictMode } from 'react'
+import { StrictMode, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from '../App'
-import type { Conversation } from '../components/conversations'
+import type { FeedbackReceipt, FeedbackSaver } from '../components/overview/types'
+import type { ClarificationReceipt, ClarificationWithdrawal } from '../components/clarification/types'
+import { overviewScenarios } from './overview-fixtures'
+import { clarificationConversations, clarificationScenarios } from './clarification-fixtures'
+import './preview.css'
 
-const conversations: Conversation[] = [
-  { id: 'example-project', title: '项目讨论 · 示例', messages: [
-    { id: '1', sender: '小林', text: '先确认一下这次页面的范围吧。', time: '10:24' },
-    { id: '2', sender: '我', text: '先把文件选择和会话阅读的前端做好。', time: '10:25', isSelf: true },
-    { id: '3', sender: '小林', text: '好的，收起左边的列表后，还能继续看这一段吗？', time: '10:26' },
-    { id: '4', sender: '我', text: '可以，阅读的位置会保留下来。\n聊天记录只用于阅读。', time: '10:27', isSelf: true },
-    ...Array.from({ length: 12 }, (_, index) => ({ id: `extra-${index}`, sender: index % 2 ? '我' : '小林', text: `第 ${index + 1} 段虚构示例记录，用于检查滚动和长文本。\n这里保留原文换行。`, isSelf: Boolean(index % 2) })),
-  ] },
-  { id: 'example-long', title: '很长的会话标题，用于检查窄屏阅读和侧栏省略显示 · 虚构示例', messages: [
-    { id: 'long', sender: '一位名字很长的参与者', text: '这是一段虚构示例。\n' + '用于确认长文本能够自然换行。'.repeat(24) },
-  ] },
-  { id: 'example-empty', title: '空记录 · 示例', messages: [] },
-]
+type SaveMode = 'normal' | 'delayed' | 'fail-once' | 'always-fail' | 'no-adapter'
 
-if (import.meta.env.DEV) createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App conversations={conversations} />
-    <div style={{ position: 'fixed', right: 12, bottom: 8, fontSize: 11, color: '#5c6674', pointerEvents: 'none' }}>虚构示例 · 仅供前端预览</div>
-  </StrictMode>,
-)
+const previewReceipt: FeedbackReceipt = { persistence: 'preview', analysis: 'not-requested' }
+type ActionMode = Exclude<SaveMode, 'no-adapter'>
+
+function usePreviewOperation<T>(makeReceipt: () => T) {
+  const [mode, setMode] = useState<ActionMode>('normal')
+  const [waitingCount, setWaitingCount] = useState(0)
+  const modeRef = useRef<ActionMode>('normal')
+  const failedOnce = useRef(false)
+  const factoryRef = useRef(makeReceipt)
+  factoryRef.current = makeReceipt
+  const waiting = useRef<Array<{ resolve: (value: T) => void; reject: (reason: Error) => void }>>([])
+
+  useEffect(() => () => {
+    waiting.current.splice(0).forEach(item => item.reject(new Error('预览已关闭。')))
+  }, [])
+
+  const run = useCallback(async () => {
+    if (modeRef.current === 'always-fail' || (modeRef.current === 'fail-once' && !failedOnce.current)) {
+      failedOnce.current = true
+      throw new Error('模拟操作失败。')
+    }
+    if (modeRef.current === 'delayed') return new Promise<T>((resolve, reject) => {
+      waiting.current.push({ resolve, reject })
+      setWaitingCount(waiting.current.length)
+    })
+    return factoryRef.current()
+  }, [])
+
+  function reset() {
+    waiting.current.splice(0).forEach(item => item.reject(new Error('预览条件已切换。')))
+    failedOnce.current = false
+    setWaitingCount(0)
+  }
+
+  function changeMode(value: ActionMode) {
+    reset()
+    modeRef.current = value
+    setMode(value)
+  }
+
+  function complete() {
+    waiting.current.splice(0).forEach(item => item.resolve(factoryRef.current()))
+    setWaitingCount(0)
+  }
+
+  return { mode, run, waitingCount, changeMode, complete, reset }
+}
+
+function SimulationOptions() {
+  return <>
+    <option value="normal">正常模拟</option>
+    <option value="delayed">等待手动完成</option>
+    <option value="fail-once">首次失败，重试成功</option>
+    <option value="always-fail">始终失败</option>
+  </>
+}
+
+function DevelopmentPreview() {
+  const [page, setPage] = useState<'overview' | 'clarification'>(() =>
+    new URLSearchParams(window.location.search).get('page') === 'clarification' ? 'clarification' : 'overview')
+  const [scenarioId, setScenarioId] = useState(overviewScenarios[0].id)
+  const [clarificationId, setClarificationId] = useState(clarificationScenarios[0].id)
+  const [saveMode, setSaveMode] = useState<SaveMode>('normal')
+  const [waitingCount, setWaitingCount] = useState(0)
+  const modeRef = useRef<SaveMode>('normal')
+  const failedOnce = useRef(false)
+  const waiting = useRef<Array<(receipt: FeedbackReceipt) => void>>([])
+  const frameRef = useRef<HTMLDivElement>(null)
+  const toolbarRef = useRef<HTMLElement>(null)
+  const surfaceRef = useRef<HTMLDivElement>(null)
+  const scenario = overviewScenarios.find(item => item.id === scenarioId) ?? overviewScenarios[0]
+  const clarificationScenario = clarificationScenarios.find(item => item.id === clarificationId) ?? clarificationScenarios[0]
+  const answerCount = useRef(0)
+  const submission = usePreviewOperation<ClarificationReceipt>(() => ({ answerId: `preview-answer-${++answerCount.current}`, persistence: 'preview' }))
+  const withdrawal = usePreviewOperation<ClarificationWithdrawal>(() => ({ persistence: 'preview' }))
+
+  useLayoutEffect(() => {
+    const updateSize = () => {
+      frameRef.current?.style.setProperty('--preview-toolbar-height', `${toolbarRef.current?.offsetHeight ?? 0}px`)
+      frameRef.current?.style.setProperty('--preview-stage-height', `${surfaceRef.current?.clientHeight ?? 0}px`)
+    }
+    updateSize()
+    const observer = new ResizeObserver(updateSize)
+    if (toolbarRef.current) observer.observe(toolbarRef.current)
+    if (surfaceRef.current) observer.observe(surfaceRef.current)
+    return () => observer.disconnect()
+  }, [])
+
+  useEffect(() => () => {
+    waiting.current.splice(0).forEach(resolve => resolve(previewReceipt))
+  }, [])
+
+  const saveFeedback = useCallback<FeedbackSaver>(async () => {
+    const mode = modeRef.current
+    if (mode === 'always-fail' || (mode === 'fail-once' && !failedOnce.current)) {
+      failedOnce.current = true
+      throw new Error('模拟保存失败，请重试。')
+    }
+    if (mode === 'delayed') {
+      return new Promise<FeedbackReceipt>(resolve => {
+        waiting.current.push(resolve)
+        setWaitingCount(waiting.current.length)
+      })
+    }
+    return previewReceipt
+  }, [])
+
+  function completeWaiting() {
+    waiting.current.splice(0).forEach(resolve => resolve(previewReceipt))
+    setWaitingCount(0)
+  }
+
+  function changeScenario(id: string) {
+    completeWaiting()
+    failedOnce.current = false
+    setScenarioId(id)
+  }
+
+  function changeMode(mode: SaveMode) {
+    completeWaiting()
+    failedOnce.current = false
+    modeRef.current = mode
+    setSaveMode(mode)
+  }
+
+  return <div className="preview-page" ref={frameRef}>
+    <header className="preview-toolbar" ref={toolbarRef} aria-label="开发预览工具">
+      <div className="preview-notice">
+        <strong>开发预览</strong>
+        <span>全部内容为虚构示例 · 未写入真实存储</span>
+      </div>
+      <details className="preview-controls">
+        <summary>预览控制</summary>
+        <div className="preview-controls-content">
+          <label>
+            <span>预览页面</span>
+            <select value={page} onChange={event => {
+              completeWaiting()
+              submission.reset()
+              withdrawal.reset()
+              setPage(event.target.value as 'overview' | 'clarification')
+            }}>
+              <option value="overview">个人总览</option>
+              <option value="clarification">解惑</option>
+            </select>
+          </label>
+          {page === 'overview' ? <><label>
+            <span>预览场景</span>
+            <select value={scenarioId} onChange={event => changeScenario(event.target.value)}>
+              {overviewScenarios.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}
+            </select>
+          </label>
+          <label>
+            <span>反馈保存模拟</span>
+            <select value={saveMode} onChange={event => changeMode(event.target.value as SaveMode)}>
+              <option value="normal">正常模拟</option>
+              <option value="delayed">等待手动完成</option>
+              <option value="fail-once">首次失败，重试成功</option>
+              <option value="always-fail">始终失败</option>
+              <option value="no-adapter">无保存适配器</option>
+            </select>
+          </label>
+          {saveMode === 'delayed' && <button type="button" onClick={completeWaiting} disabled={!waitingCount}>
+            完成等待中的模拟保存{waitingCount > 0 && `（${waitingCount}）`}
+          </button>}
+          <p className="preview-scenario-hint">{scenario.description} 切换场景后，点击 Hello 进入总览。</p>
+          {saveMode === 'delayed' && <p className="preview-save-hint" role="status">
+            {waitingCount ? '保存正在等待。点击完成等待中的模拟保存继续。' : '提交反馈后，在这里手动完成模拟保存。'}
+          </p>}
+          {saveMode === 'no-adapter' && <p className="preview-save-hint">可编辑反馈草稿；当前无法提交。</p>}
+          </> : <>
+            <label>
+              <span>解惑场景</span>
+              <select value={clarificationId} onChange={event => {
+                submission.reset()
+                withdrawal.reset()
+                setClarificationId(event.target.value)
+              }}>
+                {clarificationScenarios.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}
+              </select>
+            </label>
+            <label>
+              <span>回答提交模拟</span>
+              <select value={submission.mode} onChange={event => submission.changeMode(event.target.value as ActionMode)}><SimulationOptions /></select>
+            </label>
+            <label>
+              <span>回答撤回模拟</span>
+              <select value={withdrawal.mode} onChange={event => withdrawal.changeMode(event.target.value as ActionMode)}><SimulationOptions /></select>
+            </label>
+            {submission.mode === 'delayed' && <button type="button" onClick={submission.complete} disabled={!submission.waitingCount}>完成模拟提交</button>}
+            {withdrawal.mode === 'delayed' && <button type="button" onClick={withdrawal.complete} disabled={!withdrawal.waitingCount}>完成模拟撤回</button>}
+            <p className="preview-scenario-hint">{clarificationScenario.description} 切换场景后，点击侧栏解惑进入。</p>
+            {(submission.waitingCount > 0 || withdrawal.waitingCount > 0) && <p className="preview-save-hint" role="status">操作正在等待，请点击对应的完成模拟按钮。</p>}
+          </>}
+        </div>
+      </details>
+    </header>
+    <div className="preview-surface" ref={surfaceRef}>
+      <App key={`${page}-${page === 'overview' ? scenario.id : clarificationScenario.id}`} displayName=""
+        conversations={page === 'overview' ? scenario.conversations : clarificationConversations}
+        overview={page === 'overview' ? scenario.overview : undefined}
+        saveFeedback={saveMode === 'no-adapter' ? undefined : saveFeedback}
+        clarificationQuestion={page === 'clarification' ? clarificationScenario.question : undefined}
+        clarificationModels={page === 'clarification' ? clarificationScenario.models : []}
+        clarificationAdapter={page === 'clarification' && !clarificationScenario.noAdapter
+          ? { submit: submission.run, withdraw: withdrawal.run } : undefined} preview />
+    </div>
+  </div>
+}
+
+if (import.meta.env.DEV) {
+  const root = createRoot(document.getElementById('root')!)
+  root.render(<StrictMode><DevelopmentPreview /></StrictMode>)
+  import.meta.hot?.dispose(() => root.unmount())
+}

@@ -1,0 +1,72 @@
+.preview-page {
+  display: flex;
+  flex-direction: column;
+  height: 100svh;
+  overflow: hidden;
+}
+
+.preview-toolbar {
+  position: relative;
+  z-index: 110;
+  flex: 0 0 auto;
+  padding: 10px 20px;
+  border-bottom: 1px solid #d6c7a3;
+  background: #fff8e8;
+  color: #5a4521;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.preview-notice {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  padding-right: 92px;
+}
+
+.preview-notice strong { font-size: 12px; font-weight: 650; }
+.preview-controls > summary { position: absolute; top: 10px; right: 20px; cursor: pointer; }
+.preview-controls-content { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 10px 16px; padding-top: 12px; }
+.preview-controls label { display: flex; flex-direction: column; gap: 4px; min-width: 0; max-width: 100%; }
+.preview-controls select,
+.preview-controls button {
+  min-height: 36px;
+  max-width: 100%;
+  border: 1px solid #c6b48e;
+  border-radius: 6px;
+  background: #fffdf8;
+  color: #49391e;
+  padding: 5px 9px;
+  font: inherit;
+}
+.preview-controls select { width: 240px; }
+.preview-controls button { cursor: pointer; }
+.preview-controls button:disabled { opacity: .55; cursor: default; }
+.preview-scenario-hint,
+.preview-save-hint { flex-basis: 100%; margin: 0; overflow-wrap: anywhere; }
+
+.preview-surface { position: relative; flex: 1 1 auto; min-height: 0; overflow: auto; isolation: isolate; }
+.preview-surface .app-shell { min-height: var(--preview-stage-height, 100svh); }
+.preview-surface .home { min-height: var(--preview-stage-height, 100svh); }
+.preview-surface .sidebar { height: var(--preview-stage-height, 100svh); }
+.preview-surface .home.reading-home { height: var(--preview-stage-height, 100svh); min-height: 0; }
+.preview-surface .overview-preview-label { display: none; }
+.preview-surface .clarification-preview-label { display: none; }
+
+@media (max-width: 640px) {
+  .preview-toolbar { padding: 8px 12px; }
+  .preview-controls > summary { top: 8px; right: 12px; }
+  .preview-notice { align-items: flex-start; }
+  .preview-controls-content { gap: 8px; }
+  .preview-controls label { flex: 1 1 150px; }
+  .preview-controls select { width: 100%; }
+  .preview-surface .sidebar { top: var(--preview-toolbar-height, 0px); }
+  .preview-surface .sidebar-backdrop { top: var(--preview-toolbar-height, 0px); }
+}
+
+@media (forced-colors: active) {
+  .preview-toolbar { border-color: CanvasText; }
+  .preview-controls select,
+  .preview-controls button { border-color: ButtonText; }
+}

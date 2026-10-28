@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Whomi · 设置布局比较</title>
+  <style>
+    :root{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Microsoft YaHei',sans-serif;color:#26303d;background:#f5f7f9;color-scheme:light}
+    *{box-sizing:border-box}body{margin:0}main{max-width:1680px;margin:auto;padding:40px 32px 64px}
+    h1{font-size:28px;line-height:1.3;margin:0 0 16px}h2{font-size:20px;margin:0 0 12px}
+    p{line-height:1.65;margin:8px 0;color:#5c6674;max-width:78ch}header{margin-bottom:32px}
+    a{color:#a7340f;text-underline-offset:4px}a:hover{color:#782709}a:focus-visible{outline:2px solid #b83b12;outline-offset:4px;border-radius:4px}
+    ::selection{color:#26303d;background:#fbd5c8}.notice{padding:12px 16px;background:#fff;border:1px solid #e0e5eb;border-radius:10px}
+    .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;align-items:start}
+    article{min-width:0}article p{font-size:14px}article img{width:100%;height:auto;display:block;border:1px solid #e0e5eb;border-radius:12px;background:#fff}
+    .image-link{display:block;margin:16px 0}.action{display:inline-flex;min-height:44px;align-items:center}.comparison{margin:40px 0 32px;padding-top:24px;border-top:1px solid #e0e5eb}
+    .comparison p{color:#26303d}footer{padding-top:16px;border-top:1px solid #e0e5eb;font-size:14px}
+    @media(max-width:1000px){.grid{grid-template-columns:1fr}article{padding-bottom:24px;border-bottom:1px solid #e0e5eb}article img{max-width:100%}main{padding:24px 20px}h1{font-size:24px}}
+    @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Whomi 设置布局比较</h1>
+    <p>A 专注分栏已选定。返回、关于whomi、服务商图片与数据说明已按标注修订，同一结构已应用到三个分类。</p>
+    <p class="notice"><a class="action" href="settings/index.html">打开 A 方案独立交互预览</a> · 示例状态仅在内存中保留，不连接服务、不保存配置、不处理聊天数据。</p>
+  </header>
+  <section class="grid" aria-label="A 方案修订截图">
+    <article><h2>模型服务 · 修订</h2><a class="image-link" href="../assets/settings/revision-models.png" target="_blank" rel="noopener"><img src="../assets/settings/revision-models.png" alt="A方案模型服务修订：仅文字的服务商列表，返回与关于whomi文案，云服务使用数据说明" width="1440" height="960"></a><p>无图片时直接显示服务商名称；新增服务商可选择图片。预置清单等待用户提供。</p></article>
+    <article><h2>消息处理 · 修订</h2><a class="image-link" href="../assets/settings/revision-messages.png" target="_blank" rel="noopener"><img src="../assets/settings/revision-messages.png" alt="同一设置侧栏中的消息处理，开关与从属时间输入，演示状态明确标注" width="1440" height="960"></a><p>开关后展开相关参数，规则支持分组与部分选择。正式默认值与范围待确认。<a href="../assets/settings/revision-rules.png" target="_blank" rel="noopener">查看脱敏规则</a></p></article>
+    <article><h2>关于whomi · 修订</h2><a class="image-link" href="../assets/settings/revision-about-r3.png" target="_blank" rel="noopener"><img src="../assets/settings/revision-about-r3.png" alt="关于whomi包含一个了解你的程序介绍、原始Logo、版本0.1.0、真实仓库、第三方声明和调试面板" width="1440" height="960"></a><p>简介改为一个了解你的程序，底部改为调试面板。开关仅展开演示信息，不接入真实调试或日志。</p></article>
+  </section>
+  <section class="comparison" aria-label="补充预览截图"><p><a href="../assets/settings/revision-add-provider.png" target="_blank" rel="noopener">添加服务商与图片选择</a> · <a href="../assets/settings/revision-model-picker.png" target="_blank" rel="noopener">模型选择弹窗</a> · <a href="../assets/settings/revision-narrow.png" target="_blank" rel="noopener">窄窗口详情</a></p><h2>首轮候选 · 历史比较</h2><p>以下三张为生成概念稿，只保留构图比较；其中的图标、文案和示例状态已由上方修订替代。</p></section>
+  <section class="grid" aria-label="首轮三个布局">
+    <article aria-labelledby="variant-a">
+      <h2 id="variant-a">A · 专注分栏</h2>
+      <p>设置分类、服务商列表和配置详情并列。进入设置时替换业务导航，返回后恢复来处。</p>
+      <a class="image-link" href="../assets/settings/variant-A.png" target="_blank" rel="noopener" aria-label="打开 A 专注分栏大图，新标签页"><img src="../assets/settings/variant-A.png" alt="A：左侧三个设置分类，中间服务商列表，右侧配置详情；静态示例" width="1504" height="1046"></a>
+      <p>适合：频繁切换服务商，或在三个设置分类间调整配置。代价：需要返回操作回到原业务页。</p>
+      <a class="action" href="../assets/settings/variant-A.png" target="_blank" rel="noopener">打开 A 大图</a>
+    </article>
+    <article aria-labelledby="variant-b">
+      <h2 id="variant-b">B · 顶部分类</h2>
+      <p>三个设置分类移到顶部，下方是服务商列表与配置详情，给表单留出更多宽度。</p>
+      <a class="image-link" href="../assets/settings/variant-B.png" target="_blank" rel="noopener" aria-label="打开 B 顶部分类大图，新标签页"><img src="../assets/settings/variant-B.png" alt="B：顶部三个分类标签，下方左侧服务商列表和右侧宽表单；静态示例" width="1504" height="1046"></a>
+      <p>适合：较窄的桌面窗口、长地址和模型名称。代价：顶部分类会占用部分纵向空间。</p>
+      <a class="action" href="../assets/settings/variant-B.png" target="_blank" rel="noopener">打开 B 大图</a>
+    </article>
+    <article aria-labelledby="variant-c">
+      <h2 id="variant-c">C · 客户端内嵌</h2>
+      <p>保留客户端业务侧栏，设置工作区使用顶部分类，内部继续分为服务商和配置。</p>
+      <a class="image-link" href="../assets/settings/variant-C.png" target="_blank" rel="noopener" aria-label="打开 C 客户端内嵌大图，新标签页"><img src="../assets/settings/variant-C.png" alt="C：保留客户端侧栏，主区内是三个分类、服务商列表和紧凑表单；静态示例" width="1504" height="1046"></a>
+      <p>适合：希望随时辨认客户端位置的宽窗口。代价：横向区域较多，窄窗需要收起或顺序展示。</p>
+      <a class="action" href="../assets/settings/variant-C.png" target="_blank" rel="noopener">打开 C 大图</a>
+    </article>
+  </section>
+  <section class="comparison" aria-labelledby="recommendation">
+    <h2 id="recommendation">已选择 A</h2>
+    <p>设置分类和服务商始终可见，调整连接后能直接管理该服务商的模型；与参考产品的配置任务最贴近。独立评审更倾向 B：窗口较窄时，顶部分类给长地址和表单留出更多空间。</p>
+    <p>用户已明确选择 A，并补充四项标注。B、C 作为历史比较保留。</p>
+    <p>修订预览直接引用原始 Logo、Whomi 现有图标和颜色，服务商没有图片时只显示文字。</p>
+    <p>启用不等于检测通过。候选图没有表达实际保存行为；保存方式和开关默认值仍待确认。后续会将检测状态及云服务材料去向放到配置标题附近。</p>
+  </section>
+  <footer>
+    <p>参考截图尚未收到。这里的图片由内置图像工具生成，不是 Cherry 或 ChatLab 的截图，也不构成键盘与窄窗交互验证。</p>
+    <a class="action" href="../whomi-settings-design.md">打开或下载设计文档</a>
+  </footer>
+</main>
+</body>
+</html>
