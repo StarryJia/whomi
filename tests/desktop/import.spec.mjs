@@ -68,6 +68,9 @@ test('actual import UI preserves old messages, self identity, source bytes and s
     await expect(page.getByText('已保存 1 条消息。', { exact: true })).toBeVisible()
     await save(page, second, `existing:${initial.id}`)
     await expect(page.getByText('新增 0 条消息，重复 2 条。', { exact: true })).toBeVisible()
+    const beforeRestart = await page.evaluate(id => window.whomi.readMessages({ conversationId: id, direction: 'after' }), initial.id)
+    const stableMessage = beforeRestart.items[2]
+    expect(stableMessage.text).toBe('synthetic-3')
     await application.close(); application = await launch(); page = await application.firstWindow()
     const reopened = (await page.evaluate(() => window.whomi.listConversations({}))).items[0]
     expect(reopened.messageCount).toBe(4)
@@ -75,9 +78,9 @@ test('actual import UI preserves old messages, self identity, source bytes and s
     await page.getByRole('button', { name: reopened.title, exact: true }).click()
     await expect(page.locator('.message-text')).toHaveCount(4)
     expect(await page.locator('.message-text').allTextContents()).toEqual([malicious, 'synthetic-2', 'synthetic-3', 'synthetic-4'])
-    const persisted = await page.evaluate(id => window.whomi.readMessages({ conversationId: id, direction: 'after' }), initial.id)
-    const located = await page.evaluate(input => window.whomi.locateSource(input), { conversationId: initial.id, messageId: persisted.items[2].id })
-    expect(located.status).toBe('available'); expect(located.page.items.some(item => item.id === persisted.items[2].id)).toBe(true)
+    const located = await page.evaluate(input => window.whomi.locateSource(input), { conversationId: initial.id, messageId: stableMessage.id })
+    expect(located.status).toBe('available')
+    expect(located.page.items.find(item => item.id === stableMessage.id)?.text).toBe(stableMessage.text)
     expect(await fingerprint(sources)).toBe(before)
   } finally { await application?.close(); await cleanup(directory) }
 })

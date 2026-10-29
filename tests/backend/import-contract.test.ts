@@ -39,7 +39,16 @@ it.each(formats)('%s follows the same snapshot, preview, atomic save, exact reim
     expect(saved.status).toBe('completed'); expect(saved.inserted).toBe(count)
     const second = await stage()
     await service.startImport({ kind: 'commit', plan: { jobId: second.jobId, decisions: second.candidates.map(c => ({ candidateId: c.candidateId, target: { kind: 'existing' as const, conversationId: saved.results.find(r => r.candidateId === first.candidates.find(old => old.sourceKey === c.sourceKey)!.candidateId)!.conversationId! }, confirmedAliases: [] })) } }); await service.idle()
-    expect((await service.getImport(second.jobId)).inserted).toBe(0)
+    const reimported = await service.getImport(second.jobId)
+    expect(reimported.status).toBe('completed')
+    expect(reimported.inserted).toBe(0)
+    expect(reimported.duplicates).toBe(count)
+    expect(reimported.results).toHaveLength(second.candidates.length)
+    for (const candidate of second.candidates) {
+      const result = reimported.results.find(result => result.candidateId === candidate.candidateId)
+      expect(result).toMatchObject({ status: 'duplicate', inserted: 0, duplicates: candidate.counts.validRecords })
+      expect(result!.committedAt).toEqual(expect.any(Number))
+    }
     store.close(); store = openStore(join(directory, 'whomi.db'))
     const queries = createQueries(store), conversations = (await queries.listConversations({})).items
     expect(conversations.reduce((total, c) => total+c.messageCount, 0)).toBe(count)
