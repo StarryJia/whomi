@@ -14,7 +14,7 @@ export type ParseEvent =
   | { type: 'member'; conversationKey: string; value: ParsedMember }
   | { type: 'message'; value: ParsedMessage }
   | { type: 'issue'; value: ImportIssue }
-  | { type: 'end'; conversationKey: string; seen: number }
+  | { type: 'end'; conversationKey: string; seen: number; declaredMessages?: number }
 export type ParserAdapter = {
   id: string
   version: string

@@ -40,7 +40,9 @@ export function existsSync(path: string) { checked(path); return fs.existsSync(p
 export function readFileSync(path: string, encoding: BufferEncoding): string {
   const fd = openSync(path, 'r')
   try {
-    const value = fs.readFileSync(fd, encoding)
+    const bytes = fs.readFileSync(fd)
+    const value = encoding === 'utf8' || encoding === 'utf-8'
+      ? new TextDecoder('utf-8', { fatal: true }).decode(bytes) : bytes.toString(encoding)
     const expected = scope().files.get(key(path))!
     if (!same(expected, fs.fstatSync(fd))) denied()
     return value

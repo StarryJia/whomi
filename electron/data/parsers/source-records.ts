@@ -4,11 +4,15 @@ import { boundedText, checkFile, dependency, parseJson, ParseFailure, recordLimi
 export type Raw = Record<string, any>
 export type SourceConversation = { root: Raw; records: Raw[]; chatIndex: number }
 
-function records(value: unknown, input: ParserInput): Raw[] {
+function records(value: unknown, input: ParserInput, id = ''): Raw[] {
   if (!Array.isArray(value)) throw new ParseFailure('missing-messages')
   return value.map((item, ordinal) => {
     if (!item || typeof item !== 'object' || Array.isArray(item)) throw new ParseFailure('invalid-record', ordinal)
     if (Buffer.byteLength(JSON.stringify(item)) > recordLimit(input)) throw new ParseFailure('record-limit', ordinal)
+    const text = item[id === 'discord-tyrrrz' ? 'content' : 'text']
+    if (id.startsWith('telegram-')) {
+      if (text != null && typeof text !== 'string' && !(Array.isArray(text) && text.every(part => typeof part === 'string' || (part && typeof part === 'object' && !Array.isArray(part) && typeof part.text === 'string')))) throw new ParseFailure('invalid-record', ordinal)
+    } else if ((id === 'discord-tyrrrz' || id === 'google-chat-native') && text != null && typeof text !== 'string') throw new ParseFailure('invalid-record', ordinal)
     return item
   })
 }
@@ -30,7 +34,7 @@ export async function sourceConversations(id: string, input: ParserInput): Promi
   if (!root || typeof root !== 'object' || Array.isArray(root)) throw new ParseFailure('invalid-format')
   if (id === 'telegram-native') {
     if (!Array.isArray(root.chats?.list)) throw new ParseFailure('missing-conversations')
-    return root.chats.list.map((chat: Raw, chatIndex: number) => ({ root: { ...chat, personal_information: root.personal_information }, records: records(chat.messages, input), chatIndex }))
+    return root.chats.list.map((chat: Raw, chatIndex: number) => ({ root: { ...chat, personal_information: root.personal_information }, records: records(chat.messages, input, id), chatIndex }))
   }
   let rows = root.messages
   if (id === 'google-chat-native') {
@@ -47,7 +51,10 @@ export async function sourceConversations(id: string, input: ParserInput): Promi
     for (const chunk of root.chunked.chunks) {
       const name = chunk.relativePath ?? chunk.file ?? (chunk.fileName ? `chunks/${chunk.fileName}` : null)
       const data = await readDependency(name)
-      for (const line of data.split(/\r?\n/)) if (line.trim()) rows.push(parseJson(line))
+      let count = 0
+      for (const line of data.split(/\r?\n/)) if (line.trim()) { rows.push(parseJson(line)); count++ }
+      const declared = chunk.messages ?? chunk.count
+      if (declared !== undefined && (!Number.isSafeInteger(declared) || declared !== count)) throw new ParseFailure('declared-count-mismatch')
     }
     if (root.avatars?.file) parseJson(await readDependency(root.avatars.file))
   }
@@ -59,7 +66,7 @@ export async function sourceConversations(id: string, input: ParserInput): Promi
   }
   if ((required[id] ?? []).some(key => root[key] === undefined)) throw new ParseFailure('missing-fields')
   if (id === 'chatlab' && !['0.0.1', '0.0.2'].includes(root.chatlab.version)) throw new ParseFailure('unsupported-version')
-  return [{ root, records: records(rows, input), chatIndex: 0 }]
+  return [{ root, records: records(rows, input, id), chatIndex: 0 }]
 }
 
 /** Retain the source wall-clock spelling; unzoned exports cannot become UTC instants. */

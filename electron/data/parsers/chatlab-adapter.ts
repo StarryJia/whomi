@@ -90,7 +90,11 @@ async function* bounded(module: FormatModule, input: ParserInput): AsyncGenerato
       yield* messageEvents(input, message, raw, chat, id, members)
       if (ordinal % 500 === 499) await new Promise<void>(resolve => setImmediate(resolve))
     }
-    yield { type: 'end', conversationKey: chat.sourceKey, seen: source.records.length }
+    const declared = ['weflow', 'echotrace'].includes(id) ? source.root.session?.messageCount
+      : id.startsWith('qq-shuakami') ? source.root.statistics?.totalMessages : undefined
+    if (declared !== undefined && (!Number.isSafeInteger(declared) || declared < 0)) yield issue(input, 'invalid-declared-count')
+    yield { type: 'end', conversationKey: chat.sourceKey, seen: source.records.length,
+      ...(Number.isSafeInteger(declared) && declared >= 0 ? { declaredMessages: declared } : {}) }
   }
 }
 
@@ -150,7 +154,7 @@ async function detect(module: FormatModule, probe: SourceProbe) {
 export function adapt(module: FormatModule): ParserAdapter {
   const stream = module.feature.id === 'chatlab-jsonl'
   return Object.freeze({
-    id: module.feature.id, version: 'f19beeadda27b-whomi.1', extensions: Object.freeze([...module.feature.extensions]),
+    id: module.feature.id, version: 'f19beeadda27b-whomi.2', extensions: Object.freeze([...module.feature.extensions]),
     mode: stream ? 'stream' : 'bounded',
     capabilities: { multiConversation: Boolean(module.feature.multiChat), stableMessageIds: ['qq-native', 'qq-shuakami', 'qq-shuakami-chunked', 'line-native', 'whatsapp-native', 'instagram-native'].includes(module.feature.id) ? 'none' : 'conditional', media: 'descriptors-only' },
     detect: (probe: SourceProbe) => detect(module, probe),
