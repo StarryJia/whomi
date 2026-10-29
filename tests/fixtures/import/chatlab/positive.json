@@ -1,0 +1,36 @@
+{
+  "chatlab": {
+    "version": "0.0.2"
+  },
+  "meta": {
+    "name": "Synthetic",
+    "platform": "discord",
+    "type": "group",
+    "groupId": "example-room",
+    "ownerId": "example-a"
+  },
+  "members": [
+    {
+      "platformId": "example-a",
+      "accountName": "Example A"
+    }
+  ],
+  "messages": [
+    {
+      "sender": "example-a",
+      "accountName": "Example A",
+      "timestamp": 1700000000,
+      "type": 0,
+      "content": " first\n",
+      "platformMessageId": "one"
+    },
+    {
+      "sender": "example-a",
+      "accountName": "Example A",
+      "timestamp": 1700000000,
+      "type": 0,
+      "content": "second",
+      "platformMessageId": "two"
+    }
+  ]
+}

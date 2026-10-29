@@ -1,0 +1,42 @@
+{
+  "metadata": {
+    "name": "QQChatExporter",
+    "version": "5.0.0"
+  },
+  "chatInfo": {
+    "name": "Synthetic QQ",
+    "type": "group",
+    "selfUin": "10001"
+  },
+  "statistics": {
+    "totalMessages": 2
+  },
+  "messages": [
+    {
+      "messageId": "example-1",
+      "timestamp": "2023-11-14T22:13:20Z",
+      "sender": {
+        "uin": "10001",
+        "uid": "example-qq-a",
+        "name": "Example A"
+      },
+      "content": {
+        "text": "message 1"
+      },
+      "messageType": 0
+    },
+    {
+      "messageId": "example-2",
+      "timestamp": "2023-11-14T22:13:20Z",
+      "sender": {
+        "uin": "10001",
+        "uid": "example-qq-a",
+        "name": "Example A"
+      },
+      "content": {
+        "text": "message 2"
+      },
+      "messageType": 0
+    }
+  ]
+}

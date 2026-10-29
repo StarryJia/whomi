@@ -1,0 +1,25 @@
+{
+  "name": "Synthetic Telegram",
+  "type": "personal_chat",
+  "id": 123,
+  "messages": [
+    {
+      "id": 1,
+      "type": "message",
+      "date": "2023-11-14T22:13:20",
+      "date_unixtime": "1700000000",
+      "from": "Example A",
+      "from_id": "user123",
+      "text": "message 1"
+    },
+    {
+      "id": 2,
+      "type": "message",
+      "date": "2023-11-14T22:13:20",
+      "date_unixtime": "1700000000",
+      "from": "Example A",
+      "from_id": "user123",
+      "text": "message 2"
+    }
+  ]
+}

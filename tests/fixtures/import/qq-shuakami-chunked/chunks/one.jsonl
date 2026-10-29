@@ -1,0 +1,2 @@
+{"id":"local-1","timestamp":1700000000000,"sender":{"uin":"10001","name":"Example A"},"type":"text","content":{"text":"message 1"}}
+{"id":"local-2","timestamp":1700000000000,"sender":{"uin":"10001","name":"Example A"},"type":"text","content":{"text":"message 2"}}

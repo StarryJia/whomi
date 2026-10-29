@@ -1,0 +1,63 @@
+{
+  "exportInfo": {
+    "exporter": "SIWX",
+    "wxid": "example-wx_suffix"
+  },
+  "session": {
+    "wxid": "example-peer",
+    "displayName": "Synthetic WeChat",
+    "type": "私聊",
+    "messageCount": 4
+  },
+  "messages": [
+    {
+      "localId": 1,
+      "createTime": 1700000000,
+      "formattedTime": "2023-11-14 22:13:20",
+      "senderUsername": "example-wx",
+      "senderDisplayName": "Example A",
+      "isSend": 1,
+      "content": " 好\n",
+      "localType": 1,
+      "typeName": "文本消息",
+      "serverId": "9007199254740993123"
+    },
+    {
+      "localId": 2,
+      "createTime": 1700000000123,
+      "formattedTime": "2023-11-14 22:13:20",
+      "senderUsername": "example-wx",
+      "senderDisplayName": "Example A",
+      "isSend": 1,
+      "content": "",
+      "localType": 3,
+      "typeName": "图片消息"
+    },
+    {
+      "localId": 3,
+      "createTime": 1700000000,
+      "formattedTime": "2023-11-14 22:13:20",
+      "senderUsername": "example-wx",
+      "senderDisplayName": "Example A",
+      "isSend": 1,
+      "content": "答复",
+      "localType": 49,
+      "typeName": "引用消息",
+      "quote": {
+        "content": "原引用\n",
+        "senderName": "Example B",
+        "createTime": 1700000000
+      }
+    },
+    {
+      "localId": 4,
+      "formattedTime": "2023-11-14 22:13:20",
+      "senderUsername": "",
+      "senderDisplayName": "",
+      "isSend": 0,
+      "content": "未知",
+      "localType": 98765,
+      "typeName": "未知类型"
+    }
+  ]
+}

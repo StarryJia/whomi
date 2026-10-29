@@ -1,0 +1,26 @@
+{
+  "participants": [
+    {
+      "name": "Example A"
+    },
+    {
+      "name": "Example B"
+    }
+  ],
+  "title": "Synthetic Instagram",
+  "thread_path": "inbox/example",
+  "messages": [
+    {
+      "sender_name": "Example A",
+      "timestamp_ms": 1700000000123,
+      "content": "second",
+      "is_geoblocked_for_viewer": false
+    },
+    {
+      "sender_name": "Example B",
+      "timestamp_ms": 1700000000000,
+      "content": "first",
+      "is_geoblocked_for_viewer": false
+    }
+  ]
+}

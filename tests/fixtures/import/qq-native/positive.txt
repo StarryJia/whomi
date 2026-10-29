@@ -1,0 +1,6 @@
+消息记录
+消息对象:Synthetic
+2023-11-14 22:13:20 Example A(10001)
+first
+2023-11-14 22:13:20 Example B(10002)
+second

@@ -1,0 +1,24 @@
+{
+  "metadata": {
+    "name": "QQChatExporter",
+    "version": "5.0.0",
+    "format": "chunked-jsonl"
+  },
+  "chatInfo": {
+    "name": "Synthetic QQ",
+    "type": "group",
+    "selfUin": "10001"
+  },
+  "statistics": {
+    "totalMessages": 2
+  },
+  "chunked": {
+    "format": "jsonl",
+    "chunks": [
+      {
+        "file": "chunks/one.jsonl",
+        "messages": 2
+      }
+    ]
+  }
+}

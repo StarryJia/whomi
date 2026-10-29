@@ -1,0 +1,6 @@
+[LINE] Chat history with Synthetic
+Saved on: 2023/11/14
+
+2023/11/14
+22:13	Example A	first
+22:13	Example B	second

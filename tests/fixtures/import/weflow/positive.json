@@ -1,0 +1,33 @@
+{
+  "weflow": {
+    "version": "1"
+  },
+  "session": {
+    "wxid": "example-peer",
+    "displayName": "Synthetic WeChat",
+    "type": "私聊",
+    "messageCount": 2
+  },
+  "messages": [
+    {
+      "localId": 1,
+      "createTime": 1700000000,
+      "formattedTime": "2023-11-14 22:13:20",
+      "type": "文本消息",
+      "senderUsername": "example-wx",
+      "senderDisplayName": "Example A",
+      "isSend": 1,
+      "content": "message 1"
+    },
+    {
+      "localId": 2,
+      "createTime": 1700000000,
+      "formattedTime": "2023-11-14 22:13:20",
+      "type": "文本消息",
+      "senderUsername": "example-wx",
+      "senderDisplayName": "Example A",
+      "isSend": 1,
+      "content": "message 2"
+    }
+  ]
+}

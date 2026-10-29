@@ -1,0 +1,45 @@
+{
+  "guild": {
+    "id": "example-guild",
+    "name": "Synthetic"
+  },
+  "channel": {
+    "id": "example-channel",
+    "name": "Synthetic",
+    "type": "GuildTextChat"
+  },
+  "messages": [
+    {
+      "id": "900719925474099311",
+      "type": "Default",
+      "timestamp": "2023-11-14T22:13:20.123Z",
+      "content": "message 1",
+      "author": {
+        "id": "example-a",
+        "name": "Example A",
+        "nickname": "Example A",
+        "roles": []
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "mentions": []
+    },
+    {
+      "id": "900719925474099312",
+      "type": "Default",
+      "timestamp": "2023-11-14T22:13:20.123Z",
+      "content": "message 2",
+      "author": {
+        "id": "example-a",
+        "name": "Example A",
+        "nickname": "Example A",
+        "roles": []
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "mentions": []
+    }
+  ]
+}

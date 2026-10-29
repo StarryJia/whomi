@@ -1,0 +1,10 @@
+{
+  "format": "chatlab-google-chat-takeout",
+  "version": 1,
+  "chatId": "example-chat",
+  "chatType": "group",
+  "chatName": "Synthetic Google Chat",
+  "userInfoFile": "user.json",
+  "groupInfoFile": "group.json",
+  "messagesFile": "messages.json"
+}

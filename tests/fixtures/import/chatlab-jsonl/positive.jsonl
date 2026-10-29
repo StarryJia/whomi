@@ -1,0 +1,4 @@
+{"_type":"header","chatlab":{"version":"0.0.2"},"meta":{"name":"Synthetic","platform":"discord","type":"group","groupId":"example-room","ownerId":"example-a"}}
+{"_type":"member","platformId":"example-a","accountName":"Example A"}
+{"_type":"message","sender":"example-a","accountName":"Example A","timestamp":1700000000,"type":0,"content":" first\n","platformMessageId":"one"}
+{"_type":"message","sender":"example-a","accountName":"Example A","timestamp":1700000000,"type":0,"content":"second","platformMessageId":"two"}

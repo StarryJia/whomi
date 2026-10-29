@@ -36,6 +36,14 @@ SOFTWARE.
 
 ## 其他依赖
 
+### ChatLab 会话解析模块
+
+本地导入后端复用 [ChatLab/ChatLab 固定提交 f19beeadda27bd57eedc1bfbe75e7ed1b9e86833](https://github.com/ChatLab/ChatLab/tree/f19beeadda27bd57eedc1bfbe75e7ed1b9e86833) 的 14 个格式模块与必要工具、类型。原始代码按 GNU Affero General Public License v3（AGPL-3.0）提供，完整原文保存在 [electron/vendor/chatlab-parser/LICENSE](electron/vendor/chatlab-parser/LICENSE)，逐文件来源、原始摘要及本地修改见 [UPSTREAM.md](electron/vendor/chatlab-parser/UPSTREAM.md)。没有复制上游测试样本、原生加速或桌面业务代码。
+
+新增运行依赖 stream-json 1.9.1、stream-chain 2.2.5 按各安装包声明的 BSD-3-Clause 提供；开发类型依赖 @types/stream-json 1.7.8、@types/stream-chain 2.1.0 按 MIT 提供。锁定版本与固定上游锁文件一致，安全限制及审计残留见 [复用审计](docs/research/chatlab-parser-reuse.md)。
+
+当前只完成已授权的本地集成。与下述 GSAP 许可组合的公开分发条件尚未确认；本声明不改变整个 Whomi 的许可证，也不构成公开发布授权。
+
 ### GSAP 与 React 集成
 
 启动动画使用 [GSAP](https://github.com/greensock/GSAP) 3.15.0 的时间轴与快速位置更新，以及 [@gsap/react](https://github.com/greensock/react) 2.1.2 的 `useGSAP` 生命周期集成。
