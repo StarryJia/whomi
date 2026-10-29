@@ -2,6 +2,7 @@ import { beforeEach, afterEach, expect, test } from 'vitest'
 import { openStore, type Store } from '../../electron/data/db/open'
 import { commitConversation, createCommitter } from '../../electron/data/import/merge'
 import { resolveTarget } from '../../electron/data/import/identity'
+import { rebuildSummary } from '../../electron/data/import/summary'
 import { temporaryStore } from './helpers'
 import { candidate, view } from './import-fixture'
 let store: Store, temp: ReturnType<typeof temporaryStore>
@@ -82,4 +83,18 @@ test('yields before the next record exceeds an eight MiB batch',async()=> {
   const merge=createCommitter({afterInsert(n){written=n;if(n===1)setImmediate(()=>controller.abort())}})
   await expect(merge(store,v,target(c),controller.signal)).rejects.toThrow('CANCELLED')
   expect(written).toBe(1)
+})
+test('marks summary pending in the same duplicate-only transaction when explicit self adds a member',async()=> {
+  const c=candidate();c.members=[{sourceKey:'sender',displayName:'示例发送者',stableAccountKey:'sender',selfHint:null},{sourceKey:'silent-owner',displayName:'示例本人',stableAccountKey:'owner',selfHint:null}]
+  const first=view(job(),[c],[['m1']]),read=first.messages
+  first.messages=function*(){for(const r of read()){r.message.senderKind='member';r.message.senderKey='sender';yield r}}
+  await commitConversation(store,first,target(c),signal());await rebuildSummary(store,'1')
+  const before=store.reader.prepare('SELECT * FROM messages').all()
+  const second=view(job(),[c],[['m1']]);second.decisions=[{candidateId:c.candidateId,target:{kind:'existing',conversationId:'1'},confirmedAliases:[],selfMemberKey:'silent-owner'}]
+  const t=resolveTarget(store,c,second.decisions[0]);if(t.status!=='matched')throw Error('target')
+  const result=await commitConversation(store,second,t.target,signal())
+  expect(result).toMatchObject({inserted:0,duplicates:1,summaryChanged:true})
+  expect(store.reader.prepare('SELECT status FROM conversation_summaries').get()).toEqual({status:'pending'})
+  expect(store.reader.prepare('SELECT count(*) n FROM memberships').get()).toEqual({n:2n})
+  expect(store.reader.prepare('SELECT * FROM messages').all()).toEqual(before)
 })

@@ -25,12 +25,12 @@ export async function runImport(store:Store, staged:StagedImport, plan:ImportPla
     for(const c of staged.candidates) {
       // Blocked files may retain reliable attribution, but never become readable views.
       const probe=c.status==='blocked' ? {...c,status:'staged' as const,issues:[]} : c
-      let resolved=resolveTarget(store,probe,decisions.get(c.candidateId))
-      if(c.status==='blocked' && resolved.status!=='matched') resolved=resolveTarget(store,probe)
-      if(resolved.status !== 'matched') { saveResult(store,plan.jobId,c,'blocked',resolved.status==='blocked' ? resolved.code:'TARGET_REQUIRED'); continue }
-      const t=resolved.target,key=t.conversationId ? `existing:${t.conversationId}` : `new:${reliableTargetKey(t) ?? c.candidateId}`
+      const resolved=resolveTarget(store,probe,decisions.get(c.candidateId))
+      const attribution=resolved.status==='matched' ? resolved : resolveTarget(store,probe)
+      if(attribution.status !== 'matched' || (resolved.status!=='matched' && reliableTargetKey(attribution.target)===null)) { saveResult(store,plan.jobId,c,'blocked',resolved.status==='blocked' ? resolved.code:'TARGET_REQUIRED'); continue }
+      const t=attribution.target,key=t.conversationId ? `existing:${t.conversationId}` : `new:${reliableTargetKey(t) ?? c.candidateId}`
       const group=groups.get(key) ?? {candidates:[],target:t,blocked:false}
-      group.candidates.push(c);group.blocked ||= c.status==='blocked';groups.set(key,group)
+      group.candidates.push(c);group.blocked ||= c.status==='blocked' || resolved.status!=='matched';groups.set(key,group)
     }
   });notify()
   const freeBytes=dependencies.freeBytes ?? (async path=> {const s=await statfs(path,{bigint:true});return s.bavail*s.bsize})
@@ -47,7 +47,7 @@ export async function runImport(store:Store, staged:StagedImport, plan:ImportPla
           view.decisions=group.candidates.map(c=>decisions.get(c.candidateId)).filter(d=>d!==undefined)
           return (dependencies.commit ?? commitConversation)(store,view,group.target,signal)
         })
-        if(result.inserted) await write(async()=> {
+        if(result.summaryChanged) await write(async()=> {
           try { await (dependencies.summary ?? rebuildSummary)(store,result.conversationId) }
           catch(error) {
             store.writer.prepare("UPDATE conversation_summaries SET status='failed' WHERE conversation_id=?").run(BigInt(result.conversationId))

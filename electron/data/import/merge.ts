@@ -3,7 +3,7 @@ import type { Candidate, TargetDecision } from '../../../src/shared/import-contr
 import { classifyMessage, resolveTarget, validateResolvedTarget, type ResolvedTarget } from './identity'
 import type { StagedConversation } from './staging'
 import { checkSignal, ImportFailure, importLimits } from './limits'
-export type CommitResult = { conversationId: string; inserted: number; duplicates: number; committedAt: number; candidates: {candidateId:string;inserted:number;duplicates:number}[] }
+export type CommitResult = { conversationId: string; inserted: number; duplicates: number; summaryChanged: boolean; committedAt: number; candidates: {candidateId:string;inserted:number;duplicates:number}[] }
 /** Trusted backend dependencies only; never accept hooks through IPC. */
 export type CommitDependencies = { afterInsert?(count:number): void; beforeCommit?(): void; afterCommit?(): void }
 export function targetDecision(target: ResolvedTarget, candidateId = target.candidateId): TargetDecision {
@@ -18,7 +18,7 @@ export function createCommitter(dependencies: CommitDependencies = {}) {
     const db = store.writer
     checkSignal(signal); validateResolvedTarget(store,target)
     if (!staged.candidateIds.length || new Set(staged.candidateIds).size !== staged.candidateIds.length || staged.candidates.length !== staged.candidateIds.length) throw new ImportFailure('INVALID_SELECTION')
-    let committed = false, inserted = 0, duplicates = 0
+    let committed = false, inserted = 0, duplicates = 0, membershipChanged = false
     db.exec('BEGIN IMMEDIATE')
     try {
       if (!db.prepare('SELECT id FROM import_jobs WHERE id=?').get(BigInt(staged.jobId))) throw new ImportFailure('INVALID_JOB')
@@ -70,6 +70,7 @@ export function createCommitter(dependencies: CommitDependencies = {}) {
         if (!row) {
           const canonical = t.confirmedAliases.find(a => a.aliasKey === m.stableAccountKey)?.accountKey ?? m.stableAccountKey
           row = {id: db.prepare('INSERT INTO memberships(conversation_id,source_conversation_id,source_key,display_name,account_id,self_hint) VALUES (?,?,?,?,?,?)').run(conversation,source,key,m.displayName,canonical ? canonicalAccount(c.identity.platform,canonical) : null,m.selfHint === null ? null : Number(m.selfHint)).lastInsertRowid as bigint}
+          membershipChanged = true
           if (m.selfHint === true) db.prepare("INSERT INTO self_confirmations(conversation_id,member_id,status,source) VALUES (?,?,'candidate','parser')").run(conversation,row.id)
           if (t.selfMemberKey === undefined && t.confirmedSelf === key && !db.prepare("SELECT 1 FROM self_confirmations WHERE conversation_id=? AND status='confirmed'").get(conversation)) db.prepare("INSERT INTO self_confirmations(conversation_id,member_id,status,source) VALUES (?,?,'confirmed','user')").run(conversation,row.id)
         }
@@ -119,10 +120,11 @@ export function createCommitter(dependencies: CommitDependencies = {}) {
       }
       const committedAt = Date.now()
       for (const r of results.values()) db.prepare("UPDATE import_results SET status='committed',phase=?,added_count=?,skipped_count=?,committed_at_ms=?,error_code=NULL,error_action=NULL WHERE id=?").run(r.inserted ? 'saved':'duplicate',r.inserted,r.duplicates,committedAt,r.id)
-      if (inserted) db.prepare("INSERT INTO conversation_summaries(conversation_id,status) VALUES (?,'pending') ON CONFLICT(conversation_id) DO UPDATE SET status='pending'").run(conversation)
+      const summaryChanged = inserted > 0 || membershipChanged
+      if (summaryChanged) db.prepare("INSERT INTO conversation_summaries(conversation_id,status) VALUES (?,'pending') ON CONFLICT(conversation_id) DO UPDATE SET status='pending'").run(conversation)
       checkSignal(signal); dependencies.beforeCommit?.(); db.exec('COMMIT'); committed = true
       dependencies.afterCommit?.()
-      return {conversationId,inserted,duplicates,committedAt,candidates:[...results.values()].map(({candidateId,inserted,duplicates}) => ({candidateId,inserted,duplicates}))}
+      return {conversationId,inserted,duplicates,summaryChanged,committedAt,candidates:[...results.values()].map(({candidateId,inserted,duplicates}) => ({candidateId,inserted,duplicates}))}
     } catch (error) { if (!committed && db.inTransaction) db.exec('ROLLBACK'); throw error }
   }
 }

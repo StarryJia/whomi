@@ -14,14 +14,15 @@ let directory:string,store:Store
 beforeEach(async()=> {directory=await mkdtemp(join(tmpdir(),'whomi-runner-'));store=openStore(join(directory,'formal.sqlite'))})
 afterEach(async()=> {store.close();await rm(directory,{recursive:true,force:true})})
 const parser:ParserAdapter={id:'test',version:'1',mode:'bounded',extensions:['.json'],capabilities:{multiConversation:false,stableMessageIds:'platform',media:'descriptors-only'},async detect(){return 1},async *parse(input) {
-  const payload=JSON.parse(await readFile(input.entry,'utf8')) as {key:string;ids:string[];blocked?:boolean;noId?:boolean}
+  const payload=JSON.parse(await readFile(input.entry,'utf8')) as {key:string;ids:string[];blocked?:boolean;noId?:boolean;selfMember?:boolean}
   const c=candidate('a',payload.key)
   yield {type:'conversation',value:{sourceKey:c.sourceKey,title:c.title,kind:c.kind,identity:c.identity}}
+  if(payload.selfMember) yield {type:'member',conversationKey:c.sourceKey,value:{sourceKey:'silent-owner',displayName:'示例本人',stableAccountKey:'owner',selfHint:null}}
   for(const [ordinal,id] of payload.ids.entries()) yield {type:'message',value:normalizeModel(message({conversationKey:c.sourceKey,ordinal,originalId:payload.noId ? null:id,idNamespace:payload.noId ? null:'test',text:id}))}
   if(payload.blocked) yield {type:'issue',value:{code:'BAD',severity:'blocking',candidateId:'',action:'请检查文件。'}}
   yield {type:'end',conversationKey:c.sourceKey,seen:payload.ids.length}
 }}
-async function setup(files:{key:string;ids:string[];blocked?:boolean;noId?:boolean}[],runner:Parameters<typeof createDataService>[0]['runner']={}) {
+async function setup(files:{key:string;ids:string[];blocked?:boolean;noId?:boolean;selfMember?:boolean}[],runner:Parameters<typeof createDataService>[0]['runner']={}) {
   const grants=[]
   for(const [i,payload] of files.entries()){const path=join(directory,`${i}.json`);await writeFile(path,JSON.stringify(payload));grants.push({rootPath:path})}
   const service=createDataService({store,appDataDirectory:directory,staging:{parsers:[parser]},runner})
@@ -90,12 +91,24 @@ test('prevents simultaneous prepare requests from creating two jobs',async()=> {
   expect(result.filter(r=>r.status==='fulfilled')).toHaveLength(1)
   expect(store.reader.prepare('SELECT count(*) n FROM import_jobs').get()).toEqual({n:1n})
 })
-test('blocks every file targeting A even when a blocked file has an invalid explicit choice',async()=> {
+test.each([true,false])('blocks every file targeting A when a file has an invalid explicit choice, parser blocked=%s',async blocked=> {
   store.writer.exec("INSERT INTO conversations(id,title,kind,created_at_ms) VALUES (1,'A','direct',0);INSERT INTO source_conversations(conversation_id,platform,owner_key,conversation_key,namespace) VALUES (1,'p','owner','a','test')")
-  const {service,id}=await setup([{key:'a',ids:['m1']},{key:'a',ids:['m2'],blocked:true}])
+  const {service,id}=await setup([{key:'a',ids:['m1']},{key:'a',ids:['m2'],blocked}])
   const c=(await service.getImport(id)).candidates[1]
   await service.startImport({kind:'commit',plan:{jobId:id,decisions:[{candidateId:c.candidateId,target:{kind:'new'},confirmedAliases:[]}]}});await service.idle()
   expect(store.reader.prepare('SELECT count(*) n FROM messages').get()).toEqual({n:0n})
+  expect((await service.getImport(id)).results.map(r=>r.status)).toEqual(['blocked','blocked'])
+})
+test('rebuilds member summary after duplicate-only explicit self selection',async()=> {
+  store.writer.exec("INSERT INTO conversations(id,title,kind,created_at_ms) VALUES (1,'A','direct',0);INSERT INTO source_conversations(id,conversation_id,platform,owner_key,conversation_key,namespace) VALUES (1,1,'p','owner','a','test');INSERT INTO memberships(id,conversation_id,source_conversation_id,source_key,display_name) VALUES (1,1,1,'sender','示例发送者');INSERT INTO messages(id,conversation_id,member_id,sender_kind,sender_name,kind,text,ordinal) VALUES (1,1,1,'member','示例发送者','text','old',0);INSERT INTO message_keys VALUES (1,'test','m1',1);INSERT INTO conversation_summaries(conversation_id,message_count,member_count,status) VALUES (1,1,1,'ready')")
+  const before=store.reader.prepare('SELECT * FROM messages').all()
+  const {service,id}=await setup([{key:'a',ids:['m1'],selfMember:true}])
+  const c=(await service.getImport(id)).candidates[0]
+  await service.startImport({kind:'commit',plan:{jobId:id,decisions:[{candidateId:c.candidateId,target:{kind:'existing',conversationId:'1'},confirmedAliases:[],selfMemberKey:'silent-owner'}]}});await service.idle()
+  expect((await service.getImport(id)).results[0]).toMatchObject({status:'duplicate',inserted:0,duplicates:1})
+  expect(store.reader.prepare('SELECT count(*) n FROM memberships').get()).toEqual({n:2n})
+  expect(store.reader.prepare('SELECT member_count,status FROM conversation_summaries').get()).toEqual({member_count:2n,status:'ready'})
+  expect(store.reader.prepare('SELECT * FROM messages').all()).toEqual(before)
 })
 test('delivers the latest fast staging state through a trailing throttled notification',async()=> {
   const events:{state:string;at:number}[]=[],path=join(directory,'fast.json')
