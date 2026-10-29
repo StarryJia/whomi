@@ -9,7 +9,7 @@ type MessageRow = Anchor & {
   ordinal: bigint; kind: MessageView['kind']; source_type: string | null; text: string
 }
 type Cursor = { version: 1; kind: 'messages' | 'conversations'; id: string; size: number; conversationId?: string; snapshotMaxId?: string; bucket?: number; time?: number }
-function invalid(): never { throw new Error('读取位置无效，请刷新后重试。') }
+function invalid(): never { throw Object.assign(new Error('读取位置无效，请刷新后重试。'), { code: 'INVALID_CURSOR' }) }
 function id(value: unknown, zero = false): bigint {
   if (typeof value !== 'string' || value.length > 19 || !(zero ? /^(0|[1-9][0-9]*)$/ : /^[1-9][0-9]*$/).test(value)) invalid()
   const result = BigInt(value)

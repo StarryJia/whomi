@@ -1,5 +1,5 @@
 {
   "extends": "./tsconfig.json",
-  "compilerOptions": { "types": ["node"], "lib": ["ES2022"], "noEmit": true },
+  "compilerOptions": { "types": ["node"], "lib": ["ES2022", "DOM"], "noEmit": true },
   "include": ["electron", "electron.vite.config.ts", "vitest.backend.config.ts"]
 }

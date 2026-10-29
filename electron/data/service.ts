@@ -8,6 +8,7 @@ import { recoverImports } from './import/recovery'
 import { finishJob, getSnapshot, saveResult, setJobState, terminalStates } from './import/state'
 import { ImportFailure, issue } from './import/limits'
 import { rebuildSummary } from './import/summary'
+import type { ImportPreview, PreviewOptions } from '../../src/shared/desktop-api'
 export type DataServiceOptions = {store:Store;appDataDirectory:string;staging?:Omit<StagingOptions,'appDataDirectory'|'registerArea'>;runner?:Omit<RunnerDependencies,'write'|'changed'>;changed?:(snapshot:ImportSnapshot)=>void}
 type ActiveImport={id:string;signal:AbortController;discovery?:Discovery;staged?:StagedImport}
 export function createDataService(options:DataServiceOptions) {
@@ -88,6 +89,17 @@ export function createDataService(options:DataServiceOptions) {
   }
   return {
     ready,prepareImport,startImport,cancelImport,
+    async previewImport(jobId:string,candidateId:string,options:PreviewOptions):Promise<ImportPreview> {
+      await ready
+      if(!active || active.id!==jobId || !active.staged) throw new ImportFailure('PREVIEW_UNAVAILABLE')
+      const page=active.staged.preview(candidateId,options)
+      return {nextOrdinal:page.nextOrdinal,messages:page.messages.map(message=>({
+        ordinal:message.ordinal,senderKey:message.senderKey,senderKind:message.senderKind,senderName:message.senderName,
+        sentAtMs:message.sentAtMs,timeRaw:message.timeRaw,timePrecision:message.timePrecision,timezone:message.timezone,
+        kind:message.kind,text:message.text,sourceType:message.sourceType,reply:message.reply,
+        attachments:message.attachments.map(({kind,name,state})=>({kind,name,state})),
+      }))}
+    },
     async getImport(jobId:string) {await ready;return getSnapshot(store,jobId)},
     async confirmSelf(conversationId:string,memberId:string|null) {await ready;return write(()=>mutateSelf(store,conversationId,memberId))},
     async retrySummary(conversationId:string) {await ready;return write(()=>rebuildSummary(store,conversationId))},

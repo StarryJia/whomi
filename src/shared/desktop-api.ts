@@ -1,4 +1,5 @@
 import type { LocalId, MessageKind, ParsedMessage } from './conversation-model'
+import type { ImportSnapshot, JobId, StartImportRequest } from './import-contract'
 
 export type Page<T> = { items: T[]; nextCursor: string | null }
 export type ConversationSummary = {
@@ -67,3 +68,28 @@ export type ConversationQueries = {
   readMessages(input: ReadMessagesInput): Promise<MessagePage>
   locateSource(input: LocateSourceInput): Promise<SourceWindow>
 }
+
+export type SourceHandle = { token: string; displayName: string; kind: 'file' | 'directory' }
+export type MemberView = { id: LocalId; displayName: string; selfHint: boolean | null; confirmedSelf: boolean }
+export type PreviewMessage = Pick<ParsedMessage, 'ordinal' | 'senderKey' | 'senderKind' | 'senderName' | 'sentAtMs' | 'timeRaw' | 'timePrecision' | 'timezone' | 'kind' | 'text' | 'sourceType' | 'reply'> & { attachments: AttachmentView[] }
+export type PreviewOptions = { afterOrdinal?: number; limit?: number }
+export type ImportPreview = { messages: PreviewMessage[]; nextOrdinal: number | null }
+export type DesktopMethods = ConversationQueries & {
+  chooseSources(kind: 'files' | 'directory'): Promise<SourceHandle[]>
+  prepareImport(handles: SourceHandle[]): Promise<JobId>
+  startImport(request: StartImportRequest): Promise<JobId>
+  getImport(jobId: JobId): Promise<ImportSnapshot>
+  cancelImport(jobId: JobId): Promise<void>
+  previewImport(jobId: JobId, candidateId: string, options: PreviewOptions): Promise<ImportPreview>
+  listMembers(conversationId: LocalId): Promise<MemberView[]>
+  confirmSelf(conversationId: LocalId, memberId: LocalId | null): Promise<void>
+  retrySummary(conversationId: LocalId): Promise<void>
+}
+export type DesktopApi = DesktopMethods & {
+  acceptDroppedFiles(files: File[]): Promise<SourceHandle[]>
+  onImport(listener: (snapshot: ImportSnapshot) => void): () => void
+}
+export type DesktopMethod = keyof DesktopMethods
+export type DesktopError = { code: string; action: string }
+export type DesktopResponse = { ok: true; value: unknown } | { ok: false; error: DesktopError }
+declare global { interface Window { whomi?: DesktopApi } }
