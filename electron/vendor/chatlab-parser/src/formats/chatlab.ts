@@ -9,6 +9,7 @@
  */
 
 import * as fs from '../../../../data/parsers/snapshot-fs'
+import { streamGuard } from '../../../../data/parsers/stream-guard'
 import streamJson from 'stream-json'
 import pickModule from 'stream-json/filters/Pick.js'
 import streamValuesModule from 'stream-json/streamers/StreamValues.js'
@@ -176,7 +177,8 @@ async function* parseChatLab(options: ParseOptions): AsyncGenerator<ParseEvent, 
     // 用于收集批次的临时数组
     const batchCollector: ParsedMessage[] = []
 
-    pipeline.on('data', ({ value }: { value: ChatLabMember | ChatLabMessage }) => {
+    const guard = streamGuard(reject, readStream, pipeline)
+    pipeline.on('data', guard(({ value }: { value: ChatLabMember | ChatLabMessage }) => {
       if (!('sender' in value)) {
         members.push({
           platformId: value.platformId,
@@ -227,15 +229,15 @@ async function* parseChatLab(options: ParseOptions): AsyncGenerator<ParseEvent, 
         )
         onProgress?.(progress)
       }
-    })
+    }))
 
-    pipeline.on('end', () => {
+    pipeline.on('end', guard(() => {
       // 收集剩余消息
       if (batchCollector.length > 0) {
         messageBatch.push(...batchCollector)
       }
       resolve()
-    })
+    }))
 
     pipeline.on('error', reject)
   })

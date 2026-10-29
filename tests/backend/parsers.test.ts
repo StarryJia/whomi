@@ -1,4 +1,7 @@
-import { describe, expect, it } from 'vitest'
+import { beforeAll, afterAll, describe, expect, it } from 'vitest'
+import { build } from 'vite'
+import { spawnSync } from 'node:child_process'
+import { isBuiltin } from 'node:module'
 import { readFile, mkdtemp, mkdir, writeFile, symlink, rm, rename } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { tmpdir } from 'node:os'
@@ -17,6 +20,31 @@ const cases = [
   ['instagram-native', 'positive.json', 2], ['whatsapp-native', 'positive.txt', 2],
   ['qq-native', 'positive.txt', 2], ['line-native', 'positive.txt', 2],
 ] as const
+
+describe('asynchronous source-record errors', () => {
+  let output: string
+  beforeAll(async () => {
+    output = await mkdtemp(resolve(tmpdir(), 'whomi-callback-'))
+    await build({ configFile: false, logLevel: 'silent', build: {
+      outDir: output, emptyOutDir: false, minify: false,
+      lib: { entry: resolve('tests/backend/parser-callback-probe.ts'), formats: ['cjs'], fileName: () => 'probe.cjs' },
+      rolldownOptions: { platform: 'node', external: isBuiltin },
+    } })
+  })
+  afterAll(async () => { if (output) await rm(output, { recursive: true, force: true }) })
+  it.each([
+    ['qq-shuakami', 'empty'], ['discord-tyrrrz', 'empty'],
+    ['discord-tyrrrz', 'roles'], ['discord-tyrrrz', 'attachment'],
+    ['weflow', 'sender'], ['chatlab', 'member'],
+  ])('blocks %s malformed %s and survives a subsequent parse', (id, mutation) => {
+    for (const delivery of ['default', 'deferred']) {
+      const result = spawnSync(process.execPath, [resolve(output, 'probe.cjs'), id, mutation, delivery], { encoding: 'utf8', timeout: 10000 })
+      expect(result.error).toBeUndefined()
+      expect(result.status, result.stderr).toBe(0)
+      expect(result.stdout).toBe('blocked-and-survived')
+    }
+  })
+})
 
 describe.each(cases)('%s contract', (id, file, count) => {
   it('detects its synthetic export without accepting unrelated data', async () => {
@@ -135,6 +163,32 @@ it.each(['__proto__', '\\u005f_proto__', 'constructor', 'prototype'])('blocks da
 
 it('accepts JSON string contents that resemble nesting or special property names', () => {
   expect(parseJson(JSON.stringify({ text: '[{'.repeat(200) + '__proto__ "constructor":' }))).toEqual({ text: '[{'.repeat(200) + '__proto__ "constructor":' })
+})
+
+it.each(['__proto__', '\\u005f_proto__', 'constructor', 'prototype'])('blocks overwritten dangerous subtree %s before upstream assembly', async key => {
+  const source = '{"chatlab":{"version":"0.0.2"},"meta":{"name":"Synthetic","platform":"discord","type":"group"},"messages":[{"' + key + '":{"probeInherited":"yes"},"sender":"a"}],"messages":[]}'
+  const events = await parseSynthetic('chatlab', source)
+  expect(events.some(e => e.type === 'issue' && e.value.code === 'unsafe-property')).toBe(true)
+  expect(events.some(e => e.type === 'conversation')).toBe(false)
+})
+
+it('preserves QQ single-file numeric timestamps in source milliseconds', async () => {
+  const raw = JSON.parse(await readFile(resolve('tests/fixtures/import/qq-shuakami/positive.json'), 'utf8'))
+  raw.messages[0].timestamp = 1700000000000
+  const events = await parseSynthetic('qq-shuakami', JSON.stringify(raw))
+  expect(events.find(e => e.type === 'message')).toMatchObject({ value: {
+    sentAtMs: 1700000000000, timeRaw: '1700000000000', timePrecision: 'millisecond',
+  } })
+})
+
+it.each([undefined, ' 原始正文\n'])('retains Instagram share URL and summary with raw body %s', async content => {
+  const raw = JSON.parse(await readFile(resolve('tests/fixtures/import/instagram-native/positive.json'), 'utf8'))
+  raw.messages[0].content = content
+  raw.messages[0].share = { link: 'https://example.invalid/shared', share_text: '示例摘要' }
+  const events = await parseSynthetic('instagram-native', JSON.stringify(raw))
+  expect(events.find(e => e.type === 'message')).toMatchObject({ value: {
+    text: content ?? '', attachments: [{ kind: 'link', locator: 'https://example.invalid/shared', name: '示例摘要', state: 'unresolved' }],
+  } })
 })
 
 it('rejects JSON with comments before reaching an upstream parser', () => {

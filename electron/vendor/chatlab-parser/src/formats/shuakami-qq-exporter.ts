@@ -18,6 +18,7 @@
  */
 
 import * as fs from '../../../../data/parsers/snapshot-fs'
+import { streamGuard } from '../../../../data/parsers/stream-guard'
 import * as path from 'path'
 import streamJson from 'stream-json'
 import pickModule from 'stream-json/filters/Pick.js'
@@ -330,7 +331,8 @@ async function* parseShuakamiQqV4(options: ParseOptions): AsyncGenerator<ParseEv
 
     const pipeline = chain([readStream, parser(), pick({ filter: /^messages\.\d+$/ }), streamValues()])
 
-    pipeline.on('data', ({ value }: { value: V4Message }) => {
+    const guard = streamGuard(reject, readStream, pipeline)
+    pipeline.on('data', guard(({ value }: { value: V4Message }) => {
       // 获取 platformId
       const platformId =
         value.sender.uin || value.sender.uid || value.rawMessage?.senderUin || value.rawMessage?.senderUid
@@ -391,7 +393,7 @@ async function* parseShuakamiQqV4(options: ParseOptions): AsyncGenerator<ParseEv
         )
         onProgress?.(progress)
       }
-    })
+    }))
 
     pipeline.on('end', resolve)
     pipeline.on('error', reject)

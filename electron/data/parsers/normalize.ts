@@ -58,6 +58,9 @@ export function normalizeMessage(id: string, raw: Raw, parsed: UpMessage | undef
     message.text = decodeInstagram(raw.content ?? '')
     message.senderKey = sourceKey(decodeInstagram(raw.sender_name ?? '')); message.senderName = message.senderKey ?? '未知发送者'
     message.sentAtMs = epoch(raw.timestamp_ms, 'millisecond'); message.timeRaw = sourceKey(raw.timestamp_ms); message.timePrecision = 'millisecond'; message.timezone = 'UTC'
+    if (raw.share) message.attachments.push({ kind: 'link', locator: sourceKey(raw.share.link),
+      name: typeof raw.share.share_text === 'string' ? decodeInstagram(raw.share.share_text) : null,
+      state: raw.share.link ? 'unresolved' : 'missing' })
     for (const [field, kind] of [['photos','image'], ['videos','video'], ['audio_files','audio']] as const)
       for (const a of raw[field] ?? []) message.attachments.push({ kind, locator: sourceKey(a.uri), name: null, state: a.uri ? 'unresolved' : 'missing' })
   } else if (id === 'google-chat-native') {
@@ -73,7 +76,7 @@ export function normalizeMessage(id: string, raw: Raw, parsed: UpMessage | undef
     message.senderKey = sourceKey(raw.sender?.uin ?? raw.sender?.uid); message.senderName = raw.sender?.name ?? '未知发送者'
     const t = raw.timestamp
     message.timeRaw = sourceKey(raw.time ?? t)
-    const unit = id === 'qq-shuakami-chunked' ? 'millisecond' : 'second'
+    const unit = 'millisecond'
     message.sentAtMs = typeof t === 'number' ? epoch(t, unit) : typeof t === 'string' && /(?:Z|[+-]\d{2}:\d{2})$/.test(t) ? Date.parse(t) : null
     message.timePrecision = unit; message.timezone = message.sentAtMs === null ? null : 'UTC'
     if (raw.system || raw.isSystemMessage) message.kind = 'system'

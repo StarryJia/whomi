@@ -16,6 +16,7 @@
  */
 
 import * as fs from '../../../../data/parsers/snapshot-fs'
+import { streamGuard } from '../../../../data/parsers/stream-guard'
 import * as path from 'path'
 import streamJson from 'stream-json'
 import pickModule from 'stream-json/filters/Pick.js'
@@ -441,24 +442,23 @@ async function* parseWeFlow(options: ParseOptions): AsyncGenerator<ParseEvent, v
 
   // 快速扫描获取 ownerId（通过 isSend === 1 推断）
   let ownerId: string | undefined
-  try {
-    await new Promise<void>((resolve) => {
+  {
+    await new Promise<void>((resolve, reject) => {
       const scanStream = fs.createReadStream(filePath, { encoding: 'utf-8' })
       const scanPipeline = chain([scanStream, parser(), pick({ filter: /^messages\.\d+$/ }), streamValues()])
 
-      scanPipeline.on('data', ({ value }: { value: WeFlowMessage }) => {
+      const guard = streamGuard(reject, scanStream, scanPipeline)
+      scanPipeline.on('data', guard(({ value }: { value: WeFlowMessage }) => {
         if (value.isSend === 1 && value.senderUsername && !value.senderUsername.endsWith('@chatroom')) {
           ownerId = value.senderUsername
           scanStream.destroy() // 找到后立即停止扫描
         }
-      })
+      }))
 
       scanStream.on('close', () => resolve())
       scanPipeline.on('end', () => resolve())
-      scanPipeline.on('error', () => resolve())
+      scanPipeline.on('error', reject)
     })
-  } catch {
-    // 扫描失败，ownerId 保持 undefined
   }
 
   // 发送 meta（包含推断的 ownerId）
@@ -552,7 +552,8 @@ async function* parseWeFlow(options: ParseOptions): AsyncGenerator<ParseEvent, v
     // 用于收集批次的临时数组
     const batchCollector: ParsedMessage[] = []
 
-    pipeline.on('data', ({ value }: { value: WeFlowMessage }) => {
+    const guard = streamGuard(reject, readStream, pipeline)
+    pipeline.on('data', guard(({ value }: { value: WeFlowMessage }) => {
       const parsed = processMessage(value)
       if (parsed) {
         batchCollector.push(parsed)
@@ -573,15 +574,15 @@ async function* parseWeFlow(options: ParseOptions): AsyncGenerator<ParseEvent, v
           onProgress?.(progress)
         }
       }
-    })
+    }))
 
-    pipeline.on('end', () => {
+    pipeline.on('end', guard(() => {
       // 收集剩余消息
       if (batchCollector.length > 0) {
         messageBatch.push(...batchCollector)
       }
       resolve()
-    })
+    }))
 
     pipeline.on('error', reject)
   })

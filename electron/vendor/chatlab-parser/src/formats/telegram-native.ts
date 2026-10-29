@@ -16,6 +16,7 @@
  */
 
 import * as fs from '../../../../data/parsers/snapshot-fs'
+import { streamGuard } from '../../../../data/parsers/stream-guard'
 import streamChain from 'stream-chain'
 import streamJson from 'stream-json'
 import pickModule from 'stream-json/filters/Pick.js'
@@ -94,7 +95,8 @@ export async function scanChats(filePath: string): Promise<TelegramChatInfo[]> {
     // ignore 过滤掉 messages 的实际内容以加速扫描
     const pipeline = chain([readStream, parser(), pick({ filter: /^chats\.list\.\d+$/ }), streamValues()])
 
-    pipeline.on('data', ({ value }: { value: TelegramChat }) => {
+    const guard = streamGuard(reject, readStream, pipeline)
+    pipeline.on('data', guard(({ value }: { value: TelegramChat }) => {
       const chat = value
       chats.push({
         index: chats.length,
@@ -103,11 +105,11 @@ export async function scanChats(filePath: string): Promise<TelegramChatInfo[]> {
         id: chat.id,
         messageCount: Array.isArray(chat.messages) ? chat.messages.length : 0,
       })
-    })
+    }))
 
-    pipeline.on('end', () => {
+    pipeline.on('end', guard(() => {
       resolve(chats)
-    })
+    }))
 
     pipeline.on('error', (err: Error) => {
       reject(new Error(`扫描 Telegram 文件失败: ${err.message}`))
@@ -155,14 +157,15 @@ async function* parseTelegram(options: ParseOptions): AsyncGenerator<ParseEvent,
 
     let found = false
 
-    pipeline.on('data', ({ value }: { value: TelegramChat }) => {
+    const guard = streamGuard(reject, readStream, pipeline)
+    pipeline.on('data', guard(({ value }: { value: TelegramChat }) => {
       found = true
       resolve(value)
-    })
+    }))
 
-    pipeline.on('end', () => {
+    pipeline.on('end', guard(() => {
       if (!found) resolve(null)
-    })
+    }))
 
     pipeline.on('error', reject)
   })

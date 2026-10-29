@@ -9,6 +9,7 @@
  */
 
 import * as fs from '../../../../data/parsers/snapshot-fs'
+import { streamGuard } from '../../../../data/parsers/stream-guard'
 import streamJson from 'stream-json'
 import pickModule from 'stream-json/filters/Pick.js'
 import streamValuesModule from 'stream-json/streamers/StreamValues.js'
@@ -332,7 +333,8 @@ async function* parseDiscordExporter(options: ParseOptions): AsyncGenerator<Pars
     // 用于收集批次的临时数组
     const batchCollector: ParsedMessage[] = []
 
-    pipeline.on('data', ({ value }: { value: DiscordMessage }) => {
+    const guard = streamGuard(reject, readStream, pipeline)
+    pipeline.on('data', guard(({ value }: { value: DiscordMessage }) => {
       const msg = value
       const author = msg.author
 
@@ -415,15 +417,15 @@ async function* parseDiscordExporter(options: ParseOptions): AsyncGenerator<Pars
         )
         onProgress?.(progress)
       }
-    })
+    }))
 
-    pipeline.on('end', () => {
+    pipeline.on('end', guard(() => {
       // 收集剩余消息
       if (batchCollector.length > 0) {
         messageBatch.push(...batchCollector)
       }
       resolve()
-    })
+    }))
 
     pipeline.on('error', reject)
   })

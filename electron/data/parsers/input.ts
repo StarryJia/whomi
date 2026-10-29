@@ -37,20 +37,28 @@ export async function boundedText(input: ParserInput, file = input.entry) {
 // Node 24 supplies the numeric source spelling before precision can be lost.
 export function parseJson(text: string): any {
   // Bound nesting before both the native reviver and upstream quadratic-depth filters.
-  let depth = 0, quoted = false, escaped = false
-  for (const char of text) {
+  let depth = 0, quoted = false, escaped = false, stringStart = 0
+  for (let index = 0; index < text.length; index++) {
+    const char = text[index]
     if (quoted) {
       if (escaped) escaped = false
       else if (char === '\\') escaped = true
-      else if (char === '"') quoted = false
-    } else if (char === '"') quoted = true
+      else if (char === '"') {
+        quoted = false
+        let next = index + 1
+        while (next < text.length && /[\t\n\r ]/.test(text[next])) next++
+        // Inspect every key token, including subtrees hidden by later duplicate keys.
+        if (text[next] === ':') {
+          const key = JSON.parse(text.slice(stringStart, index + 1))
+          if (key === '__proto__' || key === 'constructor' || key === 'prototype') throw new ParseFailure('unsafe-property')
+        }
+      }
+    } else if (char === '"') { quoted = true; stringStart = index }
     else if (char === '{' || char === '[') {
       if (++depth > 128) throw new ParseFailure('json-depth')
     } else if (char === '}' || char === ']') depth--
   }
-  return JSON.parse(text, (key, value, context?: { source: string }) => {
-    // Upstream Assembler writes properties onto ordinary objects.
-    if (key === '__proto__' || key === 'constructor' || key === 'prototype') throw new ParseFailure('unsafe-property')
+  return JSON.parse(text, (_key, value, context?: { source: string }) => {
     return typeof value === 'number' && Number.isInteger(value) && !Number.isSafeInteger(value)
       ? context?.source ?? (() => { throw new ParseFailure('unsafe-number') })() : value
   })

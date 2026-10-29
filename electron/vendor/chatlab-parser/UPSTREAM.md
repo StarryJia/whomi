@@ -10,6 +10,8 @@ Additional local changes: all filesystem imports in formats and utils redirect t
 
 The adapter retains raw source records alongside bounded upstream results to preserve whitespace, unsafe integer identifiers, unknown records and source ordinal counts. Only ChatLab JSONL is advertised as streaming; the other modules have a 32 MiB combined input cap. See `docs/research/chatlab-parser-reuse.md` for the tested capability matrix, maximum depth/property restrictions, security advisory residuals and local-only licensing boundary.
 
+Review fixes on 2026-10-29: `chatlab.ts`, `shuakami-qq-exporter.ts`, `tyrrrz-discord-exporter.ts`, `weflow.ts` and `telegram-native.ts` wrap parsed-record and batch-completion event callbacks with the local `electron/data/parsers/stream-guard.ts` helper. Callback exceptions reject the awaited operation, destroy its input/pipeline streams and suppress subsequent guarded callbacks. WeFlow owner scanning propagates failures instead of silently continuing. Original source hashes below remain unchanged provenance records, not hashes of modified local files. No dependency version was changed.
+
 | Upstream file | Original SHA-256 | Local path |
 |---|---|---|
 | packages/parser/src/browser/line.ts | bcf62485cd94cecb990abd34e44ca73cdd35097d99289640f22a07752eebc4aa | src/browser/line.ts |

@@ -10,7 +10,7 @@
 
 依赖按固定上游 pnpm-lock.yaml 锁定：stream-json 1.9.1、stream-chain 2.2.5、@types/stream-json 1.7.8、@types/stream-chain 2.1.0。直接导入的 stream-chain 显式声明，不依赖间接提升。两运行库声明 BSD-3-Clause，类型包声明 MIT；安装后复核。
 
-原生分支通过 withNativeChatlab、withNativeWeflow、withShuakamiQqNative 包装 TypeScript 回退；本地复制断开包装器和预处理器入口，文件读取重定向到受控快照适配层，保持原始转换逻辑。上游部分流式读取会累积全部输出，不能当成有界流式解析。
+原生分支通过 withNativeChatlab、withNativeWeflow、withShuakamiQqNative 包装 TypeScript 回退；本地复制断开包装器和预处理器入口，文件读取重定向到受控快照适配层，保留原始转换规则。ChatLab、QQ、Discord、WeFlow 和 Telegram 的记录处理及批次结束回调增加异常保护：拒绝当前解析操作、关闭对应流、停止后续回调处理。WeFlow 发送者扫描失败也向上传递。上游部分流式读取会累积全部输出，不能当成有界流式解析。
 
 Google Chat 模块消费 chatlab-google-chat-takeout 清单。用户已解压的 Takeout 目录由后续发现层准备清单，例如将一个虚构群的 group_info.json、messages.json 和 user_info.json 纳入同一受控快照。这里不声明原始 ZIP 导入能力。
 
@@ -39,6 +39,10 @@ Google Chat 模块消费 chatlab-google-chat-takeout 清单。用户已解压的
 
 ChatLab、Google Chat 和 Instagram 的显式成员名单保留未发言成员。Instagram、LINE、WhatsApp 名称不作为稳定账号；未知 ChatLab 平台只保留会话内来源键。例如虚构平台 example-local 中 inactive 成员没有发言，仍保留其昵称和导出者提示，但 stableAccountKey 为 null。
 
+QQ 单文件和分块格式的数值时间戳均按来源定义的毫秒处理，例如虚构输入 1700000000000 的输出 sentAtMs 仍为 1700000000000，不按数值大小猜测单位。Instagram 分享的 link 与 share_text 分别保存在附件描述的 locator 与 name 中；例如没有正文、只有 https://example.invalid/shared 与示例摘要的消息，正文仍为空，链接和摘要都保留。
+
+独立子进程测试覆盖 QQ 空消息、Discord 缺作者或角色及空附件、WeFlow 非字符串发送者、ChatLab 空成员。正常事件调度下这些小夹具原本已有阻断结果；测试额外用 setImmediate 延后真实解析事件，明确验证脱离流转换调用栈后的回调异常边界。这是受控测试注入，不是未经修改的生产崩溃复现。修复后两种调度均返回阻断诊断，且同一子进程能继续解析有效文件；没有全局吞掉异常的处理器。
+
 所有受限全量输入最多 32 MiB，分块和 Google 清单关联文件按总字节数计；上游输出和原始记录会同时存在，32 MiB 不是进程内存上限。ChatLab JSONL 单文件最多 2 GiB，每条原始行在累积时执行 8 MiB 上限，规范化消息另受 8 MiB 限制。成员索引会随不同发送者数量增长；没有宣称任意规模下恒定内存。取消在读取、事件和记录间检查；全量 JSON.parse 本身不可中断。大规模性能验证留给任务 11。
 
 来源探针只有扩展名、最多 64 KiB 前缀和大小；检测分数仅用于候选识别。快照门禁拒绝未列出的文件、目录联接别名和打开前已替换的文件，先核对文件描述符再读字节。门禁不会创建不可变副本或计算文件摘要；这些由任务 4 完成。不得将可被任意改写的用户原文件直接作为正式 ParserInput 使用。
@@ -48,7 +52,7 @@ ChatLab、Google Chat 和 Instagram 的显式成员名单保留未发言成员�
 2026-10-29 执行 `npm audit --json --registry=https://registry.npmjs.org --offline=false`，结果为 stream-json 一个 moderate 依赖、三条公告，无 high/critical。依赖仍锁定 1.9.1，未声称审计清零，也未未经验证升级到大版本 3.x。
 
 - [嵌套过滤器的平方复杂度](https://github.com/advisories/GHSA-528h-pc64-c93x)：上游确实使用 Pick。适配层在调用任何上游解析前线性扫描 JSON，最大容器嵌套 128 层，超限阻断。虚构 129 层数组得到 json-depth，且没有会话事件。
-- [Assembler 原型污染](https://github.com/advisories/GHSA-mjw6-4jj6-33hc)：上游确实使用 Assembler/StreamValues。适配层用原生 JSON.parse 预检所有 JSON 输入，拒绝解码后的 __proto__、constructor、prototype 属性，包括 Unicode 转义拼写；普通正文包含这些词仍可导入。虚构恶意属性得到 unsafe-property，且没有会话事件。
+- [Assembler 原型污染](https://github.com/advisories/GHSA-mjw6-4jj6-33hc)：上游确实使用 Assembler/StreamValues。适配层在原生 JSON.parse 前扫描每个属性名字符串并解码，拒绝 __proto__、constructor、prototype，包括 Unicode 转义拼写及被后续同名属性覆盖的早期子树；普通正文包含这些词仍可导入。例如虚构文件先出现含危险属性的 messages，随后又出现 messages:[]，仍得到 unsafe-property，且没有会话事件。仅使用 JSON.parse 的 reviver 无法检查已被覆盖的子树。
 - [JSONC 注释重复扫描](https://github.com/advisories/GHSA-hqr4-qq8f-hg3x)：本闭包不调用 JSONC 解析/校验入口；预检只接受严格 JSON，包含注释的对象被拒绝。
 
 这些门禁是本应用入口的缓解措施，不是对依赖包的补丁。直接绕过适配器调用 vendor、引入新的读取路径或更换预检链路时必须重新审计；未来兼容升级可移除对应包级风险。兼容性代价是嵌套超过 128 层、或任何层具有上述三个属性名的文件会被阻断，即便导出器将其当普通元数据使用。现有虚构夹具全部在限制内。安全测试不替代真实源文件不可变快照及后续集成验证。
