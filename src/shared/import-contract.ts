@@ -1,4 +1,4 @@
-import type { ImportIssue, ParsedMember, SourceIdentity } from './conversation-model'
+import type { ImportIssue, LocalId, ParsedMember, SourceIdentity } from './conversation-model'
 
 export const importJobStates = ['preparing', 'scanning', 'awaiting_confirmation', 'staging', 'validating', 'awaiting_commit', 'committing', 'completed', 'partially_completed', 'failed', 'cancelled'] as const
 export type ImportJobState = typeof importJobStates[number]
@@ -13,3 +13,6 @@ export type Candidate = {
   members: ParsedMember[]; fingerprint: string | null; counts: ImportCounts
   status: ImportResultState; issues: ImportIssue[]
 }
+export type AccountAlias = { platform: string; aliasKey: string; accountKey: string }
+export type TargetDecision = { candidateId: string; target: { kind: 'new' } | { kind: 'existing'; conversationId: LocalId }; confirmedAliases: AccountAlias[] }
+export type SourceRecordKey = { fingerprint: string; sourceConversationKey: string; ordinal: number }
