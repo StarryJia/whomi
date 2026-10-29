@@ -16,6 +16,7 @@
     "typecheck": "tsc --noEmit && tsc -p tsconfig.electron.json",
     "test:backend": "vitest run --config vitest.backend.config.ts",
     "test:desktop": "node scripts/desktop-smoke.mjs",
+    "bench:import": "node scripts/import-benchmark.mjs",
     "native:node": "npm rebuild better-sqlite3 --registry=https://registry.npmjs.org --offline=false",
     "native:electron": "electron-rebuild -f -w better-sqlite3"
   },

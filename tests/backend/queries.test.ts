@@ -130,13 +130,13 @@ test('reads sending-time names, confirmed self, replies and inert attachment des
 
 test('uses conversation read index without a temporary whole-message sort', async () => {
   const { store, queries } = fixture(); add(store, [0, 0, null])
-  const plans: string[] = [], prepare = store.reader.prepare.bind(store.reader)
+  const plans: string[][] = [], prepare = store.reader.prepare.bind(store.reader)
   const spy = store.reader.prepare
   store.reader.prepare = ((sql: string) => {
     if (/SELECT m\.\*/.test(sql)) {
       const stmt = prepare(`EXPLAIN QUERY PLAN ${sql}`)
       const original = prepare(sql), all = original.all.bind(original)
-      original.all = ((...params: unknown[]) => { plans.push(...(stmt.all(...params) as { detail: string }[]).map(row => row.detail)); return all(...params) }) as typeof original.all
+      original.all = ((...params: unknown[]) => { plans.push((stmt.all(...params) as { detail: string }[]).map(row => row.detail)); return all(...params) }) as typeof original.all
       return original
     }
     return prepare(sql)
@@ -146,8 +146,11 @@ test('uses conversation read index without a temporary whole-message sort', asyn
     await queries.readMessages({ conversationId: '1', direction: 'after', cursor: page.afterCursor! })
     await queries.locateSource({ conversationId: '1', messageId: '2' })
   } finally { store.reader.prepare = spy }
-  expect(plans.length).toBeGreaterThan(0); expect(plans.some(detail => detail.includes('messages_read_order'))).toBe(true)
-  expect(plans.some(detail => /TEMP B-TREE.*ORDER BY/i.test(detail))).toBe(false)
+  expect(plans.length).toBeGreaterThan(0)
+  for (const plan of plans) {
+    expect(plan.some(detail => detail.includes('messages_read_order'))).toBe(true)
+    expect(plan.some(detail => /TEMP B-TREE.*ORDER BY/i.test(detail))).toBe(false)
+  }
 })
 
 test('bounds full pages at 200 and handles empty, first and last source context', async () => {

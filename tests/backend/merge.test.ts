@@ -28,6 +28,24 @@ test('rolls 300 tentative inserts back while retaining 10000 old rows', async ()
   await expect(merge(store, view(job(), [candidate('b')], [Array.from({length:500}, (_,i) => `n${i}`)]), target(candidate('b')), signal())).rejects.toThrow('injected')
   expect(store.reader.prepare('SELECT count(*) n FROM messages').get()).toEqual({n:10000n})
 })
+
+test('an actual SQLite full error rolls the current transaction back and preserves committed messages', async () => {
+  await commitConversation(store, view(job(), [candidate()], [['old']]), target(), signal())
+  const staged = view(job(), [candidate('full')], [Array.from({ length: 501 }, (_, i) => `new${i}`)])
+  const messages = staged.messages
+  staged.messages = function* () { for (const record of messages()) yield { ...record, message: { ...record.message, text: 'x'.repeat(50000) } } }
+  const commit = createCommitter({ afterInsert(count) {
+    if (count === 300) {
+      const pages = Number(store.writer.pragma('page_count', { simple: true }))
+      store.writer.pragma(`max_page_count=${pages}`)
+    }
+  } })
+  try {
+    await expect(commit(store, staged, target(candidate('full')), signal())).rejects.toMatchObject({ code: 'SQLITE_FULL' })
+  } finally { store.writer.pragma('max_page_count=4294967294') }
+  expect(store.reader.prepare('SELECT text FROM messages').all()).toEqual([{ text: 'old' }])
+  expect(store.writer.pragma('integrity_check', { simple: true })).toBe('ok')
+})
 test('rolls both files of a target back, and reader never sees uncommitted rows', async () => {
   let checks = 0
   const merge = createCommitter({ afterInsert(n) { expect(store.reader.prepare('SELECT count(*) n FROM messages').get()).toEqual({n:0n}); checks++; if(n === 2) throw Error('second file') } })

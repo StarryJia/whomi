@@ -44,6 +44,8 @@ SOFTWARE.
 
 当前只完成已授权的本地集成。与下述 GSAP 许可组合的公开分发条件尚未确认；本声明不改变整个 Whomi 的许可证，也不构成公开发布授权。
 
+本地 Windows 验证包的 resources/licenses 目录附本声明、ChatLab 原始许可证与逐文件来源修改清单。打包只纳入生产 out、运行依赖和上述声明；不纳入虚构测试夹具、测试探针、临时数据库或私人导出。公开分发前仍必须明确全项目组合许可，准备与二进制对应的完整源代码、锁文件、构建安装说明和全部依赖原始许可，并核对修改告知义务；当前本地验证包不表示这些发布条件已满足。
+
 ### GSAP 与 React 集成
 
 启动动画使用 [GSAP](https://github.com/greensock/GSAP) 3.15.0 的时间轴与快速位置更新，以及 [@gsap/react](https://github.com/greensock/react) 2.1.2 的 `useGSAP` 生命周期集成。

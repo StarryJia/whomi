@@ -1,5 +1,7 @@
 # Whomi 设计文档索引
 
+当前桌面导入实现与验证见[导入验收](../research/conversation-import-validation.md)、[14 格式能力矩阵](../research/chatlab-parser-reuse.md)和[实施裁定](../research/conversation-import-decisions.md)。2026-10-30 已有本地保存和分页阅读；总览与解惑的模型及持久化业务仍未实现。早期只显示文件名的导入描述属于历史前端阶段。
+
 更新日期：2026-10-29。设计确认、代码实现和测试通过是三种不同状态；阅读后续功能时先看状态，再看示例。文档中的人物、消息与指标示例不是真实用户数据。
 
 ## 当前产品与功能设计

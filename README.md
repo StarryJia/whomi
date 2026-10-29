@@ -16,7 +16,9 @@ Whomi 是一款本地优先的自我探索工具。我们希望陪你回看自�
 
 ## 当前可运行范围
 
-已有首页、可折叠侧栏、Hello 隐私封面、文件选择、会话抽屉和只读聊天布局。本轮新增个人总览展示组件、Spark 反馈接口、原文消息范围导航与解惑前端；验证结果见[总览实现记录](docs/designs/whomi-personal-overview-implementation.md)及[解惑实现记录](docs/designs/whomi-clarification-implementation.md)。正式入口无真实分析与会话数据，仍显示空状态；真实解析、数据存储、模型和反馈后续修正尚未接入。使用 React、TypeScript 和 Vite，按需改写 shadcn/ui 的组件结构；品牌开场由 GSAP 驱动。
+Windows 桌面已接入本地文件和目录导入：选择入口、预览、确认目标与本人身份后保存，重启后按页阅读并通过稳定消息编号定位原文。14 个格式模块的支持结构见[格式矩阵](docs/research/chatlab-parser-reuse.md)，实际验收和性能见[导入验证](docs/research/conversation-import-validation.md)。例如虚构记录第一次有消息 1、2、3，换电脑导出的文件只有改写后的 2 和新增 4，保存后仍保留旧 1、2、3，只新增 4。
+
+已有首页、可折叠侧栏、Hello 隐私封面、个人总览与解惑前端。真实人工智能分析、Spark 生成、反馈持久化与后续修正未实现；导入不调用模型。媒体只保留描述和缺失状态，不复制、播放或下载附件。界面采用 React、TypeScript、Vite 和 GSAP，桌面采用 Electron 与 SQLite。
 
 ## 本地运行
 
@@ -36,6 +38,21 @@ npm run preview
 ```
 
 `npm test` 运行现有前端行为测试；`npm run build` 完成类型检查并输出 `dist/`；`npm run preview` 在本机预览构建结果。
+
+Windows 桌面开发先运行 `npm run native:electron`，再运行 `npm run desktop:dev`。后台测试使用宿主 Node.js 的原生驱动，桌面测试和打包使用 Electron 的原生驱动；切换时重建：
+
+```sh
+npm run native:node
+npm run test:backend
+npm run native:electron
+npm run desktop:build
+npm run test:desktop
+npm run bench:import -- --messages 100000 --conversations 10
+npm run desktop:pack
+npm run desktop:dist
+```
+
+桌面正式资料保存在应用用户数据目录，开发模式使用独立的 Whomi Development 目录；自动验收只使用受校验的系统临时目录。`release/` 是本地未签名 Windows x64 验证产物；公开分发前仍需解决 [AGPL 与 GSAP 组合许可及对应源码交付](THIRD_PARTY_NOTICES.md)。
 
 ## 当前界面与本轮更新
 
@@ -58,7 +75,7 @@ npm run preview
 
 称呼由 `App` 的可选 `displayName` 参数提供。例如 `<App displayName="阿嘉" />` 显示 Hello，阿嘉，阿嘉仅为示例。当前没有称呼设置页面，也不读取私人记录推测姓名。
 
-侧栏提供个人总览和解惑菜单；分析归入当前会话仍为后续业务。点击会话旁加号进入文件选择页；会话管理、分析和设置仍不可用。选择或拖入一个文件只显示真实文件名与已选择 · 尚未导入，不读取文件正文、不创建会话；一次拖入多个文件或文件夹会提示重新选择。本机仅保存 `whomi:sidebar-open` 这一界面偏好，不保存文件名、会话、抽屉状态、反馈或主区视图。
+侧栏提供个人总览和解惑菜单；分析归入当前会话仍为后续业务。点击会话旁加号进入导入页；桌面支持多文件和目录，浏览器只预览一个文件的名称。桌面会话与导入结果持久化，抽屉状态、反馈草稿和主区视图不恢复；会话管理、分析和设置仍不可用。
 
 会话抽屉与整个侧栏独立收放：抽屉收起时隐藏头像，抽屉展开且侧栏收起时保留头像列；收起抽屉不改变正文或阅读位置。运行开发服务后打开 `/preview.html`，可查看显著标注的虚构会话与总览状态，包括部分未知、已知均衡、场景化 Spark、来源缺失、反馈失败及长文本。例：从示例发现进入原文，阅读一段交流后返回继续评论；反馈回执只作模拟，不保存。预览入口不进入生产构建，正式入口没有示例结果。
 

@@ -5,6 +5,13 @@ directories:
 files:
   - out/**
   - package.json
+extraResources:
+  - from: THIRD_PARTY_NOTICES.md
+    to: licenses/THIRD_PARTY_NOTICES.md
+  - from: electron/vendor/chatlab-parser/LICENSE
+    to: licenses/chatlab/LICENSE
+  - from: electron/vendor/chatlab-parser/UPSTREAM.md
+    to: licenses/chatlab/UPSTREAM.md
 asar: true
 asarUnpack:
   - '**/*.node'
