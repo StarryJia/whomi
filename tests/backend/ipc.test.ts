@@ -3,9 +3,34 @@ import { createDesktopRouter, isTrustedCaller } from '../../electron/main/ipc'
 import { createSourceGrants } from '../../electron/main/source-grants'
 import { validateArguments, validateResult, validateSnapshot } from '../../src/shared/desktop-validation'
 import { createDesktopClient } from '../../src/data/desktop-client'
+import type { Candidate, ImportSnapshot } from '../../src/shared/import-contract'
 
 const snapshot = { jobId: '1', status: 'awaiting_commit', discovery: null, candidates: [], results: [], issues: [], counts: { seen: 0, validRecords: 0, invalidRecords: 0 }, inserted: 0, duplicates: 0 }
 describe('desktop boundary', () => {
+  it('delivers import events with more than 10000 members through both public boundaries', () => {
+    const candidate: Candidate = { candidateId: 'candidate', entryId: 'entry', title: 'Synthetic', formatId: 'chatlab', parserVersion: '1', sourceKey: 'chat', kind: 'group', identity: { platform: 'discord', ownerKey: null, conversationKey: 'chat', namespace: 'test' }, members: Array.from({ length: 10001 }, (_, index) => ({ sourceKey: `member-${index}`, displayName: `Member ${index}`, stableAccountKey: null, selfHint: null })), fingerprint: null, counts: snapshot.counts, status: 'staged', issues: [] }
+    const large = { ...snapshot, status: 'awaiting_commit', candidates: [candidate] } as ImportSnapshot
+    const router = createDesktopRouter({ grants: createSourceGrants(), request: async () => undefined })
+    router.ownJob(1, '1')
+    const client = createDesktopClient({ invoke: async () => undefined, onImport: listener => router.onImport(1, listener) })
+    const received: ImportSnapshot[] = []
+    const off = client.onImport(value => received.push(value))
+    router.publish(large)
+    expect(received).toHaveLength(1)
+    expect(received[0].candidates[0].members).toHaveLength(10001)
+    off(); router.releaseWindow(1)
+  })
+  it('accepts uncapped multi-conversation results, issues and attachment descriptors', () => {
+    const issue = { code: 'example', severity: 'warning', candidateId: 'candidate', action: '请核对示例记录。' }
+    const candidate = { candidateId: 'candidate', entryId: 'entry', title: 'Synthetic', formatId: 'chatlab', parserVersion: '1', sourceKey: 'chat', kind: 'group', identity: { platform: 'discord', ownerKey: null, conversationKey: 'chat', namespace: 'test' }, members: [], fingerprint: null, counts: snapshot.counts, status: 'staged', issues: [issue] }
+    const result = { candidateId: 'candidate', conversationId: '1', status: 'saved', inserted: 1, duplicates: 0, committedAt: 0, issues: [issue], summaryFailed: false }
+    const many = <T,>(value: T) => Array.from({ length: 10001 }, () => value)
+    for (const value of [
+      { ...snapshot, candidates: many(candidate), results: many(result) },
+      { ...snapshot, issues: many(issue), candidates: [{ ...candidate, issues: many(issue) }], results: [{ ...result, issues: many(issue) }] },
+    ]) expect.soft(() => validateResult('getImport', value)).not.toThrow()
+    expect.soft(() => validateResult('previewImport', { messages: [{ ordinal: 0, senderKind: 'member', senderKey: 'member', senderName: 'Synthetic', sentAtMs: null, timeRaw: null, timePrecision: 'unknown', timezone: null, kind: 'file', text: '', sourceType: null, reply: null, attachments: many({ kind: 'file', name: 'Synthetic', state: 'unresolved' }) }], nextOrdinal: null })).not.toThrow()
+  })
   it('checks sender identity, main frame identity and the exact app URL', () => {
     const frame = { url: 'file:///C:/app/index.html' }, contents = { id: 1, mainFrame: frame }
     const window = { webContents: contents }

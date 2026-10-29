@@ -1,11 +1,12 @@
 import { afterEach, expect, it } from 'vitest'
-import { mkdtemp, copyFile, rm } from 'node:fs/promises'
+import { mkdtemp, copyFile, rm, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
 import { openStore, type Store } from '../../electron/data/db/open'
 import { createDataService } from '../../electron/data/service'
 import { createDataDispatcher } from '../../electron/data/dispatch'
 import { validateResult } from '../../src/shared/desktop-validation'
+import type { ImportSnapshot } from '../../src/shared/import-contract'
 
 const resources: { store: Store; directory: string; service: ReturnType<typeof createDataService> }[] = []
 afterEach(async () => { for (const { service, store, directory } of resources.splice(0)) { await service.idle(); store.close(); await rm(directory, { recursive: true, force: true }) } })
@@ -44,4 +45,34 @@ it('rejects unknown IDs and malformed cursors and validates self membership insi
   expect(await dispatch('listMembers', ['2'])).toEqual([{ id: '1', displayName: '示例成员', selfHint: true, confirmedSelf: false }])
   await expect(dispatch('listMembers', ['999'])).rejects.toMatchObject({ code: 'INVALID_ID' })
   await expect(dispatch('getImport', ['999'])).rejects.toMatchObject({ code: 'INVALID_JOB' })
+})
+it('returns a staged ChatLab candidate with more than 10000 declared members', async () => {
+  const { directory, service, dispatch } = await setup()
+  const file = join(directory, 'large-members.json')
+  await writeFile(file, JSON.stringify({
+    chatlab: { version: '0.0.2' }, meta: { name: 'Synthetic members', platform: 'discord', type: 'group', groupId: 'synthetic-room' },
+    members: Array.from({ length: 10001 }, (_, index) => ({ platformId: `member-${index}`, accountName: `Member ${index}` })),
+    messages: [{ sender: 'member-0', accountName: 'Member 0', timestamp: 1700000000, type: 0, content: 'Synthetic message' }],
+  }))
+  const id = await dispatch('prepareImport', [[{ rootPath: file }]]) as string
+  const initial = await service.getImport(id)
+  await dispatch('startImport', [{ kind: 'stage', jobId: id, entryIds: initial.discovery!.entries.map(entry => entry.entryId) }])
+  await service.idle()
+  try {
+    const staged = await dispatch('getImport', [id]) as ImportSnapshot
+    expect(staged.status).toBe('awaiting_commit')
+    expect(staged.candidates[0].members).toHaveLength(10001)
+    expect(staged.candidates[0].members[10000].sourceKey).toBe('member-10000')
+  } finally { await dispatch('cancelImport', [id]) }
+})
+it('lists every persisted member when a conversation has more than 10000 members', async () => {
+  const { store, dispatch } = await setup()
+  store.writer.exec("INSERT INTO conversations(id,title,kind,created_at_ms) VALUES(1,'Synthetic members','group',0);INSERT INTO source_conversations(id,conversation_id,platform,namespace) VALUES(1,1,'test','test')")
+  const insert = store.writer.prepare('INSERT INTO memberships(id,conversation_id,source_conversation_id,source_key,display_name) VALUES(?,1,1,?,?)')
+  store.writer.transaction(() => {
+    for (let id = 1; id <= 10001; id++) insert.run(id, `member-${id}`, `Member ${id}`)
+  })()
+  const members = await dispatch('listMembers', ['1']) as { id: string; displayName: string }[]
+  expect(members).toHaveLength(10001)
+  expect(members[10000]).toMatchObject({ id: '10001', displayName: 'Member 10001' })
 })

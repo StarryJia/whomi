@@ -11,7 +11,7 @@ const count: Check = value => integer(value) && (value as number) >= 0
 const oneOf = (...choices: readonly unknown[]): Check => value => choices.includes(value)
 const nullable = (check: Check): Check => value => value === null || check(value)
 const optional = (check: Check): Check => value => value === undefined || check(value)
-const array = (check: Check, max = 10000): Check => value => Array.isArray(value) && value.length <= max && value.every(check)
+const array = (check: Check, max = Infinity): Check => value => Array.isArray(value) && value.length <= max && value.every(check)
 const object = (fields: Record<string, Check>): Check => value => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false
   const record = value as Record<string, unknown>
@@ -35,24 +35,24 @@ const sourceWindow: Check = value => object({ status: oneOf('unavailable') })(va
 const counts = object({ seen: count, validRecords: count, invalidRecords: count })
 const issue = object({ code: key, severity: oneOf('warning', 'blocking'), candidateId: text, ordinal: optional(count), action: text })
 const member = object({ sourceKey: text, displayName: text, stableAccountKey: nullable(text), selfHint: nullable(bool) })
-const discovery = object({ entries: array(object({ entryId: key, displayName: text, formatId: text })), unrecognized: array(object({ displayName: text })), issues: array(issue) })
+const discovery = object({ entries: array(object({ entryId: key, displayName: text, formatId: text }), 10000), unrecognized: array(object({ displayName: text }), 10000), issues: array(issue) })
 const candidate = object({ candidateId: key, entryId: key, title: text, formatId: text, parserVersion: text, sourceKey: text, kind: chatKind, identity: object({ platform: text, ownerKey: nullable(text), conversationKey: nullable(text), namespace: text }), members: array(member), fingerprint: nullable(text), counts, status: oneOf(...importResultStates), issues: array(issue) })
 const snapshot = object({ jobId: localId, status: oneOf(...importJobStates), discovery: nullable(discovery), candidates: array(candidate), results: array(object({ candidateId: key, conversationId: nullable(localId), status: oneOf(...importResultStates), inserted: count, duplicates: count, committedAt: nullable(integer), issues: array(issue), summaryFailed: bool })), issues: array(issue), counts, inserted: count, duplicates: count })
 export const sourceHandle = object({ token: key, displayName: text, kind: oneOf('file', 'directory') })
 const alias = object({ platform: text, aliasKey: text, accountKey: text })
 const target: Check = value => object({ kind: oneOf('new') })(value) || object({ kind: oneOf('existing'), conversationId: localId })(value)
-const start: Check = value => object({ kind: oneOf('stage'), jobId: localId, entryIds: array(key) })(value) || object({ kind: oneOf('commit'), plan: object({ jobId: localId, decisions: array(object({ candidateId: key, target, confirmedAliases: array(alias), selfMemberKey: optional(nullable(text)) })) }) })(value)
+const start: Check = value => object({ kind: oneOf('stage'), jobId: localId, entryIds: array(key, 10000) })(value) || object({ kind: oneOf('commit'), plan: object({ jobId: localId, decisions: array(object({ candidateId: key, target, confirmedAliases: array(alias, 10000), selfMemberKey: optional(nullable(text)) }), 10000) }) })(value)
 const listInput = object({ cursor: optional(cursor), limit: optional(limit(200)) })
 const readInput = object({ conversationId: localId, cursor: optional(cursor), direction: oneOf('before', 'after'), limit: optional(limit(200)) })
 const locateInput = object({ conversationId: localId, messageId: localId, endMessageId: optional(localId) })
 const previewOptions = object({ afterOrdinal: optional(value => integer(value) && (value as number) >= -1), limit: optional(limit(50)) })
 const argumentsByMethod: Record<DesktopMethod, Check[]> = {
-  chooseSources: [oneOf('files', 'directory')], prepareImport: [array(sourceHandle)], startImport: [start], getImport: [localId], cancelImport: [localId],
+  chooseSources: [oneOf('files', 'directory')], prepareImport: [array(sourceHandle, 10000)], startImport: [start], getImport: [localId], cancelImport: [localId],
   previewImport: [localId, key, previewOptions], listConversations: [listInput], readMessages: [readInput], locateSource: [locateInput], listMembers: [localId], confirmSelf: [localId, nullable(localId)], retrySummary: [localId],
 }
 const nothing: Check = value => value === undefined
 const resultsByMethod: Record<DesktopMethod, Check> = {
-  chooseSources: array(sourceHandle), prepareImport: localId, startImport: localId, getImport: snapshot, cancelImport: nothing,
+  chooseSources: array(sourceHandle, 10000), prepareImport: localId, startImport: localId, getImport: snapshot, cancelImport: nothing,
   previewImport: object({ messages: array(object({ ...messageFields, senderKey: nullable(text), reply: nullable(object(parsedReplyFields)) }), 50), nextOrdinal: nullable(count) }),
   listConversations: object({ items: array(object({ id: localId, title: text, kind: chatKind, messageCount: count, memberCount: count, firstSentAtMs: nullable(integer), lastSentAtMs: nullable(integer), summaryStatus: oneOf('pending', 'ready', 'failed') }), 200), nextCursor: nullable(cursor) }),
   readMessages: messagePage, locateSource: sourceWindow, listMembers: array(object({ id: localId, displayName: text, selfHint: nullable(bool), confirmedSelf: bool })), confirmSelf: nothing, retrySummary: nothing,
