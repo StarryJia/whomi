@@ -15,6 +15,8 @@ import { StartupIntro } from './components/startup-intro'
 import { HelloCover } from './components/hello-cover'
 import { ConversationNavigation, ConversationReader, resolveSourceRange, type Conversation } from './components/conversations'
 import { FileImport } from './components/file-import'
+import { getDesktopClient } from './data/desktop-client'
+import type { DesktopApi } from './shared/desktop-api'
 import { PersonalOverview } from './components/overview/personal-overview'
 import { useOverviewFeedback } from './components/overview/use-overview-feedback'
 import type { FeedbackSaver, OverviewData, SourceReference } from './components/overview/types'
@@ -48,6 +50,7 @@ function UnavailableDestination({ label, icon: Icon }: { label: string; icon: Lu
 }
 
 export interface AppProps {
+  importApi?: DesktopApi
   displayName?: string
   conversations?: readonly Conversation[]
   overview?: OverviewData
@@ -59,7 +62,9 @@ export interface AppProps {
 }
 
 function HomeShell({ displayName = '', conversations = [], overview, saveFeedback,
-  clarificationQuestion, clarificationModels = [], clarificationAdapter, preview = false }: AppProps) {
+  clarificationQuestion, clarificationModels = [], clarificationAdapter, preview = false, importApi }: AppProps) {
+  const api = importApi ?? (window.whomi ? getDesktopClient() : undefined)
+  const [savedIds, setSavedIds] = useState<readonly string[]>([])
   const { open, isMobile, toggle, closeMobile } = useSidebar()
   const toggleRef = useRef<HTMLButtonElement>(null)
   const restoreToggleFocus = useRef(false)
@@ -262,7 +267,11 @@ function HomeShell({ displayName = '', conversations = [], overview, saveFeedbac
       </aside>
       <main id="main-content" ref={mainRef} className={clsx('home', view === 'cover' && 'cover-home', (view === 'overview' || view === 'clarification') && 'overview-home', view === 'conversation' && 'reading-home')} tabIndex={-1} inert={mobileDialog || introActive}>
         {view === 'cover' ? <HelloCover key={coverKey} name={name} buttonRef={greetingRef} onEnter={enterOverview}>{overviewContent}</HelloCover>
-          : view === 'import' ? <FileImport /> : view === 'conversation' && activeConversation ? <ConversationReader
+          : view === 'import' ? <FileImport api={api} onSaved={ids => setSavedIds(previous => [...new Set([...previous, ...ids])])} onOpenConversation={openConversation} />
+          : view === 'conversation' && activeId && savedIds.includes(activeId) && !activeConversation ? <section className="import-panel" aria-label="已保存会话">
+            <h1 id="conversation-title" tabIndex={-1}>已保存的会话</h1><p>会话编号：{activeId}</p>
+            <button className="import-secondary" type="button" onClick={openImport}>返回导入结果</button>
+          </section> : view === 'conversation' && activeConversation ? <ConversationReader
           key={`${activeConversation.id}-${source?.id ?? ''}`} conversation={activeConversation}
           sourceRange={source} onReturn={source ? (sourceOrigin === 'clarification' ? openClarification : enterOverview) : undefined}
           returnLabel={sourceOrigin === 'clarification' ? '返回解惑' : '返回个人总览'} /> : view === 'clarification' ? (
