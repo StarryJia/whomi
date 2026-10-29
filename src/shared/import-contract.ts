@@ -14,5 +14,11 @@ export type Candidate = {
   status: ImportResultState; issues: ImportIssue[]
 }
 export type AccountAlias = { platform: string; aliasKey: string; accountKey: string }
-export type TargetDecision = { candidateId: string; target: { kind: 'new' } | { kind: 'existing'; conversationId: LocalId }; confirmedAliases: AccountAlias[] }
+export type TargetDecision = { candidateId: string; target: { kind: 'new' } | { kind: 'existing'; conversationId: LocalId }; confirmedAliases: AccountAlias[]; selfMemberKey?: string | null }
 export type SourceRecordKey = { fingerprint: string; sourceConversationKey: string; ordinal: number }
+
+export type JobId = string
+export type ImportPlan = { jobId: JobId; decisions: TargetDecision[] }
+export type StartImportRequest = { kind: 'stage'; jobId: JobId; entryIds: string[] } | { kind: 'commit'; plan: ImportPlan }
+export type ImportCandidateResult = { candidateId: string; conversationId: LocalId | null; status: ImportResultState; inserted: number; duplicates: number; committedAt: number | null; issues: ImportIssue[]; summaryFailed: boolean }
+export type ImportSnapshot = { jobId: JobId; status: ImportJobState; discovery: Discovery | null; candidates: Candidate[]; results: ImportCandidateResult[]; issues: ImportIssue[]; counts: ImportCounts; inserted: number; duplicates: number }

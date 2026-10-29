@@ -8,6 +8,7 @@ export type ResolvedTarget = Readonly<{
   confirmedAliases: readonly Readonly<AccountAlias>[]
   /** Candidate member source key, never a display name or a persisted confirmation. */
   confirmedSelf: string | null; selfHints: readonly string[]
+  selfMemberKey?: string | null
 }>
 export type TargetResolution = { status: 'matched'; target: ResolvedTarget }
   | { status: 'needs-choice'; action: string }
@@ -29,6 +30,7 @@ function localId(value: unknown): bigint {
 function assertTarget(store: Store, target: ResolvedTarget) {
   if (trusted.get(target) !== store) invalid()
 }
+export const validateResolvedTarget = assertTarget
 function account(store: Store, platform: string, key: string): Account | undefined {
   const direct = store.writer.prepare('SELECT id,stable_account_key FROM accounts WHERE platform=? AND stable_account_key=?').get(platform, key) as Account | undefined
   const alias = store.writer.prepare('SELECT a.id,a.stable_account_key FROM account_aliases x JOIN accounts a ON a.id=x.account_id WHERE x.platform=? AND x.alias_key=? AND a.platform=x.platform').get(platform, key) as Account | undefined
@@ -98,6 +100,7 @@ function reusableSelf(store: Store, candidate: Candidate, canonical: (key: strin
 export function resolveTarget(store: Store, candidate: Candidate, decision?: TargetDecision): TargetResolution {
   try {
     validateCandidate(candidate)
+    if (decision?.selfMemberKey !== undefined && decision.selfMemberKey !== null && !candidate.members.some(m => m.sourceKey === decision.selfMemberKey)) invalid()
     if (decision !== undefined && (!object(decision) || decision.candidateId !== candidate.candidateId || !object(decision.target) ||
         !['new', 'existing'].includes(decision.target.kind) || !Array.isArray(decision.confirmedAliases))) invalid()
     const { aliases, canonical } = aliasesFor(store, candidate, decision?.confirmedAliases ?? [])
@@ -132,6 +135,7 @@ export function resolveTarget(store: Store, candidate: Candidate, decision?: Tar
       identity: Object.freeze(identity), sourceKey: candidate.sourceKey,
       confirmedAliases: Object.freeze(aliases.map(a => Object.freeze(a))),
       confirmedSelf: reusableSelf(store, candidate, canonical, conversationId), selfHints: Object.freeze(candidate.members.filter(m => m.selfHint === true).map(m => m.sourceKey)),
+      selfMemberKey: decision?.selfMemberKey,
     })
     trusted.set(target, store)
     return { status: 'matched', target }

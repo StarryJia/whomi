@@ -1,12 +1,12 @@
 import Database from 'better-sqlite3'
 import { expect, test } from 'vitest'
 import { openStore } from '../../electron/data/db/open'
-import { schema } from '../../electron/data/db/schema'
+import { schema, schemaVersion, selfOptOutSchema } from '../../electron/data/db/schema'
 import { temporaryStore } from './helpers'
 test('migrates and reopens a durable store with independent committed reads', () => {
   const temp = temporaryStore(); const store = openStore(temp.path)
   try {
-    expect(store.writer.pragma('user_version', {simple:true})).toBe(2n)
+    expect(store.writer.pragma('user_version', {simple:true})).toBe(BigInt(schemaVersion))
     store.writer.exec("BEGIN; INSERT INTO conversations(title,kind,created_at_ms) VALUES ('A','direct',0)")
     expect(store.reader.prepare('SELECT count(*) AS n FROM conversations').get()).toEqual({n:0n})
     store.writer.exec('COMMIT')
@@ -15,12 +15,12 @@ test('migrates and reopens a durable store with independent committed reads', ()
     expect(store.writer.pragma('integrity_check', {simple:true})).toBe('ok')
     expect(() => store.reader.exec("DELETE FROM conversations")).toThrow()
     store.close(); const reopened = openStore(temp.path)
-    expect(reopened.writer.pragma('user_version',{simple:true})).toBe(2n); reopened.close()
+    expect(reopened.writer.pragma('user_version',{simple:true})).toBe(BigInt(schemaVersion)); reopened.close()
   } finally { store.close(); temp.cleanup() }
 })
 test('rejects newer schemas without changing their contents', () => {
   const temp = temporaryStore(); const db = new Database(temp.path)
-  db.exec('PRAGMA user_version=3; CREATE TABLE future(value TEXT); INSERT INTO future VALUES (\'kept\')'); db.close()
+  db.exec(`PRAGMA user_version=${schemaVersion+1}; CREATE TABLE future(value TEXT); INSERT INTO future VALUES ('kept')`); db.close()
   try { expect(() => openStore(temp.path)).toThrow(/升级/)
     const check = new Database(temp.path); expect(check.prepare('SELECT value FROM future').get()).toEqual({value:'kept'}); check.close()
   } finally { temp.cleanup() }
@@ -34,7 +34,7 @@ test('upgrades schema one without rewriting records and preserves revoked-only l
   try {
     const upgraded = openStore(temp.path)
     try {
-      expect(upgraded.writer.pragma('user_version', { simple: true })).toBe(2n)
+      expect(upgraded.writer.pragma('user_version', { simple: true })).toBe(BigInt(schemaVersion))
       expect(upgraded.writer.prepare('SELECT conversation_id FROM self_opt_outs').all()).toEqual([{ conversation_id: 1n }])
       expect(upgraded.writer.prepare('SELECT id,text FROM messages').get()).toEqual({ id: 9007199254740993n, text: 'kept' })
       upgraded.writer.defaultSafeIntegers(false)
@@ -62,6 +62,22 @@ test('rolls back a failed schema two migration without advancing schema one', ()
       expect(check.prepare('SELECT marker FROM self_opt_outs').get()).toEqual({ marker: 'kept' })
     } finally { check.close() }
   } finally { temp.cleanup() }
+})
+test('upgrades schema two additively and rolls back failed state migration',()=> {
+  for(const conflict of [false,true]) {
+    const temp=temporaryStore(),old=new Database(temp.path)
+    old.exec(schema);old.exec(selfOptOutSchema);old.exec("PRAGMA user_version=2;INSERT INTO import_jobs(id,status,created_at_ms) VALUES (1,'running',0)")
+    if(conflict)old.exec('CREATE TABLE import_staging_areas(marker TEXT)')
+    old.close()
+    try {
+      if(conflict) {
+        expect(()=>openStore(temp.path)).toThrow()
+        const check=new Database(temp.path);try {expect(check.pragma('user_version',{simple:true})).toBe(2);expect(check.prepare('PRAGMA table_info(import_jobs)').all().some((r:unknown)=>(r as {name:string}).name==='phase')).toBe(false)}finally{check.close()}
+      }else {
+        const s=openStore(temp.path);try {expect(s.writer.pragma('user_version',{simple:true})).toBe(3n);expect(s.reader.prepare('SELECT status,phase FROM import_jobs').get()).toEqual({status:'running',phase:'committing'})}finally{s.close()}
+      }
+    }finally{temp.cleanup()}
+  }
 })
 test('keeps identifiers exact and never reuses deleted message ids', () => {
   const temp = temporaryStore(); const s = openStore(temp.path)

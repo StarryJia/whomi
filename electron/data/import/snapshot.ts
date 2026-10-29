@@ -8,6 +8,17 @@ import { identity, openSource, pathKey, sameFile, within, type SourceAccess, typ
 
 export type SnapshotFile = { role: string; sha256: string; bytes: number }
 export type Snapshot = { entry: string; allowedFiles: string[]; fingerprint: string; files: SnapshotFile[] }
+export type StagingOwnership = { appDirectory: string; path: string; root: string; identity: string }
+export async function cleanupRegisteredStaging(record: StagingOwnership): Promise<void> {
+  const app = await fs.realpath(record.appDirectory), root = join(app, 'import-staging')
+  if (pathKey(root) !== pathKey(record.root) || dirname(record.path) !== root || !within(root, record.path)) throw new ImportFailure('STAGING_PATH')
+  if (pathKey(await fs.realpath(root)) !== pathKey(root)) throw new ImportFailure('STAGING_PATH')
+  let info: BigIntStats
+  try { info = await fs.stat(record.path, { bigint: true }) }
+  catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return; throw error }
+  if (!info.isDirectory() || identity(info) !== record.identity || pathKey(await fs.realpath(record.path)) !== pathKey(record.path)) throw new ImportFailure('STAGING_PATH')
+  await fs.rm(record.path, { recursive: true, force: true })
+}
 export function createSnapshotArea(appDataDirectory: string) {
   const owned = new Map<string, { root: string; identity: string }>()
   async function create() {
@@ -31,7 +42,12 @@ export function createSnapshotArea(appDataDirectory: string) {
     await fs.rm(path, { recursive: true, force: true })
     owned.delete(path)
   }
-  return { create, cleanup }
+  function ownership(path: string): StagingOwnership {
+    const record = owned.get(path)
+    if (!record) throw new ImportFailure('STAGING_PATH')
+    return { appDirectory: dirname(record.root), path, ...record }
+  }
+  return { create, cleanup, ownership }
 }
 
 async function copyChecked(access: SourceAccess, file: SourceFile, target: string, maximum: number, signal: AbortSignal): Promise<SnapshotFile> {

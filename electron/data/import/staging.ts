@@ -8,12 +8,12 @@ import type { ParserAdapter } from '../parsers/types'
 import { createDiscovery, type PrivateEntry } from './discovery'
 import { checkSignal, failureCode, ImportFailure, importLimits, issue } from './limits'
 import { sourceAccess, type SourceAccess } from './source-access'
-import { createSnapshotArea, snapshotEntry } from './snapshot'
+import { createSnapshotArea, snapshotEntry, type StagingOwnership } from './snapshot'
 
 export type MessageOrigin = { fingerprint: string; sourceConversationKey: string; ordinal: number; parserId: string; parserVersion: string }
 export type StagedMessage = { message: ParsedMessage; candidateId: string; origin: MessageOrigin }
 /** A read view only. The merge caller must resolve all candidates to one target before committing. */
-export type StagedConversation = { candidateIds: readonly string[]; sources: readonly { candidateId: string; identity: SourceIdentity }[]; messages(): Iterable<StagedMessage> }
+export type StagedConversation = { jobId: string; candidates: readonly Candidate[]; decisions?: readonly import('../../../src/shared/import-contract').TargetDecision[]; candidateIds: readonly string[]; sources: readonly { candidateId: string; identity: SourceIdentity }[]; messages(): Iterable<StagedMessage> }
 export type StagedImport = {
   /** Backend only: never serialize this object through the desktop bridge. */
   path: string; jobId: string; candidates: Candidate[]; counts: ImportCounts; issues: ImportIssue[]
@@ -26,6 +26,7 @@ export type StagingOptions = {
   access?: Partial<SourceAccess>
   freeBytes?: (path: string) => Promise<bigint>
   parsers?: readonly ParserAdapter[]
+  registerArea?: (jobId: string, ownership: StagingOwnership) => void
 }
 const emptyCounts = (): ImportCounts => ({ seen: 0, validRecords: 0, invalidRecords: 0 })
 function candidate(source: PrivateEntry, chat?: ParsedConversation, fingerprint: string | null = null): Candidate {
@@ -45,6 +46,7 @@ export function createStagingService(options: StagingOptions) {
     const directory = await area.create(), path = join(directory, 'staging.sqlite')
     let db: Database.Database | undefined
     try {
+      options.registerArea?.(jobId, area.ownership(directory))
       const totalBytes = entries.reduce((sum, entry) => sum + entry.files.reduce((n, file) => n + file.info.size, 0n), 0n)
       if (await freeBytes(directory) < 3n * totalBytes + BigInt(importLimits.diskReserveBytes)) throw new ImportFailure('DISK_SPACE')
       checkSignal(signal)
@@ -161,7 +163,7 @@ export function createStagingService(options: StagingOptions) {
           if (!ids.length || new Set(ids).size !== ids.length) throw new ImportFailure('INVALID_SELECTION')
           const group = ids.map(find)
           if (group.some(c => c.status !== 'staged')) throw new ImportFailure('CONVERSATION_BLOCKED')
-          return { candidateIds: Object.freeze([...ids]), sources: group.map(c => ({ candidateId: c.candidateId, identity: structuredClone(c.identity) })),
+          return { jobId, candidates: structuredClone(group), candidateIds: Object.freeze([...ids]), sources: group.map(c => ({ candidateId: c.candidateId, identity: structuredClone(c.identity) })),
             *messages() {
               for (const c of group) {
                 active()

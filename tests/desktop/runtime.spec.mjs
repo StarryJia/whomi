@@ -103,3 +103,26 @@ test('saved data survives a restart while the renderer stays isolated', async ()
     await rm(directory, { recursive: true, force: true })
   }
 })
+
+for (const boundary of ['Before','After']) test(`crash recovery after actual import exits ${boundary} COMMIT`,async()=> {
+  const directory=await mkdtemp(join(tmpdir(),'whomi-runtime-'))
+  await copyFile('tests/desktop/import-probe.cjs',join(directory,'probe.cjs'))
+  await copyFile('tests/fixtures/import/chatlab/positive.json',join(directory,'source.json'))
+  const launch=()=>electron.launch({args:[resolve('out/main/index.cjs'),'--whomi-runtime-test'],env:{...process.env,WHOMI_RUNTIME_TEST:directory}})
+  let application
+  try {
+    application=await launch();const page=await application.firstWindow()
+    expect(await page.evaluate(()=>typeof window.require!=='undefined'||typeof window.process!=='undefined')).toBe(false)
+    await expect(application.evaluate(async(_electron,boundary)=>globalThis.__whomiRuntimeProbe.request(`probe.crash${boundary}`,null),boundary)).rejects.toThrow()
+    await application.close();application=await launch();await application.firstWindow()
+    const recovered=await application.evaluate(async()=>globalThis.__whomiRuntimeProbe.request('probe.recovered',null))
+    expect(recovered.integrity).toBe('ok')
+    expect(recovered.count).toBe(boundary==='Before' ? 0:2)
+    expect(recovered.snapshot.status).toBe(boundary==='Before' ? 'failed':'completed')
+    if(boundary==='After') {
+      expect(recovered.snapshot.results[0].status).toBe('saved')
+      const retry=await application.evaluate(async()=>globalThis.__whomiRuntimeProbe.request('probe.reimport',null))
+      expect(retry.inserted).toBe(0);expect(retry.duplicates).toBe(2)
+    }
+  }finally {await application?.close();await rm(directory,{recursive:true,force:true})}
+})

@@ -1,5 +1,5 @@
 import type { Store } from './open'
-import { schema, schemaVersion, selfOptOutSchema } from './schema'
+import { schema, schemaVersion, selfOptOutSchema, importStateSchema } from './schema'
 export function migrateStore(store: Pick<Store, 'writer'>): void {
   const db = store.writer
   const version = db.pragma('user_version', { simple: true }) as bigint
@@ -8,6 +8,7 @@ export function migrateStore(store: Pick<Store, 'writer'>): void {
   db.transaction(() => {
     if (version < 1n) db.exec(schema)
     if (version < 2n) db.exec(selfOptOutSchema)
+    if (version < 3n) db.exec(importStateSchema)
     db.pragma(`user_version = ${schemaVersion}`)
   }).immediate()
 }

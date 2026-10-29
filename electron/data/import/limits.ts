@@ -7,7 +7,7 @@ export class ImportFailure extends Error {
 export function checkSignal(signal: AbortSignal) { if (signal.aborted) throw new ImportFailure('CANCELLED') }
 export function fileLimit(mode: 'stream' | 'bounded') { return mode === 'stream' ? importLimits.streamFileBytes : importLimits.boundedFileBytes }
 export function issue(code: string, candidateId = '', severity: 'blocking' | 'warning' = 'blocking') {
-  return { code, candidateId, severity, action: code === 'CANCELLED' ? '导入已取消。' : code === 'DISK_SPACE' ? '请释放磁盘空间后重试。' : '请检查导出文件后重试。' }
+  return { code, candidateId, severity, action: code === 'CANCELLED' ? '导入已取消。' : code === 'DISK_SPACE' ? '请释放磁盘空间后重试。' : code === 'AMBIGUOUS_MESSAGE' ? '请改用包含可靠消息标识的导出格式。' : code === 'IMPORT_BUSY' ? '请完成或取消当前导入。' : code === 'TARGET_REQUIRED' || code === 'TARGET_CONFLICT' ? '请选择目标会话并确认账号映射。' : code === 'SELF_CONFLICT' ? '请为同一会话选择一致的本人账号。' : '请检查导出文件后重试。' }
 }
 export function failureCode(error: unknown) {
   if (error instanceof ImportFailure) return error.code

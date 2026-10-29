@@ -1,4 +1,4 @@
-export const schemaVersion = 2
+export const schemaVersion = 3
 export const schema = `
 CREATE TABLE conversations (
  id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -177,6 +177,16 @@ SELECT DISTINCT s.conversation_id FROM self_confirmations s
 WHERE s.status='revoked' AND NOT EXISTS (
  SELECT 1 FROM self_confirmations c WHERE c.conversation_id=s.conversation_id AND c.status='confirmed'
 );
+`
+
+export const importStateSchema = `
+ALTER TABLE import_jobs ADD COLUMN phase TEXT NOT NULL DEFAULT 'preparing' CHECK(phase IN ('preparing','scanning','awaiting_confirmation','staging','validating','awaiting_commit','committing','completed','partially_completed','failed','cancelled'));
+ALTER TABLE import_jobs ADD COLUMN metadata TEXT NOT NULL DEFAULT '{}' CHECK(json_valid(metadata));
+ALTER TABLE import_results ADD COLUMN phase TEXT NOT NULL DEFAULT 'pending' CHECK(phase IN ('pending','blocked','staged','committing','saved','duplicate','failed','cancelled'));
+ALTER TABLE import_results ADD COLUMN metadata TEXT NOT NULL DEFAULT '{}' CHECK(json_valid(metadata));
+UPDATE import_jobs SET phase=CASE status WHEN 'running' THEN 'committing' ELSE CASE status WHEN 'pending' THEN 'preparing' ELSE status END END;
+UPDATE import_results SET phase=CASE status WHEN 'committed' THEN CASE WHEN added_count=0 THEN 'duplicate' ELSE 'saved' END WHEN 'running' THEN 'committing' ELSE status END;
+CREATE TABLE import_staging_areas (job_id INTEGER NOT NULL REFERENCES import_jobs(id), path TEXT PRIMARY KEY, app_directory TEXT NOT NULL, root TEXT NOT NULL, identity TEXT NOT NULL) STRICT;
 `
 
 
