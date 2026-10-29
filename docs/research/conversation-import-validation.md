@@ -23,6 +23,8 @@
 
 ## 性能测量
 
+本节是最终修复前的历史测量：产品代码基线为 `31ce69d95a4559981b94d0d3c17f08f56d566b9f`，测量脚本与报告随后归档于 `008d1267cf5e9d767cec78a6c9aa3865569c5821`；至 `149d5bb` 的产品代码没有变化。最终修复 `8e5f660` 改动了本人读取关联及页面地址校验，本轮没有重跑十万／百万导入测量，以下数值不能作为修复后重新测得的结果。原始 JSON 保留原时间和值，并标记为历史证据。
+
 `npm run bench:import -- --messages 100000 --conversations 10`；压力档改为 `--messages 1000000`。脚本按固定序号生成十个独立 ChatLab JSONL 文件，每个会话分别为 10,000/100,000 条，正文为固定虚构文本；生成阶段不计入导入时间。真实 Electron 独立数据进程执行快照、解析、暂存与事务保存，临时目录按真实绝对路径校验后清理。
 
 硬件：Intel Core i7-9750H 2.60GHz，12 个逻辑处理器，内存 17,015,619,584 字节；Windows 10.0.19045。控制脚本 Node.js 24.12.0，Electron 45.1.0 内置 Node.js 24.22.1，SQLite 3.53.4。峰值常驻内存使用操作系统进程 maxRSS，分别列绝对值及启动常驻内存增量；不是 JavaScript 堆大小。单页第 95 百分位为 100 次真实 readMessages 请求，含窗口/通信桥往返；启动与首次会话渲染来自实际窗口。
@@ -47,18 +49,20 @@
 
 ## 构建、包与发布边界
 
-按计划顺序实际运行：`npm test` 14 文件 140/140；`npm run typecheck`、`npm run build`、`npm run native:node` 成功；`npm run test:backend` 15 文件 249/249；随后 `npm run native:electron`、`npm run desktop:build` 成功，`npm run test:desktop` 8/8，包含原生窗口、进程崩溃恢复和目录边界。实际 SQLite 满盘用隔离库的 max_page_count 在第 300 条暂定写入后触发 SQLITE_FULL，原已提交消息完整保留，完整性检查通过，没有填满机器磁盘。
+最终修复 `8e5f660` 后实际运行：`npm test` 14 文件 140/140；`npm run typecheck`、`npm run build`、`npm run native:node` 成功；`npm run test:backend` 15 文件 253/253；随后 `npm run native:electron`、`npm run desktop:build` 成功，`npm run test:desktop` 8/8、29.3 秒，包含原生窗口、进程崩溃恢复和目录边界。初次并发完整检查时，原有一万条消息回滚用例超过 5 秒；不改超时限制，单独重跑完整后端通过。实际 SQLite 满盘用隔离库的 max_page_count 在第 300 条暂定写入后触发 SQLITE_FULL，原已提交消息完整保留，完整性检查通过，没有填满机器磁盘。
+
+新增回归先复现再修复：虚构的两份 ChatLab Telegram 文件包含同一稳定发送账号，第二份没有 ownerId；用户选择已有会话并复用本人后，两份消息与成员列表均显示为本人。明确改选第二来源成员仍保留第一份本人，清除本人后两份均恢复普通成员，后续复用不恢复确认；没有稳定账号的同名成员不合并，解析提示也不代替用户确认。实际窗口点击首页与跳到主要内容链接后仍能选择来源及读取已保存消息，查询参数、其他文档、其他窗口及非主框架仍被拒绝。
 
 `npm run desktop:pack` 和 `npm run desktop:dist` 均退出 0，生成新的 Windows x64 目录包与 NSIS 安装包。NSIS 是生成 Windows 安装程序的工具；本轮包为未签名本地产物。构建仍提示缺少作者、描述与自定义图标，不影响本轮本地验证。
 
 | 产物 | 本地位置与结果 |
 |---|---|
-| 目录应用 | `release/win-unpacked/Whomi.exe`，真实导入/退出/重启/定位及六页滚动 2/2，21.6 秒 |
-| 安装程序 | `release/Whomi Setup 0.1.0.exe`，2026-10-30 00:37:32 生成，135,820,671 字节 |
-| 安装后应用 | `release/installed-validation/Whomi.exe`，经校验的仓库内绝对目标静默安装，退出 0；相同实际流程 2/2，23.9 秒 |
+| 目录应用 | `release/win-unpacked/Whomi.exe`，真实导入/退出/重启/定位、首页与跳过导航后的通信桥及六页滚动 2/2，20.2 秒 |
+| 安装程序 | `release/Whomi Setup 0.1.0.exe`，2026-10-30 07:55:25 生成，135,820,736 字节；产品代码 `8e5f660aac214db7f0965820ffaa9087199e3e16` |
+| 安装后应用 | `release/installed-validation/Whomi.exe`，经真实路径核验的仓库内绝对目标静默安装，退出 0；相同实际流程 2/2，20.2 秒 |
 
-安装程序 SHA-256：`74c20fa5158a425b87942402b1492416feffff1f4ec9410eb268fd998762e8e1`。目录与安装后的 app.asar 均为 46,110,281 字节，摘要均为 `e94af1eb7fd27cf523e1558a454d9a31ca3bcce44ab99a59d18f6dc05da4ab6a`，确认不是旧阶段产物。SHA-256 是文件内容摘要算法。全部测试通过 WHOMI_PACKAGED_EXECUTABLE 选择实际应用；数据库只放在受校验临时资料目录，未触碰正常用户资料或清理其预写日志。安装目录保留以供本地复验。
+安装程序 SHA-256：`f8cb376d3eb1d7c31931b0a72ecf0baef56aa7316e8d9bf6966db4bc603faf63`。目录与安装后的 app.asar 均为 46,110,677 字节，摘要均为 `f2c8424eea512f7abf384f68e4230ddbb84c2bbb5de472686d3e20409b6f03be`；归档内四个生产入口逐一与本次构建文件比对摘要一致，确认包含当前修复。SHA-256 是文件内容摘要算法。包的两轮测试通过 WHOMI_PACKAGED_EXECUTABLE 选择实际应用；完整 8 项运行、崩溃恢复与隔离检查使用修复后的开发构建。数据库只放在受校验临时资料目录，未触碰正常用户资料或清理其预写日志。安装目录保留以供本地复验。
 
 打包白名单仅含生产 out、package.json、必要运行依赖及第三方声明，不含测试、探针、虚构源文件、私人导出或数据库。resources/licenses 附 ChatLab 原始 AGPL-3.0 许可、来源修改清单及第三方声明。stream-json 的 moderate 审计残留及嵌套、行大小限制见[依赖复用审计](chatlab-parser-reuse.md)，没有宣称审计清零。GSAP 与 AGPL 组合许可仍待确认；本轮仅本地未签名验证，不能宣称可公开分发或已完成全部源码交付义务。
 
-实际枚举 app.asar 共 5,080 项，生产主进程、数据进程、预加载和渲染入口齐全，未发现 tests、fixtures、测试探针、preview.html 或数据库文件；许可证文件均存在。审计 JSON 在 `release/validation/package-audit.json`。全流程实施选择、理由和错误代价归档于[实施裁定](conversation-import-decisions.md)；没有运行真实私人 SIWX 资料的人工验收。
+2026-10-30 07:57:29 安装后重新枚举 app.asar 共 5,080 项，生产主进程、数据进程、预加载和渲染入口齐全，未发现 tests、fixtures、测试探针、preview.html 或数据库文件；许可证文件均存在。刷新后的审计 JSON 在 `release/validation/package-audit.json`，含代码提交、生产入口摘要及目录／安装后回归结果。全流程实施选择、理由和错误代价归档于[实施裁定](conversation-import-decisions.md)；没有运行真实私人 SIWX 资料的人工验收。
