@@ -32,6 +32,17 @@ it('deduplicates physical files through selected roots and declared wrapper depe
   expect(result.entries).toHaveLength(1)
   expect(result.entries[0].formatId).toBe('qq-shuakami-chunked')
 })
+it.each(['declared-count', 'conversation-header'])('preserves distinct manifests sharing chunks when their %s differs', async difference => {
+  const { source, service, signal } = await setup()
+  await fs.cp(resolve('tests/fixtures/import/qq-shuakami-chunked/chunks'), join(source, 'chunks'), { recursive: true })
+  const manifest = JSON.parse(await fs.readFile(fixture('qq-shuakami-chunked'), 'utf8'))
+  await fs.writeFile(join(source, 'first.json'), JSON.stringify(manifest))
+  if (difference === 'declared-count') manifest.statistics.totalMessages = 99
+  else manifest.chatInfo.name = 'Another synthetic conversation'
+  await fs.writeFile(join(source, 'second.json'), JSON.stringify(manifest))
+  const result = await service.discover([{ rootPath: source }, { rootPath: join(source, 'first.json') }, { rootPath: join(source, 'chunks', 'one.jsonl') }], signal)
+  expect(result.entries.map(entry => entry.displayName)).toEqual(['first.json', 'second.json'])
+})
 it('blocks real Windows junction escape and loops before opening an outside file', async () => {
   const { root, source, signal } = await setup()
   const outside = join(root, 'outside'); await fs.mkdir(outside)

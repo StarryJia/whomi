@@ -129,6 +129,24 @@ it('validates QQ single-file totals and individual chunk message counts', async 
   const events = await collect('qq-shuakami-chunked', 'positive.json', { entry: join(folder, 'input.json'), allowedFiles: [join(folder, 'chunks/one.jsonl')] })
   expect(events.some(e => e.type === 'issue' && e.value.code === 'declared-count-mismatch')).toBe(true)
 })
+it('validates each distinct manifest sharing chunks and preserves their conversation headers', async () => {
+  const { source, service, signal } = await setup('qq-shuakami-chunked')
+  await fs.cp(resolve('tests/fixtures/import/qq-shuakami-chunked/chunks'), join(source, 'chunks'), { recursive: true })
+  const raw = JSON.parse(await fs.readFile(join(source, 'chat.json'), 'utf8'))
+  raw.chatInfo.name = 'Synthetic first'
+  await fs.writeFile(join(source, 'chat.json'), JSON.stringify(raw))
+  raw.chatInfo.name = 'Synthetic second'; raw.statistics.totalMessages = 99
+  await fs.writeFile(join(source, 'other.json'), JSON.stringify(raw))
+  const stage = await service.stageInputs('shared-chunks', await service.discover([{ rootPath: source }], signal), signal)
+  try {
+    expect(stage.candidates).toHaveLength(2)
+    expect(stage.candidates.find(candidate => candidate.title === 'Synthetic first')?.status).toBe('staged')
+    const conflicting = stage.candidates.find(candidate => candidate.title === 'Synthetic second')!
+    expect(conflicting.status).toBe('blocked')
+    expect(conflicting.issues.map(value => value.code)).toContain('DECLARED_COUNT_MISMATCH')
+    expect(conflicting.counts).toEqual({ seen: 2, validRecords: 2, invalidRecords: 0 })
+  } finally { await stage.cleanup() }
+})
 it('keeps fingerprint identity when a single export is renamed, and changes it when a dependency changes', async () => {
   const { root, source, service, signal } = await setup()
   const first = await service.stageInputs('first', await service.discover([{ rootPath: source }], signal), signal)

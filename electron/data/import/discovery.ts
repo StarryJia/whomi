@@ -70,7 +70,7 @@ export function createDiscovery(access: SourceAccess = sourceAccess, parsers: re
         await walk(actual, stat.isDirectory() ? actual : dirname(actual), 0, new Set())
       } catch (error) { checkSignal(signal); issues.push(issue(failureCode(error))) }
     }
-    const consumed = new Set<string>(), wrapperIds = new Set<string>()
+    const consumed = new Set<string>()
     // Only the known extracted Takeout layout supplies a synthetic manifest.
     const googleGroups = new Map<string, { group?: SourceFile; messages?: SourceFile; prefix: string; chatId: string; kind: string }>()
     for (const file of files.values()) {
@@ -121,9 +121,7 @@ export function createDiscovery(access: SourceAccess = sourceAccess, parsers: re
           }
           const combined = dependencies.reduce((total, f) => total + f.info.size, 0n)
           if (combined > BigInt(importLimits.boundedFileBytes)) throw new ImportFailure('FILE_LIMIT')
-          const signature = dependencies.slice(1).map(f => `${f.role}:${identity(f.info)}`).sort().join('|')
-          if (wrapperIds.has(signature)) { consumed.add(identity(file.info)); continue }
-          wrapperIds.add(signature)
+          // Shared dependencies do not prove that two manifests describe the same conversation.
           dependencies.slice(1).forEach(f => consumed.add(identity(f.info)))
         }
         entries.push({ entryId, displayName: basename(file.path), parser, files: dependencies })
