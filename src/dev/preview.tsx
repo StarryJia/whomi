@@ -1,6 +1,7 @@
-import { StrictMode, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { StrictMode, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from '../App'
+import { createPreviewClient } from '../data/preview-client'
 import type { FeedbackReceipt, FeedbackSaver } from '../components/overview/types'
 import type { ClarificationReceipt, ClarificationWithdrawal } from '../components/clarification/types'
 import { overviewScenarios } from './overview-fixtures'
@@ -81,6 +82,7 @@ function DevelopmentPreview() {
   const surfaceRef = useRef<HTMLDivElement>(null)
   const scenario = overviewScenarios.find(item => item.id === scenarioId) ?? overviewScenarios[0]
   const clarificationScenario = clarificationScenarios.find(item => item.id === clarificationId) ?? clarificationScenarios[0]
+  const client = useMemo(() => createPreviewClient(page === 'overview' ? scenario.conversations : clarificationConversations), [page, scenario.conversations])
   const answerCount = useRef(0)
   const submission = usePreviewOperation<ClarificationReceipt>(() => ({ answerId: `preview-answer-${++answerCount.current}`, persistence: 'preview' }))
   const withdrawal = usePreviewOperation<ClarificationWithdrawal>(() => ({ persistence: 'preview' }))
@@ -208,7 +210,7 @@ function DevelopmentPreview() {
     </header>
     <div className="preview-surface" ref={surfaceRef}>
       <App key={`${page}-${page === 'overview' ? scenario.id : clarificationScenario.id}`} displayName=""
-        conversations={page === 'overview' ? scenario.conversations : clarificationConversations}
+        client={client}
         overview={page === 'overview' ? scenario.overview : undefined}
         saveFeedback={saveMode === 'no-adapter' ? undefined : saveFeedback}
         clarificationQuestion={page === 'clarification' ? clarificationScenario.question : undefined}

@@ -1,7 +1,10 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
+import { createPreviewClient } from './data/preview-client'
+import { ConversationReader } from './components/conversations'
+import { fakeImportApi, saved, snapshot } from './test/import-api'
 
 const conversations = [{
   id: 'sample', title: '项目讨论', messages: [
@@ -21,6 +24,95 @@ function setViewport(mobile = false) {
 beforeEach(() => setViewport())
 
 describe('文件选择与会话前端', () => {
+  it('移除上方页和恢复前文时，保留消息的可见位置不变', async () => {
+    const user = userEvent.setup()
+    const data = [{ id: 'long', title: '虚构长会话', messages: Array.from({ length: 650 }, (_, index) => ({
+      id: String(index + 1), sender: '示例成员', text: `锚点消息 ${index + 1}`,
+    })) }]
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      const firstId = (this.parentElement?.firstElementChild as HTMLElement | null)?.dataset.messageId ?? '0'
+      const index = this.dataset.messageId ? Number(this.dataset.messageId) - Number(firstId) : 0
+      const container = this.closest<HTMLElement>('.reader-scroll')
+      return new DOMRect(0, this.dataset.messageId ? index * 20 - (container?.scrollTop ?? 0) : 0, 100, 20)
+    })
+    render(<App client={createPreviewClient(data)} />)
+    await user.click(screen.getByRole('button', { name: '展开会话列表' }))
+    await user.click(await screen.findByRole('button', { name: '虚构长会话' }))
+    for (let index = 0; index < 4; index++) await user.click(screen.getByRole('button', { name: '加载后文' }))
+    const reader = screen.getByRole('region', { name: '聊天记录' })
+    reader.scrollTop = 8800
+    fireEvent.scroll(reader)
+    const anchor = within(reader).getByText('锚点消息 450').closest('li')!
+    const top = anchor.getBoundingClientRect().top
+    await user.click(screen.getByRole('button', { name: '加载后文' }))
+    expect(reader.querySelectorAll('.message')).toHaveLength(500)
+    expect(anchor.getBoundingClientRect().top).toBe(top)
+    expect(reader.scrollTop).toBe(6800)
+    await user.click(screen.getByRole('button', { name: '加载前文' }))
+    expect(anchor.getBoundingClientRect().top).toBe(top)
+    expect(reader.scrollTop).toBe(8800)
+  }, 15000)
+
+  it('相同时间的大整数编号范围准确高亮，未知时间不编造日期', async () => {
+    const api = createPreviewClient([{ id: 'large', title: '虚构大编号', messages: Array.from({ length: 4 }, (_, index) => ({
+      id: (9007199254740992n + BigInt(index)).toString(), sender: '示例成员', text: `大编号消息 ${index}`, time: '导出中没有日期',
+    })) }])
+    const page = await api.readMessages({ conversationId: 'large', direction: 'after' })
+    const messages = page.items.map(item => ({ ...item, timeBucket: 1 as const, sortTime: 0 }))
+    render(<ConversationReader conversation={{ id: 'large', title: '虚构大编号', messages }} range={{ start: messages[1], end: messages[2] }} sourceStatus="available" />)
+    expect(screen.getByText('大编号消息 0').closest('li')).not.toHaveClass('message-source')
+    expect(screen.getByText('大编号消息 1').closest('li')).toHaveClass('message-source')
+    expect(screen.getByText('大编号消息 2').closest('li')).toHaveClass('message-source')
+    expect(screen.getByText('大编号消息 3').closest('li')).not.toHaveClass('message-source')
+    expect(screen.getAllByText('导出中没有日期')).toHaveLength(4)
+    expect(screen.getByText('时间未知')).toBeInTheDocument()
+    expect(screen.queryByText(/1970/)).not.toBeInTheDocument()
+  })
+
+  it('首次持久保存刷新摘要，打开后返回导入结果，重启仍由后台列表读取', async () => {
+    const user = userEvent.setup()
+    const { api, emit } = fakeImportApi()
+    const query = createPreviewClient([{ id: '7', title: '新保存的虚构会话', messages: [{ id: '1', sender: '成员', text: '持久阅读样例' }] }])
+    const summary = await query.listConversations({})
+    vi.mocked(api.listConversations).mockResolvedValueOnce({ items: [], nextCursor: null }).mockResolvedValue(summary)
+    api.readMessages = vi.fn(query.readMessages)
+    const first = render(<App importApi={api} />)
+    await waitFor(() => expect(api.listConversations).toHaveBeenCalledTimes(1))
+    await user.click(screen.getByRole('button', { name: '导入会话' }))
+    await user.click(screen.getByRole('button', { name: '选择文件' }))
+    await screen.findByText('两层目录中的记录.json')
+    const value = snapshot({ status: 'completed', results: [saved('a', '7')] })
+    vi.mocked(api.getImport).mockResolvedValue(value)
+    act(() => emit(value))
+    await waitFor(() => expect(api.listConversations).toHaveBeenCalledTimes(2))
+    await user.click(await screen.findByRole('button', { name: '打开会话' }))
+    expect(await screen.findByText('持久阅读样例')).toBeInTheDocument()
+    expect(api.readMessages).toHaveBeenCalledExactlyOnceWith({ conversationId: '7', direction: 'after', limit: 100 })
+    await user.click(screen.getByRole('button', { name: '返回导入结果' }))
+    expect(await screen.findByText('已保存 500 条消息。')).toBeInTheDocument()
+    first.unmount()
+    render(<App importApi={api} />)
+    await user.click(screen.getByRole('button', { name: '展开会话列表' }))
+    expect(await screen.findByRole('button', { name: '新保存的虚构会话' })).toBeInTheDocument()
+  })
+
+  it('正式查询只取摘要和第一页，未知时间保留原始文本并标明时间未知', async () => {
+    const user = userEvent.setup()
+    const api = createPreviewClient(conversations)
+    const list = vi.spyOn(api, 'listConversations')
+    const read = vi.spyOn(api, 'readMessages')
+    render(<App client={api} />)
+    await user.click(screen.getByRole('button', { name: '展开会话列表' }))
+    await user.click(await screen.findByRole('button', { name: '项目讨论' }))
+    expect(list).toHaveBeenCalledTimes(1)
+    expect(read).toHaveBeenCalledExactlyOnceWith({ conversationId: 'sample', direction: 'after', limit: 100 })
+    expect(await screen.findByText('时间未知')).toBeInTheDocument()
+    expect(screen.getByText('<script>原文不是网页</script>').closest('li')).toHaveClass('message-self')
+    expect(screen.queryByText(/1970/)).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '个人总览' }))
+    expect(screen.getByText('已有记录，尚未形成分析结果。')).toBeInTheDocument()
+  })
+
   it('加号进入导入页，不改变抽屉状态；管理图标不可执行', async () => {
     const user = userEvent.setup()
     render(<App />)

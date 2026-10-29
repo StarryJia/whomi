@@ -48,7 +48,12 @@
 .reader-header { flex: 0 0 auto; padding: 28px 32px; border-bottom: 1px solid var(--line); }
 .reader-header h1 { margin: 0; font-size: 20px; line-height: 1.5; font-weight: 550; overflow-wrap: anywhere; max-height: 4.5em; overflow-y: auto; }
 .reader-header h1:focus { outline: none; }
-.reader-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 32px; scrollbar-width: thin; scrollbar-color: #b6c0cd transparent; }
+.reader-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; overflow-anchor: none; padding: 32px; scrollbar-width: thin; scrollbar-color: #b6c0cd transparent; }
+.reader-load, .conversation-load { display: block; min-height: 44px; margin: 12px auto; padding: 8px 16px; border: 1px solid var(--line); border-radius: var(--radius-control); background: var(--surface); color: var(--text); cursor: pointer; }
+.reader-load:disabled, .conversation-load:disabled { color: var(--text-muted); cursor: wait; }
+.conversation-list-error, .reader-availability { padding: 8px; color: var(--text-muted); font-size: 13px; }
+.message-time-unknown, .message-attachment, .message-reply { margin: 8px 0; color: var(--text-muted); font-size: 12px; line-height: 1.6; }
+.message-reply { padding-left: 12px; border-left: 2px solid var(--line); }
 .reader-scroll:focus-visible { outline-offset: -5px; }
 .message-list { display: flex; flex-direction: column; gap: 28px; max-width: 840px; margin: 0 auto; padding: 0 0 24px; list-style: none; }
 .message { display: flex; align-items: flex-start; gap: 12px; }

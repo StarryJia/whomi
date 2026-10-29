@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react'
+import { useCallback, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react'
 import {
   ChartNoAxesCombined,
   LayoutDashboard,
@@ -13,9 +13,11 @@ import { SidebarProvider, useSidebar } from './components/ui/sidebar'
 import { Tooltip, TooltipProvider } from './components/ui/tooltip'
 import { StartupIntro } from './components/startup-intro'
 import { HelloCover } from './components/hello-cover'
-import { ConversationNavigation, ConversationReader, resolveSourceRange, type Conversation } from './components/conversations'
+import { ConversationNavigation, ConversationReader, type Conversation } from './components/conversations'
 import { FileImport } from './components/file-import'
 import { getDesktopClient } from './data/desktop-client'
+import { createPreviewClient } from './data/preview-client'
+import { useConversations, type ConversationClient } from './data/use-conversations'
 import type { DesktopApi } from './shared/desktop-api'
 import { PersonalOverview } from './components/overview/personal-overview'
 import { useOverviewFeedback } from './components/overview/use-overview-feedback'
@@ -50,6 +52,7 @@ function UnavailableDestination({ label, icon: Icon }: { label: string; icon: Lu
 }
 
 export interface AppProps {
+  client?: ConversationClient
   importApi?: DesktopApi
   displayName?: string
   conversations?: readonly Conversation[]
@@ -61,10 +64,13 @@ export interface AppProps {
   preview?: boolean
 }
 
-function HomeShell({ displayName = '', conversations = [], overview, saveFeedback,
-  clarificationQuestion, clarificationModels = [], clarificationAdapter, preview = false, importApi }: AppProps) {
+function HomeShell({ displayName = '', conversations, overview, saveFeedback,
+  clarificationQuestion, clarificationModels = [], clarificationAdapter, preview = false, importApi, client }: AppProps) {
   const api = importApi ?? (window.whomi ? getDesktopClient() : undefined)
-  const [savedIds, setSavedIds] = useState<readonly string[]>([])
+  const queryClient = useMemo(() => client ?? (conversations ? createPreviewClient(conversations) : api), [client, conversations, api])
+  const reader = useConversations(queryClient)
+  const previewing = preview || !!conversations
+  const [fromImport, setFromImport] = useState(false)
   const { open, isMobile, toggle, closeMobile } = useSidebar()
   const toggleRef = useRef<HTMLButtonElement>(null)
   const restoreToggleFocus = useRef(false)
@@ -80,7 +86,9 @@ function HomeShell({ displayName = '', conversations = [], overview, saveFeedbac
   const [sourceOrigin, setSourceOrigin] = useState<'overview' | 'clarification'>('overview')
   const feedback = useOverviewFeedback(saveFeedback)
   const clarification = useClarification(clarificationAdapter)
-  const activeConversation = conversations.find(conversation => conversation.id === activeId)
+  const activeSummary = reader.conversations.find(conversation => conversation.id === activeId)
+  const saved = useCallback(() => { void reader.refresh() }, [reader.refresh])
+  const sourceAvailable = (reference: SourceReference) => !!queryClient && !reference.unavailable
   const [introActive, setIntroActive] = useState(
     () => !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
   )
@@ -155,20 +163,23 @@ function HomeShell({ displayName = '', conversations = [], overview, saveFeedbac
 
   function openConversation(id: string) {
     setSource(undefined)
+    setFromImport(view === 'import')
     setActiveId(id)
+    void reader.open(id)
     setView('conversation')
     closeMobile()
     requestAnimationFrame(() => mainRef.current?.querySelector<HTMLHeadingElement>('#conversation-title')?.focus())
   }
 
   function openSource(reference: SourceReference, origin: 'overview' | 'clarification' = 'overview') {
-    const resolved = resolveSourceRange(conversations, reference)
-    if (!resolved) return
     setSource(reference)
+    setFromImport(false)
     setSourceOrigin(origin)
-    setActiveId(resolved.conversation.id)
+    setActiveId(reference.conversationId)
     setView('conversation')
     closeMobile()
+    void reader.locate({ conversationId: reference.conversationId, messageId: reference.messageId,
+      ...(reference.endMessageId ? { endMessageId: reference.endMessageId } : {}) })
   }
 
   function openClarification() {
@@ -178,10 +189,11 @@ function HomeShell({ displayName = '', conversations = [], overview, saveFeedbac
   }
 
   const overviewContent = <>
-    {preview && <p className="overview-preview-label">开发预览 · 全部内容为虚构示例 · 未写入真实存储</p>}
-    <PersonalOverview data={overview ?? { materialStatus: conversations.length ? 'unanalysed' : 'none', discoveries: [] }}
+    {previewing && <p className="overview-preview-label">开发预览 · 全部内容为虚构示例 · 未写入真实存储</p>}
+    {!queryClient && <p className="reader-availability">请在桌面应用中查看已保存的会话。</p>}
+    <PersonalOverview data={overview ?? { materialStatus: reader.conversations.length ? 'unanalysed' : 'none', discoveries: [] }}
       headingRef={overviewTitleRef} onReturnToCover={returnToCover} onImport={openImport}
-      onOpenSource={openSource} isSourceAvailable={reference => resolveSourceRange(conversations, reference) !== null}
+      onOpenSource={openSource} isSourceAvailable={sourceAvailable}
       feedback={feedback} />
   </>
 
@@ -258,8 +270,9 @@ function HomeShell({ displayName = '', conversations = [], overview, saveFeedbac
               <span className="control-label" aria-hidden="true">解惑</span>
             </button>
           </Tooltip>
-          <ConversationNavigation wide={open} conversations={conversations} activeId={view === 'conversation' ? activeId : undefined}
-            onImport={openImport} onSelect={openConversation} />
+          <ConversationNavigation wide={open} conversations={reader.conversations} activeId={view === 'conversation' ? activeId : undefined}
+            onImport={openImport} onSelect={openConversation} hasMore={!!reader.listCursor} loading={reader.listLoading}
+            error={reader.listError} onLoadMore={() => { void reader.loadMore() }} onRefresh={() => { void reader.refresh() }} />
         </nav>
         <footer className="sidebar-footer">
           <UnavailableDestination label="设置" icon={Settings} />
@@ -267,18 +280,18 @@ function HomeShell({ displayName = '', conversations = [], overview, saveFeedbac
       </aside>
       <main id="main-content" ref={mainRef} className={clsx('home', view === 'cover' && 'cover-home', (view === 'overview' || view === 'clarification') && 'overview-home', view === 'conversation' && 'reading-home')} tabIndex={-1} inert={mobileDialog || introActive}>
         {view === 'cover' ? <HelloCover key={coverKey} name={name} buttonRef={greetingRef} onEnter={enterOverview}>{overviewContent}</HelloCover>
-          : view === 'import' ? <FileImport api={api} onSaved={ids => setSavedIds(previous => [...new Set([...previous, ...ids])])} onOpenConversation={openConversation} />
-          : view === 'conversation' && activeId && savedIds.includes(activeId) && !activeConversation ? <section className="import-panel" aria-label="已保存会话">
-            <h1 id="conversation-title" tabIndex={-1}>已保存的会话</h1><p>会话编号：{activeId}</p>
-            <button className="import-secondary" type="button" onClick={openImport}>返回导入结果</button>
-          </section> : view === 'conversation' && activeConversation ? <ConversationReader
-          key={`${activeConversation.id}-${source?.id ?? ''}`} conversation={activeConversation}
-          sourceRange={source} onReturn={source ? (sourceOrigin === 'clarification' ? openClarification : enterOverview) : undefined}
-          returnLabel={sourceOrigin === 'clarification' ? '返回解惑' : '返回个人总览'} /> : view === 'clarification' ? (
+          : view === 'import' ? <FileImport api={api} onSaved={saved} onOpenConversation={openConversation} />
+          : view === 'conversation' && activeId && reader.current ? <ConversationReader
+          key={`${activeId}-${source?.id ?? ''}`} conversation={{ id: activeId, title: activeSummary?.title ?? '会话', messages: reader.current.messages }}
+          range={reader.current.range} sourceStatus={reader.current.sourceStatus} loading={reader.loading} error={reader.error} preview={previewing}
+          beforeCursor={reader.current.beforeCursor} afterCursor={reader.current.afterCursor}
+          onBefore={reader.loadBefore} onAfter={reader.loadAfter} onRetry={() => { void reader.open(activeId) }}
+          onReturn={source ? (sourceOrigin === 'clarification' ? openClarification : enterOverview) : fromImport ? openImport : undefined}
+          returnLabel={fromImport ? '返回导入结果' : sourceOrigin === 'clarification' ? '返回解惑' : '返回个人总览'} /> : view === 'clarification' ? (
           <ClarificationPage question={clarificationQuestion} models={clarificationModels} controller={clarification}
-            headingRef={clarificationTitleRef} preview={preview}
+            headingRef={clarificationTitleRef} preview={previewing}
             onOpenSource={reference => openSource(reference, 'clarification')}
-            isSourceAvailable={reference => resolveSourceRange(conversations, reference) !== null} />
+            isSourceAvailable={sourceAvailable} />
         ) : overviewContent}
       </main>
       {introActive && <StartupIntro targetRef={brandImageRef} onComplete={finishIntro} />}

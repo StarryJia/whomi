@@ -5,6 +5,7 @@ import App from './App'
 import { ConversationReader, resolveSourceRange } from './components/conversations'
 import type { Conversation } from './components/conversations'
 import type { OverviewData, SourceReference } from './components/overview/types'
+import { createPreviewClient } from './data/preview-client'
 
 const conversations: Conversation[] = [{ id: 'friends', title: '朋友近况', messages: [
   { id: 'before', sender: '朋友', text: '下周答辩，最近有点紧张。' },
@@ -22,6 +23,48 @@ beforeEach(() => {
 })
 
 describe('总览导航与原文范围', () => {
+  it('第 12000 条来源异步定位一次，跨页范围只高亮当前窗口', async () => {
+    const user = userEvent.setup()
+    const large = [{ id: 'large', title: '虚构分页会话', messages: Array.from({ length: 13000 }, (_, index) => ({
+      id: String(index + 1), sender: '示例成员', text: `虚构分页消息 ${index + 1}`,
+    })) }]
+    const api = createPreviewClient(large)
+    const locate = vi.spyOn(api, 'locateSource')
+    const read = vi.spyOn(api, 'readMessages')
+    const reference = { ...source, conversationId: 'large', messageId: '12000', endMessageId: '12900' }
+    const data = { ...overview, discoveries: [{ ...overview.discoveries[0], sources: [reference] }] }
+    render(<App client={api} overview={data} />)
+    await user.click(screen.getByRole('button', { name: /进入个人总览/ }))
+    await user.click(screen.getByRole('button', { name: /答辩前的准备/ }))
+    const reader = await screen.findByRole('region', { name: '聊天记录' })
+    await screen.findByText('虚构分页消息 12000')
+    expect(locate).toHaveBeenCalledExactlyOnceWith({ conversationId: 'large', messageId: '12000', endMessageId: '12900' })
+    expect(read).not.toHaveBeenCalled()
+    expect(reader.querySelectorAll('.message-source')).toHaveLength(80)
+    for (let index = 0; index < 6; index++) await user.click(screen.getByRole('button', { name: '加载后文' }))
+    expect(reader.querySelectorAll('.message')).toHaveLength(500)
+    expect(reader.querySelectorAll('.message-source')).toHaveLength(500)
+    expect(screen.queryByText('虚构分页消息 12000')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '加载前文' }))
+    expect(reader.querySelectorAll('.message')).toHaveLength(500)
+    expect(locate).toHaveBeenCalledTimes(1)
+    await user.click(screen.getByRole('button', { name: '返回个人总览' }))
+    expect(await screen.findByRole('heading', { name: '个人总览' })).toBeInTheDocument()
+  }, 15000)
+
+  it('后台定位拒绝后显示原文不可用，仍能返回总览', async () => {
+    const user = userEvent.setup()
+    const api = createPreviewClient(conversations)
+    vi.spyOn(api, 'locateSource').mockRejectedValueOnce(new Error('内部错误不显示'))
+    render(<App client={api} overview={overview} />)
+    await user.click(screen.getByRole('button', { name: /进入个人总览/ }))
+    await user.click(screen.getByRole('button', { name: /答辩前的准备/ }))
+    expect(await screen.findByText('原文不可用，请返回后重试。')).toBeInTheDocument()
+    expect(screen.queryByText('内部错误不显示')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '返回个人总览' }))
+    expect(screen.getByRole('heading', { name: '个人总览' })).toBeInTheDocument()
+  })
+
   it('独立解惑菜单进入诚实空状态，总览内没有解惑入口', async () => {
     const user = userEvent.setup()
     render(<App />)
@@ -63,8 +106,8 @@ describe('总览导航与原文范围', () => {
   })
 
   it('阅读器收到失效范围时不标记错误消息，并提供查找提示', () => {
-    render(<ConversationReader conversation={conversations[0]} sourceRange={{ messageId: 'gone' }} />)
-    expect(screen.getByRole('status')).toHaveTextContent('无法定位原文，请在这段会话中查找。')
+    render(<ConversationReader conversation={{ id: 'friends', title: '朋友近况', messages: [] }} sourceStatus="unavailable" />)
+    expect(screen.getByRole('status')).toHaveTextContent('原文不可用，请返回后重试。')
     expect(screen.getByRole('region', { name: '聊天记录' }).querySelector('.message-source')).toBeNull()
   })
 

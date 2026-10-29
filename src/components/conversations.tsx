@@ -3,6 +3,7 @@ import { ArrowLeft, ChevronRight, Ellipsis, Plus } from 'lucide-react'
 import clsx from 'clsx'
 import { Tooltip } from './ui/tooltip'
 import type { SourceReference } from './overview/types'
+import type { MessagePosition, MessageView } from '../shared/desktop-api'
 
 export interface ChatMessage {
   id: string
@@ -34,12 +35,17 @@ function Initial({ name }: { name: string }) {
   return <span className="conversation-avatar" aria-hidden="true">{[...name.trim()][0] || '·'}</span>
 }
 
-export function ConversationNavigation({ wide, conversations, activeId, onSelect, onImport }: {
+export function ConversationNavigation({ wide, conversations, activeId, onSelect, onImport, hasMore, loading, error, onLoadMore, onRefresh }: {
   wide: boolean
-  conversations: readonly Conversation[]
+  conversations: readonly { id: string; title: string }[]
   activeId?: string
   onSelect: (id: string) => void
   onImport: () => void
+  hasMore?: boolean
+  loading?: boolean
+  error?: string
+  onLoadMore?: () => void
+  onRefresh?: () => void
 }) {
   const [expanded, setExpanded] = useState(false)
   const toggleLabel = expanded ? '收起会话列表' : '展开会话列表'
@@ -76,52 +82,123 @@ export function ConversationNavigation({ wide, conversations, activeId, onSelect
               </Tooltip>
             </li>)}
           </ul>}
+          {hasMore && <button className="conversation-load" type="button" disabled={loading} onClick={onLoadMore}>加载更多会话</button>}
+          {error && <div className="conversation-list-error" role="alert"><p>{error}</p><button type="button" onClick={onRefresh}>重试会话列表</button></div>}
         </div>
       </div>
     </section>
   )
 }
 
-export function ConversationReader({ conversation, sourceRange, onReturn, returnLabel = '返回个人总览' }: {
-  conversation: Conversation
-  sourceRange?: { messageId: string; endMessageId?: string }
+function comparePosition(left: MessagePosition, right: MessagePosition) {
+  if (left.timeBucket !== right.timeBucket) return left.timeBucket - right.timeBucket
+  if (left.sortTime !== right.sortTime) return left.sortTime < right.sortTime ? -1 : 1
+  if (left.id === right.id) return 0
+  // 本地编号可能超过 JavaScript 安全整数，不能先转换为 Number。
+  if (/^\d+$/.test(left.id) && /^\d+$/.test(right.id)) return BigInt(left.id) < BigInt(right.id) ? -1 : 1
+  return left.id < right.id ? -1 : 1
+}
+function messageTime(message: MessageView) {
+  if (message.timeBucket === 1 || message.sentAtMs === null) return message.timeRaw
+  const date = new Date(message.sentAtMs)
+  return Number.isNaN(date.getTime()) ? message.timeRaw : date.toLocaleString('zh-CN')
+}
+const messageKinds: Record<MessageView['kind'], string> = {
+  text: '文字', image: '图片', audio: '语音', video: '视频', file: '文件', sticker: '表情', link: '链接',
+  location: '位置', reply: '引用', forward: '转发', system: '系统', unknown: '未知类型',
+}
+
+export function ConversationReader({ conversation, range, sourceStatus, onReturn, returnLabel = '返回个人总览',
+  beforeCursor, afterCursor, onBefore, onAfter, loading, error, onRetry, preview }: {
+  conversation: { id: string; title: string; messages: readonly MessageView[] }
+  range?: { start: MessagePosition; end: MessagePosition }
+  sourceStatus?: 'loading' | 'available' | 'unavailable'
   onReturn?: () => void
   returnLabel?: string
+  beforeCursor?: string | null
+  afterCursor?: string | null
+  onBefore?: () => Promise<void>
+  onAfter?: () => Promise<void>
+  loading?: boolean
+  error?: string
+  onRetry?: () => void
+  preview?: boolean
 }) {
   const heading = useRef<HTMLHeadingElement>(null)
   const firstSource = useRef<HTMLLIElement>(null)
-  const range = sourceRange ? resolveSourceRange([conversation], {
-    id: 'reader', conversationId: conversation.id, ...sourceRange, title: '', context: '',
-  }) : null
+  const scroll = useRef<HTMLDivElement>(null)
+  const anchors = useRef<Array<{ id: string; top: number }>>([])
+  const firstMessage = conversation.messages[0]?.id
+  const previousFirst = useRef(firstMessage)
+
+  function rememberPosition() {
+    const container = scroll.current
+    if (!container) return
+    const top = container.getBoundingClientRect().top
+    anchors.current = Array.from(container.querySelectorAll<HTMLElement>('[data-message-id]')).flatMap(element => {
+      const rectangle = element.getBoundingClientRect()
+      return rectangle.bottom > top ? [{ id: element.dataset.messageId!, top: rectangle.top - top }] : []
+    })
+  }
+
+  useLayoutEffect(() => {
+    const container = scroll.current
+    if (container && previousFirst.current !== firstMessage) {
+      const positions = new Map(Array.from(container.querySelectorAll<HTMLElement>('[data-message-id]')).map(element => [element.dataset.messageId, element]))
+      const retained = anchors.current.find(anchor => positions.has(anchor.id))
+      if (retained) container.scrollTop += positions.get(retained.id)!.getBoundingClientRect().top - container.getBoundingClientRect().top - retained.top
+    }
+    previousFirst.current = firstMessage
+    rememberPosition()
+  }, [firstMessage, conversation.messages])
+
   useLayoutEffect(() => {
     if (firstSource.current) {
       firstSource.current.focus({ preventScroll: true })
       firstSource.current.scrollIntoView?.({ block: 'center', behavior: 'auto' })
     } else heading.current?.focus()
-  }, [conversation.id, sourceRange?.messageId, sourceRange?.endMessageId])
+  }, [conversation.id, sourceStatus, range?.start.id, range?.end.id])
+
+  async function load(direction: 'before' | 'after') {
+    rememberPosition()
+    await (direction === 'before' ? onBefore?.() : onAfter?.())
+  }
+
   return <section className="conversation-reader" aria-labelledby="conversation-title">
     <header className="reader-header">
       {onReturn && <button className="reader-return" type="button" onClick={onReturn}>
         <ArrowLeft aria-hidden="true" />{returnLabel}
       </button>}
       <h1 id="conversation-title" ref={heading} tabIndex={-1}>{conversation.title}</h1>
-      {sourceRange && <p className="reader-source-note" role="status">{range
-        ? '已定位相关交流，可继续阅读前后文。'
-        : '无法定位原文，请在这段会话中查找。'}</p>}
+      {preview && <p className="reader-source-note">开发预览 · 全部内容为虚构示例 · 未写入真实存储</p>}
+      {sourceStatus && <p className="reader-source-note" role="status">{sourceStatus === 'available'
+        ? '已定位相关交流，可继续阅读前后文。' : sourceStatus === 'loading' ? '正在定位原文…' : '原文不可用，请返回后重试。'}</p>}
+      {error && <p className="reader-source-note" role="alert">{error} <button type="button" onClick={onRetry}>重新打开会话</button></p>}
     </header>
-    <div className="reader-scroll" role="region" aria-label="聊天记录" tabIndex={0}>
+    <div ref={scroll} className="reader-scroll" role="region" aria-label="聊天记录" tabIndex={0} aria-busy={loading} onScroll={rememberPosition}>
+      {beforeCursor && <button className="reader-load" type="button" disabled={loading} onClick={() => { void load('before') }}>加载前文</button>}
       {conversation.messages.length ? <ol className="message-list">
-        {conversation.messages.map((message, index) => <li key={message.id}
-          ref={range?.startIndex === index ? firstSource : undefined}
-          tabIndex={range?.startIndex === index ? -1 : undefined}
-          className={clsx('message', message.isSelf && 'message-self', range && index >= range.startIndex && index <= range.endIndex && 'message-source')}>
-          <Initial name={message.sender} />
+        {conversation.messages.map((message, index) => {
+          const start = range?.start.id === message.id
+          const end = range?.end.id === message.id
+          const highlighted = range && comparePosition(message, range.start) >= 0 && comparePosition(message, range.end) <= 0
+          return <li key={message.id} data-message-id={message.id}
+          ref={start ? firstSource : undefined}
+          tabIndex={start ? -1 : undefined}
+          className={clsx('message', message.isSelf && 'message-self', highlighted && 'message-source')}>
+          <Initial name={message.senderName} />
           <div className="message-content">
-            <div className="message-meta"><span>{message.sender}</span>{message.time && <span>{message.time}</span>}{range?.startIndex === index && <span className="source-range-label">引用范围起点</span>}{range?.endIndex === index && range.endIndex !== range.startIndex && <span className="source-range-label">引用范围终点</span>}</div>
+            {message.timeBucket === 1 && (index === 0 || conversation.messages[index - 1].timeBucket !== 1) && <p className="message-time-unknown">时间未知</p>}
+            <div className="message-meta"><span>{message.senderName}</span>{messageTime(message) && <span>{messageTime(message)}</span>}{start && <span className="source-range-label">引用范围起点</span>}{end && !start && <span className="source-range-label">引用范围终点</span>}</div>
             <p className="message-text">{message.text}</p>
+            {message.kind !== 'text' && <p className="message-attachment">消息类型：{messageKinds[message.kind]}</p>}
+            {message.reply && <blockquote className="message-reply">{message.reply.senderName && <span>{message.reply.senderName}：</span>}{message.reply.text ?? '引用内容不可用'}</blockquote>}
+            {message.attachments.map((attachment, attachmentIndex) => <p key={attachmentIndex} className="message-attachment">{attachment.name ?? '附件'} · {attachment.state === 'missing' ? '文件缺失' : '文件未导入'}</p>)}
           </div>
-        </li>)}
-      </ol> : <p className="reader-empty">这段会话还没有聊天记录。</p>}
+        </li>})}
+      </ol> : !loading && !error && !sourceStatus ? <p className="reader-empty">这段会话还没有聊天记录。</p> : null}
+      {loading && !sourceStatus && <p className="reader-empty" role="status">正在读取…</p>}
+      {afterCursor && <button className="reader-load" type="button" disabled={loading} onClick={() => { void load('after') }}>加载后文</button>}
     </div>
   </section>
 }
