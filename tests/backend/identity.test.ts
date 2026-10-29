@@ -52,6 +52,15 @@ test('reuses exact reliable mappings; validates decisions, ownership and canonic
   expect(target(unknown, decision()).conversationId).toBe('1')
   for (const aliases of [null, undefined, 'invalid']) expect(resolveTarget(store, candidate(), { ...decision(), confirmedAliases: aliases } as never).status).toBe('blocked')
 })
+
+test('checks platform owners across exporter namespaces while keeping conversation keys namespace scoped', () => {
+  existing()
+  const c = candidate({ identity: { platform: 'p', ownerKey: 'owner_suffix', conversationKey: 'export-chat', namespace: 'other-export' } })
+  expect(resolveTarget(store, c, decision()).status).toBe('blocked')
+  expect(target(c, { ...decision(), confirmedAliases: [{ platform: 'p', aliasKey: 'owner_suffix', accountKey: 'owner' }] }).conversationId).toBe('1')
+  expect(target(candidate({ identity: { ...c.identity, ownerKey: 'owner' } }), decision()).conversationId).toBe('1')
+  expect(target(candidate({ identity: { ...c.identity, ownerKey: null } }), decision()).conversationId).toBe('1')
+})
 test('skips stable scoped keys without changing original content, origins, attachments or replies', () => {
   existing(); const t = target(); saved(t)
   const before = store.reader.prepare('SELECT * FROM messages').all()
@@ -130,6 +139,28 @@ test('keeps parser-only hints unconfirmed and does not restore explicitly revoke
   expect(target(candidate({ members })).confirmedSelf).toBeNull()
   confirmSelf(store, '1', '2')
   expect(target(candidate({ members })).confirmedSelf).toBeNull()
+})
+
+test('persists clearing inferred self without a local confirmation until explicit local confirmation', () => {
+  selfFixture()
+  store.writer.exec("INSERT INTO conversations(id,title,kind,created_at_ms) VALUES (2,'other','direct',0); INSERT INTO source_conversations(id,conversation_id,platform,owner_key,conversation_key,namespace) VALUES (2,2,'p','owner','other','test'); INSERT INTO memberships(id,conversation_id,source_conversation_id,source_key,display_name,account_id) VALUES (3,2,2,'owner','小林',1)")
+  const c = candidate({ identity: { ...candidate().identity, conversationKey: 'other' }, members: [{ sourceKey: 'sender', displayName: '小林', stableAccountKey: 'owner', selfHint: true }] })
+  expect(target(c).confirmedSelf).toBe('sender')
+  expect(store.writer.prepare('SELECT 1 FROM self_confirmations WHERE conversation_id=2').get()).toBeUndefined()
+  confirmSelf(store, '2', null)
+  store.close(); store = openStore(temp.path)
+  expect(target(c).confirmedSelf).toBeNull()
+  confirmSelf(store, '2', '3')
+  expect(target(c).confirmedSelf).toBe('sender')
+})
+
+test('keeps local self opt-out when a conversation has only system messages and no members', () => {
+  selfFixture()
+  store.writer.exec("INSERT INTO conversations(id,title,kind,created_at_ms) VALUES (2,'system','group',0); INSERT INTO source_conversations(id,conversation_id,platform,owner_key,conversation_key,namespace) VALUES (2,2,'p','owner','system','test'); INSERT INTO messages(conversation_id,sender_kind,sender_name,kind,text,ordinal) VALUES (2,'system','','system','notice',0)")
+  confirmSelf(store, '2', null)
+  const c = candidate({ identity: { ...candidate().identity, conversationKey: 'system' }, members: [{ sourceKey: 'sender', displayName: '小林', stableAccountKey: 'owner', selfHint: true }] })
+  expect(target(c).confirmedSelf).toBeNull()
+  expect(store.writer.prepare('SELECT text FROM messages WHERE conversation_id=2').get()).toEqual({ text: 'notice' })
 })
 test('classifies no-id new files conservatively in a batch and sees current transaction keys', () => {
   const t = target()

@@ -78,9 +78,7 @@ function validateCandidate(candidate: Candidate) {
 }
 function reusableSelf(store: Store, candidate: Candidate, canonical: (key: string) => string, conversationId: string | null): string | null {
   const platform = candidate.identity.platform
-  if (conversationId !== null && store.writer.prepare(`SELECT 1 FROM self_confirmations
-    WHERE conversation_id=? AND status='revoked' AND NOT EXISTS
-    (SELECT 1 FROM self_confirmations WHERE conversation_id=? AND status='confirmed') LIMIT 1`).get(localId(conversationId), localId(conversationId))) return null
+  if (conversationId !== null && store.writer.prepare('SELECT 1 FROM self_opt_outs WHERE conversation_id=?').get(localId(conversationId))) return null
   const confirmed = store.writer.prepare(`SELECT DISTINCT a.stable_account_key FROM self_confirmations s
     JOIN memberships m ON m.id=s.member_id JOIN accounts a ON a.id=m.account_id
     WHERE s.status='confirmed' AND s.source='user' AND a.platform=?`).all(platform) as { stable_account_key: string }[]
@@ -118,9 +116,9 @@ export function resolveTarget(store: Store, candidate: Candidate, decision?: Tar
       const sources = store.writer.prepare('SELECT conversation_id,platform,owner_key,conversation_key,namespace FROM source_conversations WHERE conversation_id=?').all(id) as Source[]
       for (const s of sources) {
         if (text(identity.platform) && text(s.platform) && identity.platform !== s.platform) invalid()
-        if (identity.namespace === s.namespace && identity.platform === s.platform &&
-            ((identity.ownerKey !== null && s.owner_key !== null && identity.ownerKey !== canonical(s.owner_key)) ||
-             (identity.conversationKey !== null && s.conversation_key !== null && identity.conversationKey !== s.conversation_key))) invalid()
+        if (identity.platform === s.platform && identity.ownerKey !== null && s.owner_key !== null && identity.ownerKey !== canonical(s.owner_key)) invalid()
+        if (identity.platform === s.platform && identity.namespace === s.namespace &&
+            identity.conversationKey !== null && s.conversation_key !== null && identity.conversationKey !== s.conversation_key) invalid()
       }
       conversationId = id.toString()
     } else if (decision?.target.kind === 'new') {
@@ -192,6 +190,10 @@ export function confirmSelf(store: Store, conversationId: LocalId, memberId: Loc
     if (!db.prepare('SELECT 1 FROM conversations WHERE id=?').get(conversation) ||
         (member !== null && !db.prepare('SELECT 1 FROM memberships WHERE id=? AND conversation_id=?').get(member, conversation))) invalid()
     db.prepare("UPDATE self_confirmations SET status='revoked' WHERE conversation_id=? AND status='confirmed'").run(conversation)
-    if (member !== null) db.prepare("INSERT INTO self_confirmations(conversation_id,member_id,status,source) VALUES (?,?,'confirmed','user')").run(conversation, member)
+    if (member === null) db.prepare('INSERT INTO self_opt_outs(conversation_id) VALUES (?) ON CONFLICT(conversation_id) DO NOTHING').run(conversation)
+    else {
+      db.prepare('DELETE FROM self_opt_outs WHERE conversation_id=?').run(conversation)
+      db.prepare("INSERT INTO self_confirmations(conversation_id,member_id,status,source) VALUES (?,?,'confirmed','user')").run(conversation, member)
+    }
   })()
 }

@@ -1,4 +1,4 @@
-export const schemaVersion = 1
+export const schemaVersion = 2
 export const schema = `
 CREATE TABLE conversations (
  id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -166,6 +166,17 @@ CREATE TABLE conversation_summaries (
  status TEXT NOT NULL CHECK(status IN ('pending','ready','failed')),
  updated_at_ms INTEGER
 ) STRICT;
+`
+
+export const selfOptOutSchema = `
+CREATE TABLE self_opt_outs (
+ conversation_id INTEGER PRIMARY KEY REFERENCES conversations(id)
+) STRICT;
+INSERT INTO self_opt_outs(conversation_id)
+SELECT DISTINCT s.conversation_id FROM self_confirmations s
+WHERE s.status='revoked' AND NOT EXISTS (
+ SELECT 1 FROM self_confirmations c WHERE c.conversation_id=s.conversation_id AND c.status='confirmed'
+);
 `
 
 
