@@ -7,6 +7,7 @@ import { createDataService } from '../../electron/data/service'
 import { createDataDispatcher } from '../../electron/data/dispatch'
 import { validateResult } from '../../src/shared/desktop-validation'
 import type { ImportSnapshot } from '../../src/shared/import-contract'
+import type { MemberView, MessagePage } from '../../src/shared/desktop-api'
 
 const resources: { store: Store; directory: string; service: ReturnType<typeof createDataService> }[] = []
 afterEach(async () => { for (const { service, store, directory } of resources.splice(0)) { await service.idle(); store.close(); await rm(directory, { recursive: true, force: true }) } })
@@ -75,4 +76,79 @@ it('lists every persisted member when a conversation has more than 10000 members
   const members = await dispatch('listMembers', ['1']) as { id: string; displayName: string }[]
   expect(members).toHaveLength(10001)
   expect(members[10000]).toMatchObject({ id: '10001', displayName: 'Member 10001' })
+})
+
+async function stageDocuments(context: Awaited<ReturnType<typeof setup>>, documents: unknown[]) {
+  const paths = await Promise.all(documents.map(async (document, index) => {
+    const path = join(context.directory, `source-${index}.json`)
+    await writeFile(path, JSON.stringify(document)); return { rootPath: path }
+  }))
+  const id = await context.dispatch('prepareImport', [paths]) as string
+  const initial = await context.service.getImport(id)
+  await context.dispatch('startImport', [{ kind: 'stage', jobId: id, entryIds: initial.discovery!.entries.map(entry => entry.entryId) }])
+  await context.service.idle()
+  const staged = await context.dispatch('getImport', [id]) as ImportSnapshot
+  expect(staged.status).toBe('awaiting_commit')
+  return staged
+}
+function identityDocument(messageId: string, ownerId?: string, platform = 'telegram') {
+  return { chatlab: { version: '0.0.2' }, meta: { name: 'Synthetic identity', platform, type: 'group', groupId: 'chat', ...(ownerId ? { ownerId } : {}) },
+    members: [{ platformId: 'owner', accountName: 'Same name' }, { platformId: 'other', accountName: 'Same name' }],
+    messages: [{ sender: 'owner', accountName: 'Same name', timestamp: 1700000000, type: 0, content: messageId, platformMessageId: messageId }] }
+}
+async function commitIdentity(context: Awaited<ReturnType<typeof setup>>, staged: ImportSnapshot, conversationId?: string, explicit = false) {
+  await context.dispatch('startImport', [{ kind: 'commit', plan: { jobId: staged.jobId, decisions: staged.candidates.map(candidate => ({ candidateId: candidate.candidateId,
+    target: conversationId ? { kind: 'existing', conversationId } : { kind: 'new' }, confirmedAliases: [], ...(explicit ? { selfMemberKey: 'owner' } : {}) })) } }])
+  await context.service.idle()
+  const saved = await context.dispatch('getImport', [staged.jobId]) as ImportSnapshot
+  expect(saved.status).toBe('completed')
+  return saved.results[0].conversationId!
+}
+async function selfState(context: Awaited<ReturnType<typeof setup>>, id: string) {
+  const page = await context.dispatch('readMessages', [{ conversationId: id, direction: 'after' }]) as MessagePage
+  const members = await context.dispatch('listMembers', [id]) as MemberView[]
+  return { messages: page.items.map(item => item.isSelf), members: members.map(member => member.confirmedSelf), memberIds: members.map(member => member.id) }
+}
+it('keeps confirmed self across actual same-account imports, reselection and local opt-out', async () => {
+  const context = await setup()
+  const first = await stageDocuments(context, [identityDocument('one', 'owner')])
+  const id = await commitIdentity(context, first, undefined, true)
+  const oldMessage = context.store.reader.prepare('SELECT * FROM messages').all()
+  const second = await stageDocuments(context, [identityDocument('two')])
+  await commitIdentity(context, second, id)
+  let state = await selfState(context, id)
+  expect(state.messages).toEqual([true, true]); expect(state.members).toEqual([true, true])
+  expect(context.store.reader.prepare('SELECT count(DISTINCT source_conversation_id) AS n,count(DISTINCT account_id) AS accounts FROM memberships').get()).toEqual({ n: 2n, accounts: 1n })
+  await context.dispatch('confirmSelf', [id, state.memberIds[1]])
+  state = await selfState(context, id)
+  expect(state.messages).toEqual([true, true]); expect(state.members).toEqual([true, true])
+  expect(context.store.reader.prepare('SELECT * FROM messages WHERE id=1').all()).toEqual(oldMessage)
+  await context.dispatch('confirmSelf', [id, null])
+  state = await selfState(context, id)
+  expect(state.messages).toEqual([false, false]); expect(state.members).toEqual([false, false])
+  const third = await stageDocuments(context, [identityDocument('three')]); await commitIdentity(context, third, id)
+  expect((await selfState(context, id)).messages).toEqual([false, false, false])
+})
+it('honors grouped explicit choices for two proven same-account source memberships', async () => {
+  const context = await setup()
+  const first = await stageDocuments(context, [identityDocument('initial', 'owner')])
+  const id = await commitIdentity(context, first, undefined, true)
+  const group = await stageDocuments(context, [identityDocument('one', 'owner'), identityDocument('two')])
+  await commitIdentity(context, group, id, true)
+  expect((await selfState(context, id)).messages).toEqual([true, true, true])
+  expect((await selfState(context, id)).members).toEqual([true, true])
+})
+it('falls back to exact membership for account-less same-name imports and never confirms parser hints', async () => {
+  const context = await setup()
+  const document = identityDocument('one', 'owner', 'unknown')
+  document.messages.push({ ...document.messages[0], sender: 'other', content: 'two', platformMessageId: 'two' })
+  const first = await stageDocuments(context, [document])
+  const id = await commitIdentity(context, first)
+  expect((await selfState(context, id)).messages).toEqual([false, false])
+  const initial = await selfState(context, id); await context.dispatch('confirmSelf', [id, initial.memberIds[0]])
+  let state = await selfState(context, id)
+  expect(state.messages).toEqual([true, false]); expect(state.members).toEqual([true, false])
+  await context.dispatch('confirmSelf', [id, state.memberIds[1]])
+  state = await selfState(context, id)
+  expect(state.messages).toEqual([false, true]); expect(state.members).toEqual([false, true])
 })

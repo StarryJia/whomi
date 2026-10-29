@@ -1,4 +1,5 @@
 import type { Store } from './open'
+import { confirmedSelfSql } from './self'
 import type { ConversationQueries, ConversationSummary, MessagePage, MessagePosition, MessageView, ReplyView } from '../../../src/shared/desktop-api'
 
 const maxId = 9223372036854775807n
@@ -58,6 +59,7 @@ function position(row: Anchor): MessagePosition { return { id: String(row.id), t
 
 export function createQueries(store: Store): ConversationQueries {
   const db = store.reader
+  const self = db.prepare(`SELECT ${confirmedSelfSql} AS confirmed FROM memberships m WHERE m.conversation_id=? AND m.id=?`)
   function snapshot(conversationId: bigint): bigint {
     return (db.prepare('SELECT coalesce(max(id),0) AS id FROM messages WHERE conversation_id=?').get(conversationId) as { id: bigint }).id
   }
@@ -80,8 +82,7 @@ export function createQueries(store: Store): ConversationQueries {
   function view(row: MessageRow): MessageView {
     const reply = db.prepare('SELECT target_message_id,original_id,id_namespace,text,sender_name,sent_at_ms,state FROM message_replies WHERE message_id=? AND conversation_id=?').get(row.id, row.conversation_id) as { target_message_id: bigint | null; original_id: string | null; id_namespace: string | null; text: string | null; sender_name: string | null; sent_at_ms: bigint | null; state: ReplyView['state'] } | undefined
     const attachments = db.prepare('SELECT kind,name,state FROM message_attachments WHERE message_id=? ORDER BY id').all(row.id) as MessageView['attachments']
-    const isSelf = row.member_id !== null && db.prepare(`SELECT 1 FROM self_confirmations WHERE conversation_id=? AND member_id=? AND status='confirmed'
-      AND NOT EXISTS(SELECT 1 FROM self_opt_outs WHERE conversation_id=?)`).get(row.conversation_id, row.member_id, row.conversation_id) !== undefined
+    const isSelf = row.member_id !== null && (self.get(row.conversation_id, row.member_id) as { confirmed: bigint } | undefined)?.confirmed === 1n
     return {
       id: String(row.id), conversationId: String(row.conversation_id), memberId: row.member_id === null ? null : String(row.member_id),
       senderKind: row.sender_kind, senderName: row.sender_name, isSelf, sentAtMs: timestamp(row.sent_at_ms), timeRaw: row.time_raw,

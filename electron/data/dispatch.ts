@@ -1,6 +1,7 @@
 import { isAbsolute } from 'node:path'
 import type { Store } from './db/open'
 import { createQueries } from './db/queries'
+import { confirmedSelfSql } from './db/self'
 import type { createDataService } from './service'
 import type { MemberView, PreviewOptions, ReadMessagesInput, ListConversationsInput, LocateSourceInput } from '../../src/shared/desktop-api'
 import type { StartImportRequest } from '../../src/shared/import-contract'
@@ -33,8 +34,7 @@ export function createDataDispatcher(store: Store, service: ReturnType<typeof cr
       case 'listMembers': {
         const id = args[0] as string; conversation(id)
         const rows = db.prepare(`SELECT m.id,m.display_name,m.self_hint,
-          EXISTS(SELECT 1 FROM self_confirmations s WHERE s.member_id=m.id AND s.conversation_id=m.conversation_id AND s.status='confirmed')
-          AND NOT EXISTS(SELECT 1 FROM self_opt_outs o WHERE o.conversation_id=m.conversation_id) AS confirmed
+          ${confirmedSelfSql} AS confirmed
           FROM memberships m WHERE m.conversation_id=? ORDER BY m.id`).all(BigInt(id)) as { id: bigint; display_name: string; self_hint: bigint | null; confirmed: bigint }[]
         result = rows.map(row => ({ id: row.id.toString(), displayName: row.display_name, selfHint: row.self_hint === null ? null : row.self_hint === 1n, confirmedSelf: row.confirmed === 1n } satisfies MemberView))
         break

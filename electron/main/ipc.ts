@@ -5,8 +5,14 @@ import type { SourceGrants } from './source-grants'
 
 type Caller = { sender: unknown; senderFrame: { url: string } | null }
 type TrustedWindow = { webContents: { mainFrame: { url: string } } }
+function documentUrl(value: string): string {
+  const url = new URL(value)
+  url.hash = ''
+  return url.href
+}
 export function isTrustedCaller(event: Caller, window: TrustedWindow, appUrl: string): boolean {
-  return event.sender === window.webContents && event.senderFrame === window.webContents.mainFrame && event.senderFrame?.url === appUrl
+  if (event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame || !event.senderFrame) return false
+  try { return documentUrl(event.senderFrame.url) === documentUrl(appUrl) } catch { return false }
 }
 type RouterOptions = { grants: SourceGrants; request(method: string, payload: unknown): Promise<unknown>; chooseSources?(owner: number, kind: 'files' | 'directory'): Promise<SourceHandle[]> }
 export function createDesktopRouter(options: RouterOptions) {

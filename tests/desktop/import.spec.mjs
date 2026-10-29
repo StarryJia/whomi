@@ -64,6 +64,17 @@ test('actual import UI preserves old messages, self identity, source bytes and s
     expect(await page.evaluate(() => window.importExecuted)).toBeUndefined()
     expect(await page.locator('.message-text script, .message-text img').count()).toBe(0)
     await expect(page.locator('.message-self')).toHaveCount(3)
+    await application.evaluate(({ dialog }) => { dialog.showOpenDialog = async () => ({ canceled: true, filePaths: [] }) })
+    for (const name of ['Whomi 首页', '跳到主要内容']) {
+      await page.evaluate(() => { location.hash = '' })
+      const link = page.getByRole('link', { name, exact: true })
+      await link.focus(); await link.click()
+      await expect.poll(() => page.url().endsWith('#main-content')).toBe(true)
+      expect(await page.evaluate(() => window.whomi.chooseSources('files'))).toEqual([])
+      const afterNavigation = await page.evaluate(id => window.whomi.readMessages({ conversationId: id, direction: 'after' }), initial.id)
+      expect(afterNavigation.items).toHaveLength(3)
+      expect(afterNavigation.items.every(item => item.isSelf)).toBe(true)
+    }
     await save(page, folder, `existing:${initial.id}`)
     await expect(page.getByText('已保存 1 条消息。', { exact: true })).toBeVisible()
     await save(page, second, `existing:${initial.id}`)

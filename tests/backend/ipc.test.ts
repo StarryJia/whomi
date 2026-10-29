@@ -31,14 +31,27 @@ describe('desktop boundary', () => {
     ]) expect.soft(() => validateResult('getImport', value)).not.toThrow()
     expect.soft(() => validateResult('previewImport', { messages: [{ ordinal: 0, senderKind: 'member', senderKey: 'member', senderName: 'Synthetic', sentAtMs: null, timeRaw: null, timePrecision: 'unknown', timezone: null, kind: 'file', text: '', sourceType: null, reply: null, attachments: many({ kind: 'file', name: 'Synthetic', state: 'unresolved' }) }], nextOrdinal: null })).not.toThrow()
   })
-  it('checks sender identity, main frame identity and the exact app URL', () => {
+  it('checks sender identity, main frame identity and the exact app document URL', () => {
     const frame = { url: 'file:///C:/app/index.html' }, contents = { id: 1, mainFrame: frame }
     const window = { webContents: contents }
     expect(isTrustedCaller({ sender: contents, senderFrame: frame }, window, frame.url)).toBe(true)
     expect(isTrustedCaller({ sender: { ...contents }, senderFrame: frame }, window, frame.url)).toBe(false)
     expect(isTrustedCaller({ sender: contents, senderFrame: { ...frame } }, window, frame.url)).toBe(false)
+    expect(isTrustedCaller({ sender: contents, senderFrame: null }, window, frame.url)).toBe(false)
     frame.url = 'file:///C:/app/other.html'
     expect(isTrustedCaller({ sender: contents, senderFrame: frame }, window, 'file:///C:/app/index.html')).toBe(false)
+  })
+  it('accepts only fragment changes within the trusted document', () => {
+    for (const appUrl of ['file:///C:/app/index.html', 'http://127.0.0.1:5173/']) {
+      const frame = { url: `${appUrl}#main-content` }, contents = { mainFrame: frame }, window = { webContents: contents }
+      expect(isTrustedCaller({ sender: contents, senderFrame: frame }, window, appUrl)).toBe(true)
+      for (const suffix of ['?other=1#main-content', 'other.html#main-content']) {
+        frame.url = `${appUrl}${suffix}`
+        expect(isTrustedCaller({ sender: contents, senderFrame: frame }, window, appUrl)).toBe(false)
+      }
+      frame.url = 'https://example.invalid/#main-content'
+      expect(isTrustedCaller({ sender: contents, senderFrame: frame }, window, appUrl)).toBe(false)
+    }
   })
   it('rejects unknown methods and malformed arguments before contacting the worker', async () => {
     const requests: unknown[] = []
