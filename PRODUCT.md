@@ -1,5 +1,7 @@
 # Whomi 产品上下文
 
+2026-10-30 会话 AI 后台已接入完整 Pi 软件开发工具包、版本化模型配置、分析确认及报告、对话与任务恢复、用量统计。仅当前会话有效结果进入其 AI 线程，全局画像汇总、Spark／问一问推断、技能安装管理和分析管理页仍未实现。正式桌面配置模型后可运行；独立网页预览仍为合成示例。实际验证见[后端记录](docs/research/conversation-ai-backend-validation.md)，下方早期阶段描述冲突时以此为准。
+
 <!-- impeccable:product-schema 1 -->
 
 本文件记录已有功能基线。2026-10-30 已接入 Windows 桌面本地导入、增量保存、摘要、分页阅读和稳定消息编号定位；验证范围与限制见[导入验证](docs/research/conversation-import-validation.md)。个人总览、Spark 与问一问仍是展示及交互前端，模型分析、反馈持久化与后续修正未实现。历史视觉记录见[隐私封面与启动动效约定](docs/designs/whomi-private-cover-motion.md)和[个人总览实现记录](docs/designs/whomi-personal-overview-implementation.md)。
