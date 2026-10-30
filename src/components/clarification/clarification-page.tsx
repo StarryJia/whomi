@@ -20,7 +20,7 @@ interface ClarificationPageProps {
 export function ClarificationPage({ question, models, controller, headingRef,
   onOpenSource, isSourceAvailable, preview = false }: ClarificationPageProps) {
   return <section className={clsx('clarification-page', !question && 'is-empty')} aria-labelledby="clarification-title">
-    <h1 id="clarification-title" ref={headingRef} tabIndex={-1}>解惑</h1>
+    <h1 id="clarification-title" ref={headingRef} tabIndex={-1}>问一问</h1>
     {!question ? <div className="clarification-empty">
       <p>疑问今天请假了。</p>
     </div> : <ClarificationQuestionView key={question.id} question={question} models={models}

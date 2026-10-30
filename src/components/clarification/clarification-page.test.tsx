@@ -41,10 +41,10 @@ function Harness({ item = question, availableModels = models, adapter, available
     headingRef={createRef()} onOpenSource={onSource} isSourceAvailable={() => availableSource} />
 }
 
-describe('解惑页面', () => {
+describe('问一问页面', () => {
   it('无问题时只显示轻松提示，不提供作答或独立返回操作', () => {
     render(<Harness item={null} />)
-    expect(screen.getByRole('heading', { level: 1, name: '解惑' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: '问一问' })).toBeInTheDocument()
     expect(screen.getByText('疑问今天请假了。')).toBeInTheDocument()
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
     expect(screen.queryByRole('button')).not.toBeInTheDocument()

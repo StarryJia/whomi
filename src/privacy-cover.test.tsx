@@ -38,7 +38,7 @@ describe('Hello 隐私封面', () => {
     expect(navigation.queryByRole('button', { name: '个人仪表台' })).not.toBeInTheDocument()
     const destinations = navigation.getAllByRole('button')
     expect(destinations[0]).toHaveAccessibleName('个人总览')
-    expect(destinations[1]).toHaveAccessibleName('分析')
+    expect(destinations[1]).toHaveAccessibleName('分析管理')
     expect(within(main).queryByText('点击任意位置，进入个人总览')).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: '个人总览' })).not.toBeInTheDocument()
   })

@@ -160,7 +160,7 @@ function DevelopmentPreview() {
               setPage(event.target.value as typeof page)
             }}>
               <option value="overview">个人总览</option>
-              <option value="clarification">解惑</option>
+              <option value="clarification">问一问</option>
               <option value="conversation">会话与 AI 对话</option>
             </select>
           </label>
@@ -196,10 +196,10 @@ function DevelopmentPreview() {
             <label><span>模型连接</span><select value={String(conversationAdapterMissing)} onChange={event => setConversationAdapterMissing(event.target.value === 'true')}>
               <option value="false">示例适配器</option><option value="true">无可用模型</option>
             </select></label>
-            <p className="preview-scenario-hint">点击或长按滑动选择消息，再向 AI 提问。回答、画像分析进度和统计均为模拟；切换条件会重置本轮预览。</p>
+            <p className="preview-scenario-hint">点击会话顶部光标开启消息选择，再向 AI 提问。回答、分析进度和统计均为模拟；切换条件会重置本轮预览。</p>
           </> : <>
             <label>
-              <span>解惑场景</span>
+              <span>问一问场景</span>
               <select value={clarificationId} onChange={event => {
                 submission.reset()
                 withdrawal.reset()
@@ -218,7 +218,7 @@ function DevelopmentPreview() {
             </label>
             {submission.mode === 'delayed' && <button type="button" onClick={submission.complete} disabled={!submission.waitingCount}>完成模拟提交</button>}
             {withdrawal.mode === 'delayed' && <button type="button" onClick={withdrawal.complete} disabled={!withdrawal.waitingCount}>完成模拟撤回</button>}
-            <p className="preview-scenario-hint">{clarificationScenario.description} 切换场景后，点击侧栏解惑进入。</p>
+            <p className="preview-scenario-hint">{clarificationScenario.description} 切换场景后，点击侧栏问一问进入。</p>
             {(submission.waitingCount > 0 || withdrawal.waitingCount > 0) && <p className="preview-save-hint" role="status">操作正在等待，请点击对应的完成模拟按钮。</p>}
           </>}
         </div>

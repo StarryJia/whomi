@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react'
 import {
-  ChartNoAxesCombined,
-  LayoutDashboard,
+  ClipboardList,
+  ContactRound,
   MessageCircleQuestion,
   PanelLeftClose,
   PanelLeftOpen,
@@ -32,7 +32,7 @@ import './styles.css'
 import './components/conversations.css'
 
 const destinations: { label: string; icon: LucideIcon }[] = [
-  { label: '分析', icon: ChartNoAxesCombined },
+  { label: '分析管理', icon: ClipboardList },
 ]
 
 function UnavailableDestination({ label, icon: Icon }: { label: string; icon: LucideIcon }) {
@@ -265,15 +265,15 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
         <nav className="sidebar-navigation" aria-label="主导航">
           <Tooltip content="个人总览">
             <button className="nav-control" type="button" aria-label="个人总览" aria-current={view === 'overview' ? 'page' : undefined} onClick={enterOverview}>
-              <span className="control-icon"><LayoutDashboard aria-hidden="true" /></span>
+              <span className="control-icon"><ContactRound aria-hidden="true" /></span>
               <span className="control-label" aria-hidden="true">个人总览</span>
             </button>
           </Tooltip>
           {destinations.map((destination) => <UnavailableDestination key={destination.label} {...destination} />)}
-          <Tooltip content="解惑">
-            <button className="nav-control" type="button" aria-label="解惑" aria-current={view === 'clarification' ? 'page' : undefined} onClick={openClarification}>
+          <Tooltip content="问一问">
+            <button className="nav-control" type="button" aria-label="问一问" aria-current={view === 'clarification' ? 'page' : undefined} onClick={openClarification}>
               <span className="control-icon"><MessageCircleQuestion aria-hidden="true" /></span>
-              <span className="control-label" aria-hidden="true">解惑</span>
+              <span className="control-label" aria-hidden="true">问一问</span>
             </button>
           </Tooltip>
           <ConversationNavigation wide={open} conversations={reader.conversations} activeId={view === 'conversation' ? activeId : undefined}
@@ -295,7 +295,7 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
           onLocateMessage={message => reader.locate({ conversationId: activeId, messageId: message.id })}
           onBefore={reader.loadBefore} onAfter={reader.loadAfter} onRetry={() => { void reader.open(activeId) }}
           onReturn={source ? (sourceOrigin === 'clarification' ? openClarification : enterOverview) : fromImport ? openImport : undefined}
-          returnLabel={fromImport ? '返回导入结果' : sourceOrigin === 'clarification' ? '返回解惑' : '返回个人总览'} /> : view === 'clarification' ? (
+          returnLabel={fromImport ? '返回导入结果' : sourceOrigin === 'clarification' ? '返回问一问' : '返回个人总览'} /> : view === 'clarification' ? (
           <ClarificationPage question={clarificationQuestion} models={clarificationModels} controller={clarification}
             headingRef={clarificationTitleRef} preview={previewing}
             onOpenSource={reference => openSource(reference, 'clarification')}

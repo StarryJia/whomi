@@ -65,15 +65,15 @@ describe('总览导航与原文范围', () => {
     expect(screen.getByRole('heading', { name: '个人总览' })).toBeInTheDocument()
   })
 
-  it('独立解惑菜单进入诚实空状态，总览内没有解惑入口', async () => {
+  it('独立问一问菜单进入诚实空状态，总览内没有问一问入口', async () => {
     const user = userEvent.setup()
     render(<App />)
     await user.click(screen.getByRole('button', { name: /进入个人总览/ }))
-    expect(within(screen.getByRole('main')).queryByRole('button', { name: '解惑' })).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: '解惑' }))
-    await waitFor(() => expect(screen.getByRole('heading', { name: '解惑' })).toHaveFocus())
+    expect(within(screen.getByRole('main')).queryByRole('button', { name: '问一问' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '问一问' }))
+    await waitFor(() => expect(screen.getByRole('heading', { name: '问一问' })).toHaveFocus())
     expect(screen.getByText('疑问今天请假了。')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '解惑' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('button', { name: '问一问' })).toHaveAttribute('aria-current', 'page')
   })
 
   it('定位一段交流并保留前后文，返回总览保留未提交草稿', async () => {
@@ -111,16 +111,16 @@ describe('总览导航与原文范围', () => {
     expect(screen.getByRole('region', { name: '聊天记录' }).querySelector('.message-source')).toBeNull()
   })
 
-  it('窄屏键盘进入解惑后收起导航面板，并聚焦页面标题', async () => {
+  it('窄屏键盘进入问一问后收起导航面板，并聚焦页面标题', async () => {
     const media = window.matchMedia('')
     vi.spyOn(window, 'matchMedia').mockImplementation(query => ({ ...media, media: query, matches: query === '(prefers-reduced-motion: reduce)' || query === '(max-width: 640px)' }))
     const user = userEvent.setup()
     render(<App />)
     await user.click(screen.getByRole('button', { name: '展开侧栏' }))
-    screen.getByRole('button', { name: '解惑' }).focus()
+    screen.getByRole('button', { name: '问一问' }).focus()
     await user.keyboard('{Enter}')
     expect(screen.queryByRole('dialog', { name: '导航面板' })).not.toBeInTheDocument()
-    await waitFor(() => expect(screen.getByRole('heading', { name: '解惑' })).toHaveFocus())
+    await waitFor(() => expect(screen.getByRole('heading', { name: '问一问' })).toHaveFocus())
     expect(screen.getByRole('main')).not.toHaveAttribute('inert')
   })
 

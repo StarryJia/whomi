@@ -31,11 +31,11 @@ beforeEach(() => {
   window.matchMedia = query => ({ ...matchMedia(query), matches: query === '(prefers-reduced-motion: reduce)' })
 })
 
-describe('解惑与情景阅读往返', () => {
+describe('问一问与情景阅读往返', () => {
   it('回顾原文定位整段范围，返回同题仍保留自己回答草稿', async () => {
     const user = userEvent.setup()
     render(<App conversations={conversations} clarificationQuestion={question} clarificationAdapter={adapter} />)
-    await user.click(screen.getByRole('button', { name: '解惑' }))
+    await user.click(screen.getByRole('button', { name: '问一问' }))
     await user.type(screen.getByRole('textbox'), '我担心他一个人熬得太晚。')
     await user.click(screen.getByRole('button', { name: '回顾那段情景' }))
     const reader = screen.getByRole('region', { name: '聊天记录' })
@@ -43,23 +43,23 @@ describe('解惑与情景阅读往返', () => {
     expect(within(reader).getByText('下周要答辩了。')).toBeInTheDocument()
     expect(within(reader).getByText('那我们明天试一遍。')).toBeInTheDocument()
     await waitFor(() => expect(within(reader).getByText('昨晚试了一遍，讲到方法那里就卡住了。').closest('li')).toHaveFocus())
-    await user.click(screen.getByRole('button', { name: '返回解惑' }))
-    await waitFor(() => expect(screen.getByRole('heading', { name: '解惑' })).toHaveFocus())
+    await user.click(screen.getByRole('button', { name: '返回问一问' }))
+    await waitFor(() => expect(screen.getByRole('heading', { name: '问一问' })).toHaveFocus())
     expect(screen.getByRole('heading', { name: question.title })).toBeInTheDocument()
     expect(screen.getByRole('textbox')).toHaveValue('我担心他一个人熬得太晚。')
     expect(screen.getByRole('button', { name: /更想先听他说完/ })).toBeDisabled()
   })
 
-  it('品牌返回移除解惑内容，重新进入仍保留当前回答并可撤回', async () => {
+  it('品牌返回移除问一问内容，重新进入仍保留当前回答并可撤回', async () => {
     const user = userEvent.setup()
     render(<App clarificationQuestion={question} clarificationAdapter={adapter} />)
-    await user.click(screen.getByRole('button', { name: '解惑' }))
+    await user.click(screen.getByRole('button', { name: '问一问' }))
     await user.click(screen.getByRole('button', { name: /更想先听他说完/ }))
     await screen.findByRole('button', { name: '撤回回答' })
     await user.click(screen.getByRole('link', { name: 'Whomi 首页' }))
     expect(screen.queryByRole('heading', { name: question.title })).not.toBeInTheDocument()
     await waitFor(() => expect(screen.getByRole('button', { name: /进入个人总览/ })).toHaveFocus())
-    await user.click(screen.getByRole('button', { name: '解惑' }))
+    await user.click(screen.getByRole('button', { name: '问一问' }))
     expect(screen.getByRole('button', { name: '撤回回答' })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '撤回回答' }))
     await waitFor(() => expect(screen.getByRole('button', { name: /更想先听他说完/ })).toBeEnabled())
