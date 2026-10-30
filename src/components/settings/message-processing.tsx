@@ -38,14 +38,14 @@ export function MessageProcessing({ api, value, onSaved, onBusy }: { api: Settin
   const toggle = (key: 'clean' | 'merge' | 'denoise' | 'anonymize' | 'redact') => void save({ ...current, [key]: !current[key] })
   const toggleRule = (rule: RedactionRule) => void save({ ...current, rules: current.rules.includes(rule) ? current.rules.filter(item => item !== rule) : [...current.rules, rule] })
   function saveSeconds() { if (validSeconds && numericSeconds !== current.mergeSeconds) void save({ ...current, mergeSeconds: numericSeconds }) }
-  return <div className="mp-page"><header className="mp-page-heading"><h1 tabIndex={-1}>消息处理</h1><p>整理发送给模型的聊天材料，原始记录保持不变。</p></header>
+  return <div className="mp-page"><header className="mp-page-heading"><h1 tabIndex={-1}>消息处理</h1><p>在发送给模型前整理聊天内容、处理隐私信息，聊天原文不变。</p></header>
     {error && <div className="settings-save-error" role="alert"><p className="ms-error">{error}</p>{failed && <button className="ms-button" disabled={busy} onClick={() => void save(failed)}>重试保存</button>}</div>}
-    <p className="settings-save-state" role="status">{busy ? '正在保存…' : '修改后自动保存'}</p>
+    <span className="mp-visually-hidden" role="status">{busy ? '正在保存…' : ''}</span>
     <div className="mp-content-section"><h2>整理材料</h2>
       <Setting title="数据清洗" description="整理分享卡片中的链接、小程序等内容。" checked={current.clean} busy={busy} onChange={() => toggle('clean')} />
-      <Setting title="合并连续发言" description="合并同一说话者在短时间内连续发送的消息。" checked={current.merge} busy={busy} onChange={() => toggle('merge')}>
+      <Setting title="合并连续发言" description="将同一人接连发送的文字合为一段，减少重复的姓名和时间。" checked={current.merge} busy={busy} onChange={() => toggle('merge')}>
         <label htmlFor="settings-merge-seconds" className="mp-field-label">合并时间窗口</label><div className="mp-number-field"><button type="button" className="mp-icon-button" aria-label="减少合并时间窗口 1 秒" disabled={busy || !validSeconds || numericSeconds <= 1} onClick={() => { const next = numericSeconds - 1; setSeconds(String(next)); void save({ ...current, mergeSeconds: next }) }}><Minus size={16} /></button><input id="settings-merge-seconds" type="number" inputMode="numeric" min={1} max={600} step={1} value={seconds} disabled={busy} aria-invalid={!validSeconds} aria-describedby="settings-merge-help" onChange={event => setSeconds(event.target.value)} onBlur={saveSeconds} onKeyDown={event => { if (event.key === 'Enter') saveSeconds() }} /><span>秒</span><button type="button" className="mp-icon-button" aria-label="增加合并时间窗口 1 秒" disabled={busy || !validSeconds || numericSeconds >= 600} onClick={() => { const next = numericSeconds + 1; setSeconds(String(next)); void save({ ...current, mergeSeconds: next }) }}><Plus size={16} /></button></div>
-        <p id="settings-merge-help" className={validSeconds ? 'mp-field-help' : 'mp-error'} role={validSeconds ? undefined : 'alert'}>{validSeconds ? '1～600 秒，每次增减 1 秒。' : '请输入 1～600 的整数秒数。'}</p>
+        <p id="settings-merge-help" className={validSeconds ? 'mp-field-help' : 'mp-error'} role={validSeconds ? undefined : 'alert'}>{validSeconds ? '相邻消息间隔不超过此时长时合并，范围 1～600 秒。' : '请输入 1～600 的整数秒数。'}</p>
       </Setting>
       <Setting title="智能去噪" description="过滤空内容和没有正文的系统占位消息，保留语气、否定和表情。" checked={current.denoise} busy={busy} onChange={() => toggle('denoise')} />
     </div><div className="mp-content-section"><h2>隐私处理</h2>

@@ -16,6 +16,8 @@
 .mp-number-field { display: flex; width: fit-content; max-width: 100%; align-items: center; gap: 0; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); }
 .mp-number-field input { min-width: 0; width: 86px; height: 42px; padding: 8px 4px; border: 0; background: transparent; color: var(--text); font: inherit; font-size: 14px; text-align: right; font-variant-numeric: tabular-nums; appearance: textfield; caret-color: var(--focus); }
 .mp-number-field input::-webkit-inner-spin-button, .mp-number-field input::-webkit-outer-spin-button { margin: 0; -webkit-appearance: none; }
+.mp-number-field:has(input:focus) { border-color: var(--text-muted); box-shadow: 0 0 0 2px var(--line); }
+.mp-number-field input:focus-visible { outline: none; }
 .mp-number-field > span { padding-inline: 7px 8px; font-size: 13px; color: var(--text-muted); }
 .mp-icon-button { display: inline-grid; place-items: center; flex: 0 0 44px; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 8px; color: var(--text-muted); background: transparent; cursor: pointer; }
 .mp-icon-button:hover { background: var(--hover); color: var(--text); }
