@@ -1,5 +1,6 @@
 import type { LocalId, MessageKind, ParsedMessage } from './conversation-model'
 import type { ImportSnapshot, JobId, StartImportRequest } from './import-contract'
+import type { AiApi } from './ai-contract'
 
 export type Page<T> = { items: T[]; nextCursor: string | null }
 export type ConversationSummary = {
@@ -86,6 +87,7 @@ export type DesktopMethods = ConversationQueries & {
   retrySummary(conversationId: LocalId): Promise<void>
 }
 export type DesktopApi = DesktopMethods & {
+  ai?: AiApi
   acceptDroppedFiles(files: File[]): Promise<SourceHandle[]>
   onImport(listener: (snapshot: ImportSnapshot) => void): () => void
 }

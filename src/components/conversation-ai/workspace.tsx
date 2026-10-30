@@ -3,12 +3,13 @@ import { createPortal } from 'react-dom'
 import { ArrowUp, ArrowRight, Check, ChevronDown, FileText, LoaderCircle, MessageCircle, Square, X } from 'lucide-react'
 import type { ReferenceRange } from './selection'
 import type { AnalysisProgress, AnalysisResult, ConversationAiAdapter, ConversationRequest, GenerationUsage } from './types'
+import type { AnalysisPreparation } from '../../shared/ai-contract'
 import './workspace.css'
 
 const number = (value: number) => new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 1 }).format(value)
-const valid = (value: number | undefined): value is number => value !== undefined && Number.isFinite(value) && value >= 0
+const valid = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && value >= 0
 function seconds(ms: number | undefined) { return valid(ms) ? `${number(ms / 1000)} 秒` : '未提供' }
-function errorText(error: unknown) { return error instanceof Error ? error.message : '操作失败，请重试。' }
+function errorText(error: unknown) { return error instanceof Error ? error.message : error && typeof error === 'object' && 'action' in error && typeof error.action === 'string' ? error.action : '操作失败，请重试。' }
 
 function Popover({ anchor, label, children, onClose, above = false, onMouseEnter, onMouseLeave, id }: {
   anchor: RefObject<HTMLElement | null>; label: string; children: ReactNode; onClose: () => void; above?: boolean
@@ -105,6 +106,7 @@ function Usage({ usage }: { usage?: GenerationUsage }) {
     <button ref={anchor} type="button" aria-expanded={open} onClick={() => setOpen(value => !value)}>
       {valid(usage.outputTokens) && <span>输出 {number(usage.outputTokens)} token</span>}
       {valid(usage.outputTokensPerSecond) && <span>{number(usage.outputTokensPerSecond)} token/秒</span>}
+      {usage.incomplete && <span>统计不完整</span>}
       {!valid(usage.outputTokens) && !valid(usage.outputTokensPerSecond) && '生成统计'}
       <ChevronDown aria-hidden="true" />
     </button>
@@ -119,7 +121,7 @@ function Usage({ usage }: { usage?: GenerationUsage }) {
   </div>
 }
 
-type Turn = { id: number; request: ConversationRequest; text: string; usage?: GenerationUsage; status: 'running' | 'done' | 'failed' | 'stopped'; error?: string }
+type Turn = { id: number | string; request: ConversationRequest; referenceIds?: string[]; text: string; usage?: GenerationUsage; status: 'running' | 'done' | 'failed' | 'stopped'; error?: string; remote?: boolean }
 type Slots = { analysisControl: ReactNode; composer: ReactNode; panelOpen: boolean }
 export function ConversationWorkspace({ conversationId, title, messageCount, references, onClearReferences, onJumpReference, onOpenAnalysisResult, adapter, children }: {
   conversationId: string; title: string; messageCount?: number; references: readonly ReferenceRange[]
@@ -139,6 +141,11 @@ export function ConversationWorkspace({ conversationId, title, messageCount, ref
   const [analysisError, setAnalysisError] = useState('')
   const [progress, setProgress] = useState<AnalysisProgress>()
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult>()
+  const [preparation, setPreparation] = useState<AnalysisPreparation>()
+  const [preparing, setPreparing] = useState(false)
+  const [prepareAttempt, setPrepareAttempt] = useState(0)
+  const [restoring, setRestoring] = useState(false)
+  const [restoreError, setRestoreError] = useState('')
   const [narrow, setNarrow] = useState(() => window.matchMedia('(max-width: 1000px)').matches)
   const source = useRef<HTMLDivElement>(null)
   const aside = useRef<HTMLElement>(null)
@@ -153,7 +160,7 @@ export function ConversationWorkspace({ conversationId, title, messageCount, ref
   const scroll = useRef<HTMLDivElement>(null)
   const atEnd = useRef(true)
   const selectedModel = adapter?.models.find(model => model.id === modelId)
-  const canSend = !!adapter && !!selectedModel && !!draft.trim() && !busy
+  const canSend = !!adapter && !!selectedModel && !!draft.trim() && !busy && !restoring
 
   useEffect(() => {
     alive.current = true
@@ -167,12 +174,62 @@ export function ConversationWorkspace({ conversationId, title, messageCount, ref
     setAnalysisResult(undefined)
     return () => {
       alive.current = false
-      chatRun.current?.abort()
-      analysisRun.current?.abort()
+      chatRun.current?.abort('detach')
+      analysisRun.current?.abort('detach')
       chatRun.current = undefined
       analysisRun.current = undefined
     }
   }, [conversationId, adapter])
+  useEffect(() => {
+    if (!adapter?.watchThread && !adapter?.restoreThread) return
+    const controller = new AbortController()
+    setRestoring(true)
+    setRestoreError('')
+    const receive: Parameters<NonNullable<ConversationAiAdapter['watchThread']>>[1] = values => {
+      if (controller.signal.aborted) return
+      setRestoring(false)
+      setTurns(previous => {
+        const restored: Turn[] = values.map(value => {
+          const existing = previous.find(turn => turn.request.requestId === value.requestId)
+          return { id: value.id, remote: true, request: { conversationId, turnId: value.id, referenceIds: value.referenceIds, requestId: value.requestId, prompt: value.prompt,
+            modelId: value.modelId, skillId: value.skillId, references: existing?.request.references ?? [] },
+            referenceIds: value.referenceIds, text: value.text, usage: value.usage, error: value.error,
+            status: ['queued', 'running', 'summarizing'].includes(value.state) ? 'running' : value.state === 'completed' ? 'done' : value.state === 'stopped' ? 'stopped' : 'failed' }
+        })
+        return [...restored, ...previous.filter(turn => !turn.remote && !values.some(value => value.requestId === turn.request.requestId))]
+      })
+      setBusy(values.some(turn => ['queued', 'running', 'summarizing'].includes(turn.state)) || !!chatRun.current)
+    }
+    const work = adapter.watchThread ? adapter.watchThread(conversationId, receive, controller.signal)
+      : adapter.restoreThread!(conversationId).then(receive)
+    void work.catch(error => { if (!controller.signal.aborted) { setRestoring(false); setRestoreError(errorText(error)) } })
+    return () => controller.abort('detach')
+  }, [adapter, conversationId])
+  useEffect(() => {
+    if (!adapter?.watchAnalysis) return
+    const controller = new AbortController()
+    void adapter.watchAnalysis(conversationId, task => {
+      if (controller.signal.aborted || analysisRun.current) return
+      setAnalysisConfirming(false)
+      setAnalysisState(!task.valid ? 'failed' : ['queued', 'running', 'summarizing'].includes(task.state) ? 'running' : task.state === 'completed' ? 'done'
+        : task.state === 'stopped' ? 'stopped' : 'failed')
+      setAnalysisError(!task.valid ? '本人或资料范围已变化，请重新分析。' : task.error ?? (task.state === 'interrupted' ? '分析已中断，请重新确认后继续。' : ''))
+      setProgress({ analyzedMessages: task.analyzedMessages, totalMessages: task.totalMessages, usage: task.usage })
+      setAnalysisResult({ taskId: task.id, usage: task.usage })
+    }, controller.signal).catch(error => { if (!controller.signal.aborted) setAnalysisError(errorText(error)) })
+    return () => controller.abort('detach')
+  }, [adapter, conversationId])
+  useEffect(() => {
+    if (!analysisOpen || !analysisConfirming || !adapter?.prepareAnalysis || !selectedModel) return
+    let current = true
+    setPreparing(true)
+    setPreparation(undefined)
+    setAnalysisError('')
+    void adapter.prepareAnalysis({ conversationId, modelId }).then(value => {
+      if (current) setPreparation(value)
+    }, error => { if (current) setAnalysisError(errorText(error)) }).finally(() => { if (current) setPreparing(false) })
+    return () => { current = false }
+  }, [analysisOpen, analysisConfirming, adapter, conversationId, modelId, selectedModel, prepareAttempt])
   useEffect(() => {
     const query = window.matchMedia('(max-width: 1000px)')
     const update = () => setNarrow(query.matches)
@@ -201,10 +258,12 @@ export function ConversationWorkspace({ conversationId, title, messageCount, ref
     chatRun.current = undefined
     setBusy(false)
     setTurns(items => items.map(turn => turn.status === 'running' ? { ...turn, status: 'stopped' } : turn))
+    const running = turns.find(turn => turn.remote && turn.status === 'running')
+    if (running) void adapter?.stopTurn?.(String(running.id)).catch(error => setRestoreError(errorText(error)))
   }
   async function send(retry?: Turn) {
     if (!adapter || busy || chatRun.current || (!retry && !canSend)) return
-    const request: ConversationRequest = retry?.request ?? { conversationId, prompt: draft.trim(),
+    const request: ConversationRequest = retry?.request ?? { requestId: crypto.randomUUID(), conversationId, prompt: draft.trim(),
       references: references.map(reference => ({ ...reference, messages: [...reference.messages] })), modelId,
       history: turns.filter(turn => turn.status === 'done').flatMap(turn => [
         { role: 'user' as const, text: turn.request.prompt, references: turn.request.references },
@@ -226,7 +285,7 @@ export function ConversationWorkspace({ conversationId, title, messageCount, ref
       } })
       if (!active()) return
       if (!result.text.trim()) throw new Error('未收到回答，请重试。')
-      setTurns(items => items.map(item => item.id === id ? { ...item, text: result.text, usage: result.usage, status: 'done' } : item))
+      setTurns(items => items.map(item => item.id === id || item.request.requestId === request.requestId ? { ...item, text: result.text, usage: result.usage, status: 'done' } : item))
       setDraft(value => value.trim() === request.prompt ? '' : value)
     } catch (error) {
       if (active()) setTurns(items => items.map(item => item.id === id ? { ...item, status: 'failed', error: errorText(error) } : item))
@@ -238,9 +297,10 @@ export function ConversationWorkspace({ conversationId, title, messageCount, ref
     analysisRun.current?.abort()
     analysisRun.current = undefined
     setAnalysisState('stopped')
+    if (analysisResult?.taskId) void adapter?.stopAnalysis?.(analysisResult.taskId).catch(error => setAnalysisError(errorText(error)))
   }
   async function analyze() {
-    if (!adapter || !selectedModel || messageCount === 0 || analysisState === 'running') return
+    if (!adapter || !selectedModel || (messageCount === 0 && !adapter.prepareAnalysis) || analysisState === 'running' || preparing || (adapter.prepareAnalysis && !preparation)) return
     const controller = new AbortController()
     analysisRun.current = controller
     setAnalysisState('running')
@@ -250,7 +310,8 @@ export function ConversationWorkspace({ conversationId, title, messageCount, ref
     setAnalysisResult(undefined)
     const active = () => alive.current && analysisRun.current === controller && !controller.signal.aborted
     try {
-      const result = await adapter.analyze({ conversationId, modelId }, { signal: controller.signal, onProgress: value => {
+      const result = await adapter.analyze({ conversationId, modelId,
+        ...(preparation ? { preparationToken: preparation.token, requestId: crypto.randomUUID() } : {}) }, { signal: controller.signal, onProgress: value => {
         if (!active()) return
         if (valid(value.analyzedMessages) && valid(value.totalMessages)) setProgress(value)
       } })
@@ -267,7 +328,7 @@ export function ConversationWorkspace({ conversationId, title, messageCount, ref
   const analysisUsage = analysisResult?.usage ?? progress?.usage
   const analysisSpeed = analysisUsage?.outputTokensPerSecond ?? progress?.outputTokensPerSecond
   const hasAnalysisUsage = analysisUsage && Object.values(analysisUsage).some(valid)
-  const confirmAnalysis = () => { setAnalysisConfirming(true); setAnalysisError('') }
+  const confirmAnalysis = () => { setAnalysisConfirming(true); setAnalysisError(''); setPrepareAttempt(value => value + 1) }
   const analysisControl = <>
     <button ref={analysisAnchor} type="button" className="conversation-analysis-trigger" aria-expanded={analysisOpen}
       onClick={() => setAnalysisOpen(value => !value)}>
@@ -275,12 +336,18 @@ export function ConversationWorkspace({ conversationId, title, messageCount, ref
     </button>
     {analysisOpen && <Popover anchor={analysisAnchor} label="会话分析状态" onClose={() => setAnalysisOpen(false)}>
       <h3>会话分析</h3>
-      {messageCount === 0 ? <p className="conversation-state-copy">巧妇难为无米之炊，先导入一些聊天记录吧。</p> : !adapter || !selectedModel ? <p className="conversation-state-copy">暂无可用模型。连接模型后可分析当前会话。</p> : analysisConfirming ? <>
-        <p className="conversation-analysis-title">{title}</p>
-        <p className="conversation-state-copy">{valid(messageCount) ? `当前会话 ${number(messageCount)} 条消息` : '分析当前会话'} · {selectedModel.label}</p>
+      {analysisConfirming && messageCount === 0 && !adapter?.prepareAnalysis ? <p className="conversation-state-copy">巧妇难为无米之炊，先导入一些聊天记录吧。</p> : analysisConfirming && (!adapter || !selectedModel) ? <p className="conversation-state-copy">暂无可用模型。连接模型后可分析当前会话。</p> : analysisConfirming ? <>
+        <p className="conversation-analysis-title">{preparation?.title ?? title}</p>
+        {preparing && <p role="status" className="conversation-state-copy">正在核对分析范围…</p>}
+        {preparation ? <><p className="conversation-state-copy">本人：{preparation.selfName}</p>
+          <p className="conversation-state-copy">{number(preparation.totalMessages)} 条消息 · {number(preparation.analyzableMessages)} 条可分析 · {preparation.model.label}</p></>
+          : !adapter?.prepareAnalysis && <p className="conversation-state-copy">{valid(messageCount) ? `当前会话 ${number(messageCount)} 条消息` : '分析当前会话'} · {selectedModel?.label}</p>}
+        {hasAnalysisUsage && analysisUsage.incomplete && <p className="conversation-state-copy">统计不完整</p>}
+        {analysisError && <p role="alert" className="conversation-error">{analysisError}</p>}
         <p className="conversation-state-copy">生成当前会话的画像结果。</p>
         <div className="conversation-analysis-actions">
-          <button type="button" className="conversation-text-button conversation-primary-button" onClick={() => { void analyze() }}>确认分析</button>
+          {(!adapter?.prepareAnalysis || preparation) && <button type="button" disabled={preparing} className="conversation-text-button conversation-primary-button" onClick={() => { void analyze() }}>确认分析</button>}
+          {adapter?.prepareAnalysis && !preparing && !preparation && <button type="button" className="conversation-text-button" onClick={confirmAnalysis}>重新核对</button>}
           <button type="button" className="conversation-text-button" onClick={() => setAnalysisOpen(false)}>取消</button>
         </div>
       </> : <>
@@ -341,8 +408,11 @@ export function ConversationWorkspace({ conversationId, title, messageCount, ref
       <div ref={scroll} className="conversation-ai-timeline" role="log" aria-label="AI 对话记录" aria-live="polite" onScroll={() => {
         if (scroll.current) atEnd.current = scroll.current.scrollHeight - scroll.current.scrollTop - scroll.current.clientHeight < 64
       }}>
+        {restoring && <p role="status" className="conversation-state-copy">正在恢复对话…</p>}
+        {restoreError && <p role="alert" className="conversation-error">{restoreError}</p>}
         {turns.map(turn => <div className="conversation-turn" key={turn.id}>
-          <div className="conversation-user-turn"><p>{turn.request.prompt}</p><References references={turn.request.references} onJump={jump} /></div>
+          <div className="conversation-user-turn"><p>{turn.request.prompt}</p><References references={turn.request.references} onJump={jump} />
+            {!turn.request.references.length && !!turn.referenceIds?.length && <span className="conversation-state-copy">{turn.referenceIds.length} 条参考消息</span>}</div>
           <div className="conversation-assistant-turn"><div className="conversation-answer-label"><MessageCircle aria-hidden="true" /><strong>AI</strong>{turn.status === 'running' && <span>正在回答…</span>}</div>
             {turn.text && <p className="conversation-answer-text">{turn.text}</p>}
             {turn.status === 'failed' && <div role="alert"><p className="conversation-error">{turn.error}</p><button type="button" className="conversation-text-button" disabled={busy} onClick={() => { void send(turn) }}>重试回答</button></div>}

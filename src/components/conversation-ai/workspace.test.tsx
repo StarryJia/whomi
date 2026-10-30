@@ -18,6 +18,75 @@ function Workspace({ adapter }: { adapter?: ConversationAiAdapter }) {
 }
 
 describe('对话与后台分析', () => {
+  it('列表消息数过期时以后台准备范围为准，允许确认真实材料', async () => {
+    const user = userEvent.setup(), adapter = fakeAdapter()
+    adapter.prepareAnalysis = async () => ({ token: 'verified', conversationId: 'c', title: '后台会话', selfName: '本人', totalMessages: 1, analyzableMessages: 1, snapshotMaxId: '1', expiresAt: Date.now() + 10000,
+      model: { id: 'model', label: '模型', model: 'm', baseUrl: 'http://localhost:9900/v1', contextWindow: 8000, maxTokens: 1000, enabled: true, version: 1, hasCredential: false } })
+    render(<ConversationWorkspace conversationId="c" title="会话" messageCount={0} references={[]} onClearReferences={() => {}} onJumpReference={() => {}} adapter={adapter}>{({ analysisControl, composer }) => <>{analysisControl}{composer}</>}</ConversationWorkspace>)
+    await user.click(screen.getByRole('button', { name: '会话分析' }))
+    await user.click(await screen.findByRole('button', { name: '确认分析' }))
+    expect(adapter.analyze).toHaveBeenCalledWith(expect.objectContaining({ preparationToken: 'verified' }), expect.anything())
+  })
+  it('部分请求缺少用量时明确标记统计不完整', async () => {
+    const user = userEvent.setup(), adapter = fakeAdapter()
+    adapter.respond = async () => ({ text: '可读的回答', usage: { outputTokens: 100, incomplete: true } })
+    render(<Workspace adapter={adapter} />)
+    await user.type(screen.getByRole('textbox'), '我的问题')
+    await user.click(screen.getByRole('button', { name: '发送给 AI' }))
+    expect(await screen.findByText('统计不完整')).toBeInTheDocument()
+  })
+  it('后端准备完成才允许确认，展示后台核对的身份与范围；取消零分析', async () => {
+    const user = userEvent.setup()
+    const adapter = fakeAdapter()
+    let complete: (value: Awaited<ReturnType<NonNullable<ConversationAiAdapter['prepareAnalysis']>>>) => void = () => {}
+    adapter.prepareAnalysis = vi.fn(() => new Promise<Awaited<ReturnType<NonNullable<ConversationAiAdapter['prepareAnalysis']>>>>(resolve => { complete = resolve }))
+    render(<Workspace adapter={adapter} />)
+    await user.click(screen.getByRole('button', { name: '会话分析' }))
+    expect(screen.queryByRole('button', { name: '确认分析' })).not.toBeInTheDocument()
+    act(() => complete({ token: 'verified', conversationId: 'c', title: '后台会话', selfName: '已确认的本人', totalMessages: 12,
+      analyzableMessages: 9, snapshotMaxId: '12', expiresAt: Date.now() + 10000,
+      model: { id: 'model', label: '后台模型', model: 'm', baseUrl: 'https://example.test', contextWindow: 8192, maxTokens: 1024, version: 1, enabled: true, hasCredential: true } }))
+    expect(await screen.findByText('本人：已确认的本人')).toBeInTheDocument()
+    expect(screen.getByText(/12 条消息.*9 条可分析/)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '取消' }))
+    expect(adapter.analyze).not.toHaveBeenCalled()
+  })
+  it.each([new Error('请先确认本人身份。'), { code: 'IDENTITY_REQUIRED', action: '请先确认本人身份。' }])('准备失败展示操作指引，不显示确认按钮或调用分析：%j', async error => {
+    const user = userEvent.setup(), adapter = fakeAdapter()
+    adapter.prepareAnalysis = vi.fn(async () => { throw error })
+    render(<Workspace adapter={adapter} />)
+    await user.click(screen.getByRole('button', { name: '会话分析' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('请先确认本人身份')
+    expect(screen.queryByRole('button', { name: '确认分析' })).not.toBeInTheDocument()
+    expect(adapter.analyze).not.toHaveBeenCalled()
+  })
+  it('正式线程恢复后可查看原回答，关闭侧窗不停止；离页仅解除观察', async () => {
+    const user = userEvent.setup(), adapter = fakeAdapter()
+    let signal: AbortSignal | undefined
+    adapter.watchThread = vi.fn(async (_id, update, observerSignal) => {
+      signal = observerSignal
+      update([{ id: 'persisted', requestId: 'original', prompt: '原先的问题', referenceIds: ['9'], modelId: 'model', text: '已保存的回答', state: 'completed', usage: {} }])
+    })
+    const view = render(<Workspace adapter={adapter} />)
+    await user.click(await screen.findByRole('button', { name: '继续 AI 对话' }))
+    expect(screen.getByText('已保存的回答')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '关闭 AI 对话' }))
+    expect(signal?.aborted).toBe(false)
+    view.unmount()
+    expect(signal?.reason).toBe('detach')
+  })
+  it('恢复已有分析状态，不重新准备或自动继续付费任务', async () => {
+    const user = userEvent.setup(), adapter = fakeAdapter()
+    adapter.prepareAnalysis = vi.fn()
+    adapter.watchAnalysis = vi.fn(async (_id, update) => update({ id: 'old-task', conversationId: 'c', modelId: 'model',
+      state: 'interrupted', analyzedMessages: 3, totalMessages: 7, skippedMessages: 0, usage: { outputTokens: 20 }, valid: true, eventSequence: 2 }))
+    render(<Workspace adapter={adapter} />)
+    await user.click(screen.getByRole('button', { name: '会话分析' }))
+    expect(screen.getByText('已分析 3 / 7 条')).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent('分析已中断')
+    expect(adapter.prepareAnalysis).not.toHaveBeenCalled()
+    expect(adapter.analyze).not.toHaveBeenCalled()
+  })
   it('请求未结束时替换适配器，取消旧任务并允许重新发送', async () => {
     const user = userEvent.setup()
     const oldAdapter = fakeAdapter()

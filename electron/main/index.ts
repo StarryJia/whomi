@@ -1,4 +1,4 @@
-import { app, BrowserWindow, session, ipcMain, dialog } from 'electron'
+import { app, BrowserWindow, session, ipcMain, dialog, safeStorage } from 'electron'
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { pathToFileURL } from 'node:url'
@@ -8,6 +8,11 @@ import type { DataHost } from './data-host'
 import { createSourceGrants } from './source-grants'
 import { createDesktopRouter, desktopChannels, isTrustedCaller, serializableError } from './ipc'
 import { BoundaryError } from '../../src/shared/desktop-validation'
+import { startAgentHost, type AgentHost } from './ai-host'
+import { createAiService } from './ai-service'
+import { createAiRouter } from './ai-router'
+import { createCredentialVault } from './ai-credentials'
+import { aiChannels } from '../../src/shared/ai-contract'
 
 // 测试资料必须是操作系统临时目录下的独立目录。
 let testDirectory: string | undefined
@@ -22,6 +27,8 @@ if (testDirectory) {
 }
 else if (!app.isPackaged) app.setPath('userData', join(app.getPath('appData'), 'Whomi Development'))
 let dataHost: DataHost | undefined
+let agentHost: AgentHost | undefined
+let aiService: ReturnType<typeof createAiService> | undefined
 let quitting = false
 if (!app.requestSingleInstanceLock()) app.quit()
 else {
@@ -30,6 +37,9 @@ else {
     dataHost = startDataHost(app.getPath('userData'))
     if (probeEnabled) (globalThis as typeof globalThis & { __whomiRuntimeProbe?: DataHost }).__whomiRuntimeProbe = dataHost
     await dataHost.request('health', null)
+    agentHost = startAgentHost(app.getPath('userData'))
+    aiService = createAiService({ storage: (method, args) => dataHost!.request('aiStorage', [method, args]), runtime: agentHost, secrets: createCredentialVault(safeStorage) })
+    const aiRouter = createAiRouter(aiService)
     const credential = randomUUID()
     const window = new BrowserWindow({ webPreferences: { preload: join(__dirname, '../preload/index.cjs'), contextIsolation: true, sandbox: true, nodeIntegration: false, additionalArguments: [`--whomi-drop-key=${credential}`] } })
     const devUrl = !app.isPackaged ? process.env.ELECTRON_RENDERER_URL : undefined
@@ -43,6 +53,16 @@ else {
     } })
     const stopEvents = dataHost.onEvent(snapshot => router.publish(snapshot))
     const stopWindowEvents = router.onImport(window.webContents.id, snapshot => { if (!window.isDestroyed()) window.webContents.send(desktopChannels.progress, snapshot) })
+    const stopAiEvents = aiService.subscribe(event => aiRouter.publish(event))
+    const stopAiWindow = aiRouter.subscribe(windowId, event => { if (!window.isDestroyed()) window.webContents.send(aiChannels.event, event) })
+    ipcMain.handle(aiChannels.call, async (event, value: unknown) => {
+      try {
+        if (window.isDestroyed() || !isTrustedCaller(event, window, appUrl)) throw new BoundaryError('UNTRUSTED_CALLER', '请在应用窗口中操作。')
+        if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).length !== 2 || !Object.hasOwn(value, 'method') || !Object.hasOwn(value, 'args')) throw new BoundaryError('INVALID_ARGUMENT')
+        const request = value as { method: unknown; args: unknown }
+        return { ok: true, value: await aiRouter.invoke(windowId, request.method, request.args) }
+      } catch (error) { return { ok: false, error: serializableError(error) } }
+    })
     async function handle(event: Electron.IpcMainInvokeEvent, value: unknown, dropped = false) {
       try {
         if (window.isDestroyed() || !isTrustedCaller(event, window, appUrl)) throw new BoundaryError('UNTRUSTED_CALLER', '请在应用窗口中操作。')
@@ -61,7 +81,7 @@ else {
     }
     ipcMain.handle(desktopChannels.call, (event, value) => handle(event, value))
     ipcMain.handle(desktopChannels.drop, (event, value) => handle(event, value, true))
-    window.once('closed', () => { stopEvents(); stopWindowEvents(); router.releaseWindow(windowId); ipcMain.removeHandler(desktopChannels.call); ipcMain.removeHandler(desktopChannels.drop) })
+    window.once('closed', () => { stopEvents(); stopWindowEvents(); stopAiEvents(); stopAiWindow(); aiRouter.release(windowId); router.releaseWindow(windowId); ipcMain.removeHandler(aiChannels.call); ipcMain.removeHandler(desktopChannels.call); ipcMain.removeHandler(desktopChannels.drop) })
     window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
     window.webContents.on('will-navigate', (event) => event.preventDefault())
     session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false))
@@ -77,7 +97,10 @@ else {
     if (!quitting && dataHost) {
       event.preventDefault()
       quitting = true
-      void dataHost.close().finally(() => app.quit())
+      void (async () => {
+        try { await aiService?.close() } catch { /* 数据进程退出时仍需回收Agent进程。 */ }
+        await Promise.allSettled([agentHost?.close(), dataHost!.close()])
+      })().finally(() => app.quit())
     }
   })
 }

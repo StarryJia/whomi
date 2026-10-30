@@ -17,6 +17,7 @@ import { ConversationNavigation, ConversationReader, type Conversation } from '.
 import { FileImport } from './components/file-import'
 import { getDesktopClient } from './data/desktop-client'
 import { createPreviewClient } from './data/preview-client'
+import { createConversationAiClient } from './data/conversation-ai-client'
 import { useConversations, type ConversationClient } from './data/use-conversations'
 import type { DesktopApi } from './shared/desktop-api'
 import type { ConversationAiAdapter } from './components/conversation-ai/types'
@@ -70,6 +71,13 @@ export interface AppProps {
 function HomeShell({ displayName = '', conversations, overview, saveFeedback,
   clarificationQuestion, clarificationModels = [], clarificationAdapter, conversationAiAdapter, previewConversationId, preview = false, importApi, client }: AppProps) {
   const api = importApi ?? (window.whomi ? getDesktopClient() : undefined)
+  const [desktopAi, setDesktopAi] = useState<ConversationAiAdapter>()
+  useEffect(() => {
+    let active = true
+    setDesktopAi(undefined)
+    if (api?.ai && !preview && !conversationAiAdapter) void createConversationAiClient(api.ai).then(value => { if (active) setDesktopAi(value) }).catch(() => { if (active) setDesktopAi(undefined) })
+    return () => { active = false }
+  }, [api?.ai, preview, conversationAiAdapter])
   const queryClient = useMemo(() => client ?? (conversations ? createPreviewClient(conversations) : api), [client, conversations, api])
   const reader = useConversations(queryClient)
   const previewing = preview || !!conversations
@@ -291,7 +299,7 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
           key={`${activeId}-${source?.id ?? ''}`} conversation={{ id: activeId, title: activeSummary?.title ?? '会话', messages: reader.current.messages }}
           range={reader.current.range} sourceStatus={reader.current.sourceStatus} loading={reader.loading} error={reader.error} preview={previewing}
           beforeCursor={reader.current.beforeCursor} afterCursor={reader.current.afterCursor}
-          messageCount={activeSummary?.messageCount} aiAdapter={conversationAiAdapter}
+          messageCount={activeSummary?.messageCount} aiAdapter={conversationAiAdapter ?? desktopAi}
           onLocateMessage={message => reader.locate({ conversationId: activeId, messageId: message.id })}
           onBefore={reader.loadBefore} onAfter={reader.loadAfter} onRetry={() => { void reader.open(activeId) }}
           onReturn={source ? (sourceOrigin === 'clarification' ? openClarification : enterOverview) : fromImport ? openImport : undefined}
