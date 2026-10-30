@@ -38,7 +38,7 @@
 .settings-page .ms-detail-header { margin-bottom:16px; }
 .settings-fieldset { margin:0; padding:0; min-width:0; border:0; }
 .settings-section-title { margin:0 0 18px; font-size:14px; font-weight:600; }
-.settings-save-row { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:16px; max-width:740px; margin-top:20px; }
+.settings-save-row { display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; gap:16px; max-width:740px; margin-top:20px; }
 .settings-key { display:flex; align-items:center; min-width:0; width:100%; border:1px solid #d7dde5; border-radius:8px; }
 .settings-key input { width:100%; flex:1; min-width:0; min-height:44px; padding:10px 12px; background:transparent; border:0; border-radius:8px; }
 .settings-key:focus-within { outline:2px solid var(--focus); outline-offset:2px; }

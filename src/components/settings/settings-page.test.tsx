@@ -30,6 +30,43 @@ beforeEach(() => {
 })
 
 describe('正式设置', () => {
+  it('单一协议直接显示，修改状态由保存按钮表达', async () => {
+    const { user } = setup()
+    const name = await screen.findByLabelText('服务商名称')
+    expect(screen.queryByRole('combobox', { name: '连接协议' })).not.toBeInTheDocument()
+    expect(screen.getByText('OpenAI Chat Completions 兼容')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '保存服务商' })).toBeDisabled()
+    await user.type(name, ' 更新')
+    expect(screen.getByRole('button', { name: '保存服务商' })).toBeEnabled()
+    expect(screen.queryByText('有未保存的修改')).not.toBeInTheDocument()
+  })
+
+  it('收起同步列表保留服务商配置和已保存模型', async () => {
+    const { api, user } = setup(true, true)
+    await user.click(await screen.findByRole('button', { name: '同步模型' }))
+    const catalog = await screen.findByRole('region', { name: '同步模型列表' })
+    await user.click(within(catalog).getByRole('checkbox', { name: 'beta' }))
+    await user.click(within(catalog).getByRole('button', { name: '收起模型列表' }))
+    expect(screen.queryByRole('region', { name: '同步模型列表' })).not.toBeInTheDocument()
+    expect(screen.getByLabelText('服务商名称')).toHaveValue('本地服务')
+    expect(screen.getByText('测试模型', { exact: true })).toBeInTheDocument()
+    expect(api.saveModel).not.toHaveBeenCalled()
+  })
+
+  it('修改连接后收起旧模型目录，保存完成才允许重新同步', async () => {
+    const { api, user } = setup()
+    await user.click(await screen.findByRole('button', { name: '同步模型' }))
+    await screen.findByRole('region', { name: '同步模型列表' })
+    await user.type(screen.getByLabelText('接口地址'), '/changed')
+    expect(screen.queryByRole('region', { name: '同步模型列表' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '同步模型' })).toBeDisabled()
+    expect(api.saveModel).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: '保存服务商' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: '同步模型' })).toBeEnabled())
+    await user.click(screen.getByRole('button', { name: '同步模型' }))
+    expect(api.syncModels).toHaveBeenCalledTimes(2)
+  })
+
   it('已有密钥不填回输入；离开时继续编辑保留草稿，保存后才离开', async () => {
     const { api, user } = setup()
     const name = await screen.findByLabelText('服务商名称')
@@ -60,7 +97,8 @@ describe('正式设置', () => {
   it('同步模型仅添加勾选项，搜索不丢失先前选择', async () => {
     const { api, user } = setup()
     await user.click(await screen.findByRole('button', { name: '同步模型' }))
-    const modal = await screen.findByRole('dialog', { name: '选择模型' })
+    const modal = await screen.findByRole('region', { name: '同步模型列表' })
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     await user.click(within(modal).getByRole('checkbox', { name: 'alpha' }))
     await user.type(within(modal).getByRole('textbox', { name: '搜索模型' }), 'beta')
     await user.click(within(modal).getByRole('checkbox', { name: '全选当前结果' }))
@@ -131,7 +169,7 @@ describe('正式设置', () => {
     const originalSave = vi.mocked(api.saveModel).getMockImplementation()!
     vi.mocked(api.saveModel).mockImplementationOnce(originalSave).mockRejectedValueOnce(new Error('添加失败，请重试。'))
     await user.click(await screen.findByRole('button', { name: '同步模型' }))
-    const modal = await screen.findByRole('dialog', { name: '选择模型' })
+    const modal = await screen.findByRole('region', { name: '同步模型列表' })
     await user.click(within(modal).getByRole('checkbox', { name: 'alpha' }))
     await user.click(within(modal).getByRole('checkbox', { name: 'beta' }))
     await user.click(within(modal).getByText('高级设置'))
@@ -141,7 +179,7 @@ describe('正式设置', () => {
     await within(modal).findByText('已添加 1 项。添加失败，请重试。')
     expect(within(modal).getByRole('checkbox', { name: 'alpha' })).toBeDisabled()
     await user.click(within(modal).getByRole('button', { name: '添加所选模型 (1)' }))
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.queryByRole('region', { name: '同步模型列表' })).not.toBeInTheDocument())
     expect(vi.mocked(api.saveModel).mock.calls.map(call => call[0].model)).toEqual(['alpha', 'beta', 'beta'])
   })
 
