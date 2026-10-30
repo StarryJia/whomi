@@ -56,4 +56,6 @@ SOFTWARE.
 
 ### 其余依赖
 
+本轮会话后台使用 [Pi](https://github.com/earendil-works/pi) 的完整 `@earendil-works/pi-coding-agent@1.4.0` 发布包，安装包元数据声明为 MIT。模型适配、Agent 会话和原生历史复用该包；本项目自行维护业务权限、任务和统计归属。锁定依赖及传递依赖见 `package-lock.json`；仅在应用专用后台进程运行，没有把上游终端界面代码复制到本项目源文件。
+
 React、Vite、Radix、Lucide 等运行和开发依赖的实际版本见 `package-lock.json`，各自许可按安装包声明提供。本文件不替代各依赖的许可声明。
