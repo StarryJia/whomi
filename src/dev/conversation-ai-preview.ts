@@ -57,8 +57,14 @@ export function createConversationAiPreview(mode: ConversationPreviewMode): Conv
           analysisFailed = true
           throw new Error('模拟分析中断，请重试。')
         }
-        onProgress({ analyzedMessages, totalMessages: 7, outputTokensPerSecond: 58.3 })
+        onProgress({ analyzedMessages, totalMessages: 7, ...(mode === 'no-usage' ? {} : {
+          outputTokensPerSecond: 58.3,
+          usage: { inputTokens: analyzedMessages * 240, outputTokens: analyzedMessages * 50 },
+        }) })
       }
+      return { taskId: `preview-analysis-${_request.conversationId}`, ...(mode === 'no-usage' ? {} : { usage: {
+        inputTokens: 1680, outputTokens: 350, outputTokensPerSecond: 58.3, durationMs: 6000,
+      } }) }
     },
   }
 }

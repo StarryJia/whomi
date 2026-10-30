@@ -11,7 +11,9 @@ export type AnalysisProgress = {
   analyzedMessages: number
   totalMessages: number
   outputTokensPerSecond?: number
+  usage?: GenerationUsage
 }
+export type AnalysisResult = { taskId?: string; usage?: GenerationUsage }
 export type ConversationRequest = {
   conversationId: string
   prompt: string
@@ -30,5 +32,5 @@ export type ConversationAiAdapter = {
   analyze(request: { conversationId: string; modelId: string }, options: {
     signal: AbortSignal
     onProgress: (progress: AnalysisProgress) => void
-  }): Promise<void>
+  }): Promise<AnalysisResult | void>
 }

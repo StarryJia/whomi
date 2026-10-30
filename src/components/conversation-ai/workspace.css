@@ -85,6 +85,11 @@
 .conversation-analysis-summary { display: flex; align-items: center; gap: 16px; font-variant-numeric: tabular-nums; }
 .conversation-analysis-summary p { margin: 0; }
 .conversation-analysis-summary .conversation-state-copy { margin-top: 4px; }
+.conversation-analysis-title { margin: 0; font-weight: 550; overflow-wrap: anywhere; }
+.conversation-analysis-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.conversation-analysis-usage { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+.conversation-primary-button:not(:disabled) { background: var(--focus); color: var(--surface); }
+.conversation-primary-button:hover:not(:disabled) { background: #8c3113; }
 .conversation-progress { position: relative; flex-shrink: 0; width: 60px; height: 60px; display: grid; place-items: center; font-size: 13px; }
 .conversation-progress > svg { position: absolute; inset: 0; width: 60px; height: 60px; transform: rotate(-90deg); fill: none; }
 .conversation-progress circle { stroke: var(--line); stroke-width: 4; }
@@ -110,6 +115,7 @@
 @media (max-width: 640px) {
   .conversation-source-composer { padding: 8px 12px max(12px, env(safe-area-inset-bottom)); }
   .conversation-composer { padding-inline: 10px; }
+  .conversation-composer textarea { min-height: 44px; height: 44px; margin-block: 2px 6px; }
   .conversation-ai-header, .conversation-ai-timeline { padding: 16px; }
   .conversation-panel-composer { padding: 8px 12px max(12px, env(safe-area-inset-bottom)); }
   .conversation-composer-tools { flex-wrap: wrap; }

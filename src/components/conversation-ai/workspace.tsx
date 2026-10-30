@@ -2,7 +2,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode, ty
 import { createPortal } from 'react-dom'
 import { ArrowUp, ArrowRight, Check, ChevronDown, FileText, LoaderCircle, MessageCircle, Square, X } from 'lucide-react'
 import type { ReferenceRange } from './selection'
-import type { AnalysisProgress, ConversationAiAdapter, ConversationRequest, GenerationUsage } from './types'
+import type { AnalysisProgress, AnalysisResult, ConversationAiAdapter, ConversationRequest, GenerationUsage } from './types'
 import './workspace.css'
 
 const number = (value: number) => new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 1 }).format(value)
@@ -121,9 +121,10 @@ function Usage({ usage }: { usage?: GenerationUsage }) {
 
 type Turn = { id: number; request: ConversationRequest; text: string; usage?: GenerationUsage; status: 'running' | 'done' | 'failed' | 'stopped'; error?: string }
 type Slots = { analysisControl: ReactNode; composer: ReactNode; panelOpen: boolean }
-export function ConversationWorkspace({ conversationId, title, messageCount, references, onClearReferences, onJumpReference, adapter, children }: {
+export function ConversationWorkspace({ conversationId, title, messageCount, references, onClearReferences, onJumpReference, onOpenAnalysisResult, adapter, children }: {
   conversationId: string; title: string; messageCount?: number; references: readonly ReferenceRange[]
   onClearReferences: () => void; onJumpReference: (reference: ReferenceRange) => void
+  onOpenAnalysisResult?: (taskId: string) => void
   adapter?: ConversationAiAdapter; children: (slots: Slots) => ReactNode
 }) {
   const [panelOpen, setPanelOpen] = useState(false)
@@ -133,9 +134,11 @@ export function ConversationWorkspace({ conversationId, title, messageCount, ref
   const [turns, setTurns] = useState<Turn[]>([])
   const [busy, setBusy] = useState(false)
   const [analysisOpen, setAnalysisOpen] = useState(false)
+  const [analysisConfirming, setAnalysisConfirming] = useState(true)
   const [analysisState, setAnalysisState] = useState<'idle' | 'running' | 'done' | 'failed' | 'stopped'>('idle')
   const [analysisError, setAnalysisError] = useState('')
   const [progress, setProgress] = useState<AnalysisProgress>()
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult>()
   const [narrow, setNarrow] = useState(() => window.matchMedia('(max-width: 1000px)').matches)
   const source = useRef<HTMLDivElement>(null)
   const aside = useRef<HTMLElement>(null)
@@ -157,7 +160,11 @@ export function ConversationWorkspace({ conversationId, title, messageCount, ref
     setModelId(adapter?.models[0]?.id ?? '')
     setBusy(false)
     setTurns(items => items.map(turn => turn.status === 'running' ? { ...turn, status: 'stopped' } : turn))
-    setAnalysisState(state => state === 'running' ? 'stopped' : state)
+    setAnalysisState('idle')
+    setAnalysisConfirming(true)
+    setAnalysisError('')
+    setProgress(undefined)
+    setAnalysisResult(undefined)
     return () => {
       alive.current = false
       chatRun.current?.abort()
@@ -237,15 +244,17 @@ export function ConversationWorkspace({ conversationId, title, messageCount, ref
     const controller = new AbortController()
     analysisRun.current = controller
     setAnalysisState('running')
+    setAnalysisConfirming(false)
     setAnalysisError('')
     setProgress(undefined)
+    setAnalysisResult(undefined)
     const active = () => alive.current && analysisRun.current === controller && !controller.signal.aborted
     try {
-      await adapter.analyze({ conversationId, modelId }, { signal: controller.signal, onProgress: value => {
+      const result = await adapter.analyze({ conversationId, modelId }, { signal: controller.signal, onProgress: value => {
         if (!active()) return
         if (valid(value.analyzedMessages) && valid(value.totalMessages)) setProgress(value)
       } })
-      if (active()) setAnalysisState('done')
+      if (active()) { setAnalysisResult(result || undefined); setAnalysisState('done') }
     } catch (error) {
       if (active()) { setAnalysisState('failed'); setAnalysisError(errorText(error)) }
     } finally {
@@ -255,17 +264,26 @@ export function ConversationWorkspace({ conversationId, title, messageCount, ref
   const completed = valid(progress?.analyzedMessages) ? progress.analyzedMessages : 0
   const total = valid(progress?.totalMessages) ? progress.totalMessages : messageCount
   const percentage = valid(total) && total > 0 ? Math.min(100, Math.round(completed / total * 100)) : undefined
+  const analysisUsage = analysisResult?.usage ?? progress?.usage
+  const analysisSpeed = analysisUsage?.outputTokensPerSecond ?? progress?.outputTokensPerSecond
+  const hasAnalysisUsage = analysisUsage && Object.values(analysisUsage).some(valid)
+  const confirmAnalysis = () => { setAnalysisConfirming(true); setAnalysisError('') }
   const analysisControl = <>
     <button ref={analysisAnchor} type="button" className="conversation-analysis-trigger" aria-expanded={analysisOpen}
-      onClick={() => {
-        setAnalysisOpen(value => !value)
-        if (!analysisOpen && analysisState === 'idle') void analyze()
-      }}>
+      onClick={() => setAnalysisOpen(value => !value)}>
       {analysisState === 'running' ? <LoaderCircle className="conversation-working" aria-hidden="true" /> : analysisState === 'done' ? <Check aria-hidden="true" /> : <span className="conversation-ring-icon" aria-hidden="true" />}会话分析
     </button>
     {analysisOpen && <Popover anchor={analysisAnchor} label="会话分析状态" onClose={() => setAnalysisOpen(false)}>
       <h3>会话分析</h3>
-      {messageCount === 0 ? <p className="conversation-state-copy">巧妇难为无米之炊，先导入一些聊天记录吧。</p> : !adapter || !selectedModel ? <p className="conversation-state-copy">暂无可用模型。连接模型后可分析当前会话。</p> : <>
+      {messageCount === 0 ? <p className="conversation-state-copy">巧妇难为无米之炊，先导入一些聊天记录吧。</p> : !adapter || !selectedModel ? <p className="conversation-state-copy">暂无可用模型。连接模型后可分析当前会话。</p> : analysisConfirming ? <>
+        <p className="conversation-analysis-title">{title}</p>
+        <p className="conversation-state-copy">{valid(messageCount) ? `当前会话 ${number(messageCount)} 条消息` : '分析当前会话'} · {selectedModel.label}</p>
+        <p className="conversation-state-copy">生成当前会话的画像结果。</p>
+        <div className="conversation-analysis-actions">
+          <button type="button" className="conversation-text-button conversation-primary-button" onClick={() => { void analyze() }}>确认分析</button>
+          <button type="button" className="conversation-text-button" onClick={() => setAnalysisOpen(false)}>取消</button>
+        </div>
+      </> : <>
         <div className="conversation-analysis-summary">
           <div className="conversation-progress" role="progressbar" aria-label="会话分析进度" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percentage}>
             <svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="20" /><circle cx="24" cy="24" r="20" strokeDasharray={`${(percentage ?? 0) * 1.257} 126`} /></svg>
@@ -273,11 +291,21 @@ export function ConversationWorkspace({ conversationId, title, messageCount, ref
           </div>
           <div><p>{progress ? `已分析 ${number(completed)} / ${number(progress.totalMessages)} 条` : valid(total) ? `当前会话 ${number(total)} 条消息` : '等待消息总数'}</p>
             <p className="conversation-state-copy">{analysisState === 'running' ? '正在分析' : analysisState === 'done' ? '分析完成' : analysisState === 'stopped' ? '已停止' : analysisState === 'failed' ? '分析失败' : '生成当前会话的画像结果'}</p>
-            {valid(progress?.outputTokensPerSecond) && <p className="conversation-state-copy">生成速度 {number(progress.outputTokensPerSecond)} token/秒</p>}</div>
+            {valid(analysisSpeed) && <p className="conversation-state-copy">生成速度 {number(analysisSpeed)} token/秒</p>}</div>
         </div>
+        {hasAnalysisUsage ? <dl className="conversation-analysis-usage conversation-usage-grid" role="group" aria-label="分析用量">
+          <div><dt>输入 token</dt><dd>{valid(analysisUsage.inputTokens) ? number(analysisUsage.inputTokens) : '未提供'}</dd></div>
+          <div><dt>输出 token</dt><dd>{valid(analysisUsage.outputTokens) ? number(analysisUsage.outputTokens) : '未提供'}</dd></div>
+          <div><dt>总耗时</dt><dd>{seconds(analysisUsage.durationMs)}</dd></div>
+        </dl> : analysisState === 'done' && <p className="conversation-state-copy">未提供用量统计。</p>}
         {analysisError && <p role="alert" className="conversation-error">{analysisError}</p>}
-        {analysisState === 'running' ? <button type="button" className="conversation-text-button" onClick={stopAnalysis}><Square aria-hidden="true" />停止分析</button>
-          : <button type="button" className="conversation-text-button" onClick={() => { void analyze() }}>{analysisState === 'failed' ? '重试分析' : analysisState === 'done' ? '重新分析' : '开始分析'}</button>}
+        <div className="conversation-analysis-actions">{analysisState === 'running' ? <button type="button" className="conversation-text-button" onClick={stopAnalysis}><Square aria-hidden="true" />停止分析</button>
+          : <button type="button" className="conversation-text-button" onClick={confirmAnalysis}>{analysisState === 'failed' ? '重试分析' : '重新分析'}</button>}
+          {analysisState === 'done' && <button type="button" className="conversation-text-button conversation-primary-button" disabled={!analysisResult?.taskId || !onOpenAnalysisResult}
+            onClick={() => { if (analysisResult?.taskId) onOpenAnalysisResult?.(analysisResult.taskId) }}>查看分析结果<ArrowRight aria-hidden="true" /></button>}
+        </div>
+        {analysisState === 'done' && !onOpenAnalysisResult && <p className="conversation-state-copy">分析管理尚未开放。</p>}
+        {analysisState === 'done' && onOpenAnalysisResult && !analysisResult?.taskId && <p className="conversation-state-copy">未提供分析报告。</p>}
       </>}
     </Popover>}
   </>
