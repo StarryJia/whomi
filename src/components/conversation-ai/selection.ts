@@ -38,7 +38,7 @@ type Gesture = {
   release: () => void
 }
 
-export function useMessageSelection(messages: readonly MessageView[]) {
+export function useMessageSelection(messages: readonly MessageView[], enabled = true) {
   const [selected, setSelected] = useState<Map<string, MessageView>>(() => new Map())
   const [next, setNext] = useState<Map<string, string>>(() => new Map())
   const live = useRef({ messages, selected })
@@ -73,6 +73,9 @@ export function useMessageSelection(messages: readonly MessageView[]) {
   }, [])
 
   useLayoutEffect(() => () => finish(), [finish])
+  useLayoutEffect(() => {
+    if (!enabled) { finish(); suppressClick.current = false }
+  }, [enabled, finish])
 
   function applyRange(from: string, to: string, baseline: Map<string, MessageView>, remove = false) {
     const items = live.current.messages
@@ -123,6 +126,7 @@ export function useMessageSelection(messages: readonly MessageView[]) {
   function bindings(message: MessageView): Bindings {
     return {
       onClick(event) {
+        if (!enabled) return
         if (suppressClick.current) { suppressClick.current = false; return }
         if (window.getSelection()?.toString()) return
         if (event.shiftKey && anchor.current && live.current.messages.some(item => item.id === anchor.current)) {
@@ -130,7 +134,7 @@ export function useMessageSelection(messages: readonly MessageView[]) {
         } else toggle(message)
       },
       onPointerDown(event) {
-        if (event.button !== 0 || event.isPrimary === false) return
+        if (!enabled || event.button !== 0 || event.isPrimary === false) return
         finish()
         suppressClick.current = false
         const up = () => finish()
@@ -140,6 +144,9 @@ export function useMessageSelection(messages: readonly MessageView[]) {
         }
         const preventContextMenu = (event: Event) => {
           if (gesture.current?.active) event.preventDefault()
+        }
+        const followScroll = () => {
+          if (gesture.current === current && current.active) updatePoint(current)
         }
         const current: Gesture = {
           anchor: message.id, pointerId: event.pointerId, element: event.currentTarget,
@@ -151,12 +158,14 @@ export function useMessageSelection(messages: readonly MessageView[]) {
             document.removeEventListener('pointercancel', cancel)
             document.removeEventListener('touchmove', preventTouchScroll)
             document.removeEventListener('contextmenu', preventContextMenu)
+            current.reader?.removeEventListener('scroll', followScroll)
           },
         }
         document.addEventListener('pointerup', up)
         document.addEventListener('pointercancel', cancel)
         document.addEventListener('touchmove', preventTouchScroll, { passive: false })
         document.addEventListener('contextmenu', preventContextMenu)
+        current.reader?.addEventListener('scroll', followScroll, { passive: true })
         gesture.current = current
         current.timer = setTimeout(() => {
           if (gesture.current !== current || current.moved) return
@@ -187,6 +196,7 @@ export function useMessageSelection(messages: readonly MessageView[]) {
       onPointerUp() { finish() },
       onPointerCancel() { finish(true) },
       onKeyDown(event) {
+        if (!enabled) return
         if (event.key === ' ' || event.key === 'Enter') {
           event.preventDefault()
           if (event.shiftKey && anchor.current) applyRange(anchor.current, message.id, live.current.selected)

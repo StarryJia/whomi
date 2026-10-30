@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { ArrowLeft, ChevronRight, Ellipsis, Plus } from 'lucide-react'
+import { ArrowLeft, ChevronRight, Ellipsis, MousePointer2, Plus } from 'lucide-react'
 import clsx from 'clsx'
 import { Tooltip } from './ui/tooltip'
 import type { SourceReference } from './overview/types'
@@ -112,7 +112,7 @@ const messageKinds: Record<MessageView['kind'], string> = {
 }
 
 export function ConversationReader({ conversation, range, sourceStatus, onReturn, returnLabel = '返回个人总览',
-  beforeCursor, afterCursor, onBefore, onAfter, loading, error, onRetry, preview, messageCount, aiAdapter, onLocateMessage }: {
+  beforeCursor, afterCursor, onBefore, onAfter, loading, error, onRetry, messageCount, aiAdapter, onLocateMessage }: {
   conversation: { id: string; title: string; messages: readonly MessageView[] }
   range?: { start: MessagePosition; end: MessagePosition }
   sourceStatus?: 'loading' | 'available' | 'unavailable'
@@ -136,10 +136,17 @@ export function ConversationReader({ conversation, range, sourceStatus, onReturn
   const anchors = useRef<Array<{ id: string; top: number }>>([])
   const firstMessage = conversation.messages[0]?.id
   const previousFirst = useRef(firstMessage)
-  const selection = useMessageSelection(conversation.messages)
+  const [selectionMode, setSelectionMode] = useState(false)
+  const selectionButton = useRef<HTMLButtonElement>(null)
+  const selection = useMessageSelection(conversation.messages, selectionMode)
   const [jumpId, setJumpId] = useState<string>()
   const [focusedMessageId, setFocusedMessageId] = useState<string>()
   const tabStopId = conversation.messages.some(item => item.id === focusedMessageId) ? focusedMessageId : firstMessage
+
+  useLayoutEffect(() => {
+    setSelectionMode(false)
+    selection.clear()
+  }, [conversation.id, selection.clear])
 
   function focusMessage(id: string) {
     const element = Array.from(scroll.current?.querySelectorAll<HTMLElement>('[data-message-id]') ?? [])
@@ -221,20 +228,35 @@ export function ConversationReader({ conversation, range, sourceStatus, onReturn
 
   return <ConversationWorkspace conversationId={conversation.id} title={conversation.title} messageCount={messageCount}
     references={selection.references} onClearReferences={selection.clear} onJumpReference={reference => { void jumpToReference(reference) }} adapter={aiAdapter}>
-    {({ analysisControl, composer }) => <section className="conversation-reader" aria-labelledby="conversation-title">
+    {({ analysisControl, composer }) => <section className="conversation-reader" aria-labelledby="conversation-title" onKeyDown={event => {
+      if (event.key !== 'Escape' || event.defaultPrevented || !selectionMode) return
+      if ((event.target as HTMLElement).closest('input, textarea, select, [contenteditable="true"]')) return
+      event.preventDefault()
+      setSelectionMode(false)
+      selectionButton.current?.focus()
+    }}>
     <header className="reader-header">
       {onReturn && <button className="reader-return" type="button" onClick={onReturn}>
         <ArrowLeft aria-hidden="true" />{returnLabel}
       </button>}
-      <div className="reader-heading-row"><h1 id="conversation-title" ref={heading} tabIndex={-1}>{conversation.title}</h1>{analysisControl}</div>
-      {preview && <p className="reader-source-note">开发预览 · 全部内容为虚构示例 · 未写入真实存储</p>}
+      <div className="reader-heading-row"><h1 id="conversation-title" ref={heading} tabIndex={-1}>{conversation.title}</h1>
+        <div className="reader-actions">
+          <button ref={selectionButton} className="reader-selection-toggle" type="button" aria-label={selectionMode ? '退出选择' : '选择消息'}
+            title={selectionMode ? '退出选择' : '选择消息'} aria-pressed={selectionMode} onClick={() => setSelectionMode(value => !value)}>
+            <MousePointer2 aria-hidden="true" />
+          </button>
+          {analysisControl}
+        </div>
+      </div>
+      {selectionMode && <p className="reader-selection-hint" role="status">单击选择，长按后拖动或滚轮多选{selection.selectedIds.size > 0 && <span>已选 {selection.selectedIds.size} 条</span>}</p>}
       {sourceStatus && <p className="reader-source-note" role="status">{sourceStatus === 'available'
         ? '已定位相关交流，可继续阅读前后文。' : sourceStatus === 'loading' ? '正在定位原文…' : '原文不可用，请返回后重试。'}</p>}
       {error && <p className="reader-source-note" role="alert">{error} <button type="button" onClick={onRetry}>重新打开会话</button></p>}
     </header>
-    <div ref={scroll} className="reader-scroll" role="region" aria-label="聊天记录" tabIndex={0} aria-busy={loading} onScroll={rememberPosition}>
+    <div ref={scroll} className={clsx('reader-scroll', selectionMode && 'reader-selecting')} role="region" aria-label="聊天记录" tabIndex={0} aria-busy={loading} onScroll={rememberPosition}>
       {beforeCursor && <button className="reader-load" type="button" disabled={loading} onClick={() => { void load('before') }}>加载前文</button>}
-      {conversation.messages.length ? <ol className="message-list" role="listbox" aria-label="选择引用消息" aria-multiselectable="true">
+      {conversation.messages.length ? <ol className="message-list" role={selectionMode ? 'listbox' : undefined}
+        aria-label={selectionMode ? '选择引用消息' : '会话消息'} aria-multiselectable={selectionMode ? true : undefined}>
         {conversation.messages.map((message, index) => {
           const start = range?.start.id === message.id
           const end = range?.end.id === message.id
@@ -244,8 +266,8 @@ export function ConversationReader({ conversation, range, sourceStatus, onReturn
           const joinedAfter = selected && index < conversation.messages.length - 1 && selection.selectedIds.has(conversation.messages[index + 1].id)
           return <li key={message.id} data-message-id={message.id}
           ref={start ? firstSource : undefined}
-          role="option" aria-selected={selected} aria-label={`${message.senderName}：${message.text || messageKinds[message.kind]}`}
-          tabIndex={tabStopId === message.id ? 0 : -1} {...selection.bindings(message)} onFocus={() => setFocusedMessageId(message.id)}
+          role={selectionMode ? 'option' : undefined} aria-selected={selectionMode ? selected : undefined} aria-label={`${message.senderName}：${message.text || messageKinds[message.kind]}`}
+          tabIndex={selectionMode && tabStopId === message.id ? 0 : -1} {...(selectionMode ? selection.bindings(message) : {})} onFocus={() => setFocusedMessageId(message.id)}
           className={clsx('message', message.isSelf && 'message-self', highlighted && 'message-source', selected && 'message-selected',
             joinedBefore && 'selection-joined-before', joinedAfter && 'selection-joined-after', jumpId === message.id && 'message-reference-target')}>
           <Initial name={message.senderName} />

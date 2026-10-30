@@ -76,6 +76,25 @@ describe('长按滑动选择', () => {
     return { reader, nodes }
   }
 
+  it('长按后滚轮滚动且指针不移动时，选区跟随光标下的消息扩展', () => {
+    vi.useFakeTimers()
+    const { nodes, reader } = surface()
+    let hit = nodes[0]
+    const original = document.elementFromPoint
+    Object.defineProperty(document, 'elementFromPoint', { configurable: true, value: () => hit })
+    const { result } = renderHook(() => useMessageSelection(items))
+    act(() => result.current.bindings(items[0]).onPointerDown(pointer(nodes[0], { clientY: 150 })))
+    act(() => vi.advanceTimersByTime(250))
+    hit = nodes[3]
+    act(() => reader.dispatchEvent(new Event('scroll')))
+    expect([...result.current.selectedIds]).toEqual(['1', '2', '3', '4'])
+    act(() => document.dispatchEvent(new Event('pointerup')))
+    hit = nodes[4]
+    act(() => reader.dispatchEvent(new Event('scroll')))
+    expect([...result.current.selectedIds]).toEqual(['1', '2', '3', '4'])
+    Object.defineProperty(document, 'elementFromPoint', { configurable: true, value: original })
+  })
+
   it('长按后连续选择并在反向拖动时缩小，结束不额外切换首条', () => {
     vi.useFakeTimers()
     const { nodes, reader } = surface()

@@ -33,6 +33,7 @@ describe('文件选择与会话前端', () => {
     render(<App client={client} />)
     await user.click(screen.getByRole('button', { name: '展开会话列表' }))
     await user.click(await screen.findByRole('button', { name: '长会话引用' }))
+    await user.click(screen.getByRole('button', { name: '选择消息' }))
     expect(document.querySelectorAll('.message[tabindex="0"]')).toHaveLength(1)
     const firstMessage = screen.getByRole('option', { name: '成员：引用原文 1' })
     firstMessage.focus()
