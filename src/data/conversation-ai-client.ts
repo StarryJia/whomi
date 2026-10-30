@@ -68,7 +68,14 @@ export async function createConversationAiClient(api: AiApi, settings?: Settings
       if (id === null) delete selectedModels[feature]
       else selectedModels[feature] = id
     } } : {}),
-    models: models.filter(model => model.enabled).map(({ id, label }) => ({ id, label })),
+    models: models.filter(model => model.enabled).flatMap(model => {
+      const configured = preferences?.models.find(item => item.id === model.id)
+      const provider = preferences?.providers.find(item => item.id === configured?.providerId)
+      if (provider && !provider.enabled) return []
+      return [{ id: model.id, label: model.label, model: model.model,
+        ...(configured?.group ? { group: configured.group } : {}),
+        ...(provider ? { providerId: provider.id, providerName: provider.name, ...(provider.image ? { providerImage: provider.image } : {}) } : {}) }]
+    }),
     skills: skills.map(({ id, label }) => ({ id, label })),
     async stopTurn(id) { await api.stopTurn(id) },
     async stopAnalysis(id) { await api.stopAnalysis(id) },

@@ -1,4 +1,4 @@
-import type { SettingsApi, Provider, ProviderInput, SettingsSnapshot } from '../../src/shared/settings-contract'
+import type { CatalogModel, SettingsApi, Provider, ProviderInput, SettingsSnapshot } from '../../src/shared/settings-contract'
 import { failSettings, settingsId, validateProcessing, validateProvider, validateSettingsModel } from '../data/settings/validation'
 
 export type SettingsServiceOptions = {
@@ -49,9 +49,20 @@ export function createSettingsService(options: SettingsServiceOptions): Settings
         } finally { await reader.cancel().catch(() => {}); reader.releaseLock() }
         const catalog: unknown = JSON.parse(Buffer.concat(chunks).toString('utf8'))
         if (!catalog || typeof catalog !== 'object' || !('data' in catalog) || !Array.isArray(catalog.data) || catalog.data.length > 1000) throw new Error('invalid catalog')
-        const ids = new Set<string>()
-        for (const entry of catalog.data) { if (!entry || typeof entry !== 'object' || typeof entry.id !== 'string' || !entry.id.trim() || entry.id.length > 128) throw new Error('invalid model'); ids.add(entry.id.trim()) }
-        return [...ids].map(id => ({ id }))
+        const entries = new Map<string, CatalogModel>()
+        for (const entry of catalog.data) {
+          if (!entry || typeof entry !== 'object' || typeof entry.id !== 'string' || !entry.id.trim() || entry.id.length > 128) throw new Error('invalid model')
+          const model: CatalogModel = { id: entry.id.trim() }
+          const label = entry.name ?? entry.label
+          if (typeof label === 'string' && label.trim() && label.length <= 256) model.label = label.trim()
+          if (typeof entry.group === 'string' && entry.group.length <= 256) model.group = entry.group
+          for (const [field, aliases] of Object.entries({ contextWindow: ['context_length', 'contextWindow', 'context_window'], maxTokens: ['max_output_tokens', 'maxTokens', 'maxOutputTokens'], maxInputTokens: ['max_input_tokens', 'maxInputTokens'] })) {
+            const value = aliases.map(alias => entry[alias]).find(value => Number.isSafeInteger(value) && value > 0 && value <= 2000000)
+            if (value !== undefined) (model as Record<string, unknown>)[field] = value
+          }
+          entries.set(model.id, { ...model, ...entries.get(model.id) })
+        }
+        return [...entries.values()]
       } catch { failSettings('MODEL_SYNC_FAILED', '模型列表获取失败，请检查服务地址和密钥后重试，或手动添加模型。') }
       finally { clearTimeout(timeout) }
     },

@@ -82,7 +82,7 @@ test('conflicting explicit self choices roll the whole target group back',async(
   await expect(commitConversation(store,v,r.target,signal())).rejects.toThrow('SELF_CONFLICT')
   expect(store.reader.prepare('SELECT count(*) n FROM conversations').get()).toEqual({n:0n})
 })
-test('rejects cross-file no-id groups and skips same-file no-id repeats',async()=> {
+test('preserves unidentifiable cross-file records and skips same-file no-id repeats',async()=> {
   const c=candidate();const v=view(job(),[c],[['m1']]),messages=v.messages
   v.messages=function*(){for(const r of messages()){r.message.originalId=null;r.message.idNamespace=null;yield r}}
   await commitConversation(store,v,target(),signal())
@@ -91,8 +91,8 @@ test('rejects cross-file no-id groups and skips same-file no-id repeats',async()
   repeat.messages=function*(){for(const r of v.messages())yield {...r,candidateId:'b'}}
   expect(await commitConversation(store,repeat,target(same),signal())).toMatchObject({inserted:0,duplicates:1})
   const other=candidate('c'),cross=view(job(),[other],[['m2']]);cross.messages=function*(){for(const r of v.messages())yield {...r,candidateId:'c',origin:{...r.origin,fingerprint:'other'}}}
-  await expect(commitConversation(store,cross,target(other),signal())).rejects.toThrow('AMBIGUOUS_MESSAGE')
-  expect(store.reader.prepare('SELECT count(*) n FROM messages').get()).toEqual({n:1n})
+  expect(await commitConversation(store,cross,target(other),signal())).toMatchObject({inserted:1,duplicates:0})
+  expect(store.reader.prepare('SELECT count(*) n FROM messages').get()).toEqual({n:2n})
 })
 test('yields before the next record exceeds an eight MiB batch',async()=> {
   const controller=new AbortController(),c=candidate(),v=view(job(),[c],[['m1','m2']]),read=v.messages
@@ -115,4 +115,14 @@ test('marks summary pending in the same duplicate-only transaction when explicit
   expect(store.reader.prepare('SELECT status FROM conversation_summaries').get()).toEqual({status:'pending'})
   expect(store.reader.prepare('SELECT count(*) n FROM memberships').get()).toEqual({n:2n})
   expect(store.reader.prepare('SELECT * FROM messages').all()).toEqual(before)
+})
+test('reports processed records during a transaction without exposing them as committed messages',async()=> {
+  const progress:number[]=[]
+  const merge=createCommitter({progress(processed) {
+    progress.push(processed)
+    if(processed===500)expect(store.reader.prepare('SELECT count(*) n FROM messages').get()).toEqual({n:0n})
+  }})
+  await merge(store,view(job(),[candidate()],[Array.from({length:1001},(_,i)=>`m${i}`)]),target(),signal())
+  expect(progress).toContain(500)
+  expect(progress.at(-1)).toBe(1001)
 })

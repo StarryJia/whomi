@@ -1,5 +1,11 @@
 import { isImportActive, isPersistedResult } from '../../data/use-import'
 import type { ImportSnapshot } from '../../shared/import-contract'
+import type { ImportIssue } from '../../shared/conversation-model'
+
+function visibleIssues(issues:readonly ImportIssue[]) {
+  return issues.filter((issue,index)=>!issues.some((other,otherIndex)=>other.candidateId===issue.candidateId &&
+    ((other.action===issue.action && otherIndex<index) || (other.action!==issue.action && other.action.endsWith(issue.action)))))
+}
 
 const statusLabels: Record<string, string> = {
   preparing: '正在准备…', scanning: '正在查找文件入口…', awaiting_confirmation: '请选择要解析的入口。', staging: '正在解析…', validating: '正在校验…',
@@ -14,19 +20,24 @@ export function ImportProgress({ snapshot, busy, onCancel, onOpen, onRetrySummar
   const isCancelledPartial = snapshot.status === 'cancelled' && snapshot.results.some(isPersistedResult)
   const statusMessage = isCancelledPartial ? '部分会话已保存，其余已取消。' : statusLabels[snapshot.status] || '处理中…'
   const hasFailedOrBlocked = snapshot.results.some(result => result.status === 'failed' || result.status === 'blocked')
+  const hasSaved = snapshot.results.some(isPersistedResult)
+  const singleComplete = !isImportActive(snapshot) && snapshot.results.length===1 && hasSaved
   const unassignedIssues = snapshot.issues.filter(issue =>
     !snapshot.results.some(result => result.issues.some(item => item.code === issue.code && item.action === issue.action))
   )
 
-  return <section className="import-step" aria-label="导入进度与结果">
-    <p role="status">{statusMessage}</p>
-    {['staging', 'validating', 'committing'].includes(snapshot.status) && <p className="import-muted">已检查 {snapshot.counts.seen} 条记录 · 有效 {snapshot.counts.validRecords} 条 · 异常 {snapshot.counts.invalidRecords} 条</p>}
+  return <section className={`import-step${snapshot.results.length<=1 ? ' import-step-centered import-result-single':''}`} aria-label="导入进度与结果">
+    <p className="import-status" role="status">{statusMessage}</p>
+    {['staging', 'validating', 'committing'].includes(snapshot.status) && <>
+      <progress className="import-meter" aria-label="保存进度" {...(snapshot.progress?.total ? {value:snapshot.progress.processed,max:snapshot.progress.total}:{})} />
+      <p className="import-muted">已处理 {snapshot.progress?.processed ?? snapshot.inserted + snapshot.duplicates}{snapshot.progress?.total ? ` / ${snapshot.progress.total}`:''} 条记录 · 已保存 {snapshot.inserted} 条</p>
+    </>}
     {isImportActive(snapshot) && (
       <div className="import-step-actions">
-        <button className="import-secondary" type="button" disabled={busy} onClick={onCancel}>取消导入</button>
+        <button className="import-secondary" type="button" onClick={onCancel}>取消导入</button>
       </div>
     )}
-    {unassignedIssues.map((issue, index) => <p className="import-error" key={index}>{issue.action}</p>)}
+    {visibleIssues(unassignedIssues).map((issue, index) => <p className="import-error" key={index}>{issue.action}</p>)}
     {snapshot.results.length > 0 && <ul className="import-results">{snapshot.results.map(result => {
       const persisted = isPersistedResult(result)
       const title = snapshot.candidates.find(candidate => candidate.candidateId === result.candidateId)?.title || `导入项 ${result.candidateId}`
@@ -34,8 +45,8 @@ export function ImportProgress({ snapshot, busy, onCancel, onOpen, onRetrySummar
         <h3>{title}</h3>
         <p>{persisted ? result.status === 'duplicate' ? `新增 0 条消息，重复 ${result.duplicates} 条。` : `已保存 ${result.inserted} 条消息。` : result.status === 'saved' || result.status === 'duplicate' ? '请重新查询保存结果。' : resultLabels[result.status]}</p>
         {persisted && result.status !== 'duplicate' && result.duplicates > 0 && <p className="import-muted">跳过重复 {result.duplicates} 条。</p>}
-        {result.issues.map((issue, index) => <p className="import-error" key={index}>{issue.action}</p>)}
-        {persisted && <button className="import-secondary" type="button" disabled={!onOpen} onClick={() => onOpen?.(result.conversationId!)}>打开会话</button>}
+        {visibleIssues(result.issues).map((issue, index) => <p className="import-error" key={index}>{issue.action}</p>)}
+        {persisted && !singleComplete && <button className="import-primary" type="button" disabled={!onOpen} onClick={() => onOpen?.(result.conversationId!)}>打开会话</button>}
         {persisted && result.summaryFailed && !retriedSummaries.has(result.conversationId!) && <>
           <p className="import-muted">消息已保存，摘要待更新。</p>
           <button className="import-secondary" type="button" onClick={() => onRetrySummary(result.conversationId!)}>重试摘要</button>
@@ -45,13 +56,14 @@ export function ImportProgress({ snapshot, busy, onCancel, onOpen, onRetrySummar
     })}</ul>}
     {!isImportActive(snapshot) && (
       <div className="import-step-actions">
+        {singleComplete && <button className="import-primary" type="button" disabled={!onOpen} onClick={()=>onOpen?.(snapshot.results[0].conversationId!)}>打开会话</button>}
         {onReset && (
-          <button className="import-primary" type="button" disabled={busy} onClick={onReset}>继续导入</button>
+          <button className={hasSaved ? 'import-secondary':'import-primary'} type="button" disabled={busy} onClick={onReset}>继续导入</button>
         )}
         {onChooseFiles && !onReset && (
           <button className="import-primary" type="button" disabled={busy} onClick={onChooseFiles}>选择文件</button>
         )}
-        {onChooseDirectory && (
+        {onChooseDirectory && !onReset && (
           <button className="import-secondary" type="button" disabled={busy} onClick={onChooseDirectory}>选择文件夹</button>
         )}
         {hasFailedOrBlocked && onRechoose && (

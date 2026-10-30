@@ -7,6 +7,7 @@ import { temporaryStore } from './helpers'
 import type { AiReport } from '../../src/shared/ai-contract'
 import { createDataService } from '../../electron/data/service'
 import { createDataDispatcher } from '../../electron/data/dispatch'
+import { validateAiCall, validateAiResult } from '../../src/shared/ai-validation'
 
 const cleanup: (() => void)[] = []
 afterEach(() => { for (const operation of cleanup.splice(0).reverse()) operation() })
@@ -30,6 +31,26 @@ async function task(repository: Awaited<ReturnType<typeof setup>>['repository'],
   return repository.confirmAnalysis({ token: preparation.token, requestId }, 1001)
 }
 function changeSelf(store: Store) { store.writer.exec("UPDATE self_confirmations SET status='revoked'; INSERT INTO self_confirmations(conversation_id,member_id,status,source) VALUES(1,2,'confirmed','user')") }
+
+test('unknown model capacity stays unset across validation, storage and version snapshots', async () => {
+  const { repository, model } = await setup()
+  const input = { id: model.id, label: model.label, model: model.model, baseUrl: model.baseUrl, enabled: true, contextWindow: null, maxTokens: null, maxInputTokens: 16000 }
+  expect(() => validateAiCall('saveModel', [input])).not.toThrow()
+  const saved = await repository.saveModel(input as never)
+  expect(saved).toMatchObject({ contextWindow: null, maxTokens: null, maxInputTokens: 16000 })
+  expect(repository.modelSecret(model.id, saved.version).model).toEqual(saved)
+  expect(() => validateAiResult('listModels', [saved])).not.toThrow()
+})
+
+test('generation statistics preserve reported total input and attempt timestamps', async () => {
+  const { repository } = await setup(), thread = await repository.openThread('1')
+  const turn = await repository.createTurn({ threadId: thread.id, requestId: 'usage', prompt: '示例提问', referenceIds: [], modelId: 'example' })
+  const usage = { inputTokens: 200, totalInputTokens: 1000, outputTokens: 100, cacheReadTokens: 800, firstTokenMs: 9000, durationMs: 10000, startedAt: 1000, completedAt: 11000 }
+  await repository.recordUsage({ ownerKind: 'turn', ownerId: turn.id, requestId: 'usage', usage })
+  const result = repository.getThread(thread.id)
+  expect(result.turns[0].usage).toMatchObject(usage)
+  expect(() => validateAiResult('getThread', result)).not.toThrow()
+})
 
 test('analysis preparation is local and confirmations are idempotent with a fixed source snapshot', async () => {
   const { store, repository } = await setup()

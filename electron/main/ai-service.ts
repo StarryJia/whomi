@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import type { AiEvent, AiMethods, AiModel, AiReport, AiThread, AiTurn, AiUsage, AnalysisTask } from '../../src/shared/ai-contract'
 import { BoundaryError } from '../../src/shared/desktop-validation'
 import { validateAiResult } from '../../src/shared/ai-validation'
+import { resolveModelLimits } from '../../src/shared/model-limits'
 import { ANALYSIS_PROMPT_VERSION } from '../data/ai/prompt-version'
 import { createMessageProcessor, type ProcessingMember, type ProcessingMessage } from './message-processing'
 import type { ProcessingSettings } from '../../src/shared/settings-contract'
@@ -28,9 +29,19 @@ function parseReport(text: string, ids: Set<string>): AiReport {
   return report
 }
 
+function assertInputFits(input: RuntimeInput) {
+  const inputSize = Buffer.byteLength(input.systemPrompt + input.prompt + JSON.stringify(input.history ?? []), 'utf8')
+  if (inputSize + 1000 > resolveModelLimits(input.model).maxInputTokens) throw new BoundaryError('CONTEXT_TOO_LARGE', '当前内容超出最大输入长度，请减少内容或选择更大上下文的模型。')
+}
+
 /** 批次以保守UTF-8字节预算切分，超长单条仍保留原始消息映射。 */
+function analysisBudget(model: AiModel) {
+  const budget = resolveModelLimits(model).maxInputTokens - 1800
+  if (budget < 1) throw new BoundaryError('MODEL_INPUT_TOO_SMALL', '模型最大输入长度不足，请增加最大输入长度或选择更大上下文的模型。')
+  return budget
+}
 function batches(messages: SourceMessage[], model: AiModel) {
-  const budget = Math.max(256, model.contextWindow - model.maxTokens - 1800)
+  const budget = analysisBudget(model)
   const parts: SourceMessage[][] = [], covered: string[][] = []
   let current: SourceMessage[] = [], size = 0
   const flush = () => { if (current.length) { parts.push(current); covered.push([...new Set(current.flatMap(item => item.sourceIds ?? [item.id]))]); current = []; size = 0 } }
@@ -38,7 +49,10 @@ function batches(messages: SourceMessage[], model: AiModel) {
     let text = message.text
     do {
       let end = Math.min(text.length, budget)
-      while (Buffer.byteLength(text.slice(0, end), 'utf8') > budget && end > 1) end = Math.max(1, Math.floor(end * .8))
+      while (end > 0 && Buffer.byteLength(JSON.stringify({ ...message, text: text.slice(0, end) }), 'utf8') > budget) end = Math.floor(end * .8)
+      // 保持代理对完整，避免把同一个字符拆成两个无效片段。
+      if (end > 0 && end < text.length && /[\ud800-\udbff]/.test(text[end - 1])) end--
+      if ((text && end < 1) || Buffer.byteLength(JSON.stringify({ ...message, text: text.slice(0, end) }), 'utf8') > budget) throw new BoundaryError('MODEL_INPUT_TOO_SMALL', '单条消息的发送信息超出最大输入长度，请增加最大输入长度或选择更大上下文的模型。')
       const fragment = { ...message, text: text.slice(0, end) }; text = text.slice(end)
       const cost = Buffer.byteLength(JSON.stringify(fragment), 'utf8')
       if (size + cost > budget) flush()
@@ -106,6 +120,7 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
   }
   async function runModel(ownerKind: 'analysis' | 'turn', ownerId: string, requestId: string, input: RuntimeInput, signal: AbortSignal, onText: (text: string) => void) {
     if (signal.aborted) throw new DOMException('已停止', 'AbortError')
+    assertInputFits(input)
     const identity = { ownerKind, ownerId, requestId }
     await storage('recordUsage', { ...identity, usage: { incomplete: true } })
     if (signal.aborted) throw new DOMException('已停止', 'AbortError')
@@ -178,7 +193,7 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
         await storage('commitBatch', id, { index, messageIds: [], report, usage: result.usage })
         return report
       }
-      const budget = Math.max(256, context.model.contextWindow - context.model.maxTokens - 1800)
+      const budget = analysisBudget(context.model)
       let summaries = reports
       for (let level = 0; Buffer.byteLength(JSON.stringify(summaries), 'utf8') > budget; level++) {
         if (level >= 8) throw new BoundaryError('SUMMARY_TOO_LARGE', '汇总材料仍超出模型容量，请选择更大上下文的模型重新分析。')
@@ -216,7 +231,7 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
         const instruction = `${dialogueSystem}\n相关画像：${JSON.stringify(processor ? processor.data(context.profile) : context.profile)}${context.skill ? `\n本轮技能：\n${context.skill.content}` : ''}`
         const prompt = JSON.stringify({ question: processor ? processor.text(context.turn.prompt) : context.turn.prompt, references: processor ? processor.messages(context.references) : context.references })
         const key = hash(['thread', context.turn.threadId, context.selfFingerprint, context.model.id, context.model.version, context.skill?.id, context.skill?.version, signature])
-        const budget = context.model.contextWindow - context.model.maxTokens - 1000
+        const budget = resolveModelLimits(context.model).maxInputTokens - 1000
         const fixedSize = Buffer.byteLength(instruction + prompt, 'utf8')
         if (fixedSize > budget) throw new BoundaryError('CONTEXT_TOO_LARGE', '当前问题或引用超出模型容量，请减少引用或选择更大上下文的模型。')
         let history = context.history.map(item => {
@@ -253,7 +268,9 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
             const { model } = await storage<{ model: AiModel }>('modelSecret', modelId)
             if (!model.enabled) throw new BoundaryError('MODEL_DISABLED', '请启用模型后再检测连接。')
             if (signal.aborted) throw new DOMException('已停止', 'AbortError')
-            await options.runtime.run({ key, model, apiKey: await modelSecret(model), systemPrompt: 'Reply OK.', prompt: 'OK' }, { signal, onText: () => {} })
+            const input = { key, model, apiKey: await modelSecret(model), systemPrompt: 'Reply OK.', prompt: 'OK' }
+            assertInputFits(input)
+            await options.runtime.run(input, { signal, onText: () => {} })
           }, signal)
         } finally { clearTimeout(timeout) }
       }, modelId)

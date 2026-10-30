@@ -1,4 +1,5 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { createPortal } from 'react-dom'
 import { ArrowLeft, ChevronRight, Ellipsis, MousePointer2, Plus } from 'lucide-react'
 import clsx from 'clsx'
 import { Tooltip } from './ui/tooltip'
@@ -36,6 +37,30 @@ export function resolveSourceRange(conversations: readonly Conversation[], sourc
 
 function Initial({ name }: { name: string }) {
   return <span className="conversation-avatar" aria-hidden="true">{[...name.trim()][0] || '·'}</span>
+}
+
+function ReaderDialog({ children, busy, onDismiss, returnFocus, labelledBy }: {
+  children: ReactNode
+  busy: boolean
+  onDismiss: () => void
+  returnFocus: RefObject<HTMLButtonElement | null>
+  labelledBy: string
+}) {
+  const dialog = useRef<HTMLDialogElement>(null)
+  useLayoutEffect(() => {
+    const element = dialog.current
+    if (!element) return
+    if (typeof element.showModal === 'function') element.showModal()
+    else element.setAttribute('open', '')
+    return () => {
+      if (typeof element.close === 'function') element.close()
+      returnFocus.current?.focus({ preventScroll: true })
+    }
+  }, [returnFocus])
+  // 原生模态层隔离侧栏和窗口拖拽区域，并提供浏览器焦点约束。
+  return createPortal(<dialog ref={dialog} className="reader-modal-root" aria-modal="true" aria-labelledby={labelledBy}
+    onKeyDown={event => { if (event.key === 'Escape') event.stopPropagation() }}
+    onCancel={event => { event.preventDefault(); if (!busy) onDismiss() }}>{children}</dialog>, document.body)
 }
 
 export function ConversationNavigation({ wide, conversations, activeId, onSelect, onImport, hasMore, loading, error, onLoadMore, onRefresh }: {
@@ -438,8 +463,9 @@ export function ConversationReader({ conversation, range, sourceStatus, onReturn
     </div>
     {composer}
     {selfModalOpen && (
+      <ReaderDialog busy={selfSaving} onDismiss={() => setSelfModalOpen(false)} returnFocus={moreButton} labelledBy="self-modal-title">
       <div className="reader-modal-overlay" role="presentation" onClick={e => { if (e.target === e.currentTarget && !selfSaving) setSelfModalOpen(false) }}>
-        <div className="reader-modal-card" role="dialog" aria-modal="true" aria-labelledby="self-modal-title">
+        <div className="reader-modal-card">
           <h2 id="self-modal-title">选择本人</h2>
           <p className="reader-modal-description">选择该会话中代表本人的发言成员。设置后，该成员的消息将作为本人发言靠右展示。</p>
           {selfError && <p className="import-error" role="alert">{selfError}</p>}
@@ -498,10 +524,12 @@ export function ConversationReader({ conversation, range, sourceStatus, onReturn
           </div>
         </div>
       </div>
+      </ReaderDialog>
     )}
     {deleteModalOpen && (
+      <ReaderDialog busy={deleteSaving} onDismiss={() => setDeleteModalOpen(false)} returnFocus={moreButton} labelledBy="delete-modal-title">
       <div className="reader-modal-overlay" role="presentation" onClick={e => { if (e.target === e.currentTarget && !deleteSaving) setDeleteModalOpen(false) }}>
-        <div className="reader-modal-card" role="dialog" aria-modal="true" aria-labelledby="delete-modal-title">
+        <div className="reader-modal-card">
           <h2 id="delete-modal-title">删除会话</h2>
           <p className="reader-modal-description">将彻底删除该会话及其全部聊天记录、成员、本人设置、对话记录与分析报告。此操作无法撤销。</p>
           {deleteError && <p className="import-error" role="alert">{deleteError}</p>}
@@ -525,6 +553,7 @@ export function ConversationReader({ conversation, range, sourceStatus, onReturn
           </div>
         </div>
       </div>
+      </ReaderDialog>
     )}
   </section>}
   </ConversationWorkspace>

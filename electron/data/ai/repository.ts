@@ -20,8 +20,8 @@ type AnalysisRow = { id: bigint; conversation_id: bigint; model_id: string; mode
 type TurnRow = { id: bigint; thread_id: bigint; request_id: string; prompt: string; reference_ids: string; model_id: string; model_version: bigint; skill: string | null; self_fingerprint: string; text: string; state: AiState; attempt: bigint; event_sequence: bigint; error: string | null; checkpoint: string | null }
 const activeStates = new Set<AiState>(['queued', 'running', 'summarizing'])
 const states = new Set<AiState>([...activeStates, 'completed', 'stopped', 'failed', 'interrupted'])
-const tokenFields = ['inputTokens', 'outputTokens', 'cacheReadTokens', 'cacheWriteTokens'] as const
-const usageFields = [...tokenFields, 'durationMs', 'firstTokenMs', 'outputTokensPerSecond'] as const
+const tokenFields = ['inputTokens', 'totalInputTokens', 'outputTokens', 'cacheReadTokens', 'cacheWriteTokens'] as const
+const usageFields = [...tokenFields, 'durationMs', 'firstTokenMs', 'outputTokensPerSecond', 'startedAt', 'completedAt'] as const
 function fail(code: string, action = '请检查输入后重试。'): never { throw new BoundaryError(code, action) }
 function id(value: unknown): bigint { if (!localId(value)) fail('INVALID_ID'); return BigInt(value as string) }
 function text(value: unknown, max = 1024 * 1024): value is string { return typeof value === 'string' && value.length > 0 && value.length <= max }
@@ -48,7 +48,7 @@ function validateReport(value: AiReport, allowed: Set<string>) {
 export function saveAiModelVersion(db: Store['writer'], input: ModelInput, encryptedKey?: string | null): AiModel {
   const previous = db.prepare('SELECT version,encrypted_key FROM ai_models WHERE id=?').get(input.id) as { version: bigint; encrypted_key: string | null } | undefined
   const secret = encryptedKey === undefined ? previous?.encrypted_key ?? null : encryptedKey
-  const model: AiModel = { id: input.id, label: input.label, model: input.model, baseUrl: input.baseUrl, contextWindow: input.contextWindow, maxTokens: input.maxTokens, enabled: input.enabled, version: Number(previous?.version ?? 0n) + 1, hasCredential: secret !== null }
+  const model: AiModel = { id: input.id, label: input.label, model: input.model, baseUrl: input.baseUrl, contextWindow: input.contextWindow, maxTokens: input.maxTokens, ...(input.maxInputTokens !== undefined ? { maxInputTokens: input.maxInputTokens } : {}), enabled: input.enabled, version: Number(previous?.version ?? 0n) + 1, hasCredential: secret !== null }
   db.prepare('INSERT INTO ai_models(id,version,data,encrypted_key) VALUES(?,?,?,?) ON CONFLICT(id) DO UPDATE SET version=excluded.version,data=excluded.data,encrypted_key=excluded.encrypted_key').run(model.id, model.version, JSON.stringify(model), secret)
   db.prepare('INSERT INTO ai_model_versions(model_id,version,data,encrypted_key) VALUES(?,?,?,?)').run(model.id, model.version, JSON.stringify(model), secret)
   return model
@@ -117,6 +117,10 @@ export function createAiRepository(store: Store, write: WriterQueue) {
     if (values.some(value => value.incomplete || value.inputTokens === undefined || value.outputTokens === undefined)) result.incomplete = true
     if (result.outputTokens !== undefined && result.durationMs && result.durationMs > 0) result.outputTokensPerSecond = result.outputTokens / (result.durationMs / 1000)
     if (values.length === 1 && values[0].firstTokenMs !== undefined) result.firstTokenMs = values[0].firstTokenMs
+    const starts = values.flatMap(value => value.startedAt === undefined ? [] : [value.startedAt])
+    const ends = values.flatMap(value => value.completedAt === undefined ? [] : [value.completedAt])
+    if (starts.length) result.startedAt = Math.min(...starts)
+    if (ends.length) result.completedAt = Math.max(...ends)
     return result
   }
   function taskView(row: AnalysisRow): AnalysisTask {
@@ -149,8 +153,12 @@ export function createAiRepository(store: Store, write: WriterQueue) {
   const repository = {
     listModels(): AiModel[] { return (reader.prepare('SELECT data FROM ai_models ORDER BY id').all() as { data: string }[]).map(row => parse<AiModel>(row.data)) },
     async saveModel(input: ModelInput, encryptedKey?: string | null): Promise<AiModel> {
-      fields(input, ['id', 'label', 'model', 'baseUrl', 'contextWindow', 'maxTokens', 'enabled', 'version', 'hasCredential'])
-      if (!key(input.id) || !text(input.label, 256) || !key(input.model) || !text(input.baseUrl, 4096) || !Number.isSafeInteger(input.contextWindow) || input.contextWindow < 256 || !Number.isSafeInteger(input.maxTokens) || input.maxTokens < 1 || input.maxTokens >= input.contextWindow || typeof input.enabled !== 'boolean' || !(encryptedKey === undefined || encryptedKey === null || text(encryptedKey, 65536))) fail('INVALID_MODEL')
+      fields(input, ['id', 'label', 'model', 'baseUrl', 'contextWindow', 'maxTokens', 'maxInputTokens', 'enabled', 'version', 'hasCredential'])
+      const validCapacity = (value: number | null | undefined, minimum = 1) => value === null || (Number.isSafeInteger(value) && value! >= minimum && value! <= 2000000)
+      if (!key(input.id) || !text(input.label, 256) || !key(input.model) || !text(input.baseUrl, 4096) || !validCapacity(input.contextWindow, 256) || !validCapacity(input.maxTokens, 32) ||
+        (input.contextWindow !== null && input.maxTokens !== null && input.maxTokens >= input.contextWindow) ||
+        (input.maxInputTokens !== undefined && (!validCapacity(input.maxInputTokens) || (input.maxInputTokens !== null && input.contextWindow !== null && input.maxInputTokens > input.contextWindow))) ||
+        typeof input.enabled !== 'boolean' || !(encryptedKey === undefined || encryptedKey === null || text(encryptedKey, 65536))) fail('INVALID_MODEL')
       try { const url = new URL(input.baseUrl); if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.hash || url.search) fail('INVALID_MODEL') } catch { fail('INVALID_MODEL') }
       return write(() => db.transaction(() => {
         if (db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='settings_models'").get()) fail('SETTINGS_REQUIRED', '请在设置中修改模型。')

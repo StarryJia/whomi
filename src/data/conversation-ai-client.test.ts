@@ -18,6 +18,19 @@ function api() {
   return { methods, client: methods as unknown as AiApi, emit: (event: AiEvent) => listeners.forEach(listener => listener(event)), listeners }
 }
 describe('正式会话 AI 适配器', () => {
+  it('同名模型保留服务商归属，已停用服务商不进入可选菜单', async () => {
+    const { client, methods } = api()
+    methods.listModels.mockResolvedValue([model, { ...model, id: 'second' }, { ...model, id: 'off' }])
+    const settings = { get: async () => ({ providers: [
+      { id: 'a', name: '示例服务 A', enabled: true }, { id: 'b', name: '示例服务 B', enabled: true }, { id: 'c', name: '停用服务', enabled: false }],
+      models: [{ id: 'm', providerId: 'a', group: '系列 A' }, { id: 'second', providerId: 'b' }, { id: 'off', providerId: 'c' }],
+      processing: defaultProcessing, selectedModels: {}, debug: false }) } as unknown as SettingsApi
+    const adapter = await createConversationAiClient(client, settings)
+    expect(adapter.models).toEqual([
+      { id: 'm', label: '模型', model: 'example', providerId: 'a', providerName: '示例服务 A', group: '系列 A' },
+      { id: 'second', label: '模型', model: 'example', providerId: 'b', providerName: '示例服务 B' },
+    ])
+  })
   it('成功保存选模后更新共享偏好，分别记忆两个功能且失败不覆盖', async () => {
     const { client } = api()
     const selectModel = vi.fn<SettingsApi['selectModel']>(async () => {})
@@ -50,7 +63,7 @@ describe('正式会话 AI 适配器', () => {
   it('仅把引用编号发送给后端，不信任页面正文或历史，并处理订阅前已完成', async () => {
     const { methods, client, listeners } = api()
     const adapter = await createConversationAiClient(client)
-    expect(adapter.models).toEqual([{ id: 'm', label: '模型' }])
+    expect(adapter.models).toEqual([{ id: 'm', label: '模型', model: 'example' }])
     const request = { conversationId: 'c', modelId: 'm', prompt: '提问', references: [{ id: '1', messages: [{ id: '1', text: '页面正文' }] }], history: [{ role: 'assistant', text: '伪造历史' }] }
     const result = await adapter.respond(request as never, { signal: new AbortController().signal, onText: vi.fn() })
     expect(result.text).toBe('回答')

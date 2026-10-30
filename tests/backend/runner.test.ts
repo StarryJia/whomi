@@ -66,6 +66,13 @@ test('summary failure keeps saved result and can retry separately',async()=> {
   await service.retrySummary(result.conversationId!);result=(await service.getImport(id)).results[0]
   expect(result.summaryFailed).toBe(false)
 })
+test('a summary storage failure does not count committed records twice',async()=> {
+  const progress:number[]=[]
+  const {service,id}=await setup([{key:'a',ids:['m1']}],{summary:async()=>{throw new ImportFailure('DISK_SPACE')},progress:count=>progress.push(count)})
+  await service.startImport({kind:'commit',plan:{jobId:id,decisions:[]}});await service.idle()
+  expect((await service.getImport(id)).results[0]).toMatchObject({status:'saved',inserted:1})
+  expect(progress.at(-1)).toBe(1)
+})
 test.each([1,2])('cancellation during group %i rolls current group back and preserves prior commits',async groupNumber=> {
   let service:ReturnType<typeof createDataService>,id:string,groups=0
   const prepared=await setup([{key:'a',ids:Array.from({length:501},(_,i)=>`m${i}`)},{key:'b',ids:Array.from({length:501},(_,i)=>`n${i}`)}],{commit:async(s,v,t,signal)=> {
@@ -122,4 +129,24 @@ test('delivers the latest fast staging state through a trailing throttled notifi
     for(let i=1;i<events.length;i++)expect(events[i].at-events[i-1].at).toBeGreaterThanOrEqual(190)
   }finally {await service.cancelImport(id)}
   expect(events.at(-1)?.state).toBe('cancelled')
+})
+
+test('publishes real parsed counts before staging finishes',async()=> {
+  const events:{state:string;seen:number}[]=[],path=join(directory,'progress.json')
+  await writeFile(path,JSON.stringify({key:'progress',ids:Array.from({length:1000},(_,i)=>`m${i}`)}))
+  const service=createDataService({store,appDataDirectory:directory,staging:{parsers:[parser],onProgress:(_id,counts)=>events.push({state:'parsing',seen:counts.seen})}})
+  const id=await service.prepareImport([{rootPath:path}]),snapshot=await service.getImport(id)
+  try {
+    await service.startImport({kind:'stage',jobId:id,entryIds:snapshot.discovery!.entries.map(e=>e.entryId)});await service.idle()
+    expect(events.some(event=>event.seen>0 && event.seen<1000)).toBe(true)
+    expect(events.at(-1)?.seen).toBe(1000)
+  }finally {await service.cancelImport(id)}
+})
+test('blocked parsing keeps its original diagnostic instead of requesting a target selection',async()=>{
+  const {service,id}=await setup([{key:'bad',ids:['m1'],blocked:true}])
+  await service.startImport({kind:'commit',plan:{jobId:id,decisions:[]}});await service.idle()
+  const result=(await service.getImport(id)).results[0]
+  expect(result.status).toBe('blocked')
+  expect(result.issues).toContainEqual(expect.objectContaining({code:'BAD',action:'请检查文件。'}))
+  expect(result.issues.some(issue=>issue.code==='TARGET_REQUIRED' || issue.code==='TARGET_CONFLICT')).toBe(false)
 })

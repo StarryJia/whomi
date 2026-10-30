@@ -4,6 +4,7 @@ import { dirname, join, resolve } from 'node:path'
 import { performance } from 'node:perf_hooks'
 import type { AgentRunInput, AgentRunResult } from './protocol'
 import type { AiUsage } from '../../src/shared/ai-contract'
+import { resolveModelLimits } from '../../src/shared/model-limits'
 import type { ResourceLoader } from '@earendil-works/pi-coding-agent'
 export type { AgentRunInput, AgentRunResult } from './protocol'
 
@@ -44,11 +45,12 @@ export class PiRuntime {
       credentials: { read: async () => undefined, list: async () => [], modify: async (_provider, change) => change(undefined), delete: async () => {} },
       modelsPath: null, refreshOnCreate: false, allowModelNetwork: false,
     })
+    const limits = resolveModelLimits(input.model)
     modelRuntime.registerProvider(provider, {
       baseUrl: input.model.baseUrl,
       api: 'openai-completions',
       apiKey: 'whomi-runtime-credential',
-      models: [{ id: input.model.model, name: input.model.label, reasoning: false, input: ['text'], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: input.model.contextWindow, maxTokens: input.model.maxTokens }],
+      models: [{ id: input.model.model, name: input.model.label, reasoning: false, input: ['text'], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: limits.contextWindow, maxTokens: limits.maxTokens }],
     })
     await modelRuntime.setRuntimeApiKey(provider, input.apiKey ?? 'whomi-no-credential')
     const model = modelRuntime.getModel(provider, input.model.model)
@@ -81,6 +83,7 @@ export class PiRuntime {
     let final: { input: number; output: number; cacheRead: number; cacheWrite: number } | undefined
     let stopReason: string | undefined
     const started = performance.now()
+    const startedAt = Date.now()
     const previousObserver = session.agent.onProviderStreamEvent
     session.agent.onProviderStreamEvent = async (data, selected) => {
       await previousObserver?.(data, selected)
@@ -114,11 +117,11 @@ export class PiRuntime {
       const inputTokens = final?.input ?? (inputKnown ? Math.max(0, (reported!.prompt_tokens as number) - (cacheKnown ? cached : 0) - (cacheWriteKnown ? cacheWritten : 0)) : undefined)
       const outputTokens = final?.output ?? (outputKnown ? reported!.completion_tokens as number : undefined)
       return {
-        ...(inputKnown ? { inputTokens } : {}),
+        ...(inputKnown ? { inputTokens, totalInputTokens: reported!.prompt_tokens as number } : {}),
         ...(outputKnown ? { outputTokens, outputTokensPerSecond: outputTokens! / Math.max(durationMs / 1000, 0.001) } : {}),
         ...(cacheKnown ? { cacheReadTokens: final?.cacheRead ?? cached } : {}),
         ...(cacheWriteKnown ? { cacheWriteTokens: final?.cacheWrite ?? cacheWritten } : {}),
-        durationMs, firstTokenMs, incomplete: !inputKnown || !outputKnown,
+        durationMs, firstTokenMs, startedAt, completedAt: Date.now(), incomplete: !inputKnown || !outputKnown,
       }
     }
     options.signal.addEventListener('abort', abort, { once: true })

@@ -27,6 +27,7 @@ export type StagingOptions = {
   freeBytes?: (path: string) => Promise<bigint>
   parsers?: readonly ParserAdapter[]
   registerArea?: (jobId: string, ownership: StagingOwnership) => void
+  onProgress?: (jobId: string, counts: ImportCounts) => void
 }
 const emptyCounts = (): ImportCounts => ({ seen: 0, validRecords: 0, invalidRecords: 0 })
 function candidate(source: PrivateEntry, chat?: ParsedConversation, fingerprint: string | null = null): Candidate {
@@ -66,7 +67,13 @@ export function createStagingService(options: StagingOptions) {
         let fingerprint: string | null = null, current: Candidate | undefined, blocked = false
         let batch: { id: string; ordinal: number; data: string }[] = [], batchBytes = 0
         const flush = db.transaction(() => { for (const row of batch) insert.run(row.id, row.ordinal, row.data) })
-        async function flushBatch() { if (batch.length) { flush(); batch = []; batchBytes = 0 }; await new Promise<void>(resolve => setImmediate(resolve)); checkSignal(signal) }
+        async function flushBatch() {
+          if (batch.length) { flush(); batch = []; batchBytes = 0 }
+          const validRecords = [...candidates, ...local].reduce((n,c)=>n+c.counts.validRecords,0)
+          const invalidRecords = candidates.reduce((n,c)=>n+c.counts.invalidRecords,0) + [...invalid.values()].reduce((n,items)=>n+items.size,0)
+          options.onProgress?.(jobId,{seen:validRecords+invalidRecords,validRecords,invalidRecords})
+          await new Promise<void>(resolve => setImmediate(resolve)); checkSignal(signal)
+        }
         function addIssue(value: ImportIssue) {
           if (value.severity === 'blocking') blocked = true
           if (current) {

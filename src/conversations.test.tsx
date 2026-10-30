@@ -106,7 +106,7 @@ describe('文件选择与会话前端', () => {
     await waitFor(() => expect(api.listConversations).toHaveBeenCalledTimes(1))
     await user.click(screen.getByRole('button', { name: '导入会话' }))
     await user.click(screen.getByRole('button', { name: '选择文件' }))
-    await screen.findByText('两层目录中的记录.json')
+    await waitFor(() => expect(api.startImport).toHaveBeenCalled())
     const value = snapshot({ status: 'completed', results: [saved('a', '7')] })
     vi.mocked(api.getImport).mockResolvedValue(value)
     act(() => emit(value))

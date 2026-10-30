@@ -1,14 +1,15 @@
 import { test, expect, _electron as electron } from '@playwright/test'
 import { createServer } from 'node:http'
-import { mkdtemp, mkdir, writeFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, writeFile, readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 
-test('0.1.2 data and encrypted models survive the packaged upgrade and subsequent restart', async () => {
+test('existing data and encrypted models survive the packaged upgrade and subsequent restart', async () => {
   test.skip(!process.env.WHOMI_OLD_EXECUTABLE || !process.env.WHOMI_PACKAGED_EXECUTABLE, '需要提供旧版与新版安装包中的可执行程序。')
   test.setTimeout(90000)
   const directory = await mkdtemp(join(tmpdir(), 'whomi-runtime-upgrade-'))
-  const evidence = resolve('release/validation-0.1.3')
+  const version = JSON.parse(await readFile('package.json', 'utf8')).version
+  const evidence = resolve(`release/validation-${version}`)
   await mkdir(evidence, { recursive: true })
   const authorizations = []
   const server = createServer((request, response) => {
@@ -46,9 +47,15 @@ test('0.1.2 data and encrypted models survive the packaged upgrade and subsequen
     let page = await app.firstWindow()
     await expect(page.locator('main')).toBeVisible()
     const oldInfo = await app.evaluate(({ app }) => ({ version: app.getVersion(), name: app.getName() }))
-    expect(oldInfo.version).toBe('0.1.2')
+    expect(['0.1.2', '0.1.3']).toContain(oldInfo.version)
     await app.evaluate(async () => globalThis.__whomiRuntimeProbe.request('probe.seed', null))
-    const model = await page.evaluate(baseUrl => window.whomi.ai.saveModel({ id: 'upgrade-old-model', label: '升级前的模型', model: 'synthetic-upgrade', baseUrl, contextWindow: 8000, maxTokens: 1000, enabled: true, apiKey: 'upgrade-test-secret' }), `http://127.0.0.1:${server.address().port}/v1`)
+    const model = await page.evaluate(async baseUrl => {
+      if (window.whomi.settings) {
+        const provider = await window.whomi.settings.saveProvider({ name: '升级前的服务商', baseUrl, enabled: true, apiKey: 'upgrade-test-secret' })
+        return window.whomi.settings.saveModel({ providerId: provider.id, label: '升级前的模型', model: 'synthetic-upgrade', contextWindow: 8000, maxTokens: 1000, enabled: true })
+      }
+      return window.whomi.ai.saveModel({ id: 'upgrade-old-model', label: '升级前的模型', model: 'synthetic-upgrade', baseUrl, contextWindow: 8000, maxTokens: 1000, enabled: true, apiKey: 'upgrade-test-secret' })
+    }, `http://127.0.0.1:${server.address().port}/v1`)
     const preparation = await page.evaluate(modelId => window.whomi.ai.prepareAnalysis({ conversationId: '1', modelId }), model.id)
     const task = await page.evaluate(token => window.whomi.ai.confirmAnalysis({ token, requestId: 'upgrade-report' }), preparation.token)
     await expect.poll(() => page.evaluate(id => window.whomi.ai.getAnalysis(id), task.id), { timeout: 30000 }).toMatchObject({ state: 'completed' })
@@ -60,7 +67,7 @@ test('0.1.2 data and encrypted models survive the packaged upgrade and subsequen
     app = await launch(process.env.WHOMI_PACKAGED_EXECUTABLE)
     page = await app.firstWindow()
     await expect(page.locator('main')).toBeVisible()
-    expect(await app.evaluate(({ app }) => ({ version: app.getVersion(), name: app.getName() }))).toEqual({ version: '0.1.3', name: oldInfo.name })
+    expect(await app.evaluate(({ app }) => ({ version: app.getVersion(), name: app.getName() }))).toEqual({ version, name: oldInfo.name })
     expect(await app.evaluate(async () => globalThis.__whomiRuntimeProbe.request('probe.snapshot', null))).toEqual(before)
     const migrated = await page.evaluate(() => window.whomi.settings.get())
     expect(migrated.providers).toHaveLength(1)
@@ -90,7 +97,7 @@ test('0.1.2 data and encrypted models survive the packaged upgrade and subsequen
     await page.getByRole('button', { name: '设置', exact: true }).click()
     await expect(page.getByLabel('替换密钥', { exact: true })).toHaveValue('')
     await page.screenshot({ path: join(evidence, 'upgrade-settings-preserved.png') })
-    await writeFile(join(evidence, 'upgrade-result.json'), JSON.stringify({ oldVersion: oldInfo.version, version: '0.1.3', preservedTables: Object.keys(before), encryptedCredentialUsable: true, configurationRestartPreserved: true }, null, 2))
+    await writeFile(join(evidence, 'upgrade-result.json'), JSON.stringify({ oldVersion: oldInfo.version, version, preservedTables: Object.keys(before), encryptedCredentialUsable: true, configurationRestartPreserved: true }, null, 2))
   } finally {
     await app?.close()
     server.closeAllConnections(); await new Promise(resolve => server.close(resolve))

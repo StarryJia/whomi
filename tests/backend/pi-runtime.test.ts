@@ -44,6 +44,16 @@ describe('Pi runtime over a controlled OpenAI compatible service', () => {
   const options = () => ({ signal: new AbortController().signal, onText: () => {} })
   const input = (model: AiModel, prompt = '示例提问') => ({ key: 'example-thread', model, systemPrompt: '仅依据本轮许可材料回答。', prompt })
 
+  it('uses the upstream request fallback without saving invented model capacities', async () => {
+    const unknown = { ...model, contextWindow: null, maxTokens: null }
+    const result = await new PiRuntime(directory).run(input(unknown as unknown as AiModel), options())
+    expect(result.text).toBe('已收到')
+    const request = requests[0] as Record<string, unknown>
+    expect(request.max_tokens ?? request.max_completion_tokens).toBe(8192)
+    expect(unknown.contextWindow).toBeNull()
+    expect(unknown.maxTokens).toBeNull()
+  }, 20000)
+
   it('streams real Pi output, records reported usage, and exposes no tools or ambient instructions', async () => {
     mkdirSync(join(directory, 'ai-runtime'), { recursive: true })
     writeFileSync(join(directory, 'ai-runtime', 'SYSTEM.md'), 'AMBIENT_SECRET')
@@ -58,7 +68,7 @@ describe('Pi runtime over a controlled OpenAI compatible service', () => {
     const result = await new PiRuntime(directory).run(input(model), { ...options(), onText: text => chunks.push(text) })
     expect(result.text).toBe('已收到')
     expect(chunks).toEqual(['已', '已收到'])
-    expect(result.usage).toMatchObject({ inputTokens: 12, outputTokens: 3, incomplete: false })
+    expect(result.usage).toMatchObject({ inputTokens: 12, totalInputTokens: 12, outputTokens: 3, incomplete: false, startedAt: expect.any(Number), completedAt: expect.any(Number) })
     expect(JSON.stringify(requests[0])).not.toContain('AMBIENT_SECRET')
     expect(JSON.stringify(requests[0])).not.toContain('AMBIENT_APPEND_SECRET')
     expect(JSON.stringify(requests[0])).not.toContain('AMBIENT_AGENT_SECRET')
@@ -128,7 +138,7 @@ describe('Pi runtime over a controlled OpenAI compatible service', () => {
       response.end(`data: ${JSON.stringify({ id: 'example', choices: [{ index: 0, delta: { content: '带缓存用量' }, finish_reason: 'stop' }], usage: raw })}\n\ndata: [DONE]\n\n`)
     }
     const result = await new PiRuntime(directory).run(input(model), options())
-    expect(result.usage).toMatchObject(expected)
+    expect(result.usage).toMatchObject({ ...expected, totalInputTokens: 1000 })
     if (!('cacheWriteTokens' in expected)) expect(result.usage.cacheWriteTokens).toBeUndefined()
   }, 20000)
 

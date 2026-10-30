@@ -15,7 +15,7 @@ test('settings persist real models, process outbound chat, preserve drafts and m
   const requests = []
   let fail = true
   const server = createServer((request, response) => {
-    if (request.url === '/v1/models') { response.writeHead(200, { 'Content-Type': 'application/json' }); response.end(JSON.stringify({ data: [{ id: 'synthetic-chat' }, { id: 'synthetic-analysis' }] })); return }
+    if (request.url === '/v1/models') { response.writeHead(200, { 'Content-Type': 'application/json' }); response.end(JSON.stringify({ data: [{ id: 'synthetic-chat', context_length: 8000, max_output_tokens: 1000 }, { id: 'synthetic-analysis' }] })); return }
     let body = ''
     request.on('data', chunk => { body += chunk })
     request.on('end', () => {
@@ -55,29 +55,22 @@ test('settings persist real models, process outbound chat, preserve drafts and m
     await page.getByLabel('服务商名称', { exact: true }).fill('本地合成验收')
     await page.getByLabel('接口地址', { exact: true }).fill(`http://127.0.0.1:${server.address().port}/v1`)
     await page.getByLabel('密钥', { exact: true }).fill('test-only-secret')
-    await page.getByRole('button', { name: '消息处理', exact: true }).click()
-    await expect(page.getByRole('dialog', { name: '保存修改？' })).toBeVisible()
-    await page.getByRole('button', { name: '继续编辑', exact: true }).click()
-    await page.getByRole('button', { name: '保存服务商', exact: true }).click()
+    await page.getByRole('dialog', { name: '添加服务商' }).getByRole('button', { name: '保存', exact: true }).click()
     await expect(page.getByLabel('替换密钥', { exact: true })).toHaveValue('')
     await page.getByRole('button', { name: '同步模型', exact: true }).click()
-    await page.getByRole('checkbox', { name: 'synthetic-chat', exact: true }).check()
-    await page.getByText('高级设置', { exact: true }).click()
-    await page.getByLabel('上下文长度', { exact: true }).fill('8000')
-    await page.getByLabel('最大输出长度', { exact: true }).fill('1000')
-    await page.getByRole('button', { name: '添加所选模型 (1)', exact: true }).click()
+    await page.getByRole('button', { name: '添加synthetic-chat', exact: true }).click()
+    await page.getByRole('button', { name: '关闭本地合成验收 模型', exact: true }).click()
     await expect(page.locator('.ms-model-row')).toHaveCount(1)
     await page.getByRole('button', { name: '手动添加', exact: true }).click()
     await page.getByLabel('模型标识', { exact: true }).fill('synthetic-analysis')
     await page.getByLabel('显示名称', { exact: true }).fill('合成分析')
-    await page.getByText('高级设置', { exact: true }).click()
     await page.getByLabel('上下文长度', { exact: true }).fill('8000')
     await page.getByLabel('最大输出长度', { exact: true }).fill('1000')
     await page.getByRole('button', { name: '添加模型', exact: true }).click()
-    await page.locator('.ms-model-row').first().getByRole('button', { name: '检测连接' }).click()
+    await page.getByRole('button', { name: '检测synthetic-chat', exact: true }).click()
     await expect(page.getByText('检测失败', { exact: true })).toBeVisible({ timeout: 15000 })
     fail = false
-    await page.getByRole('button', { name: '重试检测', exact: true }).click()
+    await page.getByRole('button', { name: '检测synthetic-chat', exact: true }).click()
     await expect(page.getByText('连接成功', { exact: true })).toBeVisible({ timeout: 15000 })
     expect(JSON.stringify(requests)).not.toMatch(/13800138000|example@example\.com|设置后保留的草稿/)
     await page.screenshot({ path: join(evidence, '02-provider-models.png') })
@@ -107,7 +100,7 @@ test('settings persist real models, process outbound chat, preserve drafts and m
     await app.evaluate(({ BrowserWindow }) => { const window = BrowserWindow.getAllWindows()[0]; window.setMinimumSize(320, 320); window.setSize(360, 800) })
     await page.getByRole('button', { name: '分类', exact: true }).click()
     await page.getByRole('button', { name: '模型服务', exact: true }).click()
-    await page.getByRole('button', { name: /本地合成验收 已启用/ }).click()
+    await page.getByRole('button', { name: '本地合成验收', exact: true }).click()
     await expect(page.getByLabel('接口地址', { exact: true })).toBeVisible()
     await page.screenshot({ path: join(evidence, '09-narrow-model.png') })
     expect(await page.locator('.ms-detail').evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true)
@@ -117,9 +110,11 @@ test('settings persist real models, process outbound chat, preserve drafts and m
     const state = await page.evaluate(() => window.whomi.settings.get())
     const chatId = state.models.find(model => model.model === 'synthetic-chat').id
     const analysisId = state.models.find(model => model.model === 'synthetic-analysis').id
-    await page.getByRole('combobox', { name: '对话模型' }).selectOption(chatId)
+    await page.getByRole('combobox', { name: '对话模型' }).click()
+    await page.getByRole('option', { name: 'synthetic-chat', exact: true }).click()
     await page.getByRole('button', { name: '会话分析', exact: true }).click()
-    await page.getByRole('combobox', { name: '分析模型' }).selectOption(analysisId)
+    await page.getByRole('combobox', { name: '分析模型' }).click()
+    await page.getByRole('option', { name: '合成分析', exact: true }).click()
     await page.keyboard.press('Escape')
     await page.getByRole('button', { name: '选择消息', exact: true }).click()
     await page.getByRole('option', { name: /示例甲：示例甲的电话/ }).click()
@@ -168,7 +163,7 @@ test('settings persist real models, process outbound chat, preserve drafts and m
     await page.getByRole('button', { name: '展开会话列表' }).click()
     await page.getByRole('button', { name: '设置验收 · 虚构会话', exact: true }).click()
     await expect(page.locator('.message-text')).toContainText('13800138000')
-    await expect(page.getByRole('combobox', { name: '对话模型' })).toHaveValue(chatId)
+    await expect(page.getByRole('combobox', { name: '对话模型' })).toContainText('synthetic-chat')
     await page.getByRole('button', { name: '继续 AI 对话', exact: true }).click()
     await expect(page.getByText('合成验收回答', { exact: true })).toBeVisible()
     await page.getByRole('textbox', { name: '向 AI 提问', exact: true }).fill('迁移后继续')
@@ -177,10 +172,9 @@ test('settings persist real models, process outbound chat, preserve drafts and m
     expect(JSON.stringify(requests.at(-1))).not.toMatch(/示例甲|13800138000|example@example\.com/)
     await page.getByRole('button', { name: '设置', exact: true }).click()
     await page.getByRole('switch', { name: '启用服务商', exact: true }).click()
-    await page.getByRole('button', { name: '保存服务商', exact: true }).click()
-    await expect(page.getByRole('button', { name: '保存服务商', exact: true })).toBeDisabled()
+    await expect.poll(() => page.evaluate(async () => (await window.whomi.settings.get()).providers[0].enabled)).toBe(false)
     await page.getByRole('button', { name: '返回', exact: true }).click()
-    await expect(page.getByRole('combobox', { name: '对话模型' })).toBeDisabled()
+    await expect(page.getByRole('combobox', { name: '对话模型' })).toContainText('暂无可用模型')
     await page.screenshot({ path: join(evidence, '07-model-disabled.png') })
   } finally {
     await app?.close()

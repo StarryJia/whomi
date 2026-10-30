@@ -1,11 +1,13 @@
 import { test, expect, _electron as electron } from '@playwright/test'
 import { createServer } from 'node:http'
-import { mkdtemp, writeFile, rm } from 'node:fs/promises'
+import { mkdtemp, writeFile, rm, mkdir } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 
 test('real Pi process persists analysis reports and dialogue through the isolated desktop bridge', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'whomi-runtime-'))
+  const evidence = resolve('release/cherry-conversation-20261031')
+  await mkdir(evidence, { recursive: true })
   const requests = []
   const server = createServer((request, response) => {
     let body = ''
@@ -49,7 +51,11 @@ test('real Pi process persists analysis reports and dialogue through the isolate
     page = await application.firstWindow()
     await page.getByRole('button', { name: '展开会话列表' }).click()
     await page.getByRole('button', { name: '虚构会话', exact: true }).click()
-    await expect(page.getByRole('combobox', { name: '对话模型' })).toHaveValue(model.id)
+    await expect(page.getByRole('combobox', { name: '对话模型' })).toHaveAttribute('title', '合成本地模型 | 合成本地服务')
+    await page.getByRole('combobox', { name: '对话模型' }).click()
+    await expect(page.getByRole('group', { name: '合成本地服务' })).toBeVisible()
+    await page.screenshot({ path: join(evidence, '01-model-selector.png') })
+    await page.keyboard.press('Escape')
     const preparation = await page.evaluate(modelId => window.whomi.ai.prepareAnalysis({ conversationId: '1', modelId }), model.id)
     expect(preparation).toMatchObject({ selfName: '本人', totalMessages: 1, analyzableMessages: 1 })
     expect(requests).toHaveLength(0)
@@ -61,8 +67,21 @@ test('real Pi process persists analysis reports and dialogue through the isolate
     await page.getByRole('option', { name: '本人：明晚九点我听你讲' }).click()
     await page.getByRole('textbox').fill('我做了什么？')
     await page.getByRole('button', { name: '发送给 AI' }).click()
+    await expect(page.getByRole('textbox', { name: '向 AI 提问' })).toHaveValue('')
     await expect(page.getByText('这段示例中，你约定了一个明确的时间。', { exact: true })).toBeVisible({ timeout: 30000 })
     await expect.poll(async () => (await page.evaluate(id => window.whomi.ai.getThread(id), thread.id)).turns[0], { timeout: 30000 }).toMatchObject({ state: 'completed', referenceIds: ['1'], usage: { inputTokens: 20, outputTokens: 10 } })
+    await expect(page.getByText('在右侧继续对话', { exact: true })).toHaveCount(0)
+    await expect(page.locator('.conversation-ai-header')).not.toContainText('虚构会话')
+    await page.screenshot({ path: join(evidence, '02-conversation.png') })
+    await page.locator('.conversation-usage button').click()
+    await expect(page.getByRole('region', { name: '生成统计' })).toContainText('模型生成 TPS')
+    await expect(page.getByRole('region', { name: '生成统计' })).toContainText('合成本地服务')
+    await page.screenshot({ path: join(evidence, '03-token-statistics.png') })
+    await page.keyboard.press('Escape')
+    await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(574, 800))
+    await expect(page.getByRole('textbox', { name: '向 AI 提问' })).toBeVisible()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+    await page.screenshot({ path: join(evidence, '04-conversation-narrow.png') })
     expect(requests.every(value => value.authorization === 'Bearer test-only-key')).toBe(true)
     expect(requests.every(value => !(value.input.tools?.length))).toBe(true)
     await application.close()

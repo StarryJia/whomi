@@ -15,6 +15,12 @@ extraResources:
     to: licenses/chatlab/LICENSE
   - from: electron/vendor/chatlab-parser/UPSTREAM.md
     to: licenses/chatlab/UPSTREAM.md
+  - from: electron/vendor/cherry-studio/LICENSE
+    to: licenses/cherry-studio/LICENSE
+  - from: docs/research/cherry-settings-reuse.md
+    to: licenses/cherry-studio/settings-reuse.md
+  - from: docs/research/cherry-conversation-reuse.md
+    to: licenses/cherry-studio/conversation-reuse.md
 asar: true
 asarUnpack:
   - '**/*.node'

@@ -3,7 +3,7 @@ import { FileText } from 'lucide-react'
 import clsx from 'clsx'
 import type { DesktopApi } from '../shared/desktop-api'
 import { isPersistedResult, useImport } from '../data/use-import'
-import { DiscoveryChoices, ImportCandidates } from './import/import-candidates'
+import { DiscoveryChoices } from './import/import-candidates'
 import { ImportProgress } from './import/import-progress'
 import './import/import.css'
 
@@ -13,12 +13,26 @@ export function FileImport({ api, onSaved, onOpenConversation }: {
   const controller = useImport(api)
   const { snapshot, busy } = controller
   const notified = useRef(new Set<string>())
+  const started = useRef(new Set<string>())
   const input = useRef<HTMLInputElement>(null)
   const choose = useRef<HTMLButtonElement>(null)
   const dragDepth = useRef(0)
   const [dragging, setDragging] = useState(false)
   const [filename, setFilename] = useState('')
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (!api || !snapshot || busy || controller.error) return
+    const key = `${snapshot.jobId}:${snapshot.status}`
+    if (started.current.has(key)) return
+    if (snapshot.status === 'awaiting_confirmation' && snapshot.discovery?.entries.length === 1) {
+      started.current.add(key)
+      void controller.stage([snapshot.discovery.entries[0].entryId])
+    } else if (snapshot.status === 'awaiting_commit') {
+      started.current.add(key)
+      void controller.commit([])
+    }
+  }, [api, snapshot, busy, controller])
 
   useLayoutEffect(() => { choose.current?.focus() }, [])
   useEffect(() => {
@@ -108,35 +122,55 @@ export function FileImport({ api, onSaved, onOpenConversation }: {
     ) : (
       <>
         {(snapshot.status === 'preparing' || snapshot.status === 'scanning') && (
-          <div className="import-step" role="region" aria-label="导入准备">
+          <div className="import-step import-step-centered" role="region" aria-label="导入准备">
             <h2>{snapshot.status === 'scanning' ? '正在查找文件入口…' : '正在准备…'}</h2>
-            <p className="import-muted">正在准备聊天记录来源…</p>
+            <progress className="import-meter" aria-label="查找文件进度" />
             <div className="import-step-actions">
-              <button className="import-secondary" type="button" disabled={busy} onClick={() => { void controller.cancel() }}>取消导入</button>
+              <button className="import-secondary" type="button" onClick={() => { void controller.cancel() }}>取消导入</button>
             </div>
             {controller.error && <p className="import-error" role="alert">{controller.error.action}</p>}
           </div>
         )}
-        {snapshot.status === 'awaiting_confirmation' && snapshot.discovery && (
+        {snapshot.status === 'awaiting_confirmation' && snapshot.discovery && snapshot.discovery.entries.length !== 1 && (
           <DiscoveryChoices key={snapshot.jobId} discovery={snapshot.discovery} busy={busy}
             onStage={ids => { void controller.stage(ids) }} onCancel={() => { void controller.cancel() }}
             onRechoose={() => { if (api) void controller.choose('files'); else input.current?.click() }}
             error={controller.error} />
         )}
+        {snapshot.status === 'awaiting_confirmation' && snapshot.discovery?.entries.length === 1 && (
+          <div className="import-step import-step-centered" role="region" aria-label="解析进度">
+            <h2>正在解析…</h2>
+            <p className="import-muted">{snapshot.discovery.entries[0].displayName}</p>
+            <progress className="import-meter" aria-label="解析进度" />
+            {controller.error && <p className="import-error" role="alert">{controller.error.action}</p>}
+            <div className="import-step-actions">
+              {controller.error && <button className="import-primary" type="button" disabled={busy} onClick={() => { void controller.stage([snapshot.discovery!.entries[0].entryId]) }}>重试解析</button>}
+              <button className="import-secondary" type="button" onClick={() => { void controller.cancel() }}>取消导入</button>
+            </div>
+          </div>
+        )}
         {(snapshot.status === 'staging' || snapshot.status === 'validating') && (
-          <div className="import-step" role="region" aria-label="解析进度">
+          <div className="import-step import-step-centered" role="region" aria-label="解析进度">
             <h2>{snapshot.status === 'staging' ? '正在解析…' : '正在校验…'}</h2>
+            <progress className="import-meter" aria-label="解析进度" />
             <p className="import-muted">已检查 {snapshot.counts.seen} 条记录 · 有效 {snapshot.counts.validRecords} 条 · 异常 {snapshot.counts.invalidRecords} 条</p>
             <div className="import-step-actions">
-              <button className="import-secondary" type="button" disabled={busy} onClick={() => { void controller.cancel() }}>取消导入</button>
+              <button className="import-secondary" type="button" onClick={() => { void controller.cancel() }}>取消导入</button>
             </div>
             {controller.error && <p className="import-error" role="alert">{controller.error.action}</p>}
           </div>
         )}
         {snapshot.status === 'awaiting_commit' && (
-          <ImportCandidates key={snapshot.jobId} api={api!} candidates={snapshot.candidates} busy={busy}
-            onCommit={decisions => { void controller.commit(decisions) }} preview={controller.preview}
-            onCancel={() => { void controller.cancel() }} error={controller.error} />
+          <div className="import-step import-step-centered" role="region" aria-label="保存进度">
+            <h2>正在保存…</h2>
+            <progress className="import-meter" aria-label="保存进度" />
+            <p className="import-muted">已解析 {snapshot.counts.validRecords} 条记录</p>
+            {controller.error && <p className="import-error" role="alert">{controller.error.action}</p>}
+            <div className="import-step-actions">
+              {controller.error && <button className="import-primary" type="button" disabled={busy} onClick={() => { void controller.commit([]) }}>重试保存</button>}
+              <button className="import-secondary" type="button" onClick={() => { void controller.cancel() }}>取消导入</button>
+            </div>
+          </div>
         )}
         {(snapshot.status === 'committing' || snapshot.status === 'completed' || snapshot.status === 'partially_completed' || snapshot.status === 'failed' || (snapshot.status === 'cancelled' && snapshot.results.some(isPersistedResult))) && (
           <ImportProgress snapshot={snapshot} busy={busy} onCancel={() => { void controller.cancel() }} onOpen={onOpenConversation}

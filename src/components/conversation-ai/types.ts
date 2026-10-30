@@ -1,14 +1,8 @@
 import type { ReferenceRange } from './selection'
-import type { AnalysisPreparation, AnalysisTask, AiState } from '../../shared/ai-contract'
+import type { AnalysisPreparation, AnalysisTask, AiState, AiUsage } from '../../shared/ai-contract'
+import type { ModelOption } from './model-selector'
 
-export type GenerationUsage = {
-  incomplete?: boolean
-  inputTokens?: number
-  outputTokens?: number
-  outputTokensPerSecond?: number
-  firstTokenMs?: number
-  durationMs?: number
-}
+export type GenerationUsage = AiUsage
 export type AnalysisProgress = {
   analyzedMessages: number
   totalMessages: number
@@ -34,7 +28,7 @@ export type RestoredConversationTurn = {
 export type ConversationAiAdapter = {
   selectedModels?: Partial<Record<'analysis' | 'conversation', string>>
   selectModel?: (feature: 'analysis' | 'conversation', id: string | null) => Promise<void>
-  models: readonly { id: string; label: string }[]
+  models: readonly ModelOption[]
   skills: readonly { id: string; label: string }[]
   prepareAnalysis?: (request: { conversationId: string; modelId: string }) => Promise<AnalysisPreparation>
   restoreThread?: (conversationId: string) => Promise<RestoredConversationTurn[]>

@@ -10,8 +10,8 @@ import type { Raw } from './source-records'
 const kinds: Record<number, MessageKind> = { 0: 'text', 1: 'image', 2: 'audio', 3: 'video', 4: 'file', 5: 'sticker', 7: 'link', 8: 'location', 25: 'reply', 26: 'forward', 80: 'system', 81: 'system', 99: 'unknown' }
 export function conversation(id: string, root: Raw, meta: ParsedMeta, index: number): ParsedConversation {
   const platform = meta.platform
-  const owner = root.meta?.ownerId ?? root.chatInfo?.selfUin ?? root.chatInfo?.selfUid ?? root.personal_information?.user_id ?? root._user?.user?.email ?? null
-  const key = root.meta?.groupId ?? root.meta?.sourceSessionId ?? root.session?.wxid ?? root.channel?.id ?? (id.startsWith('telegram-') ? root.id : null) ?? root.chatId ?? null
+  const owner = root.meta?.ownerId ?? root.chatInfo?.selfUin ?? root.chatInfo?.selfUid ?? root.personal_information?.user_id ?? root._user?.user?.email ?? meta.ownerId ?? null
+  const key = root.meta?.groupId ?? root.meta?.sourceSessionId ?? root.session?.wxid ?? root.channel?.id ?? (id.startsWith('telegram-') ? root.id : null) ?? root.chatId ?? meta.groupId ?? meta.sourceSessionId ?? null
   const source = `${id}:${index}`
   return { sourceKey: source, title: root.meta?.name ?? root.session?.displayName ?? meta.name ?? '未命名会话', kind: meta.type === 'private' ? 'direct' : meta.type === 'group' ? 'group' : 'unknown', identity: { platform, ownerKey: sourceKey(owner), conversationKey: sourceKey(key), namespace: id.startsWith('telegram-') ? 'telegram' : id.startsWith('chatlab') ? 'chatlab' : id === 'echotrace' || id === 'weflow' ? 'wechat' : id } }
 }

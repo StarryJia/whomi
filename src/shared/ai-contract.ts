@@ -1,5 +1,5 @@
-export type AiUsage = { inputTokens?: number; outputTokens?: number; cacheReadTokens?: number; cacheWriteTokens?: number; outputTokensPerSecond?: number; firstTokenMs?: number; durationMs?: number; incomplete?: boolean }
-export type AiModel = { id: string; label: string; model: string; baseUrl: string; contextWindow: number; maxTokens: number; version: number; enabled: boolean; hasCredential: boolean }
+export type AiUsage = { inputTokens?: number; totalInputTokens?: number; outputTokens?: number; cacheReadTokens?: number; cacheWriteTokens?: number; outputTokensPerSecond?: number; firstTokenMs?: number; durationMs?: number; startedAt?: number; completedAt?: number; incomplete?: boolean }
+export type AiModel = { id: string; label: string; model: string; baseUrl: string; contextWindow: number | null; maxTokens: number | null; maxInputTokens?: number | null; version: number; enabled: boolean; hasCredential: boolean }
 export type SaveAiModel = Omit<AiModel, 'version' | 'hasCredential'> & { apiKey?: string }
 export type AiSkill = { id: string; label: string; version: string }
 export type AiState = 'queued' | 'running' | 'summarizing' | 'completed' | 'stopped' | 'failed' | 'interrupted'

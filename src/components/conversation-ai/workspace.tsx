@@ -1,10 +1,13 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowUp, ArrowRight, Check, ChevronDown, FileText, LoaderCircle, MessageCircle, Square, X } from 'lucide-react'
+import { ArrowUp, ArrowRight, Box, Check, ChevronDown, FileText, LoaderCircle, MessageCircle, Square, X } from 'lucide-react'
+import * as Select from '@radix-ui/react-select'
 import type { ReferenceRange } from './selection'
 import type { AnalysisProgress, AnalysisResult, ConversationAiAdapter, ConversationRequest, GenerationUsage } from './types'
 import type { AnalysisPreparation } from '../../shared/ai-contract'
 import './workspace.css'
+import { ConversationPopoverOwner, ModelSelector, type ModelOption } from './model-selector'
+import { messagePerformance } from './message-performance'
 
 const number = (value: number) => new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 1 }).format(value)
 const valid = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && value >= 0
@@ -17,6 +20,7 @@ function Popover({ anchor, label, children, onClose, above = false, onMouseEnter
   id?: string
 }) {
   const body = useRef<HTMLDivElement>(null)
+  const ownerId = useId()
   const [position, setPosition] = useState({ top: 0, left: 0 })
   const close = useRef(onClose)
   close.current = onClose
@@ -37,10 +41,12 @@ function Popover({ anchor, label, children, onClose, above = false, onMouseEnter
     const resize = new ResizeObserver(place)
     if (body.current) resize.observe(body.current)
     const outside = (event: PointerEvent) => {
+      if (event.composedPath().some(node => node instanceof HTMLElement && node.dataset.conversationPopoverOwner === ownerId)) return
       if (!body.current?.contains(event.target as Node) && !anchor.current?.contains(event.target as Node)) close.current()
     }
     const escape = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return
+      if (event.composedPath().some(node => node instanceof HTMLElement && node.dataset.conversationPopoverOwner === ownerId)) return
       event.preventDefault()
       event.stopPropagation()
       close.current()
@@ -55,9 +61,9 @@ function Popover({ anchor, label, children, onClose, above = false, onMouseEnter
       document.removeEventListener('pointerdown', outside)
       document.removeEventListener('keydown', escape, true)
     }
-  }, [anchor, above])
-  return createPortal(<div id={id} ref={body} className="conversation-popover" role="region" aria-label={label}
-    style={position} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>{children}</div>, document.body)
+  }, [anchor, above, ownerId])
+  return createPortal(<ConversationPopoverOwner.Provider value={ownerId}><div id={id} ref={body} className="conversation-popover" role="region" aria-label={label}
+    style={position} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>{children}</div></ConversationPopoverOwner.Provider>, document.body)
 }
 
 function References({ references, onJump, onClear }: {
@@ -98,10 +104,13 @@ function References({ references, onJump, onClear }: {
   </div>
 }
 
-function Usage({ usage }: { usage?: GenerationUsage }) {
+function Usage({ usage, model }: { usage?: GenerationUsage; model?: ModelOption }) {
   const [open, setOpen] = useState(false)
   const anchor = useRef<HTMLButtonElement>(null)
   if (!usage || !Object.values(usage).some(valid)) return null
+  const performance = messagePerformance(usage)
+  const tokens = (value?: number) => valid(value) ? `${number(value)} Tokens` : '—'
+  const speed = (value?: number) => valid(value) ? `${number(value)} Token/秒` : '—'
   return <div className="conversation-usage">
     <button ref={anchor} type="button" aria-expanded={open} onClick={() => setOpen(value => !value)}>
       {valid(usage.outputTokens) && <span>输出 {number(usage.outputTokens)} token</span>}
@@ -111,19 +120,29 @@ function Usage({ usage }: { usage?: GenerationUsage }) {
       <ChevronDown aria-hidden="true" />
     </button>
     {open && <Popover anchor={anchor} above label="生成统计" onClose={() => setOpen(false)}>
-      <h3>生成统计</h3><dl className="conversation-usage-grid">
-        <div><dt>输入 token</dt><dd>{valid(usage.inputTokens) ? number(usage.inputTokens) : '未提供'}</dd></div>
-        <div><dt>输出 token</dt><dd>{valid(usage.outputTokens) ? number(usage.outputTokens) : '未提供'}</dd></div>
-        <div><dt>生成速度</dt><dd>{valid(usage.outputTokensPerSecond) ? `${number(usage.outputTokensPerSecond)} token/秒` : '未提供'}</dd></div>
-      </dl><p className="conversation-timing">首 token 耗时 {seconds(usage.firstTokenMs)}<br />总耗时 {seconds(usage.durationMs)}</p>
-      <p className="conversation-token-note">token 是模型计量文本的单位。</p>
+      <div className="cherry-usage-identity"><Box aria-hidden="true" /><div><strong>{model?.label ?? '模型'}</strong>
+        {model?.providerName && <span>{model.providerName}</span>}</div>
+        <time>{usage.completedAt ? new Date(usage.completedAt).toLocaleString('zh-CN', { hour12: false }) : '—'}</time>
+      </div>
+      <dl className="conversation-usage-grid cherry-usage-primary">
+        <div><dt>输入</dt><dd title={tokens(performance.inputTokens)}>{tokens(performance.inputTokens)}</dd></div>
+        <div><dt>输出</dt><dd title={tokens(usage.outputTokens)}>{tokens(usage.outputTokens)}</dd></div>
+        <div><dt>模型生成 TPS</dt><dd title={speed(performance.modelTokensPerSecond)}>{speed(performance.modelTokensPerSecond)}</dd></div>
+      </dl><dl className="cherry-usage-details">
+        {valid(usage.cacheReadTokens) && usage.cacheReadTokens > 0 && <div><dt>缓存读取</dt><dd>{tokens(usage.cacheReadTokens)}</dd></div>}
+        {valid(usage.cacheWriteTokens) && usage.cacheWriteTokens > 0 && <div><dt>缓存写入</dt><dd>{tokens(usage.cacheWriteTokens)}</dd></div>}
+        <div><dt>未缓存</dt><dd>{tokens(performance.uncachedTokens)}</dd></div>
+        <div><dt>首 Token 耗时</dt><dd>{valid(usage.firstTokenMs) ? seconds(usage.firstTokenMs) : '—'}</dd></div>
+        <div><dt>端到端吞吐</dt><dd>{speed(performance.endToEndTokensPerSecond)}</dd></div>
+        <div><dt>端到端耗时</dt><dd>{valid(usage.durationMs) ? seconds(usage.durationMs) : '—'}</dd></div>
+      </dl>
     </Popover>}
   </div>
 }
 
 type Turn = { id: number | string; request: ConversationRequest; referenceIds?: string[]; text: string; usage?: GenerationUsage; status: 'running' | 'done' | 'failed' | 'stopped'; error?: string; remote?: boolean }
 type Slots = { analysisControl: ReactNode; composer: ReactNode; panelOpen: boolean }
-export function ConversationWorkspace({ conversationId, title, messageCount, references, onClearReferences, onJumpReference, onOpenAnalysisResult, adapter, children }: {
+export function ConversationWorkspace({ conversationId, messageCount, references, onClearReferences, onJumpReference, onOpenAnalysisResult, adapter, children }: {
   conversationId: string; title: string; messageCount?: number; references: readonly ReferenceRange[]
   onClearReferences: () => void; onJumpReference: (reference: ReferenceRange) => void
   onOpenAnalysisResult?: (taskId: string) => void
@@ -300,6 +319,7 @@ export function ConversationWorkspace({ conversationId, title, messageCount, ref
     atEnd.current = true
     const next: Turn = { id, request, text: '', status: 'running' }
     setTurns(items => retry ? items.map(item => item.id === id ? next : item) : [...items, next])
+    if (!retry) { setDraft(''); onClearReferences() }
     const active = () => alive.current && chatRun.current === controller && !controller.signal.aborted
     try {
       const result = await adapter.respond(request, { signal: controller.signal, onText: text => {
@@ -308,7 +328,6 @@ export function ConversationWorkspace({ conversationId, title, messageCount, ref
       if (!active()) return
       if (!result.text.trim()) throw new Error('未收到回答，请重试。')
       setTurns(items => items.map(item => item.id === id || item.request.requestId === request.requestId ? { ...item, text: result.text, usage: result.usage, status: 'done' } : item))
-      setDraft(value => value.trim() === request.prompt ? '' : value)
     } catch (error) {
       if (active()) setTurns(items => items.map(item => item.id === id ? { ...item, status: 'failed', error: errorText(error) } : item))
     } finally {
@@ -358,9 +377,8 @@ export function ConversationWorkspace({ conversationId, title, messageCount, ref
     </button>
     {analysisOpen && <Popover anchor={analysisAnchor} label="会话分析状态" onClose={() => setAnalysisOpen(false)}>
       <h3>会话分析</h3>
-      {analysisConfirming && !!adapter?.models.length && <label className="conversation-select">分析模型<select aria-label="分析模型" value={selectedAnalysisModel?.id ?? ''} disabled={modelSaving.analysis} aria-describedby={modelErrors.analysis ? `${panelId}-analysis-model-error` : undefined} onChange={event => { void chooseModel('analysis', event.target.value) }}>
-        <option value="">请选择模型</option>{adapter.models.map(model => <option key={model.id} value={model.id}>{model.label}</option>)}
-      </select></label>}
+      {analysisConfirming && !!adapter?.models.length && <ModelSelector label="分析模型" models={adapter.models} value={selectedAnalysisModel?.id ?? ''}
+        disabled={modelSaving.analysis} describedBy={modelErrors.analysis ? `${panelId}-analysis-model-error` : undefined} onSelect={id => { void chooseModel('analysis', id) }} />}
       {analysisConfirming && modelErrors.analysis && <p id={`${panelId}-analysis-model-error`} role="alert" className="conversation-error">{modelErrors.analysis}</p>}
       {analysisConfirming && messageCount === 0 && !adapter?.prepareAnalysis ? <p className="conversation-state-copy">巧妇难为无米之炊，先导入一些聊天记录吧。</p> : analysisConfirming && (!adapter || !selectedAnalysisModel) ? <p className="conversation-state-copy">{adapter?.models.length ? '请选择分析模型。' : '请在设置中添加模型。'}</p> : analysisConfirming ? <>
         {preparing && <p role="status" className="conversation-state-copy">正在核对分析范围…</p>}
@@ -399,34 +417,36 @@ export function ConversationWorkspace({ conversationId, title, messageCount, ref
   </>
   const referenceControl = <References references={references} onJump={jump} onClear={onClearReferences} />
   const editor = <form className="conversation-composer" onSubmit={event => { event.preventDefault(); void send() }}>
-    <div className="conversation-composer-top"><label htmlFor={draftId}>向 AI 提问</label>{referenceControl}</div>
-    <textarea id={draftId} ref={textarea} rows={2} value={draft} readOnly={busy} aria-busy={busy} placeholder="聊聊你的想法…"
+    <label htmlFor={draftId} className="visually-hidden">向 AI 提问</label>
+    {references.length > 0 && <div className="conversation-composer-top">{referenceControl}</div>}
+    <textarea id={draftId} ref={textarea} rows={2} value={draft} placeholder="输入消息…"
       onChange={event => setDraft(event.target.value)} onKeyDown={event => {
         if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); if (canSend) void send() }
       }} />
     <div className="conversation-composer-tools">
-      {references.length > 0 && !!adapter?.skills.length && <label className="conversation-select"><FileText aria-hidden="true" /><span className="visually-hidden">对话技能</span>
-        <select aria-label="对话技能" value={skillId} onChange={event => setSkillId(event.target.value)} disabled={busy}><option value="">默认方式</option>{adapter.skills.map(skill => <option key={skill.id} value={skill.id}>{skill.label}</option>)}</select><ChevronDown aria-hidden="true" /></label>}
-      <div className="conversation-send-tools"><label className="conversation-select"><span className="visually-hidden">对话模型</span>
-        <select aria-label="对话模型" value={selectedModel?.id ?? ''} disabled={busy || !adapter?.models.length || modelSaving.conversation} aria-describedby={modelErrors.conversation ? `${panelId}-conversation-model-error` : undefined} onChange={event => { void chooseModel('conversation', event.target.value) }}>
-          {(!selectedModel || !adapter?.models.length) && <option value="">{adapter?.models.length ? '请选择模型' : '暂无可用模型'}</option>}{adapter?.models.map(model => <option key={model.id} value={model.id}>{model.label}</option>)}
-        </select><ChevronDown aria-hidden="true" /></label>
+      <ModelSelector label="对话模型" models={adapter?.models ?? []} value={selectedModel?.id ?? ''} disabled={busy || modelSaving.conversation}
+        describedBy={modelErrors.conversation ? `${panelId}-conversation-model-error` : undefined} onSelect={id => { void chooseModel('conversation', id) }} />
+      {references.length > 0 && !!adapter?.skills.length && <Select.Root value={skillId || 'default'} onValueChange={value => setSkillId(value === 'default' ? '' : value)} disabled={busy}>
+        <Select.Trigger aria-label="对话技能" className="cherry-model-trigger cherry-skill-trigger"><FileText aria-hidden="true" /><Select.Value /><Select.Icon><ChevronDown /></Select.Icon></Select.Trigger>
+        <Select.Portal><Select.Content className="cherry-skill-menu" position="popper" side="top" sideOffset={8} onEscapeKeyDown={event => event.stopPropagation()}><Select.Viewport>
+          {[{ id: 'default', label: '默认方式' }, ...adapter.skills].map(skill => <Select.Item className="cherry-skill-option" value={skill.id} key={skill.id}><Select.ItemText>{skill.label}</Select.ItemText><Select.ItemIndicator><Check /></Select.ItemIndicator></Select.Item>)}
+        </Select.Viewport></Select.Content></Select.Portal>
+      </Select.Root>}
+      <div className="conversation-send-tools">
         {busy ? <button type="button" className="conversation-send" aria-label="停止回答" onClick={stopChat}><Square aria-hidden="true" /></button>
           : <button type="submit" className="conversation-send" aria-label="发送给 AI" disabled={!canSend}><ArrowUp aria-hidden="true" /></button>}
       </div>
     </div>
     {modelErrors.conversation && <p id={`${panelId}-conversation-model-error`} role="alert" className="conversation-error">{modelErrors.conversation}</p>}
   </form>
-  const composer = <div className="conversation-source-composer">{panelOpen ? <div className="conversation-composer-handoff">
-    {referenceControl}<button type="button" data-reopen-conversation onClick={() => textarea.current?.focus()}><span>在右侧继续对话</span><ArrowRight aria-hidden="true" /></button>
-  </div> : <>{turns.length > 0 && <button type="button" data-reopen-conversation className="conversation-reopen" onClick={() => setPanelOpen(true)}><MessageCircle aria-hidden="true" />继续 AI 对话</button>}{editor}</>}</div>
+  const composer = panelOpen ? null : <div className="conversation-source-composer">{turns.length > 0 && <button type="button" data-reopen-conversation className="conversation-reopen" onClick={() => setPanelOpen(true)}><MessageCircle aria-hidden="true" />继续 AI 对话</button>}{editor}</div>
   return <div className={`conversation-workspace${panelOpen ? ' has-ai-panel' : ''}`}>
     <div ref={source} className="conversation-source" inert={panelOpen && narrow}>{children({ analysisControl, composer, panelOpen })}</div>
     <aside ref={aside} id={panelId} className="conversation-ai-panel" aria-label="AI 对话" role="complementary"
       inert={!panelOpen} aria-hidden={!panelOpen} onKeyDown={event => {
         if (event.key === 'Escape') { event.preventDefault(); closePanel() }
       }}>
-      <header className="conversation-ai-header"><div><h2>AI 对话</h2><p>{title}</p></div><button type="button" className="conversation-icon-button" aria-label="关闭 AI 对话" onClick={closePanel}><X aria-hidden="true" /></button></header>
+      <header className="conversation-ai-header"><h2>AI 对话</h2><button type="button" className="conversation-icon-button" aria-label="关闭 AI 对话" onClick={closePanel}><X aria-hidden="true" /></button></header>
       <div ref={scroll} className="conversation-ai-timeline" role="log" aria-label="AI 对话记录" aria-live="polite" onScroll={() => {
         if (scroll.current) atEnd.current = scroll.current.scrollHeight - scroll.current.scrollTop - scroll.current.clientHeight < 64
       }}>
@@ -439,7 +459,7 @@ export function ConversationWorkspace({ conversationId, title, messageCount, ref
             {turn.text && <p className="conversation-answer-text">{turn.text}</p>}
             {turn.status === 'failed' && <div role="alert"><p className="conversation-error">{turn.error}</p><button type="button" className="conversation-text-button" disabled={busy} onClick={() => { void send(turn) }}>重试回答</button></div>}
             {turn.status === 'stopped' && <p className="conversation-state-copy">已停止回答。</p>}
-            <Usage usage={turn.usage} />
+            <Usage usage={turn.usage} model={adapter?.models.find(model => model.id === turn.request.modelId)} />
           </div>
         </div>)}
       </div>
