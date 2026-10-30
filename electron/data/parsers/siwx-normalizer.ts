@@ -20,6 +20,13 @@ export function siwxKind(raw: Record<string, any>): MessageKind {
   const numeric: Record<string, MessageKind> = { '1': 'text', '3': 'image', '34': 'audio', '43': 'video', '47': 'sticker', '48': 'location', '10000': 'system', '10002': 'system' }
   return numeric[String(raw.localType)] ?? 'unknown'
 }
+function referencedServerId(rawContent: unknown): string | null {
+  if (typeof rawContent !== 'string') return null
+  const block = rawContent.match(/<refermsg(?:\s[^>]*)?>([\s\S]*?)<\/refermsg>/)?.[1]
+  const field = block?.match(/<svrid>([\s\S]*?)<\/svrid>/)?.[1].trim()
+  const value = field?.replace(/^<!\[CDATA\[([\s\S]*)\]\]>$/, '$1').trim()
+  return value && /^[1-9]\d*$/.test(value) ? value : null
+}
 export function normalizeSiwx(raw: Record<string, any>, base: ParsedMessage): ParsedMessage {
   const kind = siwxKind(raw)
   const sender = sourceKey(raw.senderUsername)
@@ -28,6 +35,7 @@ export function normalizeSiwx(raw: Record<string, any>, base: ParsedMessage): Pa
   const sentAtMs = epoch(raw.createTime, unit)
   const originalId = sourceKey(raw.serverId ?? raw.platformMessageId)
   const quote = raw.quote && typeof raw.quote === 'object' && Object.keys(raw.quote).length ? raw.quote : null
+  const replyId = quote ? referencedServerId(raw.rawContent) : null
   return {
     ...base, originalId: originalId === '0' ? null : originalId,
     idNamespace: originalId && originalId !== '0' ? 'wechat:server-message' : null,
@@ -38,7 +46,7 @@ export function normalizeSiwx(raw: Record<string, any>, base: ParsedMessage): Pa
     timePrecision: sentAtMs === null ? 'unknown' : unit, timezone: sentAtMs === null ? null : 'UTC', kind,
     text: typeof raw.content === 'string' ? raw.content : raw.content == null ? '' : JSON.stringify(raw.content),
     sourceType: sourceKey(raw.typeName ?? raw.type ?? raw.localType),
-    reply: quote ? { originalId: null, idNamespace: null, text: typeof quote.content === 'string' ? quote.content : null, senderName: sourceKey(quote.senderName ?? quote.displayName), sentAtMs: epoch(quote.createTime, 'second') } : null,
+    reply: quote ? { originalId: replyId, idNamespace: replyId ? 'wechat:server-message' : null, text: typeof quote.content === 'string' ? quote.content : null, senderName: sourceKey(quote.senderName ?? quote.displayName ?? quote.displayname), sentAtMs: epoch(quote.createTime ?? quote.ts, 'second') } : null,
     attachments: ['image', 'audio', 'video', 'file', 'sticker'].includes(kind)
       ? [{ kind, locator: sourceKey(raw.mediaFile), name: null, state: raw.mediaFile ? 'unresolved' : 'missing' }] : [],
     extra: { ...(raw.localType !== undefined ? { localType: raw.localType } : {}), ...(raw.isSend === 1 ? { selfHint: true } : {}) },

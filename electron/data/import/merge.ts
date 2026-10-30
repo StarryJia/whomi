@@ -19,6 +19,7 @@ export function createCommitter(dependencies: CommitDependencies = {}) {
     checkSignal(signal); validateResolvedTarget(store,target)
     if (!staged.candidateIds.length || new Set(staged.candidateIds).size !== staged.candidateIds.length || staged.candidates.length !== staged.candidateIds.length) throw new ImportFailure('INVALID_SELECTION')
     let committed = false, inserted = 0, duplicates = 0, membershipChanged = false
+    const repliesToResolve = new Set<bigint>()
     db.exec('BEGIN IMMEDIATE')
     try {
       if (!db.prepare('SELECT id FROM import_jobs WHERE id=?').get(BigInt(staged.jobId))) throw new ImportFailure('INVALID_JOB')
@@ -88,21 +89,38 @@ export function createCommitter(dependencies: CommitDependencies = {}) {
         if (!t || !c || !result) throw new ImportFailure('INVALID_CANDIDATE')
         const classification = classifyMessage(store,t,m,o)
         if (classification === 'ambiguous') throw new ImportFailure('AMBIGUOUS_MESSAGE')
-        if (classification === 'duplicate') { result.duplicates++; duplicates++ }
+        if (classification === 'duplicate') {
+          result.duplicates++; duplicates++
+          if (m.reply?.originalId && m.reply.idNamespace === 'wechat:server-message' && m.originalId && m.idNamespace === 'wechat:server-message') {
+            // 重导入只补全原消息与摘录均相符的引用，保留已解析的关系。
+            const existing = db.prepare(`SELECT r.message_id FROM message_replies r
+              JOIN message_keys k ON k.message_id=r.message_id AND k.conversation_id=r.conversation_id
+              JOIN messages m ON m.id=r.message_id AND m.conversation_id=r.conversation_id
+              WHERE k.conversation_id=? AND k.id_namespace=? AND k.original_id=? AND m.text=? AND m.sender_name=?
+              AND r.state='unresolved' AND r.text IS ? AND (r.original_id IS NULL OR (r.original_id=? AND r.id_namespace=?))`).get(conversation,m.idNamespace,m.originalId,m.text,m.senderName,m.reply.text,m.reply.originalId,m.reply.idNamespace) as {message_id:bigint} | undefined
+            if (existing) {
+              db.prepare('UPDATE message_replies SET original_id=?,id_namespace=?,sender_name=coalesce(sender_name,?),sent_at_ms=coalesce(sent_at_ms,?) WHERE message_id=?').run(m.reply.originalId,m.reply.idNamespace,m.reply.senderName,m.reply.sentAtMs,existing.message_id)
+              repliesToResolve.add(existing.message_id)
+            }
+          }
+        }
         else {
           const id = insertMessage.run(conversation,m.senderKind === 'member' && m.senderKey ? member(c,m.senderKey) : null,m.senderKind,m.senderName,m.sentAtMs,m.timeRaw,m.timePrecision,m.timezone,m.kind,m.text,m.ordinal,m.sourceType,JSON.stringify(m.extra)).lastInsertRowid
           if (m.originalId !== null) db.prepare('INSERT INTO message_keys VALUES (?,?,?,?)').run(conversation,m.idNamespace,m.originalId,id)
           db.prepare('INSERT INTO message_origins(message_id,conversation_id,import_result_id,file_fingerprint,source_conversation_key,ordinal,parser_id,parser_version) VALUES (?,?,?,?,?,?,?,?)').run(id,conversation,result.id,o.fingerprint,o.sourceConversationKey,o.ordinal,o.parserId,o.parserVersion)
           for (const a of m.attachments) db.prepare('INSERT INTO message_attachments(message_id,kind,locator,name,state) VALUES (?,?,?,?,?)').run(id,a.kind,a.locator,a.name,a.state)
-          if (m.reply) db.prepare('INSERT INTO message_replies(message_id,conversation_id,original_id,id_namespace,text,sender_name,sent_at_ms) VALUES (?,?,?,?,?,?,?)').run(id,conversation,m.reply.originalId,m.reply.idNamespace,m.reply.text,m.reply.senderName,m.reply.sentAtMs)
+          if (m.reply) {
+            db.prepare('INSERT INTO message_replies(message_id,conversation_id,original_id,id_namespace,text,sender_name,sent_at_ms) VALUES (?,?,?,?,?,?,?)').run(id,conversation,m.reply.originalId,m.reply.idNamespace,m.reply.text,m.reply.senderName,m.reply.sentAtMs)
+            repliesToResolve.add(BigInt(id))
+          }
           result.inserted++; inserted++; dependencies.afterInsert?.(inserted)
         }
         batchCount++; batchBytes += size
         if (batchCount >= importLimits.batchRecords || batchBytes >= importLimits.batchBytes) { await new Promise<void>(resolve => setImmediate(resolve)); checkSignal(signal); batchCount=0; batchBytes=0 }
       }
-      // Origins restrict reply resolution to newly inserted messages in these results.
-      for (const result of results.values()) db.prepare(`UPDATE message_replies SET target_message_id=(SELECT k.message_id FROM message_keys k WHERE k.conversation_id=message_replies.conversation_id AND k.id_namespace=message_replies.id_namespace AND k.original_id=message_replies.original_id), state='resolved'
-        WHERE message_id IN (SELECT message_id FROM message_origins WHERE import_result_id=?) AND EXISTS (SELECT 1 FROM message_keys k WHERE k.conversation_id=message_replies.conversation_id AND k.id_namespace=message_replies.id_namespace AND k.original_id=message_replies.original_id)`).run(result.id)
+      const resolveReply = db.prepare(`UPDATE message_replies SET target_message_id=(SELECT k.message_id FROM message_keys k WHERE k.conversation_id=message_replies.conversation_id AND k.id_namespace=message_replies.id_namespace AND k.original_id=message_replies.original_id), state='resolved'
+        WHERE message_id=? AND EXISTS (SELECT 1 FROM message_keys k WHERE k.conversation_id=message_replies.conversation_id AND k.id_namespace=message_replies.id_namespace AND k.original_id=message_replies.original_id)`)
+      for (const id of repliesToResolve) resolveReply.run(id)
       const explicitSelf: {id:bigint|null;account:bigint|null}[]=[]
       for(const c of staged.candidates) {
         const key=bound.get(c.candidateId)!.selfMemberKey
