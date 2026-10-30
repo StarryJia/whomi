@@ -32,6 +32,8 @@ export type RestoredConversationTurn = {
   text: string; state: AiState; usage?: GenerationUsage; error?: string
 }
 export type ConversationAiAdapter = {
+  selectedModels?: Partial<Record<'analysis' | 'conversation', string>>
+  selectModel?: (feature: 'analysis' | 'conversation', id: string | null) => Promise<void>
   models: readonly { id: string; label: string }[]
   skills: readonly { id: string; label: string }[]
   prepareAnalysis?: (request: { conversationId: string; modelId: string }) => Promise<AnalysisPreparation>

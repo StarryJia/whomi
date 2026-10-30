@@ -3,6 +3,7 @@ import type { Discovery, ImportSnapshot, StartImportRequest } from '../../src/sh
 import { createStagingService, type StagedImport, type StagingOptions } from './import/staging'
 import type { GrantedSource } from './import/discovery'
 import { confirmSelf as mutateSelf } from './import/identity'
+import { purgeConversation } from './db/purge'
 import { runImport, type RunnerDependencies, type WriterQueue } from './import/runner'
 import { recoverImports } from './import/recovery'
 import { finishJob, getSnapshot, saveResult, setJobState, terminalStates } from './import/state'
@@ -88,7 +89,7 @@ export function createDataService(options:DataServiceOptions) {
     else await task
   }
   return {
-    ready,write,prepareImport,startImport,cancelImport,
+    ready,write,prepareImport,startImport,cancelImport,importActive:()=>!!active,
     async previewImport(jobId:string,candidateId:string,options:PreviewOptions):Promise<ImportPreview> {
       await ready
       if(!active || active.id!==jobId || !active.staged) throw new ImportFailure('PREVIEW_UNAVAILABLE')
@@ -102,6 +103,7 @@ export function createDataService(options:DataServiceOptions) {
     },
     async getImport(jobId:string) {await ready;return getSnapshot(store,jobId)},
     async confirmSelf(conversationId:string,memberId:string|null) {await ready;return write(()=>mutateSelf(store,conversationId,memberId))},
+    async deleteConversation(conversationId:string) {await ready;return write(()=>purgeConversation(store,conversationId))},
     async retrySummary(conversationId:string) {await ready;return write(()=>rebuildSummary(store,conversationId))},
     async idle() {await ready;await task;await queue},
   }

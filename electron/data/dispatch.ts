@@ -8,6 +8,7 @@ import type { StartImportRequest } from '../../src/shared/import-contract'
 import { BoundaryError, validateArguments, validateResult } from '../../src/shared/desktop-validation'
 import type { GrantedSource } from './import/discovery'
 import type { AiRepository } from './ai/repository'
+import type { SettingsRepository } from './settings/repository'
 
 const aiStorageArity = {
   listModels: [0, 0], saveModel: [1, 2], modelSecret: [1, 2], listSkills: [0, 0], registerSkill: [1, 1],
@@ -17,13 +18,22 @@ const aiStorageArity = {
   recordUsage: [1, 1], recover: [0, 0],
 } as const satisfies Record<keyof AiRepository, readonly [number, number]>
 
-export function createDataDispatcher(store: Store, service: ReturnType<typeof createDataService>, ai?: AiRepository) {
+const settingsStorageArity = { get: [0, 0], providerSecret: [1, 1], saveProvider: [1, 2], removeProvider: [1, 1], saveModel: [1, 1], removeModel: [1, 1], saveProcessing: [1, 1], selectModel: [2, 2], setDebug: [1, 1], claimProcessing: [2, 2] } as const
+
+export function createDataDispatcher(store: Store, service: ReturnType<typeof createDataService>, ai?: AiRepository, settings?: SettingsRepository) {
   const queries = createQueries(store), db = store.reader
   function conversation(id: string) {
     if (!db.prepare('SELECT 1 FROM conversations WHERE id=?').get(BigInt(id))) throw new BoundaryError('INVALID_ID', '请刷新会话列表后重试。')
   }
   return async (method: unknown, input: unknown): Promise<unknown> => {
     await service.ready
+    if (method === 'storageState') return { importActive: service.importActive() }
+    if (method === 'settingsStorage') {
+      if (!settings || !Array.isArray(input) || input.length !== 2 || typeof input[0] !== 'string' || !Object.hasOwn(settingsStorageArity, input[0]) || !Array.isArray(input[1])) throw new BoundaryError('INVALID_METHOD')
+      const operation = input[0] as keyof typeof settingsStorageArity, args = input[1] as unknown[], [minimum, maximum] = settingsStorageArity[operation]
+      if (args.length < minimum || args.length > maximum) throw new BoundaryError('INVALID_ARGUMENT')
+      return (settings[operation] as (...values: unknown[]) => unknown)(...args)
+    }
     if (method === 'aiStorage') {
       if (!ai || !Array.isArray(input) || input.length !== 2 || typeof input[0] !== 'string' || !Object.hasOwn(aiStorageArity, input[0]) || !Array.isArray(input[1])) throw new BoundaryError('INVALID_METHOD')
       const operation = input[0] as keyof AiRepository, args = input[1] as unknown[], [minimum, maximum] = aiStorageArity[operation]
@@ -58,6 +68,10 @@ export function createDataDispatcher(store: Store, service: ReturnType<typeof cr
         const id = args[0] as string, member = args[1] as string | null; conversation(id)
         if (member !== null && !db.prepare('SELECT 1 FROM memberships WHERE id=? AND conversation_id=?').get(BigInt(member), BigInt(id))) throw new BoundaryError('INVALID_MEMBER', '请选择该会话中的成员。')
         await service.confirmSelf(id, member); break
+      }
+      case 'deleteConversation': {
+        const id = args[0] as string; conversation(id)
+        await service.deleteConversation(id); break
       }
       case 'retrySummary': conversation(args[0] as string); await service.retrySummary(args[0] as string); break
     }

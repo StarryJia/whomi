@@ -117,20 +117,29 @@ export function useConversations(client?: ConversationClient) {
     }
   }, [client, updateWindow])
 
-  const locate = useCallback(async (request: LocateSourceInput) => {
+  const locate = useCallback(async (request: LocateSourceInput, options: { preserveOnFailure?: boolean } = {}) => {
     const generation = ++readerGeneration.current
     readerBusy.current = true
     const window = { ...emptyWindow(request.conversationId), sourceStatus: 'loading' as const }
-    updateWindow(window)
+    const previous = options.preserveOnFailure && windowRef.current?.conversationId === request.conversationId ? windowRef.current : undefined
+    updateWindow(previous ? { ...previous, sourceStatus: 'loading' } : window)
     setLoading(!!client)
     setError(undefined)
     try {
       const located = await client?.locateSource(request)
-      if (!mounted.current || generation !== readerGeneration.current) return
-      if (!located || located.status === 'unavailable') updateWindow({ ...window, sourceStatus: 'unavailable' })
-      else updateWindow(windowPages({ ...window, sourceStatus: 'available', range: { start: located.start, end: located.end } }, [located.page]))
+      if (!mounted.current || generation !== readerGeneration.current) return false
+      if (!located || located.status === 'unavailable') {
+        updateWindow(previous ?? { ...window, sourceStatus: 'unavailable' })
+        return false
+      }
+      const target = options.preserveOnFailure
+        ? { ...emptyWindow(request.conversationId), ...(previous?.range ? { range: previous.range, sourceStatus: previous.sourceStatus } : {}) }
+        : { ...window, sourceStatus: 'available' as const, range: { start: located.start, end: located.end } }
+      updateWindow(windowPages(target, [located.page]))
+      return true
     } catch {
-      if (mounted.current && generation === readerGeneration.current) updateWindow({ ...window, sourceStatus: 'unavailable' })
+      if (mounted.current && generation === readerGeneration.current) updateWindow(previous ?? { ...window, sourceStatus: 'unavailable' })
+      return false
     } finally {
       if (mounted.current && generation === readerGeneration.current) { readerBusy.current = false; setLoading(false) }
     }

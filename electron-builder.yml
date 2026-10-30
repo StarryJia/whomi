@@ -2,10 +2,13 @@ appId: local.whomi.desktop
 productName: Whomi
 directories:
   output: release
+  buildResources: build
 files:
   - out/**
   - package.json
 extraResources:
+  - from: build/icon.png
+    to: branding/icon.png
   - from: THIRD_PARTY_NOTICES.md
     to: licenses/THIRD_PARTY_NOTICES.md
   - from: electron/vendor/chatlab-parser/LICENSE
@@ -17,6 +20,11 @@ asarUnpack:
   - '**/*.node'
 win:
   target: nsis
-  signAndEditExecutable: false
+  icon: build/icon.ico
+  signExecutable: false
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  deleteAppDataOnUninstall: false
 npmRebuild: false
 publish: null

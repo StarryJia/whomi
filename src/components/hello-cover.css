@@ -2,7 +2,7 @@
 .hello-cover {
   position: relative;
   width: 100%;
-  height: var(--preview-stage-height, 100svh);
+  height: var(--preview-stage-height, var(--app-height, 100svh));
   min-height: 360px;
   overflow: hidden;
   isolation: isolate;
@@ -45,7 +45,7 @@
   cursor: pointer;
 }
 .hello-cover .greeting-action:focus-visible { outline: none; }
-.hello-cover:has(.greeting-action:focus-visible) .greeting {
+.hello-cover[data-keyboard-focus='true']:has(.greeting-action:focus-visible) .greeting {
   outline: 2px solid var(--focus);
   outline-offset: 8px;
   border-radius: 2px;

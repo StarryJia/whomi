@@ -14,6 +14,18 @@ export function HelloCover({ name, buttonRef, onEnter, children }: HelloCoverPro
   const [revealing, setRevealing] = useState(false)
   const [previewMounted, setPreviewMounted] = useState(false)
   const completed = useRef(false)
+  const [keyboardFocus, setKeyboardFocus] = useState(false)
+
+  useEffect(() => {
+    const key = (event: KeyboardEvent) => { if (event.key === 'Tab') setKeyboardFocus(true) }
+    const pointer = () => setKeyboardFocus(false)
+    document.addEventListener('keydown', key, true)
+    document.addEventListener('pointerdown', pointer, true)
+    return () => {
+      document.removeEventListener('keydown', key, true)
+      document.removeEventListener('pointerdown', pointer, true)
+    }
+  }, [])
 
   function complete() {
     if (completed.current) return
@@ -44,7 +56,7 @@ export function HelloCover({ name, buttonRef, onEnter, children }: HelloCoverPro
     }
   }
 
-  return <div className={clsx('hello-cover', peeking && 'is-peeking', revealing && 'is-revealing')}>
+  return <div className={clsx('hello-cover', peeking && 'is-peeking', revealing && 'is-revealing')} data-keyboard-focus={keyboardFocus}>
     <div className="hello-cover-preview" inert aria-hidden="true">
       {previewMounted && children}
     </div>

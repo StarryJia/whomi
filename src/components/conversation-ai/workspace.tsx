@@ -131,7 +131,11 @@ export function ConversationWorkspace({ conversationId, title, messageCount, ref
 }) {
   const [panelOpen, setPanelOpen] = useState(false)
   const [draft, setDraft] = useState('')
-  const [modelId, setModelId] = useState(adapter?.models[0]?.id ?? '')
+  const initialModel = (feature: 'analysis' | 'conversation') => adapter?.selectedModels ? adapter.selectedModels[feature] ?? '' : adapter?.models[0]?.id ?? ''
+  const [modelId, setModelId] = useState(initialModel('conversation'))
+  const [analysisModelId, setAnalysisModelId] = useState(initialModel('analysis'))
+  const [modelErrors, setModelErrors] = useState<Partial<Record<'analysis' | 'conversation', string>>>({})
+  const [modelSaving, setModelSaving] = useState<Partial<Record<'analysis' | 'conversation', boolean>>>({})
   const [skillId, setSkillId] = useState('')
   const [turns, setTurns] = useState<Turn[]>([])
   const [busy, setBusy] = useState(false)
@@ -155,16 +159,32 @@ export function ConversationWorkspace({ conversationId, title, messageCount, ref
   const analysisRun = useRef<AbortController | undefined>(undefined)
   const sequence = useRef(0)
   const alive = useRef(true)
+  const selectionGeneration = useRef({ analysis: 0, conversation: 0 })
   const panelId = useId()
   const draftId = useId()
   const scroll = useRef<HTMLDivElement>(null)
   const atEnd = useRef(true)
   const selectedModel = adapter?.models.find(model => model.id === modelId)
-  const canSend = !!adapter && !!selectedModel && !!draft.trim() && !busy && !restoring
+  const selectedAnalysisModel = adapter?.models.find(model => model.id === analysisModelId)
+  async function chooseModel(feature: 'analysis' | 'conversation', id: string) {
+    const generation = ++selectionGeneration.current[feature]
+    setModelErrors(current => ({ ...current, [feature]: '' }))
+    setModelSaving(current => ({ ...current, [feature]: true }))
+    try {
+      await adapter?.selectModel?.(feature, id || null)
+      if (selectionGeneration.current[feature] !== generation) return
+      if (feature === 'analysis') setAnalysisModelId(id); else setModelId(id)
+    } catch (error) { if (selectionGeneration.current[feature] === generation) setModelErrors(current => ({ ...current, [feature]: errorText(error) })) }
+    finally { if (selectionGeneration.current[feature] === generation) setModelSaving(current => ({ ...current, [feature]: false })) }
+  }
+  const canSend = !!adapter && !!selectedModel && !!draft.trim() && !busy && !restoring && !modelSaving.conversation
 
   useEffect(() => {
     alive.current = true
-    setModelId(adapter?.models[0]?.id ?? '')
+    setModelId(initialModel('conversation'))
+    setAnalysisModelId(initialModel('analysis'))
+    setModelErrors({})
+    setModelSaving({})
     setBusy(false)
     setTurns(items => items.map(turn => turn.status === 'running' ? { ...turn, status: 'stopped' } : turn))
     setAnalysisState('idle')
@@ -174,6 +194,8 @@ export function ConversationWorkspace({ conversationId, title, messageCount, ref
     setAnalysisResult(undefined)
     return () => {
       alive.current = false
+      selectionGeneration.current.analysis++
+      selectionGeneration.current.conversation++
       chatRun.current?.abort('detach')
       analysisRun.current?.abort('detach')
       chatRun.current = undefined
@@ -220,16 +242,16 @@ export function ConversationWorkspace({ conversationId, title, messageCount, ref
     return () => controller.abort('detach')
   }, [adapter, conversationId])
   useEffect(() => {
-    if (!analysisOpen || !analysisConfirming || !adapter?.prepareAnalysis || !selectedModel) return
+    if (!analysisOpen || !analysisConfirming || !adapter?.prepareAnalysis || !selectedAnalysisModel) return
     let current = true
     setPreparing(true)
     setPreparation(undefined)
     setAnalysisError('')
-    void adapter.prepareAnalysis({ conversationId, modelId }).then(value => {
+    void adapter.prepareAnalysis({ conversationId, modelId: analysisModelId }).then(value => {
       if (current) setPreparation(value)
     }, error => { if (current) setAnalysisError(errorText(error)) }).finally(() => { if (current) setPreparing(false) })
     return () => { current = false }
-  }, [analysisOpen, analysisConfirming, adapter, conversationId, modelId, selectedModel, prepareAttempt])
+  }, [analysisOpen, analysisConfirming, adapter, conversationId, analysisModelId, selectedAnalysisModel, prepareAttempt])
   useEffect(() => {
     const query = window.matchMedia('(max-width: 1000px)')
     const update = () => setNarrow(query.matches)
@@ -300,7 +322,7 @@ export function ConversationWorkspace({ conversationId, title, messageCount, ref
     if (analysisResult?.taskId) void adapter?.stopAnalysis?.(analysisResult.taskId).catch(error => setAnalysisError(errorText(error)))
   }
   async function analyze() {
-    if (!adapter || !selectedModel || (messageCount === 0 && !adapter.prepareAnalysis) || analysisState === 'running' || preparing || (adapter.prepareAnalysis && !preparation)) return
+    if (!adapter || !selectedAnalysisModel || modelSaving.analysis || (messageCount === 0 && !adapter.prepareAnalysis) || analysisState === 'running' || preparing || (adapter.prepareAnalysis && !preparation)) return
     const controller = new AbortController()
     analysisRun.current = controller
     setAnalysisState('running')
@@ -310,7 +332,7 @@ export function ConversationWorkspace({ conversationId, title, messageCount, ref
     setAnalysisResult(undefined)
     const active = () => alive.current && analysisRun.current === controller && !controller.signal.aborted
     try {
-      const result = await adapter.analyze({ conversationId, modelId,
+      const result = await adapter.analyze({ conversationId, modelId: analysisModelId,
         ...(preparation ? { preparationToken: preparation.token, requestId: crypto.randomUUID() } : {}) }, { signal: controller.signal, onProgress: value => {
         if (!active()) return
         if (valid(value.analyzedMessages) && valid(value.totalMessages)) setProgress(value)
@@ -336,17 +358,17 @@ export function ConversationWorkspace({ conversationId, title, messageCount, ref
     </button>
     {analysisOpen && <Popover anchor={analysisAnchor} label="会话分析状态" onClose={() => setAnalysisOpen(false)}>
       <h3>会话分析</h3>
-      {analysisConfirming && messageCount === 0 && !adapter?.prepareAnalysis ? <p className="conversation-state-copy">巧妇难为无米之炊，先导入一些聊天记录吧。</p> : analysisConfirming && (!adapter || !selectedModel) ? <p className="conversation-state-copy">暂无可用模型。连接模型后可分析当前会话。</p> : analysisConfirming ? <>
-        <p className="conversation-analysis-title">{preparation?.title ?? title}</p>
+      {analysisConfirming && !!adapter?.models.length && <label className="conversation-select">分析模型<select aria-label="分析模型" value={selectedAnalysisModel?.id ?? ''} disabled={modelSaving.analysis} aria-describedby={modelErrors.analysis ? `${panelId}-analysis-model-error` : undefined} onChange={event => { void chooseModel('analysis', event.target.value) }}>
+        <option value="">请选择模型</option>{adapter.models.map(model => <option key={model.id} value={model.id}>{model.label}</option>)}
+      </select></label>}
+      {analysisConfirming && modelErrors.analysis && <p id={`${panelId}-analysis-model-error`} role="alert" className="conversation-error">{modelErrors.analysis}</p>}
+      {analysisConfirming && messageCount === 0 && !adapter?.prepareAnalysis ? <p className="conversation-state-copy">巧妇难为无米之炊，先导入一些聊天记录吧。</p> : analysisConfirming && (!adapter || !selectedAnalysisModel) ? <p className="conversation-state-copy">{adapter?.models.length ? '请选择分析模型。' : '请在设置中添加模型。'}</p> : analysisConfirming ? <>
         {preparing && <p role="status" className="conversation-state-copy">正在核对分析范围…</p>}
-        {preparation ? <><p className="conversation-state-copy">本人：{preparation.selfName}</p>
-          <p className="conversation-state-copy">{number(preparation.totalMessages)} 条消息 · {number(preparation.analyzableMessages)} 条可分析 · {preparation.model.label}</p></>
-          : !adapter?.prepareAnalysis && <p className="conversation-state-copy">{valid(messageCount) ? `当前会话 ${number(messageCount)} 条消息` : '分析当前会话'} · {selectedModel?.label}</p>}
         {hasAnalysisUsage && analysisUsage.incomplete && <p className="conversation-state-copy">统计不完整</p>}
         {analysisError && <p role="alert" className="conversation-error">{analysisError}</p>}
-        <p className="conversation-state-copy">生成当前会话的画像结果。</p>
+        <p className="conversation-state-copy">根据当前会话的全部聊天内容，生成一份分析报告。</p>
         <div className="conversation-analysis-actions">
-          {(!adapter?.prepareAnalysis || preparation) && <button type="button" disabled={preparing} className="conversation-text-button conversation-primary-button" onClick={() => { void analyze() }}>确认分析</button>}
+          {(!adapter?.prepareAnalysis || preparation) && <button type="button" disabled={preparing || modelSaving.analysis} className="conversation-text-button conversation-primary-button" onClick={() => { void analyze() }}>确认分析</button>}
           {adapter?.prepareAnalysis && !preparing && !preparation && <button type="button" className="conversation-text-button" onClick={confirmAnalysis}>重新核对</button>}
           <button type="button" className="conversation-text-button" onClick={() => setAnalysisOpen(false)}>取消</button>
         </div>
@@ -368,10 +390,9 @@ export function ConversationWorkspace({ conversationId, title, messageCount, ref
         {analysisError && <p role="alert" className="conversation-error">{analysisError}</p>}
         <div className="conversation-analysis-actions">{analysisState === 'running' ? <button type="button" className="conversation-text-button" onClick={stopAnalysis}><Square aria-hidden="true" />停止分析</button>
           : <button type="button" className="conversation-text-button" onClick={confirmAnalysis}>{analysisState === 'failed' ? '重试分析' : '重新分析'}</button>}
-          {analysisState === 'done' && <button type="button" className="conversation-text-button conversation-primary-button" disabled={!analysisResult?.taskId || !onOpenAnalysisResult}
-            onClick={() => { if (analysisResult?.taskId) onOpenAnalysisResult?.(analysisResult.taskId) }}>查看分析结果<ArrowRight aria-hidden="true" /></button>}
+          {analysisState === 'done' && !!onOpenAnalysisResult && !!analysisResult?.taskId && <button type="button" className="conversation-text-button conversation-primary-button"
+            onClick={() => { onOpenAnalysisResult(analysisResult.taskId!) }}>查看分析结果<ArrowRight aria-hidden="true" /></button>}
         </div>
-        {analysisState === 'done' && !onOpenAnalysisResult && <p className="conversation-state-copy">分析管理尚未开放。</p>}
         {analysisState === 'done' && onOpenAnalysisResult && !analysisResult?.taskId && <p className="conversation-state-copy">未提供分析报告。</p>}
       </>}
     </Popover>}
@@ -387,13 +408,14 @@ export function ConversationWorkspace({ conversationId, title, messageCount, ref
       {references.length > 0 && !!adapter?.skills.length && <label className="conversation-select"><FileText aria-hidden="true" /><span className="visually-hidden">对话技能</span>
         <select aria-label="对话技能" value={skillId} onChange={event => setSkillId(event.target.value)} disabled={busy}><option value="">默认方式</option>{adapter.skills.map(skill => <option key={skill.id} value={skill.id}>{skill.label}</option>)}</select><ChevronDown aria-hidden="true" /></label>}
       <div className="conversation-send-tools"><label className="conversation-select"><span className="visually-hidden">对话模型</span>
-        <select aria-label="对话模型" value={selectedModel?.id ?? ''} disabled={busy || !adapter?.models.length} onChange={event => setModelId(event.target.value)}>
-          {!adapter?.models.length && <option value="">暂无可用模型</option>}{adapter?.models.map(model => <option key={model.id} value={model.id}>{model.label}</option>)}
+        <select aria-label="对话模型" value={selectedModel?.id ?? ''} disabled={busy || !adapter?.models.length || modelSaving.conversation} aria-describedby={modelErrors.conversation ? `${panelId}-conversation-model-error` : undefined} onChange={event => { void chooseModel('conversation', event.target.value) }}>
+          {(!selectedModel || !adapter?.models.length) && <option value="">{adapter?.models.length ? '请选择模型' : '暂无可用模型'}</option>}{adapter?.models.map(model => <option key={model.id} value={model.id}>{model.label}</option>)}
         </select><ChevronDown aria-hidden="true" /></label>
         {busy ? <button type="button" className="conversation-send" aria-label="停止回答" onClick={stopChat}><Square aria-hidden="true" /></button>
           : <button type="submit" className="conversation-send" aria-label="发送给 AI" disabled={!canSend}><ArrowUp aria-hidden="true" /></button>}
       </div>
     </div>
+    {modelErrors.conversation && <p id={`${panelId}-conversation-model-error`} role="alert" className="conversation-error">{modelErrors.conversation}</p>}
   </form>
   const composer = <div className="conversation-source-composer">{panelOpen ? <div className="conversation-composer-handoff">
     {referenceControl}<button type="button" data-reopen-conversation onClick={() => textarea.current?.focus()}><span>在右侧继续对话</span><ArrowRight aria-hidden="true" /></button>

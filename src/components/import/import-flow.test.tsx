@@ -16,7 +16,7 @@ async function staged(api: ReturnType<typeof fakeImportApi>['api']) {
 }
 
 describe('真实导入界面合同', () => {
-  it('目录发现后显式选择入口、预览、目标和本人，持久保存后才能打开', async () => {
+  it('目录发现后显式选择入口、预览、目标，持久保存后才能打开', async () => {
     const { api } = fakeImportApi(), onSaved = vi.fn(), onOpen = vi.fn()
     render(<FileImport api={api} onSaved={onSaved} onOpenConversation={onOpen} />)
     const user = await staged(api)
@@ -24,32 +24,28 @@ describe('真实导入界面合同', () => {
     expect(screen.queryByText('已保存 500 条消息。')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '预览消息' }))
     expect(await screen.findByText('虚构预览正文')).toBeVisible()
+    expect(screen.getByText('消息预览 · 尚未保存')).toBeVisible()
     await user.selectOptions(screen.getByLabelText('导入目标'), 'new')
-    await user.selectOptions(screen.getByLabelText('本人身份'), 'member:member-2')
     await user.click(screen.getByRole('button', { name: '确认保存' }))
     expect(await screen.findByText('已保存 500 条消息。')).toBeVisible()
     expect(onSaved).toHaveBeenCalledWith(['7'])
-    expect(api.startImport).toHaveBeenLastCalledWith({ kind: 'commit', plan: { jobId: 'job', decisions: [{ candidateId: 'a', target: { kind: 'new' }, confirmedAliases: [], selfMemberKey: 'member-2' }] } })
+    expect(api.startImport).toHaveBeenLastCalledWith({ kind: 'commit', plan: { jobId: 'job', decisions: [{ candidateId: 'a', target: { kind: 'new' }, confirmedAliases: [] }] } })
     await user.click(screen.getByRole('button', { name: '打开会话' }))
     expect(onOpen).toHaveBeenCalledWith('7')
   })
 
-  it('目标不凭同名默认选中，本人来源提示不自动确认，未确认仍可保存', async () => {
+  it('目标不凭同名默认选中，未确认目标不能保存', async () => {
     const { api } = fakeImportApi()
     render(<FileImport api={api} />)
     const user = await staged(api)
     expect(screen.getByLabelText('导入目标')).toHaveValue('')
-    expect(screen.getByLabelText('本人身份')).toHaveValue('reuse')
-    expect(screen.getByRole('option', { name: /小林.*member-1/ })).toBeInTheDocument()
-    expect(screen.getByRole('option', { name: /小林.*member-2/ })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '确认保存' }))
     expect(screen.getByRole('alert')).toHaveTextContent('请选择导入目标')
     expect(api.startImport).toHaveBeenCalledTimes(1)
     await user.selectOptions(screen.getByLabelText('导入目标'), 'existing:9')
     expect(screen.getByText('将保存到：已有会话')).toBeVisible()
-    await user.selectOptions(screen.getByLabelText('本人身份'), 'none')
     await user.click(screen.getByRole('button', { name: '确认保存' }))
-    expect(api.startImport).toHaveBeenLastCalledWith({ kind: 'commit', plan: { jobId: 'job', decisions: [{ candidateId: 'a', target: { kind: 'existing', conversationId: '9' }, confirmedAliases: [], selfMemberKey: null }] } })
+    expect(api.startImport).toHaveBeenLastCalledWith({ kind: 'commit', plan: { jobId: 'job', decisions: [{ candidateId: 'a', target: { kind: 'existing', conversationId: '9' }, confirmedAliases: [] }] } })
   })
 
   it('逐项展示保存、失败、重复，进度重发不重复通知；取消保留打开入口和摘要重试', async () => {
@@ -149,5 +145,87 @@ describe('真实导入界面合同', () => {
     expect(screen.queryByRole('button', { name: '打开会话' })).not.toBeInTheDocument()
     const results = screen.getByRole('region', { name: '导入进度与结果' })
     expect(within(results).queryByText(/^已保存/)).not.toBeInTheDocument()
+  })
+
+  it('保存前取消立即恢复初始文件选择区域，不遗留取消结果卡片', async () => {
+    const { api, emit } = fakeImportApi()
+    render(<FileImport api={api} />)
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: '选择文件夹' }))
+    expect(await screen.findByText('两层目录中的记录.json')).toBeVisible()
+    expect(screen.queryByRole('button', { name: '选择文件' })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '取消导入' }))
+    expect(api.cancelImport).toHaveBeenCalledWith('job')
+
+    act(() => emit(snapshot({ status: 'cancelled', results: [] })))
+
+    expect(await screen.findByRole('button', { name: '选择文件' })).toBeVisible()
+    expect(screen.getByRole('button', { name: '选择文件夹' })).toBeVisible()
+    expect(screen.queryByText('已取消导入。')).not.toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: '导入进度与结果' })).not.toBeInTheDocument()
+  })
+
+  it('部分保存后取消展示已保存成果与未完成状态，不把已保存表述为已撤销', async () => {
+    const { api, emit } = fakeImportApi(), onOpen = vi.fn()
+    render(<FileImport api={api} onOpenConversation={onOpen} />)
+    await staged(api)
+
+    act(() => emit(snapshot({
+      status: 'cancelled',
+      candidates: [candidate('a'), candidate('b')],
+      results: [
+        saved('a', '7', { status: 'saved', inserted: 320 }),
+        saved('b', '8', { status: 'cancelled', committedAt: null, inserted: 0 }),
+      ],
+    })))
+
+    expect(await screen.findByText('部分会话已保存，其余已取消。')).toBeVisible()
+    expect(screen.getByText('已保存 320 条消息。')).toBeVisible()
+    expect(screen.getByText('已取消')).toBeVisible()
+    const openButton = screen.getByRole('button', { name: '打开会话' })
+    expect(openButton).toBeVisible()
+    await userEvent.click(openButton)
+    expect(onOpen).toHaveBeenCalledWith('7')
+  })
+
+  it('发现 0 个文件时切换为未识别状态并提供重新选择路径', async () => {
+    const { api, emit } = fakeImportApi()
+    render(<FileImport api={api} />)
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: '选择文件' }))
+    act(() => emit(snapshot({
+      status: 'awaiting_confirmation',
+      discovery: {
+        entries: [],
+        unrecognized: [{ displayName: 'invalid.json' }],
+        issues: [],
+      },
+    })))
+    expect(await screen.findByText('未识别到可导入的聊天记录')).toBeVisible()
+    expect(screen.getByText('请选择其他文件。')).toBeVisible()
+    expect(screen.getByText('invalid.json')).toBeVisible()
+    expect(screen.queryByRole('button', { name: '解析所选入口' })).not.toBeInTheDocument()
+    const rechooseButton = screen.getByRole('button', { name: '重新选择文件' })
+    expect(rechooseButton).toBeVisible()
+    await user.click(rechooseButton)
+    expect(api.chooseSources).toHaveBeenCalledWith('files')
+  })
+
+  it('导入完成后提供继续导入，点击后返回初始选择起点', async () => {
+    const { api, emit } = fakeImportApi()
+    render(<FileImport api={api} />)
+    await staged(api)
+    act(() => emit(snapshot({
+      status: 'completed',
+      candidates: [candidate('a')],
+      results: [saved('a', '7', { status: 'saved', inserted: 100 })],
+    })))
+    expect(await screen.findByText('已保存 100 条消息。')).toBeVisible()
+    const continueButton = screen.getByRole('button', { name: '继续导入' })
+    expect(continueButton).toBeVisible()
+    await userEvent.click(continueButton)
+    expect(await screen.findByRole('button', { name: '选择文件' })).toBeVisible()
+    expect(screen.getByRole('button', { name: '选择文件夹' })).toBeVisible()
   })
 })

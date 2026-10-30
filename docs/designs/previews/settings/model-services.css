@@ -85,6 +85,10 @@
 .ms-empty p { margin: 0; font-size: 14px; color: var(--text,#26303d); }
 .ms-empty span { font-size: 12px; }
 .ms-empty-detail { justify-content: center; height: 100%; min-height: 300px; }
+.ms-workspace-empty { display: flex; align-items: center; justify-content: center; grid-template-columns: none; }
+.ms-empty-workspace { max-width: 440px; margin: auto; }
+.ms-empty-workspace h2 { margin: 0; font-size: 21px; font-weight: 600; color: var(--text,#26303d); }
+.ms-empty-workspace p { font-size: 14px; color: var(--text-muted,#5c6674); line-height: 1.5; margin: 0 0 8px; }
 .ms-empty-detail h2 { margin: 0; font-size: 21px; color: var(--text,#26303d); font-weight: 600; }
 .ms-empty-detail p { font-size: 13px; color: var(--text-muted,#5c6674); margin-bottom: 7px; }
 .ms-model-empty { background: #fafbfd; border-radius: 9px; padding: 27px 14px; }

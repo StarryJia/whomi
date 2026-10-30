@@ -84,10 +84,12 @@ export type DesktopMethods = ConversationQueries & {
   previewImport(jobId: JobId, candidateId: string, options: PreviewOptions): Promise<ImportPreview>
   listMembers(conversationId: LocalId): Promise<MemberView[]>
   confirmSelf(conversationId: LocalId, memberId: LocalId | null): Promise<void>
+  deleteConversation(conversationId: LocalId): Promise<void>
   retrySummary(conversationId: LocalId): Promise<void>
 }
 export type DesktopApi = DesktopMethods & {
   ai?: AiApi
+  settings?: import('./settings-contract').SettingsApi
   acceptDroppedFiles(files: File[]): Promise<SourceHandle[]>
   onImport(listener: (snapshot: ImportSnapshot) => void): () => void
 }

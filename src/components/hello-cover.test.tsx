@@ -12,6 +12,15 @@ function mountCover(onEnter = vi.fn()) {
 }
 
 describe('Hello 总览预览与进入过渡', () => {
+  it('自动聚焦不显示键盘边框，Tab 导航保留焦点提示，鼠标按下后收起', () => {
+    const { container, button } = mountCover()
+    button.focus()
+    expect(container.firstChild).toHaveAttribute('data-keyboard-focus', 'false')
+    fireEvent.keyDown(document, { key: 'Tab' })
+    expect(container.firstChild).toHaveAttribute('data-keyboard-focus', 'true')
+    fireEvent.pointerDown(button)
+    expect(container.firstChild).toHaveAttribute('data-keyboard-focus', 'false')
+  })
   it('鼠标经过才挂载总览预览，预览对键盘和辅助技术保持隔离，移开恢复遮挡', async () => {
     const user = userEvent.setup()
     const { button, onEnter, container } = mountCover()

@@ -174,7 +174,7 @@ export function MessageProcessing() {
             <Plus size={16} aria-hidden="true" />
           </button>
         </div>
-        <p id="mp-seconds-help" className="mp-field-help">预览每次增减 1 秒，最小 1 秒。正式范围与步长待确认。</p>
+        <p id="mp-seconds-help" className="mp-field-help">每次增减 1 秒，最小 1 秒。</p>
         <p id="mp-seconds-error" className="mp-error" role="status">{!validSeconds ? '请输入大于 0 的整数秒数。' : ''}</p>
       </Setting>
       <Setting id="mp-noise" title="智能去噪" description="过滤可能无效的语气词、纯表情或系统占位消息。可能减少分析材料，语气和表情也可能影响理解。"

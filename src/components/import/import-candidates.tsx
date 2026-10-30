@@ -2,11 +2,27 @@ import { useEffect, useId, useRef, useState } from 'react'
 import type { ConversationSummary, DesktopApi, DesktopError, ImportPreview } from '../../shared/desktop-api'
 import type { Candidate, Discovery, TargetDecision } from '../../shared/import-contract'
 import { importError } from '../../data/use-import'
-import { IdentityChoice } from './identity-choice'
 
-export function DiscoveryChoices({ discovery, busy, onStage }: { discovery: Discovery; busy: boolean; onStage: (ids: string[]) => void }) {
+export function DiscoveryChoices({ discovery, busy, onStage, onCancel, onRechoose, error }: {
+  discovery: Discovery; busy: boolean; onStage: (ids: string[]) => void; onCancel?: () => void; onRechoose?: () => void; error?: DesktopError | null
+}) {
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set())
-  return <section className="import-panel" aria-label="发现的文件入口">
+  if (discovery.entries.length === 0) {
+    return <section className="import-step" aria-label="未识别到文件入口">
+      <h2>未识别到可导入的聊天记录</h2>
+      <p className="import-muted">请选择其他文件。</p>
+      {discovery.unrecognized.length > 0 && <ul className="import-unrecognized-list">
+        {discovery.unrecognized.map((item, index) => <li key={index}><small>{item.displayName}</small></li>)}
+      </ul>}
+      {discovery.issues.map((issue, index) => <p className="import-error" key={index}>{issue.action}</p>)}
+      {error && <p className="import-error" role="alert" data-error-code={error.code}>{error.action}</p>}
+      <div className="import-step-actions">
+        {onRechoose && <button className="import-primary" type="button" disabled={busy} onClick={onRechoose}>重新选择文件</button>}
+        {onCancel && <button className="import-secondary" type="button" disabled={busy} onClick={onCancel}>取消导入</button>}
+      </div>
+    </section>
+  }
+  return <section className="import-step" aria-label="发现的文件入口">
     <h2>选择要解析的入口</h2>
     <p className="import-muted">已发现 {discovery.entries.length} 个文件入口，解析后可确认会话和成员。</p>
     <ul className="import-entries">{discovery.entries.map(entry => <li key={entry.entryId}><label>
@@ -17,11 +33,15 @@ export function DiscoveryChoices({ discovery, busy, onStage }: { discovery: Disc
     {discovery.unrecognized.length > 0 && <details><summary>未识别文件 {discovery.unrecognized.length} 项</summary>
       <ul>{discovery.unrecognized.map((item, index) => <li key={index}>{item.displayName}</li>)}</ul></details>}
     {discovery.issues.map((issue, index) => <p className="import-error" key={index}>{issue.action}</p>)}
-    <button className="import-primary" type="button" disabled={busy || !selected.size} onClick={() => onStage([...selected])}>解析所选入口</button>
+    {error && <p className="import-error" role="alert" data-error-code={error.code}>{error.action}</p>}
+    <div className="import-step-actions">
+      <button className="import-primary" type="button" disabled={busy || !selected.size} onClick={() => onStage([...selected])}>解析所选入口</button>
+      {onCancel && <button className="import-secondary" type="button" disabled={busy} onClick={onCancel}>取消导入</button>}
+    </div>
   </section>
 }
 
-type Choice = { target: string; selfMemberKey?: string | null; aliasKey: string; accountKey: string }
+type Choice = { target: string; aliasKey: string; accountKey: string }
 function CandidateChoice({ candidate, choice, targets, onChange, preview }: {
   candidate: Candidate; choice: Choice; targets: ConversationSummary[]; onChange: (value: Choice) => void
   preview: (candidateId: string, after?: number) => Promise<ImportPreview | null>
@@ -50,7 +70,6 @@ function CandidateChoice({ candidate, choice, targets, onChange, preview }: {
         </select>
       </div>
       {existing && <p className="import-target-confirm">将保存到：{existing.title || '未命名会话'}</p>}
-      <IdentityChoice candidate={candidate} value={choice.selfMemberKey} onChange={key => onChange({ ...choice, selfMemberKey: key })} />
       <details><summary>确认账号别名</summary>
         <p className="import-muted">仅在确认两个账号属于同一人时填写。来源账号：{candidate.identity.ownerKey ?? '未知'}。</p>
         <div className="import-field"><label htmlFor={aliasId}>来源账号</label><input id={aliasId} value={choice.aliasKey} onChange={event => onChange({ ...choice, aliasKey: event.target.value })} /></div>
@@ -59,9 +78,9 @@ function CandidateChoice({ candidate, choice, targets, onChange, preview }: {
       <button className="import-secondary" type="button" disabled={loading} onClick={() => { void showPreview() }}>预览消息</button>
       {loading && <p role="status">正在加载预览…</p>}
       {page && <div className="import-preview" aria-label={`${candidate.title} 消息预览`}>
-        <p className="import-muted">消息预览 · 每页最多 50 条 · 尚未保存</p>
+        <p className="import-muted">{page.nextOrdinal !== null ? '消息预览 · 每页最多 50 条 · 尚未保存' : '消息预览 · 尚未保存'}</p>
         <ol>{page.messages.map(message => <li key={message.ordinal}>
-          <small>{message.senderName || (message.senderKind === 'system' ? '系统消息' : '未知发送者')} · {message.timeRaw || (message.sentAtMs === null ? '时间未知' : new Date(message.sentAtMs).toLocaleString())}</small>
+          <small>{message.senderName || (message.senderKind === 'system' ? '系统消息' : '未知发送者')} · {message.sentAtMs !== null ? new Date(message.sentAtMs).toLocaleString() : (message.timeRaw || '时间未知')}</small>
           <p>{message.text || `［${message.kind}］`}</p>
           {message.attachments.map((item, index) => <small key={index}>附件：{item.name || item.kind} · {item.state === 'missing' ? '文件缺失' : '未读取'}</small>)}
         </li>)}</ol>
@@ -71,9 +90,10 @@ function CandidateChoice({ candidate, choice, targets, onChange, preview }: {
   </fieldset>
 }
 
-export function ImportCandidates({ api, candidates, busy, onCommit, preview }: {
+export function ImportCandidates({ api, candidates, busy, onCommit, preview, onCancel, error: externalError }: {
   api: DesktopApi; candidates: Candidate[]; busy: boolean
   onCommit: (decisions: TargetDecision[]) => void; preview: (id: string, after?: number) => Promise<ImportPreview | null>
+  onCancel?: () => void; error?: DesktopError | null
 }) {
   const [choices, setChoices] = useState<Record<string, Choice>>({})
   const [targets, setTargets] = useState<ConversationSummary[]>([])
@@ -102,19 +122,22 @@ export function ImportCandidates({ api, candidates, busy, onCommit, preview }: {
       }
       decisions.push({ candidateId: candidate.candidateId,
         target: choice.target === 'new' ? { kind: 'new' } : { kind: 'existing', conversationId: choice.target.slice(9) },
-        confirmedAliases: choice.aliasKey ? [{ platform: candidate.identity.platform, aliasKey: choice.aliasKey, accountKey: choice.accountKey }] : [],
-        ...(choice.selfMemberKey === undefined ? {} : { selfMemberKey: choice.selfMemberKey }) })
+        confirmedAliases: choice.aliasKey ? [{ platform: candidate.identity.platform, aliasKey: choice.aliasKey, accountKey: choice.accountKey }] : [] })
     }
     setError(null); onCommit(decisions)
   }
-  return <section className="import-panel" aria-label="确认会话">
+  return <section className="import-step" aria-label="确认会话">
     <h2>确认后保存</h2>
     {candidates.map(candidate => <CandidateChoice key={candidate.candidateId} candidate={candidate} choice={choiceFor(candidate.candidateId)} targets={targets}
       onChange={choice => setChoices(previous => ({ ...previous, [candidate.candidateId]: choice }))} preview={preview} />)}
     {error && <p className="import-error" role="alert">{error.action}</p>}
+    {externalError && <p className="import-error" role="alert" data-error-code={externalError.code}>{externalError.action}</p>}
     {loading && <p className="import-muted" role="status">正在加载已有会话…</p>}
     {cursor && <button className="import-secondary" type="button" disabled={loading} onClick={() => { void loadTargets(cursor) }}>加载更多已有会话</button>}
     {error && error.code !== 'TARGET_REQUIRED' && <button type="button" className="import-secondary" disabled={loading} onClick={() => { void loadTargets() }}>重新加载已有会话</button>}
-    <button className="import-primary" type="button" disabled={busy || !candidates.some(candidate => candidate.status === 'staged' && !candidate.issues.some(issue => issue.severity === 'blocking'))} onClick={save}>确认保存</button>
+    <div className="import-step-actions">
+      <button className="import-primary" type="button" disabled={busy || !candidates.some(candidate => candidate.status === 'staged' && !candidate.issues.some(issue => issue.severity === 'blocking'))} onClick={save}>确认保存</button>
+      {onCancel && <button className="import-secondary" type="button" disabled={busy} onClick={onCancel}>取消导入</button>}
+    </div>
   </section>
 }

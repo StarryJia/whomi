@@ -95,7 +95,7 @@ function ClarificationQuestionView({ question, models, controller, onOpenSource,
         </button>
       </div> : <>
         <p className="clarification-choice-hint" id="clarification-choice-hint">
-          {entry.mode === 'own' ? '自己回答' : '点击卡牌即提交，可撤回。'}
+          {entry.mode === 'own' ? '自己回答' : !controller.canSubmit ? '当前未接入提交接口，无法提交回答。' : '点击卡牌即提交，可撤回。'}
         </p>
         <div className={clsx('clarification-cards', entry.mode === 'own' && 'is-inactive')}
           role="group" aria-label="预置回答" aria-describedby="clarification-choice-hint">
@@ -120,34 +120,36 @@ function ClarificationQuestionView({ question, models, controller, onOpenSource,
       </div>
     </div>
 
-    <form className={clsx('clarification-composer', entry.mode === 'own' && !locked && 'is-active')}
-      onSubmit={event => { event.preventDefault(); if (canSend) void controller.sendOwn(question, models) }}>
-      {entry.mode === 'own' && !locked && <div className="clarification-composer-heading">
-        <span>自己回答</span>
-        <button className="clarification-switch" type="button" onClick={() => controller.useCards(question.id)}>
-          <Undo2 aria-hidden="true" />改用卡牌回答
-        </button>
-      </div>}
-      <textarea ref={fieldRef} aria-label={ownPrompt} placeholder={ownPrompt} value={entry.draft} readOnly={locked}
-        rows={3} onFocus={() => controller.startOwn(question.id)}
-        onChange={event => controller.setDraft(question.id, event.target.value)}
-        onCompositionStart={() => { composing.current = true }} onCompositionEnd={() => { composing.current = false }}
-        onKeyDown={handleKeyDown} />
-      <div className="clarification-composer-tools">
-        <div className="clarification-model">
-          <select aria-label="选择模型" value={validModel ? entry.modelId : ''} disabled={!availableModels.length || locked}
-            onChange={event => controller.setModel(question.id, event.target.value)}>
-            <option value="">选择模型</option>
-            {availableModels.map(model => <option key={model.id} value={model.id}>{model.label}</option>)}
-          </select>
-          <ChevronDown aria-hidden="true" />
+    {!entry.receipt && <>
+      <form className={clsx('clarification-composer', entry.mode === 'own' && !locked && 'is-active')}
+        onSubmit={event => { event.preventDefault(); if (canSend) void controller.sendOwn(question, models) }}>
+        {entry.mode === 'own' && !locked && <div className="clarification-composer-heading">
+          <span>自己回答</span>
+          <button className="clarification-switch" type="button" onClick={() => controller.useCards(question.id)}>
+            <Undo2 aria-hidden="true" />改用卡牌回答
+          </button>
+        </div>}
+        <textarea ref={fieldRef} aria-label={ownPrompt} placeholder={ownPrompt} value={entry.draft} readOnly={locked}
+          rows={3} onFocus={() => controller.startOwn(question.id)}
+          onChange={event => controller.setDraft(question.id, event.target.value)}
+          onCompositionStart={() => { composing.current = true }} onCompositionEnd={() => { composing.current = false }}
+          onKeyDown={handleKeyDown} />
+        <div className="clarification-composer-tools">
+          <div className="clarification-model">
+            <select aria-label="选择模型" value={validModel ? entry.modelId : ''} disabled={!availableModels.length || locked}
+              onChange={event => controller.setModel(question.id, event.target.value)}>
+              <option value="">选择模型</option>
+              {availableModels.map(model => <option key={model.id} value={model.id}>{model.label}</option>)}
+            </select>
+            <ChevronDown aria-hidden="true" />
+          </div>
+          <button className="clarification-send" type="submit" aria-label="发送回答" disabled={!canSend}><ArrowUp aria-hidden="true" /></button>
         </div>
-        <button className="clarification-send" type="submit" aria-label="发送回答" disabled={!canSend}><ArrowUp aria-hidden="true" /></button>
+      </form>
+      <div className="clarification-composer-notes">
+        {!controller.canSubmit ? <p>暂时无法提交，草稿仅保留在本次浏览中。</p> :
+          !availableModels.length ? <p>暂无可用模型。</p> : <p>Enter 发送 · Shift + Enter 换行</p>}
       </div>
-    </form>
-    <div className="clarification-composer-notes">
-      {!controller.canSubmit ? <p>暂时无法提交，草稿仅保留在本次浏览中。</p> :
-        !availableModels.length ? <p>暂无可用模型。</p> : <p>Enter 发送 · Shift + Enter 换行</p>}
-    </div>
+    </>}
   </div>
 }

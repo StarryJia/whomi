@@ -15,10 +15,12 @@ import { StartupIntro } from './components/startup-intro'
 import { HelloCover } from './components/hello-cover'
 import { ConversationNavigation, ConversationReader, type Conversation } from './components/conversations'
 import { FileImport } from './components/file-import'
+import { SettingsPage } from './components/settings/settings-page'
 import { getDesktopClient } from './data/desktop-client'
 import { createPreviewClient } from './data/preview-client'
 import { createConversationAiClient } from './data/conversation-ai-client'
 import { useConversations, type ConversationClient } from './data/use-conversations'
+import { isImportActive, isPersistedResult } from './data/use-import'
 import type { DesktopApi } from './shared/desktop-api'
 import type { ConversationAiAdapter } from './components/conversation-ai/types'
 import { PersonalOverview } from './components/overview/personal-overview'
@@ -72,12 +74,15 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
   clarificationQuestion, clarificationModels = [], clarificationAdapter, conversationAiAdapter, previewConversationId, preview = false, importApi, client }: AppProps) {
   const api = importApi ?? (window.whomi ? getDesktopClient() : undefined)
   const [desktopAi, setDesktopAi] = useState<ConversationAiAdapter>()
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [settingsRevision, setSettingsRevision] = useState(0)
+  const settingsEntry = useRef<HTMLButtonElement>(null)
+  const settingsChanged = useRef(false)
   useEffect(() => {
     let active = true
-    setDesktopAi(undefined)
-    if (api?.ai && !preview && !conversationAiAdapter) void createConversationAiClient(api.ai).then(value => { if (active) setDesktopAi(value) }).catch(() => { if (active) setDesktopAi(undefined) })
+    if (api?.ai && !preview && !conversationAiAdapter) void createConversationAiClient(api.ai, api.settings).then(value => { if (active) setDesktopAi(value) }).catch(() => { if (active) setDesktopAi(undefined) })
     return () => { active = false }
-  }, [api?.ai, preview, conversationAiAdapter])
+  }, [api?.ai, api?.settings, preview, conversationAiAdapter, settingsRevision])
   const queryClient = useMemo(() => client ?? (conversations ? createPreviewClient(conversations) : api), [client, conversations, api])
   const reader = useConversations(queryClient)
   const previewing = preview || !!conversations
@@ -92,6 +97,7 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
   const clarificationTitleRef = useRef<HTMLHeadingElement>(null)
   const [view, setView] = useState<'cover' | 'overview' | 'import' | 'conversation' | 'clarification'>(preview && previewConversationId ? 'conversation' : 'cover')
   const [coverKey, setCoverKey] = useState(0)
+  const [importKey, setImportKey] = useState(0)
   const [activeId, setActiveId] = useState<string | undefined>(preview ? previewConversationId : undefined)
   const [source, setSource] = useState<SourceReference>()
   const [sourceOrigin, setSourceOrigin] = useState<'overview' | 'clarification'>('overview')
@@ -169,10 +175,48 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
     requestAnimationFrame(() => greetingRef.current?.focus())
   }
 
+  async function startNewImport() {
+    let previous: string | null = null
+    try { previous = localStorage.getItem('whomi:import-job') } catch { /* 无存储时使用当前会话。 */ }
+    if (api && previous) {
+      try {
+        const task = await api.getImport(previous)
+        if (isImportActive(task) || task.status === 'failed' || task.status === 'partially_completed' ||
+          (task.status === 'cancelled' && task.results.some(isPersistedResult))) {
+          openImport()
+          return
+        }
+      } catch {
+        // 让导入页保留原任务的错误与恢复操作。
+        openImport()
+        return
+      }
+    }
+    try { localStorage.removeItem('whomi:import-job') } catch { /* ignore */ }
+    setImportKey(key => key + 1)
+    setView('import')
+    closeMobile()
+    requestAnimationFrame(() => mainRef.current?.querySelector<HTMLButtonElement>('.file-drop-target')?.focus())
+  }
+
   function openImport() {
     setView('import')
     closeMobile()
     requestAnimationFrame(() => mainRef.current?.querySelector<HTMLButtonElement>('.file-drop-target')?.focus())
+  }
+
+  async function handleDeleteConversation(id: string) {
+    try {
+      if (api) {
+        await api.deleteConversation(id)
+      }
+      await reader.refresh()
+      setActiveId(undefined)
+      enterOverview()
+    } catch (err) {
+      console.error('App handleDeleteConversation error:', err)
+      throw err
+    }
   }
 
   function openConversation(id: string) {
@@ -212,7 +256,8 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
   </>
 
   return (
-    <div className={clsx('app-shell', open && 'sidebar-open', introActive && 'startup-running')}>
+    <><div style={settingsOpen ? { display: 'none' } : undefined} className={clsx('app-shell', open && 'sidebar-open', introActive && 'startup-running', window.whomi && !preview && 'desktop-shell')}>
+      {window.whomi && !preview && view !== 'conversation' && <div className="desktop-drag-strip" aria-hidden="true" />}
       <a className="skip-link" href="#main-content" inert={mobileDialog || introActive}>跳到主要内容</a>
       {mobileDialog && (
         <button
@@ -285,25 +330,29 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
             </button>
           </Tooltip>
           <ConversationNavigation wide={open} conversations={reader.conversations} activeId={view === 'conversation' ? activeId : undefined}
-            onImport={openImport} onSelect={openConversation} hasMore={!!reader.listCursor} loading={reader.listLoading}
+            onImport={startNewImport} onSelect={openConversation} hasMore={!!reader.listCursor} loading={reader.listLoading}
             error={reader.listError} onLoadMore={() => { void reader.loadMore() }} onRefresh={() => { void reader.refresh() }} />
         </nav>
         <footer className="sidebar-footer">
-          <UnavailableDestination label="设置" icon={Settings} />
+          {api?.settings ? <button ref={settingsEntry} className="nav-control" type="button" aria-label="设置" onClick={() => { closeMobile(); setSettingsOpen(true) }}>
+            <span className="control-icon"><Settings aria-hidden="true" /></span><span className="control-label" aria-hidden="true">设置</span>
+          </button> : <UnavailableDestination label="设置" icon={Settings} />}
         </footer>
       </aside>
       <main id="main-content" ref={mainRef} className={clsx('home', view === 'cover' && 'cover-home', (view === 'overview' || view === 'clarification') && 'overview-home', view === 'conversation' && 'reading-home')} tabIndex={-1} inert={mobileDialog || introActive}>
         {view === 'cover' ? <HelloCover key={coverKey} name={name} buttonRef={greetingRef} onEnter={enterOverview}>{overviewContent}</HelloCover>
-          : view === 'import' ? <FileImport api={api} onSaved={saved} onOpenConversation={openConversation} />
+          : view === 'import' ? <FileImport key={importKey} api={api} onSaved={saved} onOpenConversation={openConversation} />
           : view === 'conversation' && activeId && reader.current ? <ConversationReader
           key={`${activeId}-${source?.id ?? ''}`} conversation={{ id: activeId, title: activeSummary?.title ?? '会话', messages: reader.current.messages }}
           range={reader.current.range} sourceStatus={reader.current.sourceStatus} loading={reader.loading} error={reader.error} preview={previewing}
           beforeCursor={reader.current.beforeCursor} afterCursor={reader.current.afterCursor}
           messageCount={activeSummary?.messageCount} aiAdapter={conversationAiAdapter ?? desktopAi}
-          onLocateMessage={message => reader.locate({ conversationId: activeId, messageId: message.id })}
+          onLocateMessage={async message => { await reader.locate({ conversationId: activeId, messageId: message.id }) }}
+          onLocateMessageId={id => reader.locate({ conversationId: activeId, messageId: id }, { preserveOnFailure: true })}
           onBefore={reader.loadBefore} onAfter={reader.loadAfter} onRetry={() => { void reader.open(activeId) }}
           onReturn={source ? (sourceOrigin === 'clarification' ? openClarification : enterOverview) : fromImport ? openImport : undefined}
-          returnLabel={fromImport ? '返回导入结果' : sourceOrigin === 'clarification' ? '返回问一问' : '返回个人总览'} /> : view === 'clarification' ? (
+          returnLabel={fromImport ? '返回导入结果' : sourceOrigin === 'clarification' ? '返回问一问' : '返回个人总览'}
+          api={api} onDeleteConversation={handleDeleteConversation} onSelfChanged={() => { void reader.open(activeId) }} /> : view === 'clarification' ? (
           <ClarificationPage question={clarificationQuestion} models={clarificationModels} controller={clarification}
             headingRef={clarificationTitleRef} preview={previewing}
             onOpenSource={reference => openSource(reference, 'clarification')}
@@ -311,7 +360,11 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
         ) : overviewContent}
       </main>
       {introActive && <StartupIntro targetRef={brandImageRef} onComplete={finishIntro} />}
-    </div>
+    </div>{settingsOpen && api?.settings && <><div className="desktop-drag-strip settings-drag-strip" aria-hidden="true" /><SettingsPage api={api.settings} onChanged={() => { settingsChanged.current = true }} onClose={() => {
+      setSettingsOpen(false)
+      if (settingsChanged.current) { setSettingsRevision(value => value + 1); settingsChanged.current = false }
+      requestAnimationFrame(() => settingsEntry.current?.focus())
+    }} /></>}</>
   )
 }
 

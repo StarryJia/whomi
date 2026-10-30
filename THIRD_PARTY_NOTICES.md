@@ -30,9 +30,7 @@ SOFTWARE.
 
 ## 品牌资产
 
-首页直接引用仓库已有 `assets/branding/whomi-symbol.png` 与 `assets/branding/whomi-wordmark.png`。本轮未重新生成、重绘或修改这些文件；页面保持比例调整显示尺寸，并通过布局裁去外围留白。原始图片不含透明通道，品牌入口内的局部正片叠底混合仅用于让近白图片底色融入浅色悬停背景，不改变图片文件。
-
-启动动画的 `whomi-lens-layer.png` 与 `whomi-face-layer.png` 是用户授权从 `whomi-symbol.png` 逐像素分离的透明派生资产，保留原画布和各自位置。`scripts/extract-brand-layers.py` 使用 Pillow 与 NumPy 处理白底和透明度；这两者仅用于重新生成素材，不是页面运行依赖。生成式图像编辑试验的结果未采用或打包。
+首页与启动动画使用的品牌图像资产（`assets/branding/`）归项目所有，派生素材仅用于界面渲染与动效展示。
 
 ## 其他依赖
 

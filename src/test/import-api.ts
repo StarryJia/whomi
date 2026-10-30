@@ -36,7 +36,7 @@ export function fakeImportApi() {
     onImport: listener => { listeners.add(listener); return () => { listeners.delete(listener) } },
     previewImport: vi.fn(async (): Promise<ImportPreview> => ({ messages: [{ ordinal: 1, senderKey: 'member-1', senderKind: 'member', senderName: '小林', sentAtMs: null, timeRaw: null, timePrecision: 'unknown', timezone: null, kind: 'text', text: '虚构预览正文', sourceType: null, reply: null, attachments: [] }], nextOrdinal: null })),
     listConversations: vi.fn(async () => ({ items: [{ id: '9', title: '已有会话', kind: 'direct' as const, messageCount: 1, memberCount: 2, firstSentAtMs: null, lastSentAtMs: null, summaryStatus: 'ready' as const }], nextCursor: null })),
-    readMessages: vi.fn(), locateSource: vi.fn(), listMembers: vi.fn(), confirmSelf: vi.fn(), retrySummary: vi.fn(async () => {}),
+    readMessages: vi.fn(), locateSource: vi.fn(), listMembers: vi.fn(), confirmSelf: vi.fn(), deleteConversation: vi.fn(async () => {}), retrySummary: vi.fn(async () => {}),
   }
   return { api, emit, listeners }
 }

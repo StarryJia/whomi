@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { AiApi, AiEvent, AiModel, AiTurn, AnalysisTask } from '../shared/ai-contract'
 import { createConversationAiClient } from './conversation-ai-client'
+import { defaultProcessing, type SettingsApi } from '../shared/settings-contract'
 
 const model: AiModel = { id: 'm', label: '模型', model: 'example', baseUrl: 'https://example.test/v1', contextWindow: 8192, maxTokens: 1024, version: 1, enabled: true, hasCredential: true }
 const turn = (state: AiTurn['state'] = 'completed', eventSequence = 1): AiTurn => ({ id: 'turn', threadId: 'thread', requestId: 'request', prompt: '提问', referenceIds: ['1'], modelId: 'm', text: state === 'completed' ? '回答' : '片段', state, attempt: 1, usage: {}, eventSequence })
@@ -17,6 +18,21 @@ function api() {
   return { methods, client: methods as unknown as AiApi, emit: (event: AiEvent) => listeners.forEach(listener => listener(event)), listeners }
 }
 describe('正式会话 AI 适配器', () => {
+  it('成功保存选模后更新共享偏好，分别记忆两个功能且失败不覆盖', async () => {
+    const { client } = api()
+    const selectModel = vi.fn<SettingsApi['selectModel']>(async () => {})
+    const settings = { get: async () => ({ providers: [], models: [], processing: defaultProcessing, selectedModels: { analysis: 'analysis-before', conversation: 'conversation-before' }, debug: false }), selectModel } as unknown as SettingsApi
+    const adapter = await createConversationAiClient(client, settings)
+    const sharedSelection = adapter.selectedModels!
+    await adapter.selectModel!('conversation', 'conversation-next')
+    expect(sharedSelection).toEqual({ analysis: 'analysis-before', conversation: 'conversation-next' })
+    selectModel.mockRejectedValueOnce(new Error('保存失败，请重试。'))
+    await expect(adapter.selectModel!('analysis', 'analysis-rejected')).rejects.toThrow('保存失败')
+    expect(sharedSelection.analysis).toBe('analysis-before')
+    await adapter.selectModel!('analysis', 'analysis-next')
+    await adapter.selectModel!('conversation', null)
+    expect(sharedSelection).toEqual({ analysis: 'analysis-next' })
+  })
   it('恢复快照前先到的新轮次事件，不改变后台历史顺序', async () => {
     const { methods, client, emit } = api()
     let complete: (value: Awaited<ReturnType<AiApi['getThread']>>) => void = () => {}

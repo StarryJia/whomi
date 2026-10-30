@@ -47,6 +47,37 @@ button { color: inherit; }
   background: var(--canvas);
 }
 .app-shell.sidebar-open { --sidebar-width: var(--sidebar-expanded); }
+.desktop-shell { --desktop-caption-width: 140px; }
+.desktop-shell .sidebar-header {
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+.desktop-shell .sidebar-header :is(a, button, input, select, [role="button"]) {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+.desktop-drag-strip {
+  position: fixed;
+  top: 0;
+  left: var(--sidebar-width);
+  right: var(--desktop-caption-width, 140px);
+  height: 40px;
+  z-index: 15;
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+.desktop-shell .reader-header {
+  position: relative;
+  z-index: 20;
+  -webkit-app-region: drag;
+  app-region: drag;
+  padding-top: calc(36px + 12px);
+  padding-right: 24px;
+}
+.desktop-shell .reader-header :is(a, button, input, select, [role="button"], h1, .reader-actions, .reader-actions *, .reader-more-wrapper, .reader-more-wrapper *, .reader-modal-card, .reader-modal-card *) {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
 
 .sidebar {
   position: sticky;
@@ -261,6 +292,12 @@ button { color: inherit; }
   .app-shell { padding-left: var(--sidebar-collapsed); }
   .sidebar { position: fixed; left: 0; width: min(var(--sidebar-width), calc(100vw - 24px)); z-index: 40; }
   .home { padding: var(--space-6); }
+  .desktop-shell .reader-header {
+    padding-top: calc(36px + 8px);
+    padding-left: 16px;
+    padding-right: 16px;
+    padding-bottom: 12px;
+  }
   .greeting { font-size: clamp(28px, 7vw, 36px); }
   .sidebar-backdrop {
     position: fixed;

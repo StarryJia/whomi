@@ -3,7 +3,7 @@ import { ArrowLeft, ChevronRight, Ellipsis, MousePointer2, Plus } from 'lucide-r
 import clsx from 'clsx'
 import { Tooltip } from './ui/tooltip'
 import type { SourceReference } from './overview/types'
-import type { MessagePosition, MessageView } from '../shared/desktop-api'
+import type { MessagePosition, MessageView, DesktopApi, MemberView } from '../shared/desktop-api'
 import { useMessageSelection, type ReferenceRange } from './conversation-ai/selection'
 import { ConversationWorkspace } from './conversation-ai/workspace'
 import type { ConversationAiAdapter } from './conversation-ai/types'
@@ -112,7 +112,8 @@ const messageKinds: Record<MessageView['kind'], string> = {
 }
 
 export function ConversationReader({ conversation, range, sourceStatus, onReturn, returnLabel = '返回个人总览',
-  beforeCursor, afterCursor, onBefore, onAfter, loading, error, onRetry, messageCount, aiAdapter, onLocateMessage }: {
+  beforeCursor, afterCursor, onBefore, onAfter, loading, error, onRetry, messageCount, aiAdapter, onLocateMessage,
+  onLocateMessageId, api, onDeleteConversation, onSelfChanged }: {
   conversation: { id: string; title: string; messages: readonly MessageView[] }
   range?: { start: MessagePosition; end: MessagePosition }
   sourceStatus?: 'loading' | 'available' | 'unavailable'
@@ -129,6 +130,10 @@ export function ConversationReader({ conversation, range, sourceStatus, onReturn
   messageCount?: number
   aiAdapter?: ConversationAiAdapter
   onLocateMessage?: (message: MessageView) => Promise<void>
+  onLocateMessageId?: (messageId: string) => Promise<boolean>
+  api?: Pick<DesktopApi, 'listMembers' | 'confirmSelf' | 'deleteConversation'>
+  onDeleteConversation?: (conversationId: string) => Promise<void> | void
+  onSelfChanged?: () => Promise<void> | void
 }) {
   const heading = useRef<HTMLHeadingElement>(null)
   const firstSource = useRef<HTMLLIElement>(null)
@@ -140,13 +145,117 @@ export function ConversationReader({ conversation, range, sourceStatus, onReturn
   const selectionButton = useRef<HTMLButtonElement>(null)
   const selection = useMessageSelection(conversation.messages, selectionMode)
   const [jumpId, setJumpId] = useState<string>()
+  const [quoteReturnId, setQuoteReturnId] = useState<string>()
+  const [quoteBusy, setQuoteBusy] = useState(false)
+  const [quoteFailure, setQuoteFailure] = useState<{ targetId: string; originId?: string }>()
+  const quoteGeneration = useRef(0)
   const [focusedMessageId, setFocusedMessageId] = useState<string>()
   const tabStopId = conversation.messages.some(item => item.id === focusedMessageId) ? focusedMessageId : firstMessage
+
+  const [moreOpen, setMoreOpen] = useState(false)
+  const moreRef = useRef<HTMLDivElement>(null)
+  const moreButton = useRef<HTMLButtonElement>(null)
+
+  const [selfModalOpen, setSelfModalOpen] = useState(false)
+  const [members, setMembers] = useState<MemberView[]>([])
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
+  const [selfLoading, setSelfLoading] = useState(false)
+  const [selfSaving, setSelfSaving] = useState(false)
+  const [selfError, setSelfError] = useState<string>()
+
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [deleteSaving, setDeleteSaving] = useState(false)
+  const [deleteError, setDeleteError] = useState<string>()
+
+  useEffect(() => {
+    if (!moreOpen) return
+    const handleClickOutside = (event: MouseEvent) => {
+      if (moreRef.current && !moreRef.current.contains(event.target as Node)) {
+        setMoreOpen(false)
+      }
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setMoreOpen(false)
+        moreButton.current?.focus()
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [moreOpen])
+
+  useEffect(() => {
+    if (!selfModalOpen) return
+    setSelfError(undefined)
+    setSelfLoading(true)
+    if (api?.listMembers) {
+      void api.listMembers(conversation.id).then(list => {
+        setMembers(list)
+        const confirmed = list.find(item => item.confirmedSelf)
+        setSelectedMemberId(confirmed ? confirmed.id : null)
+      }).catch(err => {
+        setSelfError(err instanceof Error ? err.message : '获取成员失败')
+      }).finally(() => {
+        setSelfLoading(false)
+      })
+    } else {
+      const senders = Array.from(new Set(conversation.messages.map(m => m.senderName)))
+      const mockList: MemberView[] = senders.map((name, index) => ({
+        id: String(index + 1),
+        displayName: name,
+        selfHint: null,
+        confirmedSelf: conversation.messages.some(m => m.senderName === name && m.isSelf),
+      }))
+      setMembers(mockList)
+      const confirmed = mockList.find(item => item.confirmedSelf)
+      setSelectedMemberId(confirmed ? confirmed.id : null)
+      setSelfLoading(false)
+    }
+  }, [selfModalOpen, api, conversation.id, conversation.messages])
+
+  async function handleConfirmSelf(memberId: string | null) {
+    setSelfSaving(true)
+    setSelfError(undefined)
+    try {
+      if (api?.confirmSelf) {
+        await api.confirmSelf(conversation.id, memberId)
+      }
+      setSelfModalOpen(false)
+      await onSelfChanged?.()
+    } catch (err) {
+      setSelfError(err instanceof Error ? err.message : '保存本人设置失败')
+    } finally {
+      setSelfSaving(false)
+    }
+  }
+
+  async function handleDelete() {
+    setDeleteSaving(true)
+    setDeleteError(undefined)
+    try {
+      if (onDeleteConversation) {
+        await onDeleteConversation(conversation.id)
+      } else if (api?.deleteConversation) {
+        await api.deleteConversation(conversation.id)
+      }
+      setDeleteModalOpen(false)
+    } catch (err) {
+      console.error('Handle delete error:', (err as { action?: string })?.action ?? err)
+      setDeleteError(err instanceof Error ? err.message : '删除会话失败')
+      setDeleteSaving(false)
+    }
+  }
 
   useLayoutEffect(() => {
     setSelectionMode(false)
     selection.clear()
   }, [conversation.id, selection.clear])
+
+  useEffect(() => () => { quoteGeneration.current++ }, [conversation.id])
 
   function focusMessage(id: string) {
     const element = Array.from(scroll.current?.querySelectorAll<HTMLElement>('[data-message-id]') ?? [])
@@ -162,6 +271,24 @@ export function ConversationReader({ conversation, range, sourceStatus, onReturn
     if (!message) return
     setJumpId(message.id)
     if (!focusMessage(message.id)) await onLocateMessage?.(message)
+  }
+
+  async function navigateQuote(request: { targetId: string; originId?: string }) {
+    const generation = ++quoteGeneration.current
+    setQuoteBusy(true)
+    setQuoteFailure(undefined)
+    try {
+      if (!focusMessage(request.targetId)) {
+        if (!onLocateMessageId || !await onLocateMessageId(request.targetId)) throw new Error('unavailable')
+      }
+      if (generation !== quoteGeneration.current) return
+      setJumpId(request.targetId)
+      setQuoteReturnId(request.originId)
+    } catch {
+      if (generation === quoteGeneration.current) setQuoteFailure(request)
+    } finally {
+      if (generation === quoteGeneration.current) setQuoteBusy(false)
+    }
   }
 
   useLayoutEffect(() => {
@@ -215,6 +342,7 @@ export function ConversationReader({ conversation, range, sourceStatus, onReturn
   }, [])
 
   useLayoutEffect(() => {
+    if (quoteBusy || jumpId) return
     if (firstSource.current) {
       firstSource.current.focus({ preventScroll: true })
       firstSource.current.scrollIntoView?.({ block: 'center', behavior: 'auto' })
@@ -246,8 +374,22 @@ export function ConversationReader({ conversation, range, sourceStatus, onReturn
             <MousePointer2 aria-hidden="true" />
           </button>
           {analysisControl}
+          <div className="reader-more-wrapper" ref={moreRef}>
+            <button ref={moreButton} className="reader-more-toggle" type="button" aria-label="更多操作"
+              title="更多操作" aria-haspopup="menu" aria-expanded={moreOpen} onClick={() => setMoreOpen(open => !open)}>
+              <Ellipsis aria-hidden="true" />
+            </button>
+            {moreOpen && <div className="reader-more-menu" role="menu" aria-label="会话管理">
+              <button role="menuitem" type="button" className="reader-more-item" onClick={() => { setMoreOpen(false); setSelfModalOpen(true) }}>选择本人</button>
+              <button role="menuitem" type="button" className="reader-more-item reader-more-item-danger" onClick={() => { setMoreOpen(false); setDeleteModalOpen(true) }}>删除会话</button>
+            </div>}
+          </div>
         </div>
       </div>
+      {quoteReturnId && <button className="reader-return reader-quote-return" type="button" disabled={quoteBusy}
+        onClick={() => { void navigateQuote({ targetId: quoteReturnId }) }}><ArrowLeft aria-hidden="true" />返回引用位置</button>}
+      {quoteFailure && <p className="reader-source-note" role="alert">未找到原消息，请重试。{' '}
+        <button type="button" onClick={() => { void navigateQuote(quoteFailure) }}>重试定位</button></p>}
       {selectionMode && <p className="reader-selection-hint" role="status">单击选择，长按后拖动或滚轮多选{selection.selectedIds.size > 0 && <span>已选 {selection.selectedIds.size} 条</span>}</p>}
       {sourceStatus && <p className="reader-source-note" role="status">{sourceStatus === 'available'
         ? '已定位相关交流，可继续阅读前后文。' : sourceStatus === 'loading' ? '正在定位原文…' : '原文不可用，请返回后重试。'}</p>}
@@ -275,9 +417,19 @@ export function ConversationReader({ conversation, range, sourceStatus, onReturn
             {message.timeBucket === 1 && (index === 0 || conversation.messages[index - 1].timeBucket !== 1) && <p className="message-time-unknown">时间未知</p>}
             <div className="message-meta"><span>{message.senderName}</span>{messageTime(message) && <span>{messageTime(message)}</span>}{start && <span className="source-range-label">引用范围起点</span>}{end && !start && <span className="source-range-label">引用范围终点</span>}</div>
             <p className="message-text">{message.text}</p>
-            {message.kind !== 'text' && <p className="message-attachment">消息类型：{messageKinds[message.kind]}</p>}
-            {message.reply && <blockquote className="message-reply">{message.reply.senderName && <span>{message.reply.senderName}：</span>}{message.reply.text ?? '引用内容不可用'}</blockquote>}
-            {message.attachments.map((attachment, attachmentIndex) => <p key={attachmentIndex} className="message-attachment">{attachment.name ?? '附件'} · {attachment.state === 'missing' ? '文件缺失' : '文件未导入'}</p>)}
+            {message.reply && (() => {
+              const targetId = message.reply.targetMessageId
+              const target = conversation.messages.find(item => item.id === targetId)
+              const sender = message.reply.senderName ?? target?.senderName
+              const text = message.reply.text ?? target?.text ?? '原消息'
+              const content = <>{sender && <strong>{sender}</strong>}<span>{text}</span></>
+              return message.reply.state === 'resolved' && targetId && (target || onLocateMessageId)
+                ? <button className="message-quote is-linked" type="button" disabled={quoteBusy}
+                  aria-label={`查看引用原消息：${sender ? `${sender}：` : ''}${text.slice(0, 120)}`} title={text}
+                  onPointerDown={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()}
+                  onClick={event => { event.stopPropagation(); void navigateQuote({ targetId, originId: message.id }) }}>{content}</button>
+                : <blockquote className="message-quote" title={text}>{content}</blockquote>
+            })()}
           </div>
         </li>})}
       </ol> : !loading && !error && !sourceStatus ? <p className="reader-empty">这段会话还没有聊天记录。</p> : null}
@@ -285,6 +437,95 @@ export function ConversationReader({ conversation, range, sourceStatus, onReturn
       {afterCursor && <button className="reader-load" type="button" disabled={loading} onClick={() => { void load('after') }}>加载后文</button>}
     </div>
     {composer}
+    {selfModalOpen && (
+      <div className="reader-modal-overlay" role="presentation" onClick={e => { if (e.target === e.currentTarget && !selfSaving) setSelfModalOpen(false) }}>
+        <div className="reader-modal-card" role="dialog" aria-modal="true" aria-labelledby="self-modal-title">
+          <h2 id="self-modal-title">选择本人</h2>
+          <p className="reader-modal-description">选择该会话中代表本人的发言成员。设置后，该成员的消息将作为本人发言靠右展示。</p>
+          {selfError && <p className="import-error" role="alert">{selfError}</p>}
+          <div className="reader-modal-body" role="radiogroup" aria-label="成员列表">
+            {selfLoading ? <p className="reader-modal-empty">正在读取成员…</p> : !members.length ? <p className="reader-modal-empty">该会话暂无成员。</p> : (
+              members.map(member => {
+                const isSelected = selectedMemberId === member.id
+                return (
+                  <label key={member.id} className={clsx('reader-member-item', isSelected && 'is-selected')}>
+                    <div className="reader-member-info">
+                      <input
+                        type="radio"
+                        name="self-member"
+                        value={member.id}
+                        checked={isSelected}
+                        onChange={() => setSelectedMemberId(member.id)}
+                      />
+                      <span>{member.displayName}</span>
+                    </div>
+                    <div className="reader-member-badges">
+                      {member.confirmedSelf && <span className="reader-member-badge is-self">当前本人</span>}
+                      {!member.confirmedSelf && member.selfHint && <span className="reader-member-badge">来源推测</span>}
+                    </div>
+                  </label>
+                )
+              })
+            )}
+          </div>
+          <div className="reader-modal-footer">
+            {members.some(m => m.confirmedSelf) && (
+              <button
+                type="button"
+                className="reader-modal-btn"
+                disabled={selfSaving}
+                onClick={() => { void handleConfirmSelf(null) }}
+              >
+                清除本人
+              </button>
+            )}
+            <button
+              type="button"
+              className="reader-modal-btn"
+              disabled={selfSaving}
+              onClick={() => setSelfModalOpen(false)}
+            >
+              取消
+            </button>
+            <button
+              type="button"
+              className="reader-modal-btn reader-modal-btn-primary"
+              disabled={selfSaving || !selectedMemberId || selectedMemberId === members.find(m => m.confirmedSelf)?.id}
+              onClick={() => { void handleConfirmSelf(selectedMemberId) }}
+            >
+              {selfSaving ? '正在保存…' : '设为本人'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    {deleteModalOpen && (
+      <div className="reader-modal-overlay" role="presentation" onClick={e => { if (e.target === e.currentTarget && !deleteSaving) setDeleteModalOpen(false) }}>
+        <div className="reader-modal-card" role="dialog" aria-modal="true" aria-labelledby="delete-modal-title">
+          <h2 id="delete-modal-title">删除会话</h2>
+          <p className="reader-modal-description">将彻底删除该会话及其全部聊天记录、成员、本人设置、对话记录与分析报告。此操作无法撤销。</p>
+          {deleteError && <p className="import-error" role="alert">{deleteError}</p>}
+          <div className="reader-modal-footer">
+            <button
+              type="button"
+              className="reader-modal-btn"
+              disabled={deleteSaving}
+              onClick={() => setDeleteModalOpen(false)}
+            >
+              取消
+            </button>
+            <button
+              type="button"
+              className="reader-modal-btn reader-modal-btn-danger"
+              disabled={deleteSaving}
+              onClick={() => { void handleDelete() }}
+            >
+              {deleteSaving ? '正在删除…' : '确认删除'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
   </section>}
   </ConversationWorkspace>
 }

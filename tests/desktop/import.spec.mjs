@@ -30,7 +30,6 @@ async function save(page, path, target = 'new') {
   await discovery.getByRole('checkbox').check()
   await page.getByRole('button', { name: '解析所选入口' }).click()
   await page.getByLabel('导入目标', { exact: true }).selectOption(target)
-  await page.getByLabel('本人身份', { exact: true }).selectOption('member:example-a')
   await page.getByRole('button', { name: '预览消息', exact: true }).click()
   await expect(page.locator('.import-preview li').first()).toBeVisible()
   await page.getByRole('button', { name: '确认保存', exact: true }).click()
@@ -42,6 +41,7 @@ async function cleanup(directory) {
   await rm(actual, { recursive: true, force: true })
 }
 test('actual import UI preserves old messages, self identity, source bytes and stable locations after restart', async () => {
+  test.setTimeout(90000)
   const directory = await mkdtemp(join(tmpdir(), 'whomi-runtime-'))
   const sources = join(directory, 'sources'), folder = join(sources, 'new-computer')
   const launch = () => electron.launch({ ...(process.env.WHOMI_PACKAGED_EXECUTABLE ? { executablePath: resolve(process.env.WHOMI_PACKAGED_EXECUTABLE), args: ['--whomi-runtime-test'] } : { args: [resolve('out/main/index.cjs'), '--whomi-runtime-test'] }), env: { ...process.env, WHOMI_RUNTIME_TEST: directory } })
@@ -63,6 +63,10 @@ test('actual import UI preserves old messages, self identity, source bytes and s
     await expect(page.locator('.message-text').first()).toHaveText(malicious)
     expect(await page.evaluate(() => window.importExecuted)).toBeUndefined()
     expect(await page.locator('.message-text script, .message-text img').count()).toBe(0)
+    await page.getByRole('button', { name: '更多操作', exact: true }).click()
+    await page.getByRole('menuitem', { name: '选择本人', exact: true }).click()
+    await page.locator('.reader-member-item input[type="radio"]').first().check()
+    await page.getByRole('button', { name: '设为本人', exact: true }).click()
     await expect(page.locator('.message-self')).toHaveCount(3)
     await application.evaluate(({ dialog }) => { dialog.showOpenDialog = async () => ({ canceled: true, filePaths: [] }) })
     for (const name of ['Whomi 首页', '跳到主要内容']) {

@@ -42,7 +42,8 @@ describe('个人总览', () => {
     render(<Harness overview={null} />)
     expect(screen.getByText('还没有可查看的总览。')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '返回 Hello' })).toBeInTheDocument()
-    expect(screen.getByLabelText('当前推测类型')).toHaveTextContent('????')
+    expect(screen.getByRole('button', { name: '选择记录' })).toBeInTheDocument()
+    expect(screen.queryByLabelText('当前推测类型')).not.toBeInTheDocument()
   })
 
   it('说说看法将焦点移到已有输入框，并保留已写的草稿', async () => {
@@ -124,7 +125,7 @@ describe('个人总览', () => {
   it('没有材料时选择记录只触发选择入口，未分析记录不声称已开始分析', async () => {
     let importCount = 0
     const { rerender } = render(<Harness overview={{ materialStatus: 'none', discoveries: [] }} onImport={() => { importCount++ }} />)
-    expect(screen.getByLabelText('当前推测类型')).toHaveTextContent('????')
+    expect(screen.queryByLabelText('当前推测类型')).not.toBeInTheDocument()
     await userEvent.setup().click(screen.getByRole('button', { name: '选择记录' }))
     expect(importCount).toBe(1)
     rerender(<Harness overview={{ materialStatus: 'unanalysed', discoveries: [] }} />)

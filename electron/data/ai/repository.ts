@@ -6,11 +6,11 @@ import { ANALYSIS_PROMPT_VERSION } from './prompt-version'
 import { BoundaryError, localId } from '../../../src/shared/desktop-validation'
 import type { AiModel, AiReport, AiSkill, AiState, AiThread, AiTurn, AiUsage, AnalysisPreparation, AnalysisTask } from '../../../src/shared/ai-contract'
 
-export type AiSourceMessage = { id: string; senderName: string; text: string; isSelf: boolean; kind: string }
+export type AiSourceMessage = { id: string; senderName: string; text: string; isSelf: boolean; kind: string; sentAtMs: number | null; memberId: string | null }
 export type AnalysisBatch = { index: number; messageIds: string[]; report: AiReport; usage: AiUsage }
 export type AnalysisContext = { task: AnalysisTask; model: AiModel; selfFingerprint: string; messages: AiSourceMessage[]; batches: AnalysisBatch[]; checkpoint: string | null }
 export type RegisteredSkill = AiSkill & { content: string; enabled?: boolean }
-export type TurnContext = { turn: AiTurn; threadId: string; conversationId: string; model: AiModel; selfFingerprint: string; references: AiSourceMessage[]; history: { role: 'user' | 'assistant'; text: string }[]; profile: AiReport | null; skill: RegisteredSkill | null; checkpoint: string | null }
+export type TurnContext = { turn: AiTurn; threadId: string; conversationId: string; model: AiModel; selfFingerprint: string; references: AiSourceMessage[]; history: { role: 'user' | 'assistant'; text: string; references?: AiSourceMessage[] }[]; profile: AiReport | null; skill: RegisteredSkill | null; checkpoint: string | null }
 export type AnalysisPatch = { state?: AiState; error?: string; usage?: AiUsage; checkpoint?: string | null }
 export type TurnPatch = AnalysisPatch & { text?: string }
 export type NewTurn = { threadId: string; requestId: string; prompt: string; referenceIds: string[]; modelId: string; skillId?: string }
@@ -43,6 +43,15 @@ function validateReport(value: AiReport, allowed: Set<string>) {
     fields(observation, ['text', 'evidenceMessageIds', 'limitations'])
     if (!text(observation.text) || typeof observation.limitations !== 'string' || !Array.isArray(observation.evidenceMessageIds) || !observation.evidenceMessageIds.length || observation.evidenceMessageIds.some(message => !allowed.has(message))) fail('INVALID_EVIDENCE', '分析依据无效，请重新分析。')
   }
+}
+
+export function saveAiModelVersion(db: Store['writer'], input: ModelInput, encryptedKey?: string | null): AiModel {
+  const previous = db.prepare('SELECT version,encrypted_key FROM ai_models WHERE id=?').get(input.id) as { version: bigint; encrypted_key: string | null } | undefined
+  const secret = encryptedKey === undefined ? previous?.encrypted_key ?? null : encryptedKey
+  const model: AiModel = { id: input.id, label: input.label, model: input.model, baseUrl: input.baseUrl, contextWindow: input.contextWindow, maxTokens: input.maxTokens, enabled: input.enabled, version: Number(previous?.version ?? 0n) + 1, hasCredential: secret !== null }
+  db.prepare('INSERT INTO ai_models(id,version,data,encrypted_key) VALUES(?,?,?,?) ON CONFLICT(id) DO UPDATE SET version=excluded.version,data=excluded.data,encrypted_key=excluded.encrypted_key').run(model.id, model.version, JSON.stringify(model), secret)
+  db.prepare('INSERT INTO ai_model_versions(model_id,version,data,encrypted_key) VALUES(?,?,?,?)').run(model.id, model.version, JSON.stringify(model), secret)
+  return model
 }
 
 export function createAiRepository(store: Store, write: WriterQueue) {
@@ -82,18 +91,18 @@ export function createAiRepository(store: Store, write: WriterQueue) {
     return String(row.conversation_id)
   }
   function messages(conversationId: string, snapshot?: bigint): AiSourceMessage[] {
-    const rows = reader.prepare(`SELECT x.id,x.sender_name,x.text,x.kind,coalesce((SELECT ${confirmedSelfSql} FROM memberships m WHERE m.id=x.member_id AND m.conversation_id=x.conversation_id),0) AS is_self FROM messages x WHERE x.conversation_id=?${snapshot === undefined ? '' : ' AND x.id<=?'} ORDER BY x.time_bucket,x.sort_time,x.id`).all(id(conversationId), ...(snapshot === undefined ? [] : [snapshot])) as { id: bigint; sender_name: string; text: string; kind: string; is_self: bigint }[]
-    return rows.map(row => ({ id: String(row.id), senderName: row.sender_name, text: row.text, kind: row.kind, isSelf: row.is_self === 1n }))
+    const rows = reader.prepare(`SELECT x.id,x.sender_name,x.text,x.kind,x.sent_at_ms,x.member_id,coalesce((SELECT ${confirmedSelfSql} FROM memberships m WHERE m.id=x.member_id AND m.conversation_id=x.conversation_id),0) AS is_self FROM messages x WHERE x.conversation_id=?${snapshot === undefined ? '' : ' AND x.id<=?'} ORDER BY x.time_bucket,x.sort_time,x.id`).all(id(conversationId), ...(snapshot === undefined ? [] : [snapshot])) as { id: bigint; sender_name: string; text: string; kind: string; sent_at_ms: bigint | null; member_id: bigint | null; is_self: bigint }[]
+    return rows.map(row => ({ id: String(row.id), senderName: row.sender_name, text: row.text, kind: row.kind, isSelf: row.is_self === 1n, sentAtMs: row.sent_at_ms === null ? null : Number(row.sent_at_ms), memberId: row.member_id === null ? null : String(row.member_id) }))
   }
   function analyzable(message: AiSourceMessage) { return message.kind !== 'system' && !!message.text.trim() }
   function sources(conversationId: string, messageIds: string[]) {
     if (!Array.isArray(messageIds) || messageIds.length > 10000 || messageIds.some(message => !localId(message)) || new Set(messageIds).size !== messageIds.length) fail('INVALID_REFERENCE')
     const result = new Map<string, AiSourceMessage>()
-    const fetch = reader.prepare(`SELECT x.id,x.sender_name,x.text,x.kind,coalesce((SELECT ${confirmedSelfSql} FROM memberships m WHERE m.id=x.member_id AND m.conversation_id=x.conversation_id),0) AS is_self FROM messages x WHERE x.conversation_id=? AND x.id=?`)
+    const fetch = reader.prepare(`SELECT x.id,x.sender_name,x.text,x.kind,x.sent_at_ms,x.member_id,coalesce((SELECT ${confirmedSelfSql} FROM memberships m WHERE m.id=x.member_id AND m.conversation_id=x.conversation_id),0) AS is_self FROM messages x WHERE x.conversation_id=? AND x.id=?`)
     for (const messageId of messageIds) {
-      const row = fetch.get(id(conversationId), id(messageId)) as { id: bigint; sender_name: string; text: string; kind: string; is_self: bigint } | undefined
+      const row = fetch.get(id(conversationId), id(messageId)) as { id: bigint; sender_name: string; text: string; kind: string; sent_at_ms: bigint | null; member_id: bigint | null; is_self: bigint } | undefined
       if (!row) fail('INVALID_REFERENCE', '请选择当前会话中的消息。')
-      result.set(messageId, { id: String(row.id), senderName: row.sender_name, text: row.text, kind: row.kind, isSelf: row.is_self === 1n })
+      result.set(messageId, { id: String(row.id), senderName: row.sender_name, text: row.text, kind: row.kind, isSelf: row.is_self === 1n, sentAtMs: row.sent_at_ms === null ? null : Number(row.sent_at_ms), memberId: row.member_id === null ? null : String(row.member_id) })
     }
     return messageIds.map(messageId => result.get(messageId)!)
   }
@@ -144,12 +153,8 @@ export function createAiRepository(store: Store, write: WriterQueue) {
       if (!key(input.id) || !text(input.label, 256) || !key(input.model) || !text(input.baseUrl, 4096) || !Number.isSafeInteger(input.contextWindow) || input.contextWindow < 256 || !Number.isSafeInteger(input.maxTokens) || input.maxTokens < 1 || input.maxTokens >= input.contextWindow || typeof input.enabled !== 'boolean' || !(encryptedKey === undefined || encryptedKey === null || text(encryptedKey, 65536))) fail('INVALID_MODEL')
       try { const url = new URL(input.baseUrl); if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.hash || url.search) fail('INVALID_MODEL') } catch { fail('INVALID_MODEL') }
       return write(() => db.transaction(() => {
-        const previous = db.prepare('SELECT version,encrypted_key FROM ai_models WHERE id=?').get(input.id) as { version: bigint; encrypted_key: string | null } | undefined
-        const secret = encryptedKey === undefined ? previous?.encrypted_key ?? null : encryptedKey
-        const model: AiModel = { id: input.id, label: input.label, model: input.model, baseUrl: input.baseUrl, contextWindow: input.contextWindow, maxTokens: input.maxTokens, enabled: input.enabled, version: Number(previous?.version ?? 0n) + 1, hasCredential: secret !== null }
-        db.prepare('INSERT INTO ai_models(id,version,data,encrypted_key) VALUES(?,?,?,?) ON CONFLICT(id) DO UPDATE SET version=excluded.version,data=excluded.data,encrypted_key=excluded.encrypted_key').run(model.id, model.version, JSON.stringify(model), secret)
-        db.prepare('INSERT INTO ai_model_versions(model_id,version,data,encrypted_key) VALUES(?,?,?,?)').run(model.id, model.version, JSON.stringify(model), secret)
-        return model
+        if (db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='settings_models'").get()) fail('SETTINGS_REQUIRED', '请在设置中修改模型。')
+        return saveAiModelVersion(db, input, encryptedKey)
       })())
     },
     modelSecret,
@@ -288,7 +293,7 @@ export function createAiRepository(store: Store, write: WriterQueue) {
       const history: TurnContext['history'] = []
       for (const turn of previous) {
         const references = sources(conversationId, parse<string[]>(turn.reference_ids))
-        history.push({ role: 'user', text: references.length ? JSON.stringify({ question: turn.prompt, references }) : turn.prompt }, { role: 'assistant', text: turn.text })
+        history.push({ role: 'user', text: turn.prompt, ...(references.length ? { references } : {}) }, { role: 'assistant', text: turn.text })
       }
       const latest = previous.at(-1), skill = row.skill ? parse<RegisteredSkill>(row.skill) : null
       const sameCheckpointContext = latest?.model_id === row.model_id && latest?.model_version === row.model_version && latest?.skill === row.skill

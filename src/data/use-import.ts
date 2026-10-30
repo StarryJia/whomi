@@ -33,6 +33,9 @@ export function useImport(api?: DesktopApi) {
     if (current.snapshot?.jobId === value.jobId && importJobStates.indexOf(value.status) < importJobStates.indexOf(current.snapshot.status)) return
     current.snapshot = value
     setSnapshot(value)
+    if (value.status === 'cancelled' && !value.results.some(isPersistedResult)) {
+      remember(null)
+    }
   }, [])
 
   useEffect(() => {
@@ -52,7 +55,9 @@ export function useImport(api?: DesktopApi) {
       current.jobId = stored
       setBusy(true)
       void api.getImport(stored).then(value => {
-        if (current.alive && generation === current.generation && version === current.eventVersion) accept(value)
+        if (current.alive && generation === current.generation && version === current.eventVersion) {
+          accept(value)
+        }
       }).catch(value => {
         if (!current.alive || generation !== current.generation) return
         const failure = importError(value)
@@ -128,11 +133,18 @@ export function useImport(api?: DesktopApi) {
       if (current.alive && generation === current.generation) setRetriedSummaries(previous => new Set([...previous, id]))
     } catch (value) { if (current.alive && generation === current.generation) setError(importError(value)) }
   }
+  const reset = useCallback(() => {
+    session.current.jobId = null
+    session.current.snapshot = null
+    setSnapshot(null)
+    setError(null)
+    remember(null)
+  }, [])
   return { snapshot, error, busy, retriedSummaries,
     choose: (kind: 'files' | 'directory') => select(() => api!.chooseSources(kind)),
     drop: (files: File[]) => select(() => api!.acceptDroppedFiles(files)),
     stage: (entryIds: string[]) => run(jobId => api!.startImport({ kind: 'stage', jobId, entryIds })),
     commit: (decisions: TargetDecision[]) => run(jobId => api!.startImport({ kind: 'commit', plan: { jobId, decisions } })),
-    cancel: () => run(jobId => api!.cancelImport(jobId)), preview, retrySummary,
+    cancel: () => run(jobId => api!.cancelImport(jobId)), preview, retrySummary, reset,
   }
 }

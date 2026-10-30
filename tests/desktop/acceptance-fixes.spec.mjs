@@ -1,0 +1,91 @@
+import { test, expect, _electron as electron } from '@playwright/test'
+import { copyFile, mkdir, mkdtemp, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join, resolve } from 'node:path'
+
+test('active import remains recoverable and compact reply navigation preserves the draft across pages', async () => {
+  test.setTimeout(90000)
+  const directory = await mkdtemp(join(tmpdir(), 'whomi-runtime-acceptance-fixes-'))
+  await copyFile('tests/desktop/probe.cjs', join(directory, 'probe.cjs'))
+  const evidence = resolve('release/acceptance-fixes-20261030')
+  await mkdir(evidence, { recursive: true })
+  const source = join(directory, 'example.json')
+  await writeFile(source, JSON.stringify({
+    chatlab: { version: '0.0.2' },
+    meta: { name: '紧凑阅读与引用 · 虚构验收', platform: 'discord', type: 'direct', groupId: 'acceptance', ownerId: 'a' },
+    members: [{ platformId: 'a', accountName: '示例甲' }, { platformId: 'b', accountName: '示例乙' }],
+    messages: Array.from({ length: 700 }, (_, index) => ({
+      sender: index % 2 ? 'b' : 'a', accountName: index % 2 ? '示例乙' : '示例甲', timestamp: 1700000000 + index,
+      type: index === 699 ? 25 : index === 1 ? 5 : 0,
+      content: index === 0 ? '原消息：明晚一起练习。' : index === 1 ? '[动画表情]' : index === 699 ? '是滴' : `验收消息 ${index + 1}`,
+      platformMessageId: `m${index + 1}`, ...(index === 699 ? { replyToMessageId: 'm1' } : {}),
+    })),
+  }))
+  const app = await electron.launch({ args: [resolve('out/main/index.cjs'), '--whomi-runtime-test'], env: { ...process.env, WHOMI_RUNTIME_TEST: directory } })
+  try {
+    const page = await app.firstWindow()
+    await expect(page.locator('.startup-intro')).toHaveCount(0, { timeout: 12000 })
+    await app.evaluate(({ dialog }, path) => { dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [path] }) }, source)
+    await page.getByRole('button', { name: '导入会话', exact: true }).click()
+    await page.getByRole('button', { name: '选择文件', exact: true }).click()
+    const discovery = page.getByRole('region', { name: '发现的文件入口' })
+    await expect(discovery.getByRole('checkbox')).toHaveCount(1)
+    await discovery.getByRole('checkbox').check()
+    await page.getByRole('button', { name: '解析所选入口' }).click()
+    await expect(page.getByLabel('导入目标', { exact: true })).toBeVisible()
+    const jobId = await page.evaluate(() => localStorage.getItem('whomi:import-job'))
+    await page.getByRole('button', { name: '个人总览', exact: true }).click()
+    await page.getByRole('button', { name: '导入会话', exact: true }).click()
+    await expect(page.getByLabel('导入目标', { exact: true })).toBeVisible()
+    expect(await page.evaluate(() => localStorage.getItem('whomi:import-job'))).toBe(jobId)
+    await page.screenshot({ path: join(evidence, '01-active-import-restored.png'), animations: 'disabled' })
+    await page.getByLabel('导入目标', { exact: true }).selectOption('new')
+    await page.getByRole('button', { name: '确认保存', exact: true }).click()
+    await expect(page.getByText('导入完成。', { exact: true })).toBeVisible()
+    await page.getByRole('button', { name: '打开会话', exact: true }).click()
+    await expect(page.locator('.message-text')).toHaveCount(100)
+    await expect(page.getByText('[动画表情]', { exact: true })).toBeVisible()
+    expect(await page.getByText(/消息类型：|文件缺失|文件未导入/).count()).toBe(0)
+    const draft = page.getByRole('textbox', { name: '向 AI 提问', exact: true })
+    await draft.fill('引用跳转后保留的草稿')
+    for (let index = 0; index < 6; index++) await page.getByRole('button', { name: '加载后文', exact: true }).click()
+    await expect(page.getByText('是滴', { exact: true })).toBeVisible()
+    const short = page.locator('.message-text', { hasText: /^是滴$/ })
+    const size = await short.boundingBox()
+    expect(size.height).toBeLessThanOrEqual(42)
+    expect(size.width).toBeLessThan(100)
+    await page.getByRole('button', { name: '选择消息', exact: true }).click()
+    const reply = page.getByRole('button', { name: /查看引用原消息/ })
+    await expect(reply).toContainText('原消息：明晚一起练习。')
+    await expect(reply).toContainText('示例甲')
+    await reply.scrollIntoViewIfNeeded()
+    await page.screenshot({ path: join(evidence, '02-compact-reply.png'), animations: 'disabled' })
+    await reply.click()
+    await expect(page.getByText('原消息：明晚一起练习。', { exact: true })).toBeVisible()
+    await expect(page.locator('.message-reference-target .message-text')).toHaveText('原消息：明晚一起练习。')
+    await expect(draft).toHaveValue('引用跳转后保留的草稿')
+    expect(await page.locator('.message[aria-selected="true"]').count()).toBe(0)
+    await page.screenshot({ path: join(evidence, '03-original-located.png'), animations: 'disabled' })
+    await page.getByRole('button', { name: '返回引用位置', exact: true }).click()
+    await expect(short).toBeVisible()
+    await expect(draft).toHaveValue('引用跳转后保留的草稿')
+    await expect(page.getByText('已定位相关交流，可继续阅读前后文。')).toHaveCount(0)
+    await expect(page.getByText('引用范围起点', { exact: true })).toHaveCount(0)
+    await page.getByRole('button', { name: '退出选择', exact: true }).click()
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(960, 720))
+    await reply.scrollIntoViewIfNeeded()
+    await page.screenshot({ path: join(evidence, '04-compact-minimum-desktop.png'), animations: 'disabled' })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await page.getByRole('button', { name: '更多操作', exact: true }).click()
+    await page.getByRole('menuitem', { name: '删除会话' }).click()
+    await page.getByRole('button', { name: '确认删除', exact: true }).click()
+    await expect(page.getByRole('dialog', { name: '删除会话' })).toHaveCount(0)
+    expect((await page.evaluate(() => window.whomi.listConversations({}))).items).toHaveLength(0)
+    await page.screenshot({ path: join(evidence, '05-reply-conversation-deleted.png'), animations: 'disabled' })
+    await page.getByRole('button', { name: '导入会话', exact: true }).click()
+    await page.getByRole('button', { name: '选择文件', exact: true }).click()
+    await expect(discovery.getByRole('checkbox')).toHaveCount(1)
+    await page.getByRole('button', { name: '取消导入', exact: true }).click()
+    await expect(page.getByRole('button', { name: '选择文件', exact: true })).toBeVisible()
+  } finally { await app.close() }
+})

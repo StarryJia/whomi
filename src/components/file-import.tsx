@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type DragEvent } from 're
 import { FileText } from 'lucide-react'
 import clsx from 'clsx'
 import type { DesktopApi } from '../shared/desktop-api'
-import { isImportActive, isPersistedResult, useImport } from '../data/use-import'
+import { isPersistedResult, useImport } from '../data/use-import'
 import { DiscoveryChoices, ImportCandidates } from './import/import-candidates'
 import { ImportProgress } from './import/import-progress'
 import './import/import.css'
@@ -59,7 +59,10 @@ export function FileImport({ api, onSaved, onOpenConversation }: {
     selectFiles(event.dataTransfer.files)
   }
 
-  return <section className={clsx('file-import', api && 'import-workspace', snapshot && 'has-job', dragging && 'is-dragging')} aria-label="文件导入"
+  const isCancelledBeforeSave = snapshot?.status === 'cancelled' && !snapshot.results.some(isPersistedResult)
+  const showInitial = !snapshot || isCancelledBeforeSave
+
+  return <section className={clsx('file-import', api && 'import-workspace', dragging && 'is-dragging')} aria-label="文件导入"
     onDragEnter={event => {
       if (!event.dataTransfer.types.includes('Files')) return
       event.preventDefault()
@@ -77,31 +80,72 @@ export function FileImport({ api, onSaved, onOpenConversation }: {
     }} onDrop={dropFile}>
     {!api && <input ref={input} className="visually-hidden" type="file" tabIndex={-1} aria-label="选择聊天记录文件"
       onChange={event => { if (event.target.files) selectFiles(event.target.files); event.target.value = '' }} />}
-    <button ref={choose} className="file-drop-target" type="button" aria-label={filename ? '重新选择文件' : '选择文件'}
-      disabled={busy} onClick={() => { if (api) void controller.choose('files'); else input.current?.click() }}>
-      <FileText className="import-file-icon" aria-hidden="true" />
-      <span className="import-heading">{dragging ? '松开，选择聊天记录' : '选择聊天记录'}</span>
-      <span className="file-choose-action">{filename ? '重新选择文件' : '选择文件'}</span>
-      <span className="import-hint">{api ? '或将文件、文件夹拖到这里' : '或将文件拖到这里'}</span>
-    </button>
-    {api && <div className="import-toolbar">
-      <button className="import-secondary" type="button" disabled={busy} onClick={() => { void controller.choose('directory') }}>选择文件夹</button>
-      {busy && <span className="import-muted" role="status">正在处理…</span>}
-    </div>}
-    <div className="import-feedback">
-      {!api && <p className="import-muted">请在桌面应用中导入；此处仅预览文件选择。</p>}
-      {filename && <p role="status"><span className="selected-filename">{filename}</span><span className="file-selection-note">已选择 · 尚未导入</span></p>}
-      {error && <p className="import-error" role="alert">{error}</p>}
-      {controller.error && <p className="import-error" role="alert" data-error-code={controller.error.code}>{controller.error.action}</p>}
-    </div>
-    {api && snapshot && <>
-      {snapshot.status === 'awaiting_confirmation' && snapshot.discovery && <DiscoveryChoices key={snapshot.jobId} discovery={snapshot.discovery} busy={busy} onStage={ids => { void controller.stage(ids) }} />}
-      {snapshot.status === 'awaiting_commit' && <ImportCandidates key={snapshot.jobId} api={api} candidates={snapshot.candidates} busy={busy}
-        onCommit={decisions => { void controller.commit(decisions) }} preview={controller.preview} />}
-      <ImportProgress snapshot={snapshot} busy={busy} onCancel={() => { void controller.cancel() }} onOpen={onOpenConversation}
-        onRetrySummary={id => { void controller.retrySummary(id) }} retriedSummaries={controller.retriedSummaries} />
-      {!isImportActive(snapshot) && snapshot.results.some(result => result.status === 'failed' || result.status === 'blocked') &&
-        <button className="import-secondary" type="button" disabled={busy} onClick={() => { void controller.choose('files') }}>重新选择失败的来源</button>}
-    </>}
+
+    {showInitial ? (
+      <div className="import-dropzone">
+        <FileText className="import-file-icon" aria-hidden="true" />
+        <h2 className="import-heading">{dragging ? '松开，选择聊天记录' : '选择聊天记录'}</h2>
+        <div className="import-dropzone-actions">
+          <button ref={choose} className="import-primary" type="button" aria-label={filename ? '重新选择文件' : '选择文件'}
+            disabled={busy} onClick={() => { if (api) void controller.choose('files'); else input.current?.click() }}>
+            {filename ? '重新选择文件' : '选择文件'}
+          </button>
+          {api && (
+            <button className="import-secondary" type="button" disabled={busy} onClick={() => { void controller.choose('directory') }}>
+              选择文件夹
+            </button>
+          )}
+        </div>
+        <span className="import-hint">{api ? '或将文件、文件夹拖到这里' : '或将文件拖到这里'}</span>
+        <div className="import-feedback">
+          {busy && <p className="import-muted" role="status">正在处理…</p>}
+          {!api && <p className="import-muted">请在桌面应用中导入；此处仅预览文件选择。</p>}
+          {filename && <p role="status"><span className="selected-filename">{filename}</span><span className="file-selection-note">已选择 · 尚未导入</span></p>}
+          {error && <p className="import-error" role="alert">{error}</p>}
+          {controller.error && <p className="import-error" role="alert" data-error-code={controller.error.code}>{controller.error.action}</p>}
+        </div>
+      </div>
+    ) : (
+      <>
+        {(snapshot.status === 'preparing' || snapshot.status === 'scanning') && (
+          <div className="import-step" role="region" aria-label="导入准备">
+            <h2>{snapshot.status === 'scanning' ? '正在查找文件入口…' : '正在准备…'}</h2>
+            <p className="import-muted">正在准备聊天记录来源…</p>
+            <div className="import-step-actions">
+              <button className="import-secondary" type="button" disabled={busy} onClick={() => { void controller.cancel() }}>取消导入</button>
+            </div>
+            {controller.error && <p className="import-error" role="alert">{controller.error.action}</p>}
+          </div>
+        )}
+        {snapshot.status === 'awaiting_confirmation' && snapshot.discovery && (
+          <DiscoveryChoices key={snapshot.jobId} discovery={snapshot.discovery} busy={busy}
+            onStage={ids => { void controller.stage(ids) }} onCancel={() => { void controller.cancel() }}
+            onRechoose={() => { if (api) void controller.choose('files'); else input.current?.click() }}
+            error={controller.error} />
+        )}
+        {(snapshot.status === 'staging' || snapshot.status === 'validating') && (
+          <div className="import-step" role="region" aria-label="解析进度">
+            <h2>{snapshot.status === 'staging' ? '正在解析…' : '正在校验…'}</h2>
+            <p className="import-muted">已检查 {snapshot.counts.seen} 条记录 · 有效 {snapshot.counts.validRecords} 条 · 异常 {snapshot.counts.invalidRecords} 条</p>
+            <div className="import-step-actions">
+              <button className="import-secondary" type="button" disabled={busy} onClick={() => { void controller.cancel() }}>取消导入</button>
+            </div>
+            {controller.error && <p className="import-error" role="alert">{controller.error.action}</p>}
+          </div>
+        )}
+        {snapshot.status === 'awaiting_commit' && (
+          <ImportCandidates key={snapshot.jobId} api={api!} candidates={snapshot.candidates} busy={busy}
+            onCommit={decisions => { void controller.commit(decisions) }} preview={controller.preview}
+            onCancel={() => { void controller.cancel() }} error={controller.error} />
+        )}
+        {(snapshot.status === 'committing' || snapshot.status === 'completed' || snapshot.status === 'partially_completed' || snapshot.status === 'failed' || (snapshot.status === 'cancelled' && snapshot.results.some(isPersistedResult))) && (
+          <ImportProgress snapshot={snapshot} busy={busy} onCancel={() => { void controller.cancel() }} onOpen={onOpenConversation}
+            onRetrySummary={id => { void controller.retrySummary(id) }} retriedSummaries={controller.retriedSummaries}
+            onReset={controller.reset} onRechoose={() => { void controller.choose('files') }}
+            onChooseFiles={() => { if (api) void controller.choose('files'); else input.current?.click() }}
+            onChooseDirectory={api ? () => { void controller.choose('directory') } : undefined} />
+        )}
+      </>
+    )}
   </section>
 }

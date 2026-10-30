@@ -48,14 +48,14 @@ const locateInput = object({ conversationId: localId, messageId: localId, endMes
 const previewOptions = object({ afterOrdinal: optional(value => integer(value) && (value as number) >= -1), limit: optional(limit(50)) })
 const argumentsByMethod: Record<DesktopMethod, Check[]> = {
   chooseSources: [oneOf('files', 'directory')], prepareImport: [array(sourceHandle, 10000)], startImport: [start], getImport: [localId], cancelImport: [localId],
-  previewImport: [localId, key, previewOptions], listConversations: [listInput], readMessages: [readInput], locateSource: [locateInput], listMembers: [localId], confirmSelf: [localId, nullable(localId)], retrySummary: [localId],
+  previewImport: [localId, key, previewOptions], listConversations: [listInput], readMessages: [readInput], locateSource: [locateInput], listMembers: [localId], confirmSelf: [localId, nullable(localId)], deleteConversation: [localId], retrySummary: [localId],
 }
 const nothing: Check = value => value === undefined
 const resultsByMethod: Record<DesktopMethod, Check> = {
   chooseSources: array(sourceHandle, 10000), prepareImport: localId, startImport: localId, getImport: snapshot, cancelImport: nothing,
   previewImport: object({ messages: array(object({ ...messageFields, senderKey: nullable(text), reply: nullable(object(parsedReplyFields)) }), 50), nextOrdinal: nullable(count) }),
   listConversations: object({ items: array(object({ id: localId, title: text, kind: chatKind, messageCount: count, memberCount: count, firstSentAtMs: nullable(integer), lastSentAtMs: nullable(integer), summaryStatus: oneOf('pending', 'ready', 'failed') }), 200), nextCursor: nullable(cursor) }),
-  readMessages: messagePage, locateSource: sourceWindow, listMembers: array(object({ id: localId, displayName: text, selfHint: nullable(bool), confirmedSelf: bool })), confirmSelf: nothing, retrySummary: nothing,
+  readMessages: messagePage, locateSource: sourceWindow, listMembers: array(object({ id: localId, displayName: text, selfHint: nullable(bool), confirmedSelf: bool })), confirmSelf: nothing, deleteConversation: nothing, retrySummary: nothing,
 }
 export class BoundaryError extends Error {
   readonly action: string

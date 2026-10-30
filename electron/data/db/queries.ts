@@ -80,7 +80,11 @@ export function createQueries(store: Store): ConversationQueries {
     return db.prepare(`SELECT 1 FROM messages WHERE conversation_id=? AND id<=? AND (time_bucket,sort_time,id) ${direction === 'before' ? '<' : '>'} (?,?,?) LIMIT 1`).get(conversationId, snapshotMaxId, boundary.time_bucket, boundary.sort_time, boundary.id) !== undefined
   }
   function view(row: MessageRow): MessageView {
-    const reply = db.prepare('SELECT target_message_id,original_id,id_namespace,text,sender_name,sent_at_ms,state FROM message_replies WHERE message_id=? AND conversation_id=?').get(row.id, row.conversation_id) as { target_message_id: bigint | null; original_id: string | null; id_namespace: string | null; text: string | null; sender_name: string | null; sent_at_ms: bigint | null; state: ReplyView['state'] } | undefined
+    const reply = db.prepare(`SELECT r.target_message_id,r.original_id,r.id_namespace,
+      coalesce(r.text,m.text) AS text,coalesce(r.sender_name,m.sender_name) AS sender_name,
+      coalesce(r.sent_at_ms,m.sent_at_ms) AS sent_at_ms,r.state
+      FROM message_replies r LEFT JOIN messages m ON m.id=r.target_message_id AND m.conversation_id=r.conversation_id AND r.state='resolved'
+      WHERE r.message_id=? AND r.conversation_id=?`).get(row.id, row.conversation_id) as { target_message_id: bigint | null; original_id: string | null; id_namespace: string | null; text: string | null; sender_name: string | null; sent_at_ms: bigint | null; state: ReplyView['state'] } | undefined
     const attachments = db.prepare('SELECT kind,name,state FROM message_attachments WHERE message_id=? ORDER BY id').all(row.id) as MessageView['attachments']
     const isSelf = row.member_id !== null && (self.get(row.conversation_id, row.member_id) as { confirmed: bigint } | undefined)?.confirmed === 1n
     return {

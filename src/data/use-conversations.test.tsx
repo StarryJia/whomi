@@ -83,7 +83,7 @@ describe('持久会话分页状态', () => {
     await act(async () => { await result.current.open('new') })
     await act(async () => { old.resolve(page(1)); await pending })
     expect(result.current.current!.conversationId).toBe('new')
-    act(() => { pending = result.current.locate({ conversationId: 'old', messageId: '12000' }) })
+    act(() => { pending = result.current.locate({ conversationId: 'old', messageId: '12000' }).then(() => {}) })
     await act(async () => { await result.current.open('new') })
     await act(async () => { locate.resolve({ status: 'unavailable' }); await pending })
     expect(result.current.current!.conversationId).toBe('new')
@@ -107,6 +107,20 @@ describe('持久会话分页状态', () => {
     expect(result.current.current!.messages).toHaveLength(100)
   })
 
+  it('引用跨页成功只替换消息页，失败保留原页，不增加来源范围与常驻提示', async () => {
+    const api = client()
+    const { result } = renderHook(() => useConversations(api))
+    await act(async () => { await result.current.open('1') })
+    await act(async () => { expect(await result.current.locate({ conversationId: '1', messageId: '12000' }, { preserveOnFailure: true })).toBe(true) })
+    expect(result.current.current!.messages[20].id).toBe('12000')
+    expect(result.current.current!.sourceStatus).toBeUndefined()
+    expect(result.current.current!.range).toBeUndefined()
+    const original = result.current.current
+    vi.mocked(api.locateSource).mockResolvedValueOnce({ status: 'unavailable' })
+    await act(async () => { expect(await result.current.locate({ conversationId: '1', messageId: 'absent' }, { preserveOnFailure: true })).toBe(false) })
+    expect(result.current.current).toBe(original)
+  })
+
   it('定位失败明确标记原文不可用，无客户端不会伪造会话', async () => {
     const api = client()
     vi.mocked(api.locateSource).mockRejectedValueOnce(new Error('private detail'))
@@ -126,7 +140,7 @@ describe('持久会话分页状态', () => {
     vi.mocked(api.locateSource).mockReturnValueOnce(old.promise)
     const { result } = renderHook(() => useConversations(api))
     let pending!: Promise<void>
-    act(() => { pending = result.current.locate({ conversationId: '1', messageId: '12000' }) })
+    act(() => { pending = result.current.locate({ conversationId: '1', messageId: '12000' }).then(() => {}) })
     await act(async () => { await result.current.refresh() })
     expect(result.current.loading).toBe(false)
     expect(result.current.current!.sourceStatus).toBe('unavailable')

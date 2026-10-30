@@ -10,7 +10,15 @@ import { sourceKey } from './siwx-normalizer'
 import { withSnapshot } from './snapshot-fs'
 
 function issue(input: ParserInput, code: string, severity: 'blocking' | 'warning' = 'blocking', ordinal?: number): ParseEvent {
-  return { type: 'issue', value: { candidateId: input.candidateId, code, severity, ...(ordinal !== undefined ? { ordinal } : {}), action: code === 'cancelled' ? '导入已取消。' : severity === 'blocking' ? '请检查导出文件后重试。' : '请核对来源记录。' } }
+  const action = code === 'cancelled' ? '导入已取消。'
+    : severity === 'blocking' ? '请检查导出文件后重试。'
+    : code === 'unknown-sender' ? '发送者缺失，请核对导出文件中的成员信息。'
+    : code === 'unknown-time' ? '时间缺失，请核对导出文件中的消息时间。'
+    : code === 'unknown-type' ? '消息类型无法识别，请核对保留的原文。'
+    : code === 'upstream-skipped-records' ? '导出记录数量与解析结果不一致，请核对导出文件。'
+    : code === 'owner-conflict' ? '导出账号信息不一致，请在会话中确认本人。'
+    : '部分消息格式异常，请核对来源导出文件。'
+  return { type: 'issue', value: { candidateId: input.candidateId, code, severity, ...(ordinal !== undefined ? { ordinal } : {}), action: ordinal === undefined ? action : `第 ${ordinal + 1} 条记录：${action}` } }
 }
 function member(message: ParsedMessage, raw: Raw, chat: ParsedConversation, id: string): ParsedMember {
   const nameOnly = ['instagram-native', 'line-native', 'whatsapp-native'].includes(id) || (id === 'qq-native' && !raw.sender)

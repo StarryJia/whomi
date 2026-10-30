@@ -35,7 +35,13 @@ test('real Pi process persists analysis reports and dialogue through the isolate
     let page = await application.firstWindow()
     await application.evaluate(async () => globalThis.__whomiRuntimeProbe.request('probe.aiSeed', null))
     const port = server.address().port
-    const model = await page.evaluate(input => window.whomi.ai.saveModel(input), { id: 'example', label: '合成本地模型', model: 'example', baseUrl: `http://127.0.0.1:${port}/v1`, contextWindow: 8000, maxTokens: 1000, enabled: true, apiKey: 'test-only-key' })
+    const model = await page.evaluate(async baseUrl => {
+      const provider = await window.whomi.settings.saveProvider({ name: '合成本地服务', baseUrl, enabled: true, apiKey: 'test-only-key' })
+      const saved = await window.whomi.settings.saveModel({ providerId: provider.id, label: '合成本地模型', model: 'example', contextWindow: 8000, maxTokens: 1000, enabled: true })
+      await window.whomi.settings.selectModel('conversation', saved.id)
+      await window.whomi.settings.selectModel('analysis', saved.id)
+      return saved
+    }, `http://127.0.0.1:${port}/v1`)
     expect(model).toMatchObject({ version: 1, hasCredential: true })
     expect(model.apiKey).toBeUndefined()
     await application.close()
@@ -43,8 +49,8 @@ test('real Pi process persists analysis reports and dialogue through the isolate
     page = await application.firstWindow()
     await page.getByRole('button', { name: '展开会话列表' }).click()
     await page.getByRole('button', { name: '虚构会话', exact: true }).click()
-    await expect(page.getByRole('combobox', { name: '对话模型' })).toHaveValue('example')
-    const preparation = await page.evaluate(() => window.whomi.ai.prepareAnalysis({ conversationId: '1', modelId: 'example' }))
+    await expect(page.getByRole('combobox', { name: '对话模型' })).toHaveValue(model.id)
+    const preparation = await page.evaluate(modelId => window.whomi.ai.prepareAnalysis({ conversationId: '1', modelId }), model.id)
     expect(preparation).toMatchObject({ selfName: '本人', totalMessages: 1, analyzableMessages: 1 })
     expect(requests).toHaveLength(0)
     const task = await page.evaluate(token => window.whomi.ai.confirmAnalysis({ token, requestId: 'analysis-one' }), preparation.token)

@@ -156,41 +156,48 @@ export function PersonalOverview({ data, headingRef, onReturnToCover, onImport, 
   })
   const visibleDiscoveries = discoveries.map((discovery) => ({ discovery, scenes: contextualScenes(discovery) }))
     .filter(({ discovery, scenes }) => discovery.observation.trim() && scenes.length)
+  const hasKnownPreferences = preferences.some((preference) => data?.preferences?.[preference.id]?.status === 'known')
+  const hasContent = hasKnownPreferences || visibleDiscoveries.length > 0
+  const isNoData = !data || data.materialStatus === 'none'
+  const isUnanalysedEmpty = data?.materialStatus === 'unanalysed' && !hasContent
+  const isAnalysedEmpty = !isNoData && !isUnanalysedEmpty && !hasContent
 
   return <div className="personal-overview">
     <button type="button" className="overview-return" aria-label="返回 Hello" onClick={onReturnToCover}><ArrowLeft aria-hidden="true" />返回</button>
     <h1 ref={headingRef} tabIndex={-1}>个人总览</h1>
-    {!data && <div className="overview-material-state">
+    {isNoData && <div className="overview-material-state">
       <h2>还没有可查看的总览。</h2>
       <p>完成会话导入与分析后，可在这里查看自己的概览。</p>
       <button type="button" onClick={onImport}>选择记录</button>
     </div>}
-    {data?.materialStatus === 'none' && <div className="overview-material-state">
-      <h2>还没有可查看的总览。</h2>
-      <p>选择想要了解的会话记录。</p>
-      <button type="button" onClick={onImport}>选择记录</button>
+    {isUnanalysedEmpty && <div className="overview-material-state">
+      <h2>已有记录，尚未形成分析结果。</h2>
+      <p>完成会话分析后，可在这里查看自己的概览。</p>
     </div>}
-    {data?.materialStatus === 'unanalysed' && <p className="overview-material-note">已有记录，尚未形成分析结果。</p>}
-    {data?.materialStatus === 'partial' && <p className="overview-material-note">当前观察仅来自已分析的部分记录。</p>}
-    <section className="overview-personality" aria-labelledby="overview-personality-title">
-      <div className="overview-personality-header">
-        <h2 id="overview-personality-title">人格偏好</h2>
-        <span className="overview-estimate-label">当前推测</span>
-        <strong className="overview-type" aria-label="当前推测类型">{summary}</strong>
-      </div>
-      <div className="overview-preferences">
-        {preferences.map((preference) => <PreferenceRow key={preference.id} preference={preference}
-          estimate={data?.preferences?.[preference.id] ?? unknownEstimate} />)}
-      </div>
-      <p className="overview-type-explanation">材料不足的维度保留问号。
-        {balancedPreferences.map((preference) => <span key={preference.id}>{preference.left}与{preference.right}这一位较均衡，因此保留问号。</span>)}
-      </p>
-    </section>
-    <section className="overview-sparks" aria-labelledby="overview-sparks-title">
-      <div className="overview-sparks-header"><h2 id="overview-sparks-title"><span>Spark</span> · 不一样的自己</h2><div aria-hidden="true" /></div>
-      {visibleDiscoveries.length ? visibleDiscoveries.map(({ discovery, scenes }) => <SparkArticle key={discovery.id}
-        discovery={discovery} scenes={scenes} feedback={feedback} onOpenSource={onOpenSource} isSourceAvailable={isSourceAvailable} />)
-        : <p className="overview-spark-empty">还没有可查看的发现。</p>}
-    </section>
+    {isAnalysedEmpty && <p className="overview-material-note">暂时还没有形成可展示的观察。</p>}
+    {!isNoData && hasContent && <>
+      {data?.materialStatus === 'unanalysed' && <p className="overview-material-note">已有记录，尚未形成分析结果。</p>}
+      {data?.materialStatus === 'partial' && <p className="overview-material-note">当前观察仅来自已分析的部分记录。</p>}
+      {hasKnownPreferences && <section className="overview-personality" aria-labelledby="overview-personality-title">
+        <div className="overview-personality-header">
+          <h2 id="overview-personality-title">人格偏好</h2>
+          <span className="overview-estimate-label">当前推测</span>
+          <strong className="overview-type" aria-label="当前推测类型">{summary}</strong>
+        </div>
+        <div className="overview-preferences">
+          {preferences.map((preference) => <PreferenceRow key={preference.id} preference={preference}
+            estimate={data?.preferences?.[preference.id] ?? unknownEstimate} />)}
+        </div>
+        <p className="overview-type-explanation">材料不足的维度保留问号。
+          {balancedPreferences.map((preference) => <span key={preference.id}>{preference.left}与{preference.right}这一位较均衡，因此保留问号。</span>)}
+        </p>
+      </section>}
+      <section className="overview-sparks" aria-labelledby="overview-sparks-title">
+        <div className="overview-sparks-header"><h2 id="overview-sparks-title"><span>Spark</span> · 不一样的自己</h2><div aria-hidden="true" /></div>
+        {visibleDiscoveries.length ? visibleDiscoveries.map(({ discovery, scenes }) => <SparkArticle key={discovery.id}
+          discovery={discovery} scenes={scenes} feedback={feedback} onOpenSource={onOpenSource} isSourceAvailable={isSourceAvailable} />)
+          : <p className="overview-spark-empty">还没有可查看的发现。</p>}
+      </section>
+    </>}
   </div>
 }

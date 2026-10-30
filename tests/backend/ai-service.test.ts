@@ -1,5 +1,6 @@
 import { expect, test } from 'vitest'
 import { createAiService } from '../../electron/main/ai-service'
+import { defaultProcessing } from '../../src/shared/settings-contract'
 import type { AnalysisTask } from '../../src/shared/ai-contract'
 
 test('preparing and duplicate confirmation do not duplicate a model run; completion waits for report storage', async () => {
@@ -53,6 +54,7 @@ test('a failed model request is recorded as unknown usage instead of disappearin
   const turn = { id: '1', threadId: '1', requestId: 'request', prompt: '问题', referenceIds: [], modelId: 'm', text: '', state: 'queued', attempt: 1, usage: {}, eventSequence: 1 }
   const requests: any[] = []
   const service = createAiService({ storage: async (method, args) => {
+    if (method === 'getThread') return { id: '1', conversationId: '1', turns: [turn] }
     if (method === 'createTurn') return turn
     if (method === 'turnContext') return { turn, conversationId: '1', model, selfFingerprint: 'self', references: [], history: [], profile: null, skill: null, checkpoint: null }
     if (method === 'modelSecret') return { model, encryptedKey: null }
@@ -71,6 +73,7 @@ function turnStorage() {
   const turn = { id: '1', threadId: '1', requestId: 'request', prompt: '问题', referenceIds: [], modelId: 'm', text: '', state: 'queued', attempt: 1, usage: {}, eventSequence: 1 }
   let identityChanged = false
   return { turn, changeIdentity() { identityChanged = true }, async storage(method: string, args: unknown[]) {
+    if (method === 'getThread') return { id: '1', conversationId: '1', turns: [turn] }
     if (method === 'createTurn') return turn
     if (method === 'beginRetryTurn') { turn.attempt++; turn.state = 'queued'; return turn }
     if (method === 'turnContext') { if (identityChanged) throw new Error('identity changed'); return { turn, conversationId: '1', model, selfFingerprint: 'self', references: [], history: [], profile: null, skill: null, checkpoint: null } }
@@ -152,4 +155,45 @@ test('long analysis merges bounded report groups rather than failing after all s
   expect(task.analyzedMessages).toBe(24)
   expect(requests).toBeGreaterThan(25)
   expect(saved.filter(batch => !batch.messageIds.length).length).toBeGreaterThan(0)
+})
+
+test('processing protects questions, references, profile and old history and discards an incompatible checkpoint', async () => {
+  const state = turnStorage()
+  state.turn.prompt = '示例甲的邮箱是 example@example.com'
+  const original = state.storage
+  const raw = { id: '7', memberId: '2', senderName: '示例甲', text: '联系 13800138000', kind: 'text', isSelf: true, sentAtMs: 0 }
+  let sent: any
+  const service = createAiService({
+    processing: async () => ({ settings: defaultProcessing, members: [{ id: '2', displayName: '示例甲' }] }),
+    storage: async (method, args) => {
+      const value = await original(method, args)
+      if (method !== 'turnContext') return value
+      return { ...value, references: [raw], profile: { summary: '示例甲 example@example.com', observations: [], limitations: '' }, history: [{ role: 'user', text: JSON.stringify({ id: 'example@example.com', sourceIds: ['13800138000'] }), references: [raw] }, { role: 'assistant', text: '示例甲 13800138000' }], checkpoint: JSON.stringify({ processing: 'old-rules', checkpoint: 'unprocessed-native-history' }) }
+    },
+    runtime: { run: async input => { sent = input; return { text: '合成回答', usage: {}, checkpoint: 'fresh-native-history' } } },
+    secrets: { encrypt: value => value, decrypt: value => value },
+  })
+  await service.sendTurn({ threadId: '1', requestId: 'request', prompt: state.turn.prompt, referenceIds: ['7'], modelId: 'm' })
+  await service.idle()
+  expect(state.turn.state).toBe('completed')
+  expect(JSON.stringify(sent)).not.toMatch(/示例甲|example@example\.com|13800138000|unprocessed-native-history/)
+  expect(sent.checkpoint).toBeNull()
+  expect(JSON.parse(sent.prompt).references[0]).toMatchObject({ id: '7', sourceIds: ['7'], senderName: 'U2' })
+  expect(raw.text).toBe('联系 13800138000')
+  expect(state.turn.prompt).toContain('example@example.com')
+})
+
+test('connection tests register model work and stopping cancels active and queued requests', async () => {
+  const model = { id: 'm', label: '示例', model: 'm', baseUrl: 'http://127.0.0.1:9999/v1', contextWindow: 8000, maxTokens: 1000, version: 1, enabled: true, hasCredential: false }
+  let runs = 0
+  const service = createAiService({ storage: async method => { if (method === 'modelSecret') return { model, encryptedKey: null }; throw new Error(method) },
+    runtime: { run: async (_input, { signal }) => { runs++; return new Promise((_resolve, reject) => signal.addEventListener('abort', () => reject(new DOMException('Stopped', 'AbortError')), { once: true })) } }, secrets: { encrypt: value => value, decrypt: value => value } })
+  const first = service.testModel('m'), second = service.testModel('m')
+  const settled = Promise.allSettled([first, second])
+  await new Promise(resolve => setTimeout(resolve, 5))
+  expect(service.hasModelWork(['m'])).toBe(true)
+  await service.stopModelTasks(['m'])
+  expect((await settled).every(result => result.status === 'rejected')).toBe(true)
+  expect(runs).toBe(1)
+  expect(service.hasModelWork(['m'])).toBe(false)
 })

@@ -1,5 +1,6 @@
 import type { AiApi, AiEvent, AiTurn, AnalysisTask } from '../shared/ai-contract'
 import type { ConversationAiAdapter, ConversationRequest, RestoredConversationTurn } from '../components/conversation-ai/types'
+import type { ModelFeature, SettingsApi } from '../shared/settings-contract'
 
 const settled = (state: string) => !['queued', 'running', 'summarizing'].includes(state)
 const cancelled = () => new DOMException('已停止。', 'AbortError')
@@ -8,8 +9,10 @@ const requestId = () => crypto.randomUUID()
 const restore = (turn: AiTurn): RestoredConversationTurn => ({ ...turn })
 
 /** 正式请求只传稳定编号，原文与历史由后台重新读取。 */
-export async function createConversationAiClient(api: AiApi): Promise<ConversationAiAdapter> {
+export async function createConversationAiClient(api: AiApi, settings?: SettingsApi): Promise<ConversationAiAdapter> {
   const [models, skills] = await Promise.all([api.listModels(), api.listSkills()])
+  const preferences = await settings?.get()
+  const selectedModels = preferences ? { ...preferences.selectedModels } : undefined
   const requestIds = new WeakMap<ConversationRequest, string>()
   const threads = new Map<string, Promise<Awaited<ReturnType<AiApi['openThread']>>>>()
   function open(conversationId: string) {
@@ -60,6 +63,11 @@ export async function createConversationAiClient(api: AiApi): Promise<Conversati
     })
   }
   return {
+    ...(selectedModels && settings ? { selectedModels, async selectModel(feature: ModelFeature, id: string | null) {
+      await settings.selectModel(feature, id)
+      if (id === null) delete selectedModels[feature]
+      else selectedModels[feature] = id
+    } } : {}),
     models: models.filter(model => model.enabled).map(({ id, label }) => ({ id, label })),
     skills: skills.map(({ id, label }) => ({ id, label })),
     async stopTurn(id) { await api.stopTurn(id) },
