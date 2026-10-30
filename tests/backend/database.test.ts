@@ -74,7 +74,7 @@ test('upgrades schema two additively and rolls back failed state migration',()=>
         expect(()=>openStore(temp.path)).toThrow()
         const check=new Database(temp.path);try {expect(check.pragma('user_version',{simple:true})).toBe(2);expect(check.prepare('PRAGMA table_info(import_jobs)').all().some((r:unknown)=>(r as {name:string}).name==='phase')).toBe(false)}finally{check.close()}
       }else {
-        const s=openStore(temp.path);try {expect(s.writer.pragma('user_version',{simple:true})).toBe(3n);expect(s.reader.prepare('SELECT status,phase FROM import_jobs').get()).toEqual({status:'running',phase:'committing'})}finally{s.close()}
+        const s=openStore(temp.path);try {expect(s.writer.pragma('user_version',{simple:true})).toBe(BigInt(schemaVersion));expect(s.reader.prepare('SELECT status,phase FROM import_jobs').get()).toEqual({status:'running',phase:'committing'})}finally{s.close()}
       }
     }finally{temp.cleanup()}
   }

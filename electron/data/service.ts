@@ -88,7 +88,7 @@ export function createDataService(options:DataServiceOptions) {
     else await task
   }
   return {
-    ready,prepareImport,startImport,cancelImport,
+    ready,write,prepareImport,startImport,cancelImport,
     async previewImport(jobId:string,candidateId:string,options:PreviewOptions):Promise<ImportPreview> {
       await ready
       if(!active || active.id!==jobId || !active.staged) throw new ImportFailure('PREVIEW_UNAVAILABLE')

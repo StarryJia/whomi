@@ -6,6 +6,7 @@ import { validateRuntimeTestDirectory } from '../runtime-test-directory'
 import { createDataService } from './service'
 import { createCommitter } from './import/merge'
 import { createDataDispatcher } from './dispatch'
+import { createAiRepository } from './ai/repository'
 import { BoundaryError, validateSnapshot } from '../../src/shared/desktop-validation'
 import { ImportFailure, issue } from './import/limits'
 
@@ -18,7 +19,9 @@ const service = createDataService({store,appDataDirectory:directory,changed(snap
   validateSnapshot(snapshot)
   parent.postMessage({ event: 'import', value: snapshot })
 }})
-const dispatch = createDataDispatcher(store, service)
+const aiRepository = createAiRepository(store, service.write)
+const ready = service.ready.then(() => aiRepository.recover())
+const dispatch = createDataDispatcher(store, service, aiRepository)
 const version = database.prepare('SELECT sqlite_version() AS version').get() as { version: string }
 const parent = (process as unknown as { parentPort: { on(event: string, callback: (event: { data: { id: number; method: string; payload: unknown } }) => void): void; postMessage(value: unknown): void } }).parentPort
 // 辅助探针来自测试临时目录，正式安装资源不包含探针。
@@ -27,7 +30,7 @@ const probe = probeEnabled
   : undefined
 parent.on('message', async ({ data }) => {
   try {
-    await service.ready
+    await ready
     let result: unknown
     if (data.method === 'health') result = { runtime: process.versions.node, sqliteVersion: version.version, writable: !database.readonly }
     else if (probe && data.method.startsWith('probe.')) result = await probe(data.method)

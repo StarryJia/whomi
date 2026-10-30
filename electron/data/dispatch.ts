@@ -7,14 +7,29 @@ import type { MemberView, PreviewOptions, ReadMessagesInput, ListConversationsIn
 import type { StartImportRequest } from '../../src/shared/import-contract'
 import { BoundaryError, validateArguments, validateResult } from '../../src/shared/desktop-validation'
 import type { GrantedSource } from './import/discovery'
+import type { AiRepository } from './ai/repository'
 
-export function createDataDispatcher(store: Store, service: ReturnType<typeof createDataService>) {
+const aiStorageArity = {
+  listModels: [0, 0], saveModel: [1, 2], modelSecret: [1, 2], listSkills: [0, 0], registerSkill: [1, 1],
+  prepareAnalysis: [1, 2], confirmAnalysis: [1, 2], getAnalysis: [1, 1], listAnalyses: [0, 1], getReport: [1, 1],
+  analysisContext: [1, 1], saveAnalysis: [2, 2], commitBatch: [2, 2], completeAnalysis: [2, 2], resumeAnalysis: [1, 1],
+  openThread: [1, 1], getThread: [1, 1], createTurn: [1, 1], turnContext: [1, 1], saveTurn: [2, 2], beginRetryTurn: [1, 1],
+  recordUsage: [1, 1], recover: [0, 0],
+} as const satisfies Record<keyof AiRepository, readonly [number, number]>
+
+export function createDataDispatcher(store: Store, service: ReturnType<typeof createDataService>, ai?: AiRepository) {
   const queries = createQueries(store), db = store.reader
   function conversation(id: string) {
     if (!db.prepare('SELECT 1 FROM conversations WHERE id=?').get(BigInt(id))) throw new BoundaryError('INVALID_ID', '请刷新会话列表后重试。')
   }
   return async (method: unknown, input: unknown): Promise<unknown> => {
     await service.ready
+    if (method === 'aiStorage') {
+      if (!ai || !Array.isArray(input) || input.length !== 2 || typeof input[0] !== 'string' || !Object.hasOwn(aiStorageArity, input[0]) || !Array.isArray(input[1])) throw new BoundaryError('INVALID_METHOD')
+      const operation = input[0] as keyof AiRepository, args = input[1] as unknown[], [minimum, maximum] = aiStorageArity[operation]
+      if (args.length < minimum || args.length > maximum) throw new BoundaryError('INVALID_ARGUMENT')
+      return (ai[operation] as (...values: unknown[]) => unknown)(...args)
+    }
     if (method === 'prepareImport') {
       if (!Array.isArray(input) || input.length !== 1 || !Array.isArray(input[0]) || !input[0].length || input[0].length > 10000 || !input[0].every(value => value && typeof value === 'object' && Object.keys(value).length === 1 && typeof value.rootPath === 'string' && isAbsolute(value.rootPath))) throw new BoundaryError('INVALID_SOURCE')
       const id = await service.prepareImport(input[0] as GrantedSource[]); validateResult('prepareImport', id); return id
