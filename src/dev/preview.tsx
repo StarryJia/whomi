@@ -6,6 +6,7 @@ import type { FeedbackReceipt, FeedbackSaver } from '../components/overview/type
 import type { ClarificationReceipt, ClarificationWithdrawal } from '../components/clarification/types'
 import { overviewScenarios } from './overview-fixtures'
 import { clarificationConversations, clarificationScenarios } from './clarification-fixtures'
+import { conversationPreview, createConversationAiPreview, type ConversationPreviewMode } from './conversation-ai-preview'
 import './preview.css'
 
 type SaveMode = 'normal' | 'delayed' | 'fail-once' | 'always-fail' | 'no-adapter'
@@ -68,8 +69,13 @@ function SimulationOptions() {
 }
 
 function DevelopmentPreview() {
-  const [page, setPage] = useState<'overview' | 'clarification'>(() =>
-    new URLSearchParams(window.location.search).get('page') === 'clarification' ? 'clarification' : 'overview')
+  const [page, setPage] = useState<'overview' | 'clarification' | 'conversation'>(() => {
+    const value = new URLSearchParams(window.location.search).get('page')
+    return value === 'clarification' || value === 'conversation' ? value : 'overview'
+  })
+  const [conversationMode, setConversationMode] = useState<ConversationPreviewMode>('normal')
+  const [conversationAdapterMissing, setConversationAdapterMissing] = useState(false)
+  const conversationAdapter = useMemo(() => createConversationAiPreview(conversationMode), [conversationMode])
   const [scenarioId, setScenarioId] = useState(overviewScenarios[0].id)
   const [clarificationId, setClarificationId] = useState(clarificationScenarios[0].id)
   const [saveMode, setSaveMode] = useState<SaveMode>('normal')
@@ -82,7 +88,7 @@ function DevelopmentPreview() {
   const surfaceRef = useRef<HTMLDivElement>(null)
   const scenario = overviewScenarios.find(item => item.id === scenarioId) ?? overviewScenarios[0]
   const clarificationScenario = clarificationScenarios.find(item => item.id === clarificationId) ?? clarificationScenarios[0]
-  const client = useMemo(() => createPreviewClient(page === 'overview' ? scenario.conversations : clarificationConversations), [page, scenario.conversations])
+  const client = useMemo(() => createPreviewClient(page === 'overview' ? scenario.conversations : page === 'conversation' ? conversationPreview : clarificationConversations), [page, scenario.conversations])
   const answerCount = useRef(0)
   const submission = usePreviewOperation<ClarificationReceipt>(() => ({ answerId: `preview-answer-${++answerCount.current}`, persistence: 'preview' }))
   const withdrawal = usePreviewOperation<ClarificationWithdrawal>(() => ({ persistence: 'preview' }))
@@ -151,10 +157,11 @@ function DevelopmentPreview() {
               completeWaiting()
               submission.reset()
               withdrawal.reset()
-              setPage(event.target.value as 'overview' | 'clarification')
+              setPage(event.target.value as typeof page)
             }}>
               <option value="overview">个人总览</option>
               <option value="clarification">解惑</option>
+              <option value="conversation">会话与 AI 对话</option>
             </select>
           </label>
           {page === 'overview' ? <><label>
@@ -181,6 +188,15 @@ function DevelopmentPreview() {
             {waitingCount ? '保存正在等待。点击完成等待中的模拟保存继续。' : '提交反馈后，在这里手动完成模拟保存。'}
           </p>}
           {saveMode === 'no-adapter' && <p className="preview-save-hint">可编辑反馈草稿；当前无法提交。</p>}
+          </> : page === 'conversation' ? <>
+            <label><span>对话与分析模拟</span><select value={conversationMode} onChange={event => setConversationMode(event.target.value as ConversationPreviewMode)}>
+              <option value="normal">正常流式模拟</option><option value="fail-once">首次失败，重试成功</option>
+              <option value="slow">慢速，可停止</option><option value="no-usage">不提供统计</option>
+            </select></label>
+            <label><span>模型连接</span><select value={String(conversationAdapterMissing)} onChange={event => setConversationAdapterMissing(event.target.value === 'true')}>
+              <option value="false">示例适配器</option><option value="true">无可用模型</option>
+            </select></label>
+            <p className="preview-scenario-hint">点击或长按滑动选择消息，再向 AI 提问。回答、画像分析进度和统计均为模拟；切换条件会重置本轮预览。</p>
           </> : <>
             <label>
               <span>解惑场景</span>
@@ -209,8 +225,10 @@ function DevelopmentPreview() {
       </details>
     </header>
     <div className="preview-surface" ref={surfaceRef}>
-      <App key={`${page}-${page === 'overview' ? scenario.id : clarificationScenario.id}`} displayName=""
+      <App key={`${page}-${page === 'overview' ? scenario.id : page === 'conversation' ? `${conversationMode}-${conversationAdapterMissing}` : clarificationScenario.id}`} displayName=""
         client={client}
+        previewConversationId={page === 'conversation' ? conversationPreview[0].id : undefined}
+        conversationAiAdapter={page === 'conversation' && !conversationAdapterMissing ? conversationAdapter : undefined}
         overview={page === 'overview' ? scenario.overview : undefined}
         saveFeedback={saveMode === 'no-adapter' ? undefined : saveFeedback}
         clarificationQuestion={page === 'clarification' ? clarificationScenario.question : undefined}

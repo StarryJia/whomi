@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react'
 import {
   ChartNoAxesCombined,
   LayoutDashboard,
@@ -19,6 +19,7 @@ import { getDesktopClient } from './data/desktop-client'
 import { createPreviewClient } from './data/preview-client'
 import { useConversations, type ConversationClient } from './data/use-conversations'
 import type { DesktopApi } from './shared/desktop-api'
+import type { ConversationAiAdapter } from './components/conversation-ai/types'
 import { PersonalOverview } from './components/overview/personal-overview'
 import { useOverviewFeedback } from './components/overview/use-overview-feedback'
 import type { FeedbackSaver, OverviewData, SourceReference } from './components/overview/types'
@@ -62,10 +63,12 @@ export interface AppProps {
   clarificationModels?: readonly ClarificationModel[]
   clarificationAdapter?: ClarificationAdapter
   preview?: boolean
+  conversationAiAdapter?: ConversationAiAdapter
+  previewConversationId?: string
 }
 
 function HomeShell({ displayName = '', conversations, overview, saveFeedback,
-  clarificationQuestion, clarificationModels = [], clarificationAdapter, preview = false, importApi, client }: AppProps) {
+  clarificationQuestion, clarificationModels = [], clarificationAdapter, conversationAiAdapter, previewConversationId, preview = false, importApi, client }: AppProps) {
   const api = importApi ?? (window.whomi ? getDesktopClient() : undefined)
   const queryClient = useMemo(() => client ?? (conversations ? createPreviewClient(conversations) : api), [client, conversations, api])
   const reader = useConversations(queryClient)
@@ -79,9 +82,9 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
   const greetingRef = useRef<HTMLButtonElement>(null)
   const overviewTitleRef = useRef<HTMLHeadingElement>(null)
   const clarificationTitleRef = useRef<HTMLHeadingElement>(null)
-  const [view, setView] = useState<'cover' | 'overview' | 'import' | 'conversation' | 'clarification'>('cover')
+  const [view, setView] = useState<'cover' | 'overview' | 'import' | 'conversation' | 'clarification'>(preview && previewConversationId ? 'conversation' : 'cover')
   const [coverKey, setCoverKey] = useState(0)
-  const [activeId, setActiveId] = useState<string>()
+  const [activeId, setActiveId] = useState<string | undefined>(preview ? previewConversationId : undefined)
   const [source, setSource] = useState<SourceReference>()
   const [sourceOrigin, setSourceOrigin] = useState<'overview' | 'clarification'>('overview')
   const feedback = useOverviewFeedback(saveFeedback)
@@ -90,8 +93,11 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
   const saved = useCallback(() => { void reader.refresh() }, [reader.refresh])
   const sourceAvailable = (reference: SourceReference) => !!queryClient && !reference.unavailable
   const [introActive, setIntroActive] = useState(
-    () => !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    () => !(preview && previewConversationId) && !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
   )
+  useEffect(() => {
+    if (preview && previewConversationId) void reader.open(previewConversationId)
+  }, [preview, previewConversationId, reader.open])
   const name = displayName.trim()
   const mobileDialog = isMobile && open
 
@@ -285,6 +291,8 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
           key={`${activeId}-${source?.id ?? ''}`} conversation={{ id: activeId, title: activeSummary?.title ?? '会话', messages: reader.current.messages }}
           range={reader.current.range} sourceStatus={reader.current.sourceStatus} loading={reader.loading} error={reader.error} preview={previewing}
           beforeCursor={reader.current.beforeCursor} afterCursor={reader.current.afterCursor}
+          messageCount={activeSummary?.messageCount} aiAdapter={conversationAiAdapter}
+          onLocateMessage={message => reader.locate({ conversationId: activeId, messageId: message.id })}
           onBefore={reader.loadBefore} onAfter={reader.loadAfter} onRetry={() => { void reader.open(activeId) }}
           onReturn={source ? (sourceOrigin === 'clarification' ? openClarification : enterOverview) : fromImport ? openImport : undefined}
           returnLabel={fromImport ? '返回导入结果' : sourceOrigin === 'clarification' ? '返回解惑' : '返回个人总览'} /> : view === 'clarification' ? (

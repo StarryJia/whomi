@@ -24,6 +24,31 @@ function setViewport(mobile = false) {
 beforeEach(() => setViewport())
 
 describe('文件选择与会话前端', () => {
+  it('已选消息移出分页窗口后引用仍能跳回，草稿与选择保持', async () => {
+    const user = userEvent.setup()
+    const client = createPreviewClient([{ id: 'long', title: '长会话引用', messages: Array.from({ length: 650 }, (_, index) => ({
+      id: String(index + 1), sender: '成员', text: `引用原文 ${index + 1}`,
+    })) }])
+    const locate = vi.spyOn(client, 'locateSource')
+    render(<App client={client} />)
+    await user.click(screen.getByRole('button', { name: '展开会话列表' }))
+    await user.click(await screen.findByRole('button', { name: '长会话引用' }))
+    expect(document.querySelectorAll('.message[tabindex="0"]')).toHaveLength(1)
+    const firstMessage = screen.getByRole('option', { name: '成员：引用原文 1' })
+    firstMessage.focus()
+    await user.keyboard('{ArrowDown}')
+    expect(screen.getByRole('option', { name: '成员：引用原文 2' })).toHaveFocus()
+    expect(document.querySelectorAll('.message[tabindex="0"]')).toHaveLength(1)
+    await user.click(screen.getByRole('option', { name: '成员：引用原文 1' }))
+    await user.type(screen.getByRole('textbox'), '保留这个问题')
+    for (let index = 0; index < 5; index++) await user.click(screen.getByRole('button', { name: '加载后文' }))
+    expect(screen.queryByRole('option', { name: '成员：引用原文 1' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '1 条引用' }))
+    expect(await screen.findByRole('option', { name: '成员：引用原文 1' })).toHaveAttribute('aria-selected', 'true')
+    expect(locate).toHaveBeenCalledExactlyOnceWith({ conversationId: 'long', messageId: '1' })
+    expect(screen.getByRole('textbox')).toHaveValue('保留这个问题')
+  }, 15000)
+
   it('移除上方页和恢复前文时，保留消息的可见位置不变', async () => {
     const user = userEvent.setup()
     const data = [{ id: 'long', title: '虚构长会话', messages: Array.from({ length: 650 }, (_, index) => ({
@@ -184,13 +209,14 @@ describe('文件选择与会话前端', () => {
     expect(screen.getByRole('region', { name: '聊天记录' })).toBe(reader)
   })
 
-  it('阅读只显示原文，品牌返回 Hello 后卸载正文', async () => {
+  it('阅读可草拟 AI 问题，无模型时不发送，品牌返回 Hello 后卸载正文', async () => {
     const user = userEvent.setup()
     render(<App conversations={conversations} />)
     await user.click(screen.getByRole('button', { name: '展开会话列表' }))
     await user.click(screen.getByRole('button', { name: '项目讨论' }))
-    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: '发送' })).not.toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: '向 AI 提问' })).toBeInTheDocument()
+    await user.type(screen.getByRole('textbox', { name: '向 AI 提问' }), '帮我看看这段交流')
+    expect(screen.getByRole('button', { name: '发送给 AI' })).toBeDisabled()
     await user.click(screen.getByRole('link', { name: 'Whomi 首页' }))
     expect(screen.queryByText('先确认页面范围。')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: '收起侧栏' })).toBeInTheDocument()

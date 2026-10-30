@@ -1,9 +1,12 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { ArrowLeft, ChevronRight, Ellipsis, Plus } from 'lucide-react'
 import clsx from 'clsx'
 import { Tooltip } from './ui/tooltip'
 import type { SourceReference } from './overview/types'
 import type { MessagePosition, MessageView } from '../shared/desktop-api'
+import { useMessageSelection, type ReferenceRange } from './conversation-ai/selection'
+import { ConversationWorkspace } from './conversation-ai/workspace'
+import type { ConversationAiAdapter } from './conversation-ai/types'
 
 export interface ChatMessage {
   id: string
@@ -109,7 +112,7 @@ const messageKinds: Record<MessageView['kind'], string> = {
 }
 
 export function ConversationReader({ conversation, range, sourceStatus, onReturn, returnLabel = '返回个人总览',
-  beforeCursor, afterCursor, onBefore, onAfter, loading, error, onRetry, preview }: {
+  beforeCursor, afterCursor, onBefore, onAfter, loading, error, onRetry, preview, messageCount, aiAdapter, onLocateMessage }: {
   conversation: { id: string; title: string; messages: readonly MessageView[] }
   range?: { start: MessagePosition; end: MessagePosition }
   sourceStatus?: 'loading' | 'available' | 'unavailable'
@@ -123,6 +126,9 @@ export function ConversationReader({ conversation, range, sourceStatus, onReturn
   error?: string
   onRetry?: () => void
   preview?: boolean
+  messageCount?: number
+  aiAdapter?: ConversationAiAdapter
+  onLocateMessage?: (message: MessageView) => Promise<void>
 }) {
   const heading = useRef<HTMLHeadingElement>(null)
   const firstSource = useRef<HTMLLIElement>(null)
@@ -130,6 +136,36 @@ export function ConversationReader({ conversation, range, sourceStatus, onReturn
   const anchors = useRef<Array<{ id: string; top: number }>>([])
   const firstMessage = conversation.messages[0]?.id
   const previousFirst = useRef(firstMessage)
+  const selection = useMessageSelection(conversation.messages)
+  const [jumpId, setJumpId] = useState<string>()
+  const [focusedMessageId, setFocusedMessageId] = useState<string>()
+  const tabStopId = conversation.messages.some(item => item.id === focusedMessageId) ? focusedMessageId : firstMessage
+
+  function focusMessage(id: string) {
+    const element = Array.from(scroll.current?.querySelectorAll<HTMLElement>('[data-message-id]') ?? [])
+      .find(item => item.dataset.messageId === id)
+    if (!element) return false
+    element.focus({ preventScroll: true })
+    element.scrollIntoView?.({ block: 'center', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
+    return true
+  }
+
+  async function jumpToReference(reference: ReferenceRange) {
+    const message = reference.messages[0]
+    if (!message) return
+    setJumpId(message.id)
+    if (!focusMessage(message.id)) await onLocateMessage?.(message)
+  }
+
+  useLayoutEffect(() => {
+    if (jumpId) focusMessage(jumpId)
+  }, [jumpId, conversation.messages])
+
+  useEffect(() => {
+    if (!jumpId) return
+    const timer = window.setTimeout(() => setJumpId(undefined), 1800)
+    return () => window.clearTimeout(timer)
+  }, [jumpId])
 
   function rememberPosition() {
     const container = scroll.current
@@ -153,6 +189,25 @@ export function ConversationReader({ conversation, range, sourceStatus, onReturn
   }, [firstMessage, conversation.messages])
 
   useLayoutEffect(() => {
+    const container = scroll.current
+    if (!container || typeof ResizeObserver === 'undefined') return
+    let width = container.clientWidth
+    const observer = new ResizeObserver(() => {
+      if (container.clientWidth === width) return
+      width = container.clientWidth
+      const retained = anchors.current.find(anchor => Array.from(container.querySelectorAll<HTMLElement>('[data-message-id]'))
+        .some(element => element.dataset.messageId === anchor.id))
+      if (retained) {
+        const element = Array.from(container.querySelectorAll<HTMLElement>('[data-message-id]')).find(item => item.dataset.messageId === retained.id)!
+        container.scrollTop += element.getBoundingClientRect().top - container.getBoundingClientRect().top - retained.top
+      }
+      rememberPosition()
+    })
+    observer.observe(container)
+    return () => observer.disconnect()
+  }, [])
+
+  useLayoutEffect(() => {
     if (firstSource.current) {
       firstSource.current.focus({ preventScroll: true })
       firstSource.current.scrollIntoView?.({ block: 'center', behavior: 'auto' })
@@ -164,12 +219,14 @@ export function ConversationReader({ conversation, range, sourceStatus, onReturn
     await (direction === 'before' ? onBefore?.() : onAfter?.())
   }
 
-  return <section className="conversation-reader" aria-labelledby="conversation-title">
+  return <ConversationWorkspace conversationId={conversation.id} title={conversation.title} messageCount={messageCount}
+    references={selection.references} onClearReferences={selection.clear} onJumpReference={reference => { void jumpToReference(reference) }} adapter={aiAdapter}>
+    {({ analysisControl, composer }) => <section className="conversation-reader" aria-labelledby="conversation-title">
     <header className="reader-header">
       {onReturn && <button className="reader-return" type="button" onClick={onReturn}>
         <ArrowLeft aria-hidden="true" />{returnLabel}
       </button>}
-      <h1 id="conversation-title" ref={heading} tabIndex={-1}>{conversation.title}</h1>
+      <div className="reader-heading-row"><h1 id="conversation-title" ref={heading} tabIndex={-1}>{conversation.title}</h1>{analysisControl}</div>
       {preview && <p className="reader-source-note">开发预览 · 全部内容为虚构示例 · 未写入真实存储</p>}
       {sourceStatus && <p className="reader-source-note" role="status">{sourceStatus === 'available'
         ? '已定位相关交流，可继续阅读前后文。' : sourceStatus === 'loading' ? '正在定位原文…' : '原文不可用，请返回后重试。'}</p>}
@@ -177,15 +234,20 @@ export function ConversationReader({ conversation, range, sourceStatus, onReturn
     </header>
     <div ref={scroll} className="reader-scroll" role="region" aria-label="聊天记录" tabIndex={0} aria-busy={loading} onScroll={rememberPosition}>
       {beforeCursor && <button className="reader-load" type="button" disabled={loading} onClick={() => { void load('before') }}>加载前文</button>}
-      {conversation.messages.length ? <ol className="message-list">
+      {conversation.messages.length ? <ol className="message-list" role="listbox" aria-label="选择引用消息" aria-multiselectable="true">
         {conversation.messages.map((message, index) => {
           const start = range?.start.id === message.id
           const end = range?.end.id === message.id
           const highlighted = range && comparePosition(message, range.start) >= 0 && comparePosition(message, range.end) <= 0
+          const selected = selection.selectedIds.has(message.id)
+          const joinedBefore = selected && index > 0 && selection.selectedIds.has(conversation.messages[index - 1].id)
+          const joinedAfter = selected && index < conversation.messages.length - 1 && selection.selectedIds.has(conversation.messages[index + 1].id)
           return <li key={message.id} data-message-id={message.id}
           ref={start ? firstSource : undefined}
-          tabIndex={start ? -1 : undefined}
-          className={clsx('message', message.isSelf && 'message-self', highlighted && 'message-source')}>
+          role="option" aria-selected={selected} aria-label={`${message.senderName}：${message.text || messageKinds[message.kind]}`}
+          tabIndex={tabStopId === message.id ? 0 : -1} {...selection.bindings(message)} onFocus={() => setFocusedMessageId(message.id)}
+          className={clsx('message', message.isSelf && 'message-self', highlighted && 'message-source', selected && 'message-selected',
+            joinedBefore && 'selection-joined-before', joinedAfter && 'selection-joined-after', jumpId === message.id && 'message-reference-target')}>
           <Initial name={message.senderName} />
           <div className="message-content">
             {message.timeBucket === 1 && (index === 0 || conversation.messages[index - 1].timeBucket !== 1) && <p className="message-time-unknown">时间未知</p>}
@@ -200,5 +262,7 @@ export function ConversationReader({ conversation, range, sourceStatus, onReturn
       {loading && !sourceStatus && <p className="reader-empty" role="status">正在读取…</p>}
       {afterCursor && <button className="reader-load" type="button" disabled={loading} onClick={() => { void load('after') }}>加载后文</button>}
     </div>
-  </section>
+    {composer}
+  </section>}
+  </ConversationWorkspace>
 }

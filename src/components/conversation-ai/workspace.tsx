@@ -1,0 +1,329 @@
+import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { createPortal } from 'react-dom'
+import { ArrowUp, ArrowRight, Check, ChevronDown, FileText, LoaderCircle, MessageCircle, Square, X } from 'lucide-react'
+import type { ReferenceRange } from './selection'
+import type { AnalysisProgress, ConversationAiAdapter, ConversationRequest, GenerationUsage } from './types'
+import './workspace.css'
+
+const number = (value: number) => new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 1 }).format(value)
+const valid = (value: number | undefined): value is number => value !== undefined && Number.isFinite(value) && value >= 0
+function seconds(ms: number | undefined) { return valid(ms) ? `${number(ms / 1000)} 秒` : '未提供' }
+function errorText(error: unknown) { return error instanceof Error ? error.message : '操作失败，请重试。' }
+
+function Popover({ anchor, label, children, onClose, above = false, onMouseEnter, onMouseLeave, id }: {
+  anchor: RefObject<HTMLElement | null>; label: string; children: ReactNode; onClose: () => void; above?: boolean
+  onMouseEnter?: () => void; onMouseLeave?: () => void
+  id?: string
+}) {
+  const body = useRef<HTMLDivElement>(null)
+  const [position, setPosition] = useState({ top: 0, left: 0 })
+  const close = useRef(onClose)
+  close.current = onClose
+  useLayoutEffect(() => {
+    const place = () => {
+      const target = anchor.current?.getBoundingClientRect()
+      const rect = body.current?.getBoundingClientRect()
+      if (!target || !rect) return
+      const fitsAbove = target.top - rect.height - 8 >= 8
+      const top = (above && fitsAbove) || target.bottom + rect.height + 8 > window.innerHeight
+        ? target.top - rect.height - 8 : target.bottom + 8
+      setPosition({ top: Math.max(8, Math.min(top, window.innerHeight - rect.height - 8)),
+        left: Math.max(8, Math.min(target.right - rect.width, window.innerWidth - rect.width - 8)) })
+    }
+    place()
+    window.addEventListener('resize', place)
+    window.addEventListener('scroll', place, true)
+    const resize = new ResizeObserver(place)
+    if (body.current) resize.observe(body.current)
+    const outside = (event: PointerEvent) => {
+      if (!body.current?.contains(event.target as Node) && !anchor.current?.contains(event.target as Node)) close.current()
+    }
+    const escape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      event.preventDefault()
+      event.stopPropagation()
+      close.current()
+      anchor.current?.focus()
+    }
+    document.addEventListener('pointerdown', outside)
+    document.addEventListener('keydown', escape, true)
+    return () => {
+      resize.disconnect()
+      window.removeEventListener('resize', place)
+      window.removeEventListener('scroll', place, true)
+      document.removeEventListener('pointerdown', outside)
+      document.removeEventListener('keydown', escape, true)
+    }
+  }, [anchor, above])
+  return createPortal(<div id={id} ref={body} className="conversation-popover" role="region" aria-label={label}
+    style={position} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>{children}</div>, document.body)
+}
+
+function References({ references, onJump, onClear }: {
+  references: readonly ReferenceRange[]; onJump: (reference: ReferenceRange) => void; onClear?: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  const anchor = useRef<HTMLButtonElement>(null)
+  const popoverId = useId()
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const keep = () => { clearTimeout(timer.current); setOpen(true) }
+  const leave = () => { timer.current = setTimeout(() => setOpen(false), 180) }
+  useEffect(() => () => clearTimeout(timer.current), [])
+  if (!references.length) return null
+  return <div className="conversation-references" onMouseEnter={keep} onMouseLeave={leave}>
+    <button ref={anchor} type="button" className="conversation-reference-chip" aria-expanded={open}
+      aria-label={`${references.length} 条引用`} aria-controls={open ? popoverId : undefined} onKeyDown={event => {
+        if (event.key === 'ArrowDown' || (event.key === 'Tab' && !event.shiftKey && open)) {
+          event.preventDefault()
+          setOpen(true)
+          requestAnimationFrame(() => document.getElementById(popoverId)?.querySelector<HTMLButtonElement>('button')?.focus())
+        }
+      }} onClick={() => {
+        if (references.length === 1) { setOpen(false); onJump(references[0]) }
+        else setOpen(true)
+      }}>
+      <FileText aria-hidden="true" />{references.length} 条引用<ChevronDown aria-hidden="true" />
+    </button>
+    {onClear && <button type="button" className="conversation-icon-button" aria-label="清除引用" onClick={onClear}><X aria-hidden="true" /></button>}
+    {open && <Popover id={popoverId} anchor={anchor} above label="引用预览" onClose={() => setOpen(false)} onMouseEnter={keep} onMouseLeave={leave}>
+      <div className="conversation-reference-list">{references.map((reference, index) => {
+        const first = reference.messages[0]
+        return <button type="button" key={reference.id} onClick={() => { setOpen(false); onJump(reference) }}>
+          <FileText aria-hidden="true" /><span><strong>引用 {index + 1} · {first?.senderName ?? '消息'}</strong>
+          <span>{first?.text || '查看原文'}{reference.messages.length > 1 && ` · 共 ${reference.messages.length} 条消息`}</span></span>
+        </button>
+      })}</div>
+    </Popover>}
+  </div>
+}
+
+function Usage({ usage }: { usage?: GenerationUsage }) {
+  const [open, setOpen] = useState(false)
+  const anchor = useRef<HTMLButtonElement>(null)
+  if (!usage || !Object.values(usage).some(valid)) return null
+  return <div className="conversation-usage">
+    <button ref={anchor} type="button" aria-expanded={open} onClick={() => setOpen(value => !value)}>
+      {valid(usage.outputTokens) && <span>输出 {number(usage.outputTokens)} token</span>}
+      {valid(usage.outputTokensPerSecond) && <span>{number(usage.outputTokensPerSecond)} token/秒</span>}
+      {!valid(usage.outputTokens) && !valid(usage.outputTokensPerSecond) && '生成统计'}
+      <ChevronDown aria-hidden="true" />
+    </button>
+    {open && <Popover anchor={anchor} above label="生成统计" onClose={() => setOpen(false)}>
+      <h3>生成统计</h3><dl className="conversation-usage-grid">
+        <div><dt>输入 token</dt><dd>{valid(usage.inputTokens) ? number(usage.inputTokens) : '未提供'}</dd></div>
+        <div><dt>输出 token</dt><dd>{valid(usage.outputTokens) ? number(usage.outputTokens) : '未提供'}</dd></div>
+        <div><dt>生成速度</dt><dd>{valid(usage.outputTokensPerSecond) ? `${number(usage.outputTokensPerSecond)} token/秒` : '未提供'}</dd></div>
+      </dl><p className="conversation-timing">首 token 耗时 {seconds(usage.firstTokenMs)}<br />总耗时 {seconds(usage.durationMs)}</p>
+      <p className="conversation-token-note">token 是模型计量文本的单位。</p>
+    </Popover>}
+  </div>
+}
+
+type Turn = { id: number; request: ConversationRequest; text: string; usage?: GenerationUsage; status: 'running' | 'done' | 'failed' | 'stopped'; error?: string }
+type Slots = { analysisControl: ReactNode; composer: ReactNode; panelOpen: boolean }
+export function ConversationWorkspace({ conversationId, title, messageCount, references, onClearReferences, onJumpReference, adapter, children }: {
+  conversationId: string; title: string; messageCount?: number; references: readonly ReferenceRange[]
+  onClearReferences: () => void; onJumpReference: (reference: ReferenceRange) => void
+  adapter?: ConversationAiAdapter; children: (slots: Slots) => ReactNode
+}) {
+  const [panelOpen, setPanelOpen] = useState(false)
+  const [draft, setDraft] = useState('')
+  const [modelId, setModelId] = useState(adapter?.models[0]?.id ?? '')
+  const [skillId, setSkillId] = useState('')
+  const [turns, setTurns] = useState<Turn[]>([])
+  const [busy, setBusy] = useState(false)
+  const [analysisOpen, setAnalysisOpen] = useState(false)
+  const [analysisState, setAnalysisState] = useState<'idle' | 'running' | 'done' | 'failed' | 'stopped'>('idle')
+  const [analysisError, setAnalysisError] = useState('')
+  const [progress, setProgress] = useState<AnalysisProgress>()
+  const [narrow, setNarrow] = useState(() => window.matchMedia('(max-width: 1000px)').matches)
+  const source = useRef<HTMLDivElement>(null)
+  const aside = useRef<HTMLElement>(null)
+  const textarea = useRef<HTMLTextAreaElement>(null)
+  const analysisAnchor = useRef<HTMLButtonElement>(null)
+  const chatRun = useRef<AbortController | undefined>(undefined)
+  const analysisRun = useRef<AbortController | undefined>(undefined)
+  const sequence = useRef(0)
+  const alive = useRef(true)
+  const panelId = useId()
+  const draftId = useId()
+  const scroll = useRef<HTMLDivElement>(null)
+  const atEnd = useRef(true)
+  const selectedModel = adapter?.models.find(model => model.id === modelId)
+  const canSend = !!adapter && !!selectedModel && !!draft.trim() && !busy
+
+  useEffect(() => {
+    alive.current = true
+    setModelId(adapter?.models[0]?.id ?? '')
+    setBusy(false)
+    setTurns(items => items.map(turn => turn.status === 'running' ? { ...turn, status: 'stopped' } : turn))
+    setAnalysisState(state => state === 'running' ? 'stopped' : state)
+    return () => {
+      alive.current = false
+      chatRun.current?.abort()
+      analysisRun.current?.abort()
+      chatRun.current = undefined
+      analysisRun.current = undefined
+    }
+  }, [conversationId, adapter])
+  useEffect(() => {
+    const query = window.matchMedia('(max-width: 1000px)')
+    const update = () => setNarrow(query.matches)
+    query.addEventListener('change', update)
+    return () => query.removeEventListener('change', update)
+  }, [])
+  useLayoutEffect(() => {
+    if (panelOpen) textarea.current?.focus({ preventScroll: true })
+  }, [panelOpen])
+  useLayoutEffect(() => {
+    if (atEnd.current && scroll.current) scroll.current.scrollTop = scroll.current.scrollHeight
+  }, [turns])
+  function closePanel() {
+    setPanelOpen(false)
+    requestAnimationFrame(() => {
+      const focusTarget = source.current?.querySelector<HTMLElement>('[data-reopen-conversation], textarea')
+      focusTarget?.focus()
+    })
+  }
+  function jump(reference: ReferenceRange) {
+    if (narrow) setPanelOpen(false)
+    onJumpReference(reference)
+  }
+  function stopChat() {
+    chatRun.current?.abort()
+    chatRun.current = undefined
+    setBusy(false)
+    setTurns(items => items.map(turn => turn.status === 'running' ? { ...turn, status: 'stopped' } : turn))
+  }
+  async function send(retry?: Turn) {
+    if (!adapter || busy || chatRun.current || (!retry && !canSend)) return
+    const request: ConversationRequest = retry?.request ?? { conversationId, prompt: draft.trim(),
+      references: references.map(reference => ({ ...reference, messages: [...reference.messages] })), modelId,
+      history: turns.filter(turn => turn.status === 'done').flatMap(turn => [
+        { role: 'user' as const, text: turn.request.prompt, references: turn.request.references },
+        { role: 'assistant' as const, text: turn.text },
+      ]),
+      ...(references.length && adapter.skills.some(skill => skill.id === skillId) ? { skillId } : {}) }
+    const id = retry?.id ?? ++sequence.current
+    const controller = new AbortController()
+    chatRun.current = controller
+    setPanelOpen(true)
+    setBusy(true)
+    atEnd.current = true
+    const next: Turn = { id, request, text: '', status: 'running' }
+    setTurns(items => retry ? items.map(item => item.id === id ? next : item) : [...items, next])
+    const active = () => alive.current && chatRun.current === controller && !controller.signal.aborted
+    try {
+      const result = await adapter.respond(request, { signal: controller.signal, onText: text => {
+        if (active()) setTurns(items => items.map(item => item.id === id ? { ...item, text } : item))
+      } })
+      if (!active()) return
+      if (!result.text.trim()) throw new Error('未收到回答，请重试。')
+      setTurns(items => items.map(item => item.id === id ? { ...item, text: result.text, usage: result.usage, status: 'done' } : item))
+      setDraft(value => value.trim() === request.prompt ? '' : value)
+    } catch (error) {
+      if (active()) setTurns(items => items.map(item => item.id === id ? { ...item, status: 'failed', error: errorText(error) } : item))
+    } finally {
+      if (active()) { chatRun.current = undefined; setBusy(false) }
+    }
+  }
+  function stopAnalysis() {
+    analysisRun.current?.abort()
+    analysisRun.current = undefined
+    setAnalysisState('stopped')
+  }
+  async function analyze() {
+    if (!adapter || !selectedModel || messageCount === 0 || analysisState === 'running') return
+    const controller = new AbortController()
+    analysisRun.current = controller
+    setAnalysisState('running')
+    setAnalysisError('')
+    setProgress(undefined)
+    const active = () => alive.current && analysisRun.current === controller && !controller.signal.aborted
+    try {
+      await adapter.analyze({ conversationId, modelId }, { signal: controller.signal, onProgress: value => {
+        if (!active()) return
+        if (valid(value.analyzedMessages) && valid(value.totalMessages)) setProgress(value)
+      } })
+      if (active()) setAnalysisState('done')
+    } catch (error) {
+      if (active()) { setAnalysisState('failed'); setAnalysisError(errorText(error)) }
+    } finally {
+      if (active()) analysisRun.current = undefined
+    }
+  }
+  const completed = valid(progress?.analyzedMessages) ? progress.analyzedMessages : 0
+  const total = valid(progress?.totalMessages) ? progress.totalMessages : messageCount
+  const percentage = valid(total) && total > 0 ? Math.min(100, Math.round(completed / total * 100)) : undefined
+  const analysisControl = <>
+    <button ref={analysisAnchor} type="button" className="conversation-analysis-trigger" aria-expanded={analysisOpen}
+      onClick={() => {
+        setAnalysisOpen(value => !value)
+        if (!analysisOpen && analysisState === 'idle') void analyze()
+      }}>
+      {analysisState === 'running' ? <LoaderCircle className="conversation-working" aria-hidden="true" /> : analysisState === 'done' ? <Check aria-hidden="true" /> : <span className="conversation-ring-icon" aria-hidden="true" />}会话分析
+    </button>
+    {analysisOpen && <Popover anchor={analysisAnchor} label="会话分析状态" onClose={() => setAnalysisOpen(false)}>
+      <h3>会话分析</h3>
+      {messageCount === 0 ? <p className="conversation-state-copy">巧妇难为无米之炊，先导入一些聊天记录吧。</p> : !adapter || !selectedModel ? <p className="conversation-state-copy">暂无可用模型。连接模型后可分析当前会话。</p> : <>
+        <div className="conversation-analysis-summary">
+          <div className="conversation-progress" role="progressbar" aria-label="会话分析进度" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percentage}>
+            <svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="20" /><circle cx="24" cy="24" r="20" strokeDasharray={`${(percentage ?? 0) * 1.257} 126`} /></svg>
+            <span>{percentage === undefined ? '—' : `${percentage}%`}</span>
+          </div>
+          <div><p>{progress ? `已分析 ${number(completed)} / ${number(progress.totalMessages)} 条` : valid(total) ? `当前会话 ${number(total)} 条消息` : '等待消息总数'}</p>
+            <p className="conversation-state-copy">{analysisState === 'running' ? '正在分析' : analysisState === 'done' ? '分析完成' : analysisState === 'stopped' ? '已停止' : analysisState === 'failed' ? '分析失败' : '生成当前会话的画像结果'}</p>
+            {valid(progress?.outputTokensPerSecond) && <p className="conversation-state-copy">生成速度 {number(progress.outputTokensPerSecond)} token/秒</p>}</div>
+        </div>
+        {analysisError && <p role="alert" className="conversation-error">{analysisError}</p>}
+        {analysisState === 'running' ? <button type="button" className="conversation-text-button" onClick={stopAnalysis}><Square aria-hidden="true" />停止分析</button>
+          : <button type="button" className="conversation-text-button" onClick={() => { void analyze() }}>{analysisState === 'failed' ? '重试分析' : analysisState === 'done' ? '重新分析' : '开始分析'}</button>}
+      </>}
+    </Popover>}
+  </>
+  const referenceControl = <References references={references} onJump={jump} onClear={onClearReferences} />
+  const editor = <form className="conversation-composer" onSubmit={event => { event.preventDefault(); void send() }}>
+    <div className="conversation-composer-top"><label htmlFor={draftId}>向 AI 提问</label>{referenceControl}</div>
+    <textarea id={draftId} ref={textarea} rows={2} value={draft} readOnly={busy} aria-busy={busy} placeholder="聊聊你的想法…"
+      onChange={event => setDraft(event.target.value)} onKeyDown={event => {
+        if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); if (canSend) void send() }
+      }} />
+    <div className="conversation-composer-tools">
+      {references.length > 0 && !!adapter?.skills.length && <label className="conversation-select"><FileText aria-hidden="true" /><span className="visually-hidden">对话技能</span>
+        <select aria-label="对话技能" value={skillId} onChange={event => setSkillId(event.target.value)} disabled={busy}><option value="">默认方式</option>{adapter.skills.map(skill => <option key={skill.id} value={skill.id}>{skill.label}</option>)}</select><ChevronDown aria-hidden="true" /></label>}
+      <div className="conversation-send-tools"><label className="conversation-select"><span className="visually-hidden">对话模型</span>
+        <select aria-label="对话模型" value={selectedModel?.id ?? ''} disabled={busy || !adapter?.models.length} onChange={event => setModelId(event.target.value)}>
+          {!adapter?.models.length && <option value="">暂无可用模型</option>}{adapter?.models.map(model => <option key={model.id} value={model.id}>{model.label}</option>)}
+        </select><ChevronDown aria-hidden="true" /></label>
+        {busy ? <button type="button" className="conversation-send" aria-label="停止回答" onClick={stopChat}><Square aria-hidden="true" /></button>
+          : <button type="submit" className="conversation-send" aria-label="发送给 AI" disabled={!canSend}><ArrowUp aria-hidden="true" /></button>}
+      </div>
+    </div>
+  </form>
+  const composer = <div className="conversation-source-composer">{panelOpen ? <div className="conversation-composer-handoff">
+    {referenceControl}<button type="button" data-reopen-conversation onClick={() => textarea.current?.focus()}><span>在右侧继续对话</span><ArrowRight aria-hidden="true" /></button>
+  </div> : <>{turns.length > 0 && <button type="button" data-reopen-conversation className="conversation-reopen" onClick={() => setPanelOpen(true)}><MessageCircle aria-hidden="true" />继续 AI 对话</button>}{editor}</>}</div>
+  return <div className={`conversation-workspace${panelOpen ? ' has-ai-panel' : ''}`}>
+    <div ref={source} className="conversation-source" inert={panelOpen && narrow}>{children({ analysisControl, composer, panelOpen })}</div>
+    <aside ref={aside} id={panelId} className="conversation-ai-panel" aria-label="AI 对话" role="complementary"
+      inert={!panelOpen} aria-hidden={!panelOpen} onKeyDown={event => {
+        if (event.key === 'Escape') { event.preventDefault(); closePanel() }
+      }}>
+      <header className="conversation-ai-header"><div><h2>AI 对话</h2><p>{title}</p></div><button type="button" className="conversation-icon-button" aria-label="关闭 AI 对话" onClick={closePanel}><X aria-hidden="true" /></button></header>
+      <div ref={scroll} className="conversation-ai-timeline" role="log" aria-label="AI 对话记录" aria-live="polite" onScroll={() => {
+        if (scroll.current) atEnd.current = scroll.current.scrollHeight - scroll.current.scrollTop - scroll.current.clientHeight < 64
+      }}>
+        {turns.map(turn => <div className="conversation-turn" key={turn.id}>
+          <div className="conversation-user-turn"><p>{turn.request.prompt}</p><References references={turn.request.references} onJump={jump} /></div>
+          <div className="conversation-assistant-turn"><div className="conversation-answer-label"><MessageCircle aria-hidden="true" /><strong>AI</strong>{turn.status === 'running' && <span>正在回答…</span>}</div>
+            {turn.text && <p className="conversation-answer-text">{turn.text}</p>}
+            {turn.status === 'failed' && <div role="alert"><p className="conversation-error">{turn.error}</p><button type="button" className="conversation-text-button" disabled={busy} onClick={() => { void send(turn) }}>重试回答</button></div>}
+            {turn.status === 'stopped' && <p className="conversation-state-copy">已停止回答。</p>}
+            <Usage usage={turn.usage} />
+          </div>
+        </div>)}
+      </div>
+      {panelOpen && <div className="conversation-panel-composer">{editor}</div>}
+    </aside>
+  </div>
+}
