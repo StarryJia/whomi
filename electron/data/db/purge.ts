@@ -17,8 +17,8 @@ export function purgeConversation(store: Store, conversationId: string): void {
 
     // 1. 清理 AI 线程与轮次用量（若表存在）
     if (tableExists(db, 'ai_threads')) {
-      const thread = db.prepare('SELECT id FROM ai_threads WHERE conversation_id=?').get(id) as { id: bigint } | undefined
-      if (thread) {
+      const threads = db.prepare('SELECT id FROM ai_threads WHERE conversation_id=?').all(id) as { id: bigint }[]
+      for (const thread of threads) {
         if (tableExists(db, 'ai_turns')) {
           const turns = db.prepare('SELECT id FROM ai_turns WHERE thread_id=?').all(thread.id) as { id: bigint }[]
           for (const turn of turns) {

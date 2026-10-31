@@ -1,7 +1,8 @@
 import { expect, test } from 'vitest'
 import { createAiService } from '../../electron/main/ai-service'
 import { defaultProcessing } from '../../src/shared/settings-contract'
-import type { AnalysisTask } from '../../src/shared/ai-contract'
+import type { AiModel, AnalysisTask } from '../../src/shared/ai-contract'
+import { resolveModelLimits } from '../../src/shared/model-limits'
 
 test('preparing and duplicate confirmation do not duplicate a model run; completion waits for report storage', async () => {
   let runs = 0, release: (value: unknown) => void = () => {}, completed = false
@@ -196,4 +197,75 @@ test('connection tests register model work and stopping cancels active and queue
   expect((await settled).every(result => result.status === 'rejected')).toBe(true)
   expect(runs).toBe(1)
   expect(service.hasModelWork(['m'])).toBe(false)
+})
+
+test('an explicit output limit above the unknown-context runtime fallback fails instead of being silently truncated', () => {
+  const model = { contextWindow: null, maxTokens: 400000, maxInputTokens: null }
+  expect(() => resolveModelLimits(model)).toThrow('请填写更大的上下文长度或减少最大输出长度。')
+  expect(model).toEqual({ contextWindow: null, maxTokens: 400000, maxInputTokens: null })
+})
+
+test('a one-token context cannot produce a zero-token runtime output limit', () => {
+  expect(() => resolveModelLimits({ contextWindow: 1, maxTokens: null, maxInputTokens: null })).toThrow('请增加上下文长度或减少最大输出长度。')
+})
+
+test('independent input and output ceilings share the context budget without rewriting either ceiling', () => {
+  const model = { contextWindow: 128000, maxTokens: 16000, maxInputTokens: 128000 }
+  expect(resolveModelLimits(model)).toEqual({ contextWindow: 128000, maxTokens: 16000, maxInputTokens: 112000 })
+  expect(model.maxInputTokens).toBe(128000)
+})
+
+async function runBoundedAnalysis(maxInputTokens: number, text: string, senderName = '本人') {
+  const model: AiModel = { id: 'bounded', label: '示例限制模型', model: 'bounded', baseUrl: 'http://127.0.0.1:9999/v1', contextWindow: 8000, maxTokens: 1000, maxInputTokens, version: 1, enabled: true, hasCredential: false }
+  const task: AnalysisTask = { id: '1', conversationId: '1', modelId: model.id, state: 'queued', analyzedMessages: 0, totalMessages: 1, skippedMessages: 0, usage: {}, valid: true, eventSequence: 1 }
+  const requests: { systemPrompt: string; prompt: string }[] = []
+  const saved: any[] = []
+  const service = createAiService({ storage: async (method, args) => {
+    if (method === 'confirmAnalysis' || method === 'getAnalysis') return task
+    if (method === 'analysisContext') return { task, model, selfFingerprint: 'self', messages: [{ id: '1', text, senderName, isSelf: true, kind: 'text' }], batches: saved, checkpoint: null }
+    if (method === 'modelSecret') return { model, encryptedKey: null }
+    if (method === 'saveAnalysis') return Object.assign(task, args[1])
+    if (method === 'recordUsage') return task
+    if (method === 'commitBatch') { const batch = args[1] as any; saved.push(batch); task.analyzedMessages += batch.messageIds.length; return task }
+    if (method === 'completeAnalysis') { task.state = 'completed'; task.report = args[1] as any; return task }
+    throw new Error(method)
+  }, runtime: { run: async input => {
+    requests.push(input)
+    return { text: JSON.stringify({ summary: '示例', observations: [], limitations: '有限' }), usage: {}, checkpoint: 'cp' }
+  } }, secrets: { encrypt: value => value, decrypt: value => value } })
+  await service.confirmAnalysis({ token: 'bounded-token', requestId: 'bounded-request' })
+  await service.idle()
+  return { task, requests }
+}
+
+test('analysis with a tiny declared input limit fails actionably before any model request', async () => {
+  const { task, requests } = await runBoundedAnalysis(128, '示例消息')
+  expect(requests).toHaveLength(0)
+  expect(task).toMatchObject({ state: 'failed', error: '模型最大输入长度不足，请增加最大输入长度或选择更大上下文的模型。' })
+})
+
+test('analysis does not send a message whose metadata cannot fit the declared input budget', async () => {
+  const { task, requests } = await runBoundedAnalysis(2000, '示例', '示例发送者'.repeat(1000))
+  expect(requests).toHaveLength(0)
+  expect(task.state).toBe('failed')
+  expect(task.error).toContain('最大输入长度')
+})
+
+test('analysis fragments account for metadata and Unicode while keeping complete message coverage', async () => {
+  const text = '😀'.repeat(300)
+  const { task, requests } = await runBoundedAnalysis(2000, text)
+  expect(task).toMatchObject({ state: 'completed', analyzedMessages: 1 })
+  expect(requests.length).toBeGreaterThan(2)
+  expect(requests.every(input => Buffer.byteLength(input.systemPrompt + input.prompt, 'utf8') + 1000 <= 2000)).toBe(true)
+  const fragments = requests.filter(input => input.prompt.startsWith('{')).flatMap(input => JSON.parse(input.prompt).messages.map((message: { text: string }) => message.text))
+  expect(fragments.join('')).toBe(text)
+  expect(fragments.every(fragment => !/[\ud800-\udbff]$|^[\udc00-\udfff]/.test(fragment))).toBe(true)
+})
+
+test('connection testing rejects an input limit too small for its test prompt before sending', async () => {
+  const model: AiModel = { id: 'tiny', label: '示例', model: 'tiny', baseUrl: 'http://127.0.0.1:9999/v1', contextWindow: 8000, maxTokens: 1000, maxInputTokens: 1, version: 1, enabled: true, hasCredential: false }
+  let requests = 0
+  const service = createAiService({ storage: async () => ({ model, encryptedKey: null }), runtime: { run: async () => { requests++; return { text: 'OK', usage: {}, checkpoint: 'cp' } } }, secrets: { encrypt: value => value, decrypt: value => value } })
+  await expect(service.testModel(model.id)).rejects.toMatchObject({ code: 'CONTEXT_TOO_LARGE', action: expect.stringContaining('最大输入长度') })
+  expect(requests).toBe(0)
 })

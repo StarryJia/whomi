@@ -27,6 +27,8 @@ test('capture comprehensive evidence for import flow, unified top bar, conversat
 
   const sampleFile = join(directory, 'chat-sample.json')
   await writeFile(sampleFile, JSON.stringify(sampleData, null, 2))
+  const otherFile = join(directory, 'another-sample.json')
+  await writeFile(otherFile, JSON.stringify({ ...sampleData, meta: { ...sampleData.meta, groupId: 'other-example' } }))
 
   const launch = () => electron.launch({
     ...(process.env.WHOMI_PACKAGED_EXECUTABLE
@@ -85,7 +87,7 @@ test('capture comprehensive evidence for import flow, unified top bar, conversat
     // 5. 拖入聊天文件，进入发现入口阶段
     const box = await chooseButton.boundingBox()
     const cdp = await page.context().newCDPSession(page)
-    const data = { items: [], files: [sampleFile], dragOperationsMask: 1 }
+    const data = { items: [], files: [sampleFile, otherFile], dragOperationsMask: 1 }
     const point = { x: box.x + box.width / 2, y: box.y + box.height / 2, data }
     await cdp.send('Input.dispatchDragEvent', { type: 'dragEnter', ...point })
     await cdp.send('Input.dispatchDragEvent', { type: 'drop', ...point })
@@ -96,7 +98,7 @@ test('capture comprehensive evidence for import flow, unified top bar, conversat
     await expect(page.getByRole('button', { name: '选择文件', exact: true })).toHaveCount(0)
     await expect(discovery.getByRole('button', { name: '解析所选入口' })).toBeVisible()
     await expect(discovery.getByRole('button', { name: '取消导入' })).toBeVisible()
-    await discovery.getByRole('checkbox').check()
+    await discovery.getByRole('checkbox').first().check()
     await page.screenshot({ path: join(evidence, '05-import-discovery.png') })
 
     // 测试未保存前取消：恢复初始选择区域
@@ -107,32 +109,18 @@ test('capture comprehensive evidence for import flow, unified top bar, conversat
     // 重新拖入完成解析与确认
     const box2 = await page.getByRole('button', { name: '选择文件', exact: true }).boundingBox()
     const cdp2 = await page.context().newCDPSession(page)
-    const point2 = { x: box2.x + box2.width / 2, y: box2.y + box2.height / 2, data }
+    const point2 = { x: box2.x + box2.width / 2, y: box2.y + box2.height / 2, data: { ...data, files: [sampleFile] } }
     await cdp2.send('Input.dispatchDragEvent', { type: 'dragEnter', ...point2 })
     await cdp2.send('Input.dispatchDragEvent', { type: 'drop', ...point2 })
     await cdp2.detach()
 
-    const discovery2 = page.getByRole('region', { name: '发现的文件入口' })
-    await expect(discovery2).toBeVisible()
-    await discovery2.getByRole('checkbox').check()
-    await page.getByRole('button', { name: '解析所选入口' }).click()
-
-    // 6. 确认与预览阶段（无本人身份下拉框，导入只负责导入）
-    const confirmation = page.getByRole('region', { name: '确认会话' })
-    await expect(confirmation).toBeVisible()
-    await expect(confirmation.getByRole('button', { name: '确认保存' })).toBeVisible()
-    await expect(page.getByLabel('本人身份')).toHaveCount(0)
-    await page.getByLabel('导入目标', { exact: true }).selectOption('new')
-    await page.getByRole('button', { name: '预览消息', exact: true }).click()
-    await expect(page.locator('.import-preview li').first()).toBeVisible()
-    await page.screenshot({ path: join(evidence, '06-import-confirmation.png') })
-
-    // 7. 保存并查看完成结果（展示继续导入按钮）
-    await confirmation.getByRole('button', { name: '确认保存' }).click()
+    // 单文件自动解析并保存，不经过目标选择、身份填写或消息预览。
     const results = page.getByRole('region', { name: '导入进度与结果' })
     await expect(results).toBeVisible()
     await expect(page.getByText('导入完成。', { exact: true })).toBeVisible()
     await expect(page.getByText('已保存 3 条消息。', { exact: true })).toBeVisible()
+    await expect(page.getByLabel('导入目标', { exact: true })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: '预览消息', exact: true })).toHaveCount(0)
     await expect(page.getByRole('button', { name: '继续导入', exact: true })).toBeVisible()
     await expect(page.getByRole('button', { name: '打开会话', exact: true })).toBeVisible()
     await page.screenshot({ path: join(evidence, '07-import-completed.png') })

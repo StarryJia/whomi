@@ -11,25 +11,32 @@ import { ImportFailure, issue } from './import/limits'
 import { rebuildSummary } from './import/summary'
 import type { ImportPreview, PreviewOptions } from '../../src/shared/desktop-api'
 export type DataServiceOptions = {store:Store;appDataDirectory:string;staging?:Omit<StagingOptions,'appDataDirectory'|'registerArea'>;runner?:Omit<RunnerDependencies,'write'|'changed'>;changed?:(snapshot:ImportSnapshot)=>void}
-type ActiveImport={id:string;signal:AbortController;discovery?:Discovery;staged?:StagedImport}
+type ActiveImport={id:string;signal:AbortController;discovery?:Discovery;staged?:StagedImport;progress?:ImportSnapshot['progress']}
 export function createDataService(options:DataServiceOptions) {
   const {store}=options
   let queue:Promise<unknown>=Promise.resolve(),task:Promise<unknown>=Promise.resolve(),active:ActiveImport|undefined,lastEvent=0
   let notificationTimer:NodeJS.Timeout|undefined
   const write:WriterQueue=operation=> {const next=queue.then(operation);queue=next.catch(()=>{});return next}
   const ready=write(()=>recoverImports(store))
-  const staging=createStagingService({appDataDirectory:options.appDataDirectory,...options.staging,registerArea(jobId,r) {
+  const staging=createStagingService({appDataDirectory:options.appDataDirectory,...options.staging,onProgress(jobId,counts) {
+    metadata(jobId,{discovery:active?.discovery,issues:active?.discovery?.issues ?? [],counts});notify(jobId)
+    options.staging?.onProgress?.(jobId,counts)
+  },registerArea(jobId,r) {
     store.writer.prepare('INSERT INTO import_staging_areas(job_id,path,app_directory,root,identity) VALUES (?,?,?,?,?)').run(BigInt(jobId),r.path,r.appDirectory,r.root,r.identity)
   }})
   function notify(id:string) {
     if(!options.changed) return
-    const snapshot=getSnapshot(store,id),now=Date.now()
+    const snapshot=currentSnapshot(id),now=Date.now()
     if(terminalStates.has(snapshot.status) || now-lastEvent>=200) {
       if(notificationTimer)clearTimeout(notificationTimer);notificationTimer=undefined
       lastEvent=now;try {options.changed(snapshot)} catch { /* Subscribers cannot affect committed data. */ }
     }else if(!notificationTimer) {
       notificationTimer=setTimeout(()=>{notificationTimer=undefined;notify(id)},200-(now-lastEvent));notificationTimer.unref()
     }
+  }
+  function currentSnapshot(id:string):ImportSnapshot {
+    const snapshot=getSnapshot(store,id)
+    return active?.id===id && active.progress ? {...snapshot,progress:active.progress}:snapshot
   }
   function metadata(id:string, value:Record<string,unknown>) {store.writer.prepare('UPDATE import_jobs SET metadata=? WHERE id=?').run(JSON.stringify(value),BigInt(id))}
   async function cleanup(current:ActiveImport) {
@@ -72,9 +79,16 @@ export function createDataService(options:DataServiceOptions) {
       // Reserve synchronously before returning so a second submit cannot start another runner.
       setJobState(store,id,'committing')
       task=(async()=> {
-        try {await runImport(store,current.staged!,plan,current.signal.signal,{...options.runner,write,changed:()=>notify(id)})}
+        try {await runImport(store,current.staged!,plan,current.signal.signal,{...options.runner,write,changed:()=>notify(id),progress:(processed,total)=>{
+          current.progress={processed,total};notify(id);options.runner?.progress?.(processed,total)
+        }})}
         catch {await write(()=>finishJob(store,id,current.signal.signal.aborted,true))}
-        finally {await cleanup(current);if(active===current) active=undefined;notify(id)}
+        finally {
+          try {
+            if(current.progress) await write(()=>store.writer.prepare("UPDATE import_jobs SET metadata=json_set(metadata,'$.progress',json(?)) WHERE id=?").run(JSON.stringify(current.progress),BigInt(id)))
+          }catch { /* 进度写入失败也必须释放任务与暂存文件。 */ }
+          await cleanup(current);if(active===current) active=undefined;notify(id)
+        }
       })()
     }
     return id
@@ -101,7 +115,7 @@ export function createDataService(options:DataServiceOptions) {
         attachments:message.attachments.map(({kind,name,state})=>({kind,name,state})),
       }))}
     },
-    async getImport(jobId:string) {await ready;return getSnapshot(store,jobId)},
+    async getImport(jobId:string) {await ready;return currentSnapshot(jobId)},
     async confirmSelf(conversationId:string,memberId:string|null) {await ready;return write(()=>mutateSelf(store,conversationId,memberId))},
     async deleteConversation(conversationId:string) {await ready;return write(()=>purgeConversation(store,conversationId))},
     async retrySummary(conversationId:string) {await ready;return write(()=>rebuildSummary(store,conversationId))},

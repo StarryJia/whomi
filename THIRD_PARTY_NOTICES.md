@@ -34,7 +34,19 @@ SOFTWARE.
 
 ## 其他依赖
 
+### Cherry Studio 对话与设置模块
+
+本轮采用 [CherryHQ/cherry-studio 固定提交 f19aa72f969b782ed72f81be80976b237ae26605](https://github.com/CherryHQ/cherry-studio/tree/f19aa72f969b782ed72f81be80976b237ae26605) 中服务商菜单、模型编辑与同步、对话提交、模型分组和生成统计的结构与行为，并将其数据读写接入 Whomi 本地接口。逐文件来源、必要改动及兼容边界见[设置来源清单](docs/research/cherry-settings-reuse.md)与[对话来源清单](docs/research/cherry-conversation-reuse.md)。业务模块采用 AGPL-3.0，完整许可证保留在 [electron/vendor/cherry-studio/LICENSE](electron/vendor/cherry-studio/LICENSE)；共用界面包的许可按设置来源清单单独记录。没有将整个 Cherry 应用、云服务或其私有数据迁入 Whomi。
+
+新增的 Radix Context Menu、Dropdown Menu、Popover 和 Select 按安装包声明的 MIT 许可提供，实际版本以锁文件为准。本地安装包同时附上 Cherry 许可证和迁入清单。
+
+后续文本协议映射与模型目录交互仍对照同一固定版本。协议映射文件为 `src/shared/model-protocol.ts`，原生请求使用已安装的 Pi 软件开发工具包；准确来源、地址兼容规则与界面差异见[协议接入](docs/research/cherry-protocol-reuse.md)及[模型目录选择](docs/research/cherry-catalog-selection.md)。
+
 ### ChatLab 会话解析模块
+
+自动追加同时参考 [ChatLab 提交 bf8d5ac77443512b9973ff3a236f258424202bbc](https://github.com/ChatLab/ChatLab/tree/bf8d5ac77443512b9973ff3a236f258424202bbc) 的可靠身份与连续消息匹配机制；该版本根许可证同为 AGPL-3.0。Whomi 的来源指纹、冲突排除、歧义新建和逐条去重适配见[自动导入来源记录](docs/research/whomi-auto-import-reuse.md)。
+
+会话内多条 AI 对话参考同一 ChatLab 版本的历史列表与按原始会话保存的规则；Whomi 的数据库迁移、线程隔离与本地草稿适配见[AI 对话来源记录](docs/research/chatlab-ai-thread-reuse.md)。
 
 本地导入后端复用 [ChatLab/ChatLab 固定提交 f19beeadda27bd57eedc1bfbe75e7ed1b9e86833](https://github.com/ChatLab/ChatLab/tree/f19beeadda27bd57eedc1bfbe75e7ed1b9e86833) 的 14 个格式模块与必要工具、类型。原始代码按 GNU Affero General Public License v3（AGPL-3.0）提供，完整原文保存在 [electron/vendor/chatlab-parser/LICENSE](electron/vendor/chatlab-parser/LICENSE)，逐文件来源、原始摘要及本地修改见 [UPSTREAM.md](electron/vendor/chatlab-parser/UPSTREAM.md)。没有复制上游测试样本、原生加速或桌面业务代码。
 
@@ -57,3 +69,6 @@ SOFTWARE.
 本轮会话后台使用 [Pi](https://github.com/earendil-works/pi) 的完整 `@earendil-works/pi-coding-agent@1.4.0` 发布包，安装包元数据声明为 MIT。模型适配、Agent 会话和原生历史复用该包；本项目自行维护业务权限、任务和统计归属。锁定依赖及传递依赖见 `package-lock.json`；仅在应用专用后台进程运行，没有把上游终端界面代码复制到本项目源文件。
 
 React、Vite、Radix、Lucide 等运行和开发依赖的实际版本见 `package-lock.json`，各自许可按安装包声明提供。本文件不替代各依赖的许可声明。
+## Cherry MarkdownCore
+
+会话回答排版复用 Cherry Studio 界面包 packages/ui 的 MarkdownCore 及内部转换插件，固定提交 f19aa72f969b782ed72f81be80976b237ae26605。该包声明 MIT，作者 Cherry Studio；源文件、许可和本地适配记录位于 src/vendor/cherry-markdown。Streamdown 2.5.0、remend 1.3.0 与其依赖由包管理器固定。模型署名和复制反馈沿用既有 Cherry 业务模块的 AGPL-3.0 来源约定。

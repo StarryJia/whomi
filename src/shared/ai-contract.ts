@@ -1,5 +1,7 @@
-export type AiUsage = { inputTokens?: number; outputTokens?: number; cacheReadTokens?: number; cacheWriteTokens?: number; outputTokensPerSecond?: number; firstTokenMs?: number; durationMs?: number; incomplete?: boolean }
-export type AiModel = { id: string; label: string; model: string; baseUrl: string; contextWindow: number; maxTokens: number; version: number; enabled: boolean; hasCredential: boolean }
+import type { ModelProtocol } from './model-protocol'
+
+export type AiUsage = { inputTokens?: number; totalInputTokens?: number; outputTokens?: number; cacheReadTokens?: number; cacheWriteTokens?: number; outputTokensPerSecond?: number; firstTokenMs?: number; durationMs?: number; startedAt?: number; completedAt?: number; incomplete?: boolean }
+export type AiModel = { id: string; label: string; model: string; baseUrl: string; protocol?: ModelProtocol; contextWindow: number | null; maxTokens: number | null; maxInputTokens?: number | null; version: number; enabled: boolean; hasCredential: boolean }
 export type SaveAiModel = Omit<AiModel, 'version' | 'hasCredential'> & { apiKey?: string }
 export type AiSkill = { id: string; label: string; version: string }
 export type AiState = 'queued' | 'running' | 'summarizing' | 'completed' | 'stopped' | 'failed' | 'interrupted'
@@ -7,8 +9,10 @@ export type AiObservation = { text: string; evidenceMessageIds: string[]; limita
 export type AiReport = { summary: string; observations: AiObservation[]; limitations: string }
 export type AnalysisPreparation = { token: string; conversationId: string; title: string; selfName: string; totalMessages: number; analyzableMessages: number; snapshotMaxId: string; expiresAt: number; model: AiModel }
 export type AnalysisTask = { id: string; conversationId: string; modelId: string; state: AiState; analyzedMessages: number; totalMessages: number; skippedMessages: number; usage: AiUsage; error?: string; report?: AiReport; valid: boolean; eventSequence: number }
-export type AiTurn = { id: string; threadId: string; requestId: string; prompt: string; referenceIds: string[]; modelId: string; skillId?: string; text: string; state: AiState; attempt: number; usage: AiUsage; error?: string; eventSequence: number }
-export type AiThread = { id: string; conversationId: string; turns: AiTurn[] }
+export type AiModelIdentity = Pick<AiModel, 'id' | 'version' | 'label' | 'model'>
+export type AiTurn = { id: string; threadId: string; requestId: string; prompt: string; referenceIds: string[]; modelId: string; modelIdentity?: AiModelIdentity; skillId?: string; text: string; state: AiState; attempt: number; usage: AiUsage; error?: string; eventSequence: number }
+export type AiThreadSummary = { id: string; conversationId: string; title: string; createdAtMs: number; updatedAtMs: number }
+export type AiThread = AiThreadSummary & { turns: AiTurn[] }
 export type AiEvent = { kind: 'analysis'; snapshot: AnalysisTask } | { kind: 'turn'; snapshot: AiTurn }
 export type AiMethods = {
   listModels(): Promise<AiModel[]>
@@ -23,6 +27,8 @@ export type AiMethods = {
   continueAnalysis(taskId: string): Promise<AnalysisTask>
   getReport(taskId: string): Promise<AiReport>
   openThread(conversationId: string): Promise<AiThread>
+  listThreads(conversationId: string): Promise<AiThreadSummary[]>
+  createThread(conversationId: string): Promise<AiThread>
   getThread(threadId: string): Promise<AiThread>
   sendTurn(input: { threadId: string; requestId: string; prompt: string; referenceIds: string[]; modelId: string; skillId?: string }): Promise<AiTurn>
   retryTurn(turnId: string): Promise<AiTurn>

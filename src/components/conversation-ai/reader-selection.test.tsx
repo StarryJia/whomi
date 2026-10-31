@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import { ConversationReader } from '../conversations'
@@ -20,6 +20,7 @@ describe('阅读与消息选择模式', () => {
     expect(screen.queryByRole('button', { name: '1 条引用' })).not.toBeInTheDocument()
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
     expect(document.querySelectorAll('.message[tabindex="0"]')).toHaveLength(0)
+    await user.click(screen.getByRole('button', { name: 'AI 对话' }))
     await user.type(screen.getByRole('textbox'), '保留问题')
     await user.click(screen.getByRole('button', { name: '选择消息' }))
     expect(screen.getByRole('button', { name: '退出选择' })).toHaveAttribute('aria-pressed', 'true')
@@ -51,8 +52,11 @@ describe('阅读与消息选择模式', () => {
     const user = userEvent.setup()
     render(<ConversationReader conversation={await conversation()} />)
     await user.click(screen.getByRole('button', { name: '选择消息' }))
+    await user.click(screen.getByRole('button', { name: 'AI 对话' }))
     await user.type(screen.getByRole('textbox'), '正在编辑的问题{Escape}')
     expect(screen.getByRole('button', { name: '退出选择' })).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByRole('button', { name: 'AI 对话' })).toHaveFocus())
+    await user.click(screen.getByRole('button', { name: 'AI 对话' }))
     expect(screen.getByRole('textbox')).toHaveValue('正在编辑的问题')
   })
 })

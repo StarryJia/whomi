@@ -1,10 +1,15 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowUp, ArrowRight, Check, ChevronDown, FileText, LoaderCircle, MessageCircle, Square, X } from 'lucide-react'
+import { ArrowUp, ArrowRight, Box, Check, ChevronDown, FileText, LoaderCircle, MessageCircle, PanelLeft, Square, SquarePen, X } from 'lucide-react'
+import * as Select from '@radix-ui/react-select'
 import type { ReferenceRange } from './selection'
 import type { AnalysisProgress, AnalysisResult, ConversationAiAdapter, ConversationRequest, GenerationUsage } from './types'
-import type { AnalysisPreparation } from '../../shared/ai-contract'
+import type { AnalysisPreparation, AiThreadSummary } from '../../shared/ai-contract'
 import './workspace.css'
+import { ConversationPopoverOwner, ModelSelector, type ModelOption } from './model-selector'
+import { messagePerformance } from './message-performance'
+import { AnswerContent } from './answer-content'
+import { AnswerActions } from './answer-actions'
 
 const number = (value: number) => new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 1 }).format(value)
 const valid = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && value >= 0
@@ -17,6 +22,7 @@ function Popover({ anchor, label, children, onClose, above = false, onMouseEnter
   id?: string
 }) {
   const body = useRef<HTMLDivElement>(null)
+  const ownerId = useId()
   const [position, setPosition] = useState({ top: 0, left: 0 })
   const close = useRef(onClose)
   close.current = onClose
@@ -37,10 +43,12 @@ function Popover({ anchor, label, children, onClose, above = false, onMouseEnter
     const resize = new ResizeObserver(place)
     if (body.current) resize.observe(body.current)
     const outside = (event: PointerEvent) => {
+      if (event.composedPath().some(node => node instanceof HTMLElement && node.dataset.conversationPopoverOwner === ownerId)) return
       if (!body.current?.contains(event.target as Node) && !anchor.current?.contains(event.target as Node)) close.current()
     }
     const escape = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return
+      if (event.composedPath().some(node => node instanceof HTMLElement && node.dataset.conversationPopoverOwner === ownerId)) return
       event.preventDefault()
       event.stopPropagation()
       close.current()
@@ -55,9 +63,9 @@ function Popover({ anchor, label, children, onClose, above = false, onMouseEnter
       document.removeEventListener('pointerdown', outside)
       document.removeEventListener('keydown', escape, true)
     }
-  }, [anchor, above])
-  return createPortal(<div id={id} ref={body} className="conversation-popover" role="region" aria-label={label}
-    style={position} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>{children}</div>, document.body)
+  }, [anchor, above, ownerId])
+  return createPortal(<ConversationPopoverOwner.Provider value={ownerId}><div id={id} ref={body} className="conversation-popover" role="region" aria-label={label}
+    style={position} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>{children}</div></ConversationPopoverOwner.Provider>, document.body)
 }
 
 function References({ references, onJump, onClear }: {
@@ -98,39 +106,66 @@ function References({ references, onJump, onClear }: {
   </div>
 }
 
-function Usage({ usage }: { usage?: GenerationUsage }) {
+function Usage({ usage, model }: { usage?: GenerationUsage; model?: ModelOption }) {
   const [open, setOpen] = useState(false)
   const anchor = useRef<HTMLButtonElement>(null)
-  if (!usage || !Object.values(usage).some(valid)) return null
+  if (!usage || ![usage.inputTokens, usage.outputTokens, usage.totalInputTokens, usage.durationMs].some(valid)) return null
+  const performance = messagePerformance(usage)
+  const tokens = (value?: number) => valid(value) ? `${number(value)} Tokens` : '—'
+  const speed = (value?: number) => valid(value) ? `${number(value)} Token/秒` : '—'
   return <div className="conversation-usage">
     <button ref={anchor} type="button" aria-expanded={open} onClick={() => setOpen(value => !value)}>
       {valid(usage.outputTokens) && <span>输出 {number(usage.outputTokens)} token</span>}
-      {valid(usage.outputTokensPerSecond) && <span>{number(usage.outputTokensPerSecond)} token/秒</span>}
-      {usage.incomplete && <span>统计不完整</span>}
-      {!valid(usage.outputTokens) && !valid(usage.outputTokensPerSecond) && '生成统计'}
+      {valid(performance.modelTokensPerSecond) && <span>{number(performance.modelTokensPerSecond)} token/秒</span>}
+      {!valid(usage.outputTokens) && !valid(performance.modelTokensPerSecond) && '生成统计'}
       <ChevronDown aria-hidden="true" />
     </button>
     {open && <Popover anchor={anchor} above label="生成统计" onClose={() => setOpen(false)}>
-      <h3>生成统计</h3><dl className="conversation-usage-grid">
-        <div><dt>输入 token</dt><dd>{valid(usage.inputTokens) ? number(usage.inputTokens) : '未提供'}</dd></div>
-        <div><dt>输出 token</dt><dd>{valid(usage.outputTokens) ? number(usage.outputTokens) : '未提供'}</dd></div>
-        <div><dt>生成速度</dt><dd>{valid(usage.outputTokensPerSecond) ? `${number(usage.outputTokensPerSecond)} token/秒` : '未提供'}</dd></div>
-      </dl><p className="conversation-timing">首 token 耗时 {seconds(usage.firstTokenMs)}<br />总耗时 {seconds(usage.durationMs)}</p>
-      <p className="conversation-token-note">token 是模型计量文本的单位。</p>
+      <div className="cherry-usage-identity"><Box aria-hidden="true" /><div><strong>{model?.label ?? '模型'}</strong>
+        {model?.model && <span>{model.model}</span>}</div>
+        <time>{usage.completedAt ? new Date(usage.completedAt).toLocaleString('zh-CN', { hour12: false }) : '—'}</time>
+      </div>
+      <dl className="conversation-usage-grid cherry-usage-primary">
+        <div><dt>输入</dt><dd title={tokens(performance.inputTokens)}>{tokens(performance.inputTokens)}</dd></div>
+        <div><dt>输出</dt><dd title={tokens(usage.outputTokens)}>{tokens(usage.outputTokens)}</dd></div>
+        <div><dt>模型生成 TPS</dt><dd title={speed(performance.modelTokensPerSecond)}>{speed(performance.modelTokensPerSecond)}</dd></div>
+      </dl><dl className="cherry-usage-details">
+        {valid(usage.cacheReadTokens) && usage.cacheReadTokens > 0 && <div><dt>缓存读取</dt><dd>{tokens(usage.cacheReadTokens)}</dd></div>}
+        {valid(usage.cacheWriteTokens) && usage.cacheWriteTokens > 0 && <div><dt>缓存写入</dt><dd>{tokens(usage.cacheWriteTokens)}</dd></div>}
+        <div><dt>未缓存</dt><dd>{tokens(performance.uncachedTokens)}</dd></div>
+        <div><dt>首 Token 耗时</dt><dd>{valid(usage.firstTokenMs) ? seconds(usage.firstTokenMs) : '—'}</dd></div>
+        <div><dt>端到端吞吐</dt><dd>{speed(performance.endToEndTokensPerSecond)}</dd></div>
+        <div><dt>端到端耗时</dt><dd>{valid(usage.durationMs) ? seconds(usage.durationMs) : '—'}</dd></div>
+      </dl>
     </Popover>}
   </div>
 }
 
-type Turn = { id: number | string; request: ConversationRequest; referenceIds?: string[]; text: string; usage?: GenerationUsage; status: 'running' | 'done' | 'failed' | 'stopped'; error?: string; remote?: boolean }
-type Slots = { analysisControl: ReactNode; composer: ReactNode; panelOpen: boolean }
-export function ConversationWorkspace({ conversationId, title, messageCount, references, onClearReferences, onJumpReference, onOpenAnalysisResult, adapter, children }: {
+type Turn = { id: number | string; request: ConversationRequest; modelIdentity?: ModelOption; referenceIds?: string[]; text: string; usage?: GenerationUsage; status: 'running' | 'done' | 'failed' | 'stopped'; error?: string; remote?: boolean }
+const turnModel = (turn: Turn): ModelOption => turn.modelIdentity ?? { id: turn.request.modelId, label: '未知模型' }
+type Slots = { analysisControl: ReactNode; chatControl: ReactNode; composer: ReactNode; panelOpen: boolean }
+export function ConversationWorkspace({ conversationId, messageCount, references, onClearReferences, onRestoreReferences, onJumpReference, onOpenAnalysisResult, adapter, children }: {
   conversationId: string; title: string; messageCount?: number; references: readonly ReferenceRange[]
   onClearReferences: () => void; onJumpReference: (reference: ReferenceRange) => void
+  onRestoreReferences?: (references: readonly ReferenceRange[]) => void
   onOpenAnalysisResult?: (taskId: string) => void
   adapter?: ConversationAiAdapter; children: (slots: Slots) => ReactNode
 }) {
   const [panelOpen, setPanelOpen] = useState(false)
   const [draft, setDraft] = useState('')
+  const [threadId, setThreadId] = useState<string>()
+  const [threads, setThreads] = useState<AiThreadSummary[]>([])
+  const [threadListOpen, setThreadListOpen] = useState(false)
+  const [threadListLoading, setThreadListLoading] = useState(false)
+  const [threadListError, setThreadListError] = useState('')
+  const [threadCreating, setThreadCreating] = useState(false)
+  const [threadListAttempt, setThreadListAttempt] = useState(0)
+  const activeThread = useRef<string | undefined>(undefined)
+  const threadDrafts = useRef(new Map<string, string>())
+  const threadTurns = useRef(new Map<string, Turn[]>())
+  const threadReferences = useRef(new Map<string, readonly ReferenceRange[]>())
+  const threadScrolls = useRef(new Map<string, { top: number; atEnd: boolean }>())
+  const pendingScroll = useRef<{ top: number; atEnd: boolean } | undefined>(undefined)
   const initialModel = (feature: 'analysis' | 'conversation') => adapter?.selectedModels ? adapter.selectedModels[feature] ?? '' : adapter?.models[0]?.id ?? ''
   const [modelId, setModelId] = useState(initialModel('conversation'))
   const [analysisModelId, setAnalysisModelId] = useState(initialModel('analysis'))
@@ -138,6 +173,12 @@ export function ConversationWorkspace({ conversationId, title, messageCount, ref
   const [modelSaving, setModelSaving] = useState<Partial<Record<'analysis' | 'conversation', boolean>>>({})
   const [skillId, setSkillId] = useState('')
   const [turns, setTurns] = useState<Turn[]>([])
+  const latestDraft = useRef(draft)
+  const latestTurns = useRef(turns)
+  const latestReferences = useRef(references)
+  latestDraft.current = draft
+  latestTurns.current = turns
+  latestReferences.current = references
   const [busy, setBusy] = useState(false)
   const [analysisOpen, setAnalysisOpen] = useState(false)
   const [analysisConfirming, setAnalysisConfirming] = useState(true)
@@ -155,6 +196,8 @@ export function ConversationWorkspace({ conversationId, title, messageCount, ref
   const aside = useRef<HTMLElement>(null)
   const textarea = useRef<HTMLTextAreaElement>(null)
   const analysisAnchor = useRef<HTMLButtonElement>(null)
+  const chatAnchor = useRef<HTMLButtonElement>(null)
+  const historyAnchor = useRef<HTMLButtonElement>(null)
   const chatRun = useRef<AbortController | undefined>(undefined)
   const analysisRun = useRef<AbortController | undefined>(undefined)
   const sequence = useRef(0)
@@ -163,6 +206,7 @@ export function ConversationWorkspace({ conversationId, title, messageCount, ref
   const panelId = useId()
   const draftId = useId()
   const scroll = useRef<HTMLDivElement>(null)
+  const transcript = useRef<HTMLDivElement>(null)
   const atEnd = useRef(true)
   const selectedModel = adapter?.models.find(model => model.id === modelId)
   const selectedAnalysisModel = adapter?.models.find(model => model.id === analysisModelId)
@@ -177,7 +221,63 @@ export function ConversationWorkspace({ conversationId, title, messageCount, ref
     } catch (error) { if (selectionGeneration.current[feature] === generation) setModelErrors(current => ({ ...current, [feature]: errorText(error) })) }
     finally { if (selectionGeneration.current[feature] === generation) setModelSaving(current => ({ ...current, [feature]: false })) }
   }
-  const canSend = !!adapter && !!selectedModel && !!draft.trim() && !busy && !restoring && !modelSaving.conversation
+  const canSend = !!adapter && !!selectedModel && !!draft.trim() && !busy && !restoring && !threadCreating && !threadListLoading && !threadListError && !modelSaving.conversation
+
+  function activateThread(id: string, keepDraft = false) {
+    threadDrafts.current.set(activeThread.current ?? 'initial', latestDraft.current)
+    threadTurns.current.set(activeThread.current ?? 'initial', latestTurns.current)
+    threadReferences.current.set(activeThread.current ?? 'initial', latestReferences.current)
+    threadScrolls.current.set(activeThread.current ?? 'initial', { top: scroll.current?.scrollTop ?? 0, atEnd: atEnd.current })
+    chatRun.current?.abort('detach')
+    chatRun.current = undefined
+    activeThread.current = id
+    setThreadId(id)
+    if (!keepDraft) {
+      setDraft(threadDrafts.current.get(id) ?? '')
+      setTurns(threadTurns.current.get(id) ?? [])
+    }
+    setBusy(false)
+    setRestoreError('')
+    pendingScroll.current = threadScrolls.current.get(id) ?? { top: 0, atEnd: true }
+    atEnd.current = pendingScroll.current.atEnd
+    if (!keepDraft) {
+      if (onRestoreReferences) onRestoreReferences(threadReferences.current.get(id) ?? [])
+      else onClearReferences()
+    }
+  }
+  async function newThread(keepDraft = false) {
+    if (!adapter?.createThread || threadCreating) return
+    setThreadCreating(true)
+    setThreadListError('')
+    const origin = activeThread.current
+    try {
+      const created = await adapter.createThread(conversationId)
+      if (!alive.current) return
+      setThreads(items => [created, ...items.filter(item => item.id !== created.id)])
+      if (activeThread.current !== origin) return
+      activateThread(created.id, keepDraft)
+      setThreadListOpen(false)
+      requestAnimationFrame(() => textarea.current?.focus())
+      return created.id
+    } catch (error) { if (keepDraft) throw error; if (alive.current) setThreadListError(errorText(error)) }
+    finally { if (alive.current) setThreadCreating(false) }
+  }
+
+  useEffect(() => {
+    if (!panelOpen || !adapter?.listThreads) return
+    let current = true
+    setThreadListLoading(true)
+    setThreadListError('')
+    void adapter.listThreads(conversationId).then(items => {
+      if (!current) return
+      setThreads(items)
+      if (!activeThread.current && items[0]) {
+        activeThread.current = items[0].id
+        setThreadId(items[0].id)
+      }
+    }, error => { if (current) setThreadListError(errorText(error)) }).finally(() => { if (current) setThreadListLoading(false) })
+    return () => { current = false }
+  }, [adapter, conversationId, panelOpen, threadListAttempt])
 
   useEffect(() => {
     alive.current = true
@@ -204,29 +304,30 @@ export function ConversationWorkspace({ conversationId, title, messageCount, ref
   }, [conversationId, adapter])
   useEffect(() => {
     if (!adapter?.watchThread && !adapter?.restoreThread) return
+    if (adapter.listThreads && !threadId) return
     const controller = new AbortController()
     setRestoring(true)
     setRestoreError('')
     const receive: Parameters<NonNullable<ConversationAiAdapter['watchThread']>>[1] = values => {
-      if (controller.signal.aborted) return
+      if (controller.signal.aborted || (threadId && activeThread.current !== threadId)) return
       setRestoring(false)
       setTurns(previous => {
         const restored: Turn[] = values.map(value => {
           const existing = previous.find(turn => turn.request.requestId === value.requestId)
-          return { id: value.id, remote: true, request: { conversationId, turnId: value.id, referenceIds: value.referenceIds, requestId: value.requestId, prompt: value.prompt,
+          return { id: value.id, remote: true, request: { conversationId, threadId, turnId: value.id, referenceIds: value.referenceIds, requestId: value.requestId, prompt: value.prompt,
             modelId: value.modelId, skillId: value.skillId, references: existing?.request.references ?? [] },
-            referenceIds: value.referenceIds, text: value.text, usage: value.usage, error: value.error,
+            modelIdentity: value.modelIdentity, referenceIds: value.referenceIds, text: value.text, usage: value.usage, error: value.error,
             status: ['queued', 'running', 'summarizing'].includes(value.state) ? 'running' : value.state === 'completed' ? 'done' : value.state === 'stopped' ? 'stopped' : 'failed' }
         })
         return [...restored, ...previous.filter(turn => !turn.remote && !values.some(value => value.requestId === turn.request.requestId))]
       })
       setBusy(values.some(turn => ['queued', 'running', 'summarizing'].includes(turn.state)) || !!chatRun.current)
     }
-    const work = adapter.watchThread ? adapter.watchThread(conversationId, receive, controller.signal)
-      : adapter.restoreThread!(conversationId).then(receive)
+    const work = adapter.watchThread ? adapter.watchThread(conversationId, receive, controller.signal, threadId)
+      : adapter.restoreThread!(conversationId, threadId).then(receive)
     void work.catch(error => { if (!controller.signal.aborted) { setRestoring(false); setRestoreError(errorText(error)) } })
     return () => controller.abort('detach')
-  }, [adapter, conversationId])
+  }, [adapter, conversationId, threadId])
   useEffect(() => {
     if (!adapter?.watchAnalysis) return
     const controller = new AbortController()
@@ -254,7 +355,7 @@ export function ConversationWorkspace({ conversationId, title, messageCount, ref
   }, [analysisOpen, analysisConfirming, adapter, conversationId, analysisModelId, selectedAnalysisModel, prepareAttempt])
   useEffect(() => {
     const query = window.matchMedia('(max-width: 1000px)')
-    const update = () => setNarrow(query.matches)
+    const update = () => { setNarrow(query.matches); if (query.matches) setThreadListOpen(false) }
     query.addEventListener('change', update)
     return () => query.removeEventListener('change', update)
   }, [])
@@ -262,13 +363,24 @@ export function ConversationWorkspace({ conversationId, title, messageCount, ref
     if (panelOpen) textarea.current?.focus({ preventScroll: true })
   }, [panelOpen])
   useLayoutEffect(() => {
-    if (atEnd.current && scroll.current) scroll.current.scrollTop = scroll.current.scrollHeight
+    if (!scroll.current) return
+    if (pendingScroll.current) {
+      scroll.current.scrollTop = pendingScroll.current.atEnd ? scroll.current.scrollHeight : pendingScroll.current.top
+      pendingScroll.current = undefined
+    } else if (atEnd.current) scroll.current.scrollTop = scroll.current.scrollHeight
   }, [turns])
+  useLayoutEffect(() => {
+    // 流式排版异步提交正文，按真实内容高度跟随末尾。
+    const observer = new ResizeObserver(() => {
+      if (atEnd.current && scroll.current) scroll.current.scrollTop = scroll.current.scrollHeight
+    })
+    if (transcript.current) observer.observe(transcript.current)
+    return () => observer.disconnect()
+  }, [])
   function closePanel() {
     setPanelOpen(false)
     requestAnimationFrame(() => {
-      const focusTarget = source.current?.querySelector<HTMLElement>('[data-reopen-conversation], textarea')
-      focusTarget?.focus()
+      chatAnchor.current?.focus()
     })
   }
   function jump(reference: ReferenceRange) {
@@ -285,7 +397,7 @@ export function ConversationWorkspace({ conversationId, title, messageCount, ref
   }
   async function send(retry?: Turn) {
     if (!adapter || busy || chatRun.current || (!retry && !canSend)) return
-    const request: ConversationRequest = retry?.request ?? { requestId: crypto.randomUUID(), conversationId, prompt: draft.trim(),
+    const request: ConversationRequest = retry?.request ?? { requestId: crypto.randomUUID(), conversationId, threadId, prompt: draft.trim(),
       references: references.map(reference => ({ ...reference, messages: [...reference.messages] })), modelId,
       history: turns.filter(turn => turn.status === 'done').flatMap(turn => [
         { role: 'user' as const, text: turn.request.prompt, references: turn.request.references },
@@ -293,13 +405,29 @@ export function ConversationWorkspace({ conversationId, title, messageCount, ref
       ]),
       ...(references.length && adapter.skills.some(skill => skill.id === skillId) ? { skillId } : {}) }
     const id = retry?.id ?? ++sequence.current
+    const modelIdentity = retry ? retry.modelIdentity : selectedModel ? { id: selectedModel.id, label: selectedModel.label, model: selectedModel.model, version: selectedModel.version } : undefined
+    if (!retry) { latestDraft.current = ''; setDraft(''); onClearReferences() }
+    let targetThread = request.threadId
+    try {
+      targetThread ??= adapter.createThread ? await newThread(true) : undefined
+      if (!alive.current || (adapter.createThread && !targetThread)) return
+      request.threadId = targetThread
+    } catch (error) {
+      if (alive.current) setTurns(items => {
+        const failed: Turn = { id, request, modelIdentity, text: '', status: 'failed', error: errorText(error) }
+        return retry ? items.map(item => item.id === id ? failed : item) : [...items, failed]
+      })
+      return
+    }
     const controller = new AbortController()
     chatRun.current = controller
     setPanelOpen(true)
     setBusy(true)
     atEnd.current = true
-    const next: Turn = { id, request, text: '', status: 'running' }
+    const next: Turn = { id, request, modelIdentity, text: '', status: 'running' }
     setTurns(items => retry ? items.map(item => item.id === id ? next : item) : [...items, next])
+    if (targetThread && !retry) setThreads(items => items.map(item => item.id === targetThread && item.title === '新对话'
+      ? { ...item, title: Array.from(request.prompt.replace(/\s+/g, ' ')).slice(0, 40).join('') } : item))
     const active = () => alive.current && chatRun.current === controller && !controller.signal.aborted
     try {
       const result = await adapter.respond(request, { signal: controller.signal, onText: text => {
@@ -307,8 +435,7 @@ export function ConversationWorkspace({ conversationId, title, messageCount, ref
       } })
       if (!active()) return
       if (!result.text.trim()) throw new Error('未收到回答，请重试。')
-      setTurns(items => items.map(item => item.id === id || item.request.requestId === request.requestId ? { ...item, text: result.text, usage: result.usage, status: 'done' } : item))
-      setDraft(value => value.trim() === request.prompt ? '' : value)
+      setTurns(items => items.map(item => item.id === id || item.request.requestId === request.requestId ? { ...item, modelIdentity: result.modelIdentity ?? item.modelIdentity, text: result.text, usage: result.usage, status: 'done' } : item))
     } catch (error) {
       if (active()) setTurns(items => items.map(item => item.id === id ? { ...item, status: 'failed', error: errorText(error) } : item))
     } finally {
@@ -358,13 +485,11 @@ export function ConversationWorkspace({ conversationId, title, messageCount, ref
     </button>
     {analysisOpen && <Popover anchor={analysisAnchor} label="会话分析状态" onClose={() => setAnalysisOpen(false)}>
       <h3>会话分析</h3>
-      {analysisConfirming && !!adapter?.models.length && <label className="conversation-select">分析模型<select aria-label="分析模型" value={selectedAnalysisModel?.id ?? ''} disabled={modelSaving.analysis} aria-describedby={modelErrors.analysis ? `${panelId}-analysis-model-error` : undefined} onChange={event => { void chooseModel('analysis', event.target.value) }}>
-        <option value="">请选择模型</option>{adapter.models.map(model => <option key={model.id} value={model.id}>{model.label}</option>)}
-      </select></label>}
+      {analysisConfirming && !!adapter?.models.length && <ModelSelector label="分析模型" models={adapter.models} value={selectedAnalysisModel?.id ?? ''}
+        disabled={modelSaving.analysis} describedBy={modelErrors.analysis ? `${panelId}-analysis-model-error` : undefined} onSelect={id => { void chooseModel('analysis', id) }} />}
       {analysisConfirming && modelErrors.analysis && <p id={`${panelId}-analysis-model-error`} role="alert" className="conversation-error">{modelErrors.analysis}</p>}
       {analysisConfirming && messageCount === 0 && !adapter?.prepareAnalysis ? <p className="conversation-state-copy">巧妇难为无米之炊，先导入一些聊天记录吧。</p> : analysisConfirming && (!adapter || !selectedAnalysisModel) ? <p className="conversation-state-copy">{adapter?.models.length ? '请选择分析模型。' : '请在设置中添加模型。'}</p> : analysisConfirming ? <>
         {preparing && <p role="status" className="conversation-state-copy">正在核对分析范围…</p>}
-        {hasAnalysisUsage && analysisUsage.incomplete && <p className="conversation-state-copy">统计不完整</p>}
         {analysisError && <p role="alert" className="conversation-error">{analysisError}</p>}
         <p className="conversation-state-copy">根据当前会话的全部聊天内容，生成一份分析报告。</p>
         <div className="conversation-analysis-actions">
@@ -399,51 +524,77 @@ export function ConversationWorkspace({ conversationId, title, messageCount, ref
   </>
   const referenceControl = <References references={references} onJump={jump} onClear={onClearReferences} />
   const editor = <form className="conversation-composer" onSubmit={event => { event.preventDefault(); void send() }}>
-    <div className="conversation-composer-top"><label htmlFor={draftId}>向 AI 提问</label>{referenceControl}</div>
-    <textarea id={draftId} ref={textarea} rows={2} value={draft} readOnly={busy} aria-busy={busy} placeholder="聊聊你的想法…"
+    <label htmlFor={draftId} className="visually-hidden">向 AI 提问</label>
+    {references.length > 0 && <div className="conversation-composer-top">{referenceControl}</div>}
+    <textarea id={draftId} ref={textarea} rows={2} value={draft} placeholder="输入消息…"
       onChange={event => setDraft(event.target.value)} onKeyDown={event => {
         if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); if (canSend) void send() }
       }} />
     <div className="conversation-composer-tools">
-      {references.length > 0 && !!adapter?.skills.length && <label className="conversation-select"><FileText aria-hidden="true" /><span className="visually-hidden">对话技能</span>
-        <select aria-label="对话技能" value={skillId} onChange={event => setSkillId(event.target.value)} disabled={busy}><option value="">默认方式</option>{adapter.skills.map(skill => <option key={skill.id} value={skill.id}>{skill.label}</option>)}</select><ChevronDown aria-hidden="true" /></label>}
-      <div className="conversation-send-tools"><label className="conversation-select"><span className="visually-hidden">对话模型</span>
-        <select aria-label="对话模型" value={selectedModel?.id ?? ''} disabled={busy || !adapter?.models.length || modelSaving.conversation} aria-describedby={modelErrors.conversation ? `${panelId}-conversation-model-error` : undefined} onChange={event => { void chooseModel('conversation', event.target.value) }}>
-          {(!selectedModel || !adapter?.models.length) && <option value="">{adapter?.models.length ? '请选择模型' : '暂无可用模型'}</option>}{adapter?.models.map(model => <option key={model.id} value={model.id}>{model.label}</option>)}
-        </select><ChevronDown aria-hidden="true" /></label>
+      <ModelSelector label="对话模型" models={adapter?.models ?? []} value={selectedModel?.id ?? ''} disabled={busy || modelSaving.conversation}
+        describedBy={modelErrors.conversation ? `${panelId}-conversation-model-error` : undefined} onSelect={id => { void chooseModel('conversation', id) }} />
+      {references.length > 0 && !!adapter?.skills.length && <Select.Root value={skillId || 'default'} onValueChange={value => setSkillId(value === 'default' ? '' : value)} disabled={busy}>
+        <Select.Trigger aria-label="对话技能" className="cherry-model-trigger cherry-skill-trigger"><FileText aria-hidden="true" /><Select.Value /><Select.Icon><ChevronDown /></Select.Icon></Select.Trigger>
+        <Select.Portal><Select.Content className="cherry-skill-menu" position="popper" side="top" sideOffset={8} onEscapeKeyDown={event => event.stopPropagation()}><Select.Viewport>
+          {[{ id: 'default', label: '默认方式' }, ...adapter.skills].map(skill => <Select.Item className="cherry-skill-option" value={skill.id} key={skill.id}><Select.ItemText>{skill.label}</Select.ItemText><Select.ItemIndicator><Check /></Select.ItemIndicator></Select.Item>)}
+        </Select.Viewport></Select.Content></Select.Portal>
+      </Select.Root>}
+      <div className="conversation-send-tools">
         {busy ? <button type="button" className="conversation-send" aria-label="停止回答" onClick={stopChat}><Square aria-hidden="true" /></button>
-          : <button type="submit" className="conversation-send" aria-label="发送给 AI" disabled={!canSend}><ArrowUp aria-hidden="true" /></button>}
+          : <button type="submit" className="conversation-send" aria-label="发送给 AI" disabled={!canSend}>{threadCreating ? <LoaderCircle className="conversation-working" aria-hidden="true" /> : <ArrowUp aria-hidden="true" />}</button>}
       </div>
     </div>
     {modelErrors.conversation && <p id={`${panelId}-conversation-model-error`} role="alert" className="conversation-error">{modelErrors.conversation}</p>}
   </form>
-  const composer = <div className="conversation-source-composer">{panelOpen ? <div className="conversation-composer-handoff">
-    {referenceControl}<button type="button" data-reopen-conversation onClick={() => textarea.current?.focus()}><span>在右侧继续对话</span><ArrowRight aria-hidden="true" /></button>
-  </div> : <>{turns.length > 0 && <button type="button" data-reopen-conversation className="conversation-reopen" onClick={() => setPanelOpen(true)}><MessageCircle aria-hidden="true" />继续 AI 对话</button>}{editor}</>}</div>
+  const chatControl = <button ref={chatAnchor} type="button" className="conversation-analysis-trigger conversation-chat-trigger" aria-expanded={panelOpen} aria-controls={panelId}
+    aria-label="AI 对话" title="AI 对话" onClick={() => setPanelOpen(true)}><MessageCircle aria-hidden="true" /><span>AI 对话</span></button>
   return <div className={`conversation-workspace${panelOpen ? ' has-ai-panel' : ''}`}>
-    <div ref={source} className="conversation-source" inert={panelOpen && narrow}>{children({ analysisControl, composer, panelOpen })}</div>
+    <div ref={source} className="conversation-source" inert={panelOpen && narrow}>{children({ analysisControl, chatControl, composer: null, panelOpen })}</div>
     <aside ref={aside} id={panelId} className="conversation-ai-panel" aria-label="AI 对话" role="complementary"
       inert={!panelOpen} aria-hidden={!panelOpen} onKeyDown={event => {
-        if (event.key === 'Escape') { event.preventDefault(); closePanel() }
+        if (event.key === 'Escape') {
+          event.preventDefault()
+          if (threadListOpen) { setThreadListOpen(false); historyAnchor.current?.focus() }
+          else closePanel()
+        }
       }}>
-      <header className="conversation-ai-header"><div><h2>AI 对话</h2><p>{title}</p></div><button type="button" className="conversation-icon-button" aria-label="关闭 AI 对话" onClick={closePanel}><X aria-hidden="true" /></button></header>
+      <header className="conversation-ai-header"><button ref={historyAnchor} type="button" className="conversation-icon-button" aria-label={threadListOpen ? '收起对话列表' : '显示对话列表'} aria-expanded={threadListOpen} onClick={() => setThreadListOpen(value => !value)}><PanelLeft aria-hidden="true" /></button>
+        <h2>AI 对话</h2><button type="button" className="conversation-icon-button" aria-label="新建 AI 对话" title="新建 AI 对话" disabled={!adapter?.createThread || threadCreating || threadListLoading} onClick={() => { void newThread() }}><SquarePen aria-hidden="true" /></button>
+        <button type="button" className="conversation-icon-button" aria-label="关闭 AI 对话" onClick={closePanel}><X aria-hidden="true" /></button></header>
+      <div className="conversation-ai-body">
+      {threadListOpen && <button type="button" className="conversation-thread-scrim" aria-label="关闭对话列表" tabIndex={-1} onClick={() => { setThreadListOpen(false); historyAnchor.current?.focus() }} />}
+      {threadListOpen && <nav className="conversation-thread-list" aria-label="AI 对话列表">
+        {threads.map(thread => <button type="button" key={thread.id} title={thread.title} disabled={threadCreating} aria-current={thread.id === threadId ? 'true' : undefined} onClick={() => {
+          if (thread.id !== threadId) activateThread(thread.id)
+          setThreadListOpen(false)
+          historyAnchor.current?.focus()
+        }}><MessageCircle aria-hidden="true" /><span>{thread.title}</span></button>)}
+        {!threads.length && !threadListLoading && <p className="conversation-state-copy">暂无对话</p>}
+      </nav>}
+      <div className="conversation-thread-content" inert={threadListOpen}>
+      {threadListError && <div className="conversation-thread-error" role="alert"><p>{threadListError}</p><button type="button" className="conversation-text-button" onClick={() => setThreadListAttempt(value => value + 1)}>重新加载对话</button></div>}
       <div ref={scroll} className="conversation-ai-timeline" role="log" aria-label="AI 对话记录" aria-live="polite" onScroll={() => {
         if (scroll.current) atEnd.current = scroll.current.scrollHeight - scroll.current.scrollTop - scroll.current.clientHeight < 64
       }}>
+        <div ref={transcript}>
         {restoring && <p role="status" className="conversation-state-copy">正在恢复对话…</p>}
         {restoreError && <p role="alert" className="conversation-error">{restoreError}</p>}
-        {turns.map(turn => <div className="conversation-turn" key={turn.id}>
+        {!turns.length && !restoring && !threadListLoading && <div className="conversation-chat-empty"><MessageCircle aria-hidden="true" /><p>开始新对话</p></div>}
+        {turns.map(turn => <div className="conversation-turn" key={turn.request.requestId ?? turn.id}>
           <div className="conversation-user-turn"><p>{turn.request.prompt}</p><References references={turn.request.references} onJump={jump} />
             {!turn.request.references.length && !!turn.referenceIds?.length && <span className="conversation-state-copy">{turn.referenceIds.length} 条参考消息</span>}</div>
-          <div className="conversation-assistant-turn"><div className="conversation-answer-label"><MessageCircle aria-hidden="true" /><strong>AI</strong>{turn.status === 'running' && <span>正在回答…</span>}</div>
-            {turn.text && <p className="conversation-answer-text">{turn.text}</p>}
+          <div className="conversation-assistant-turn"><div className="conversation-answer-label"><MessageCircle aria-hidden="true" /><strong title={[turnModel(turn).label, turnModel(turn).model].filter(Boolean).join(' | ')}>{turnModel(turn).label}</strong>{turn.status === 'running' && <span>正在回答…</span>}</div>
+            {turn.text && <AnswerContent id={turn.request.requestId ?? String(turn.id)} text={turn.text} status={turn.status} />}
             {turn.status === 'failed' && <div role="alert"><p className="conversation-error">{turn.error}</p><button type="button" className="conversation-text-button" disabled={busy} onClick={() => { void send(turn) }}>重试回答</button></div>}
             {turn.status === 'stopped' && <p className="conversation-state-copy">已停止回答。</p>}
-            <Usage usage={turn.usage} />
+            <div className="conversation-answer-footer"><AnswerActions text={turn.text} available={turn.status !== 'running'} />
+              <Usage usage={turn.usage} model={turnModel(turn)} /></div>
           </div>
         </div>)}
+        </div>
       </div>
       {panelOpen && <div className="conversation-panel-composer">{editor}</div>}
+      </div></div>
     </aside>
   </div>
 }

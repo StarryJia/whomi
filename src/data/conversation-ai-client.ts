@@ -23,6 +23,11 @@ export async function createConversationAiClient(api: AiApi, settings?: Settings
     }
     return thread
   }
+  async function selectedThread(conversationId: string, threadId?: string) {
+    const thread = threadId ? await api.getThread(threadId) : await open(conversationId)
+    if (thread.conversationId !== conversationId) throw new Error('请选择当前会话中的对话。')
+    return thread
+  }
 
   function observe<T extends AiTurn | AnalysisTask>(initial: T, signal: AbortSignal, kind: AiEvent['kind'],
     read: () => Promise<T>, stop: () => Promise<unknown>, update: (snapshot: T) => void): Promise<T> {
@@ -68,18 +73,27 @@ export async function createConversationAiClient(api: AiApi, settings?: Settings
       if (id === null) delete selectedModels[feature]
       else selectedModels[feature] = id
     } } : {}),
-    models: models.filter(model => model.enabled).map(({ id, label }) => ({ id, label })),
+    models: models.filter(model => model.enabled).flatMap(model => {
+      const configured = preferences?.models.find(item => item.id === model.id)
+      const provider = preferences?.providers.find(item => item.id === configured?.providerId)
+      if (provider && !provider.enabled) return []
+      return [{ id: model.id, label: model.label, model: model.model, version: model.version,
+        ...(configured?.group ? { group: configured.group } : {}),
+        ...(provider ? { providerId: provider.id, providerName: provider.name, ...(provider.image ? { providerImage: provider.image } : {}) } : {}) }]
+    }),
     skills: skills.map(({ id, label }) => ({ id, label })),
     async stopTurn(id) { await api.stopTurn(id) },
     async stopAnalysis(id) { await api.stopAnalysis(id) },
     prepareAnalysis: request => api.prepareAnalysis(request),
-    async restoreThread(conversationId) {
-      const thread = await open(conversationId)
+    listThreads: conversationId => api.listThreads(conversationId),
+    createThread: conversationId => api.createThread(conversationId),
+    async restoreThread(conversationId, threadId) {
+      const thread = await selectedThread(conversationId, threadId)
       return (await api.getThread(thread.id)).turns.map(restore)
     },
-    async watchThread(conversationId, onChange, signal) {
+    async watchThread(conversationId, onChange, signal, threadId) {
       check(signal)
-      const thread = await open(conversationId)
+      const thread = await selectedThread(conversationId, threadId)
       check(signal)
       await new Promise<void>((resolve, reject) => {
         let closed = false, timer: ReturnType<typeof setTimeout> | undefined, reading = false
@@ -132,8 +146,12 @@ export async function createConversationAiClient(api: AiApi, settings?: Settings
     },
     async respond(request, { signal, onText }) {
       check(signal)
-      const thread = await open(request.conversationId)
+      const thread = await selectedThread(request.conversationId, request.threadId)
       check(signal)
+      if (request.turnId && !thread.turns.some(turn => turn.id === request.turnId)) {
+        const current = await api.getThread(thread.id)
+        if (!current.turns.some(turn => turn.id === request.turnId)) throw new Error('请选择当前对话中的提问后重试。')
+      }
       let id = request.requestId ?? requestIds.get(request)
       if (!id) { id = requestId(); requestIds.set(request, id) }
       const referenceIds = [...new Set([...request.referenceIds ?? [], ...request.references.flatMap(reference => reference.messages.map(message => message.id))])]
@@ -145,7 +163,7 @@ export async function createConversationAiClient(api: AiApi, settings?: Settings
         return value
       }, () => api.stopTurn(initial.id), value => onText(value.text))
       if (result.state !== 'completed') throw new Error(result.error ?? (result.state === 'stopped' ? '已停止回答。' : '回答中断，请重试。'))
-      return { text: result.text, usage: result.usage }
+      return { text: result.text, usage: result.usage, ...(result.modelIdentity ? { modelIdentity: result.modelIdentity } : {}) }
     },
     async analyze(request, { signal, onProgress }) {
       check(signal)

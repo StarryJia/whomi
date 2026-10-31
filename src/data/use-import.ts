@@ -104,9 +104,9 @@ export function useImport(api?: DesktopApi) {
     } catch (value) { if (valid()) setError(importError(value)) }
     finally { release(); if (valid()) { current.preparing = false; setBusy(false) } }
   }
-  async function run(operation: (jobId: string) => Promise<unknown>) {
+  async function run(operation: (jobId: string) => Promise<unknown>, allowBusy = false) {
     const current = session.current, generation = current.generation, jobId = current.jobId
-    if (!api || !jobId || busy) return
+    if (!api || !jobId || (busy && !allowBusy)) return
     setBusy(true); setError(null)
     try { await operation(jobId); await refresh(generation, jobId) }
     catch (value) { if (current.alive && generation === current.generation) setError(importError(value)) }
@@ -145,6 +145,6 @@ export function useImport(api?: DesktopApi) {
     drop: (files: File[]) => select(() => api!.acceptDroppedFiles(files)),
     stage: (entryIds: string[]) => run(jobId => api!.startImport({ kind: 'stage', jobId, entryIds })),
     commit: (decisions: TargetDecision[]) => run(jobId => api!.startImport({ kind: 'commit', plan: { jobId, decisions } })),
-    cancel: () => run(jobId => api!.cancelImport(jobId)), preview, retrySummary, reset,
+    cancel: () => run(jobId => api!.cancelImport(jobId), true), preview, retrySummary, reset,
   }
 }

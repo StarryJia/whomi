@@ -1,4 +1,5 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { createPortal } from 'react-dom'
 import { ArrowLeft, ChevronRight, Ellipsis, MousePointer2, Plus } from 'lucide-react'
 import clsx from 'clsx'
 import { Tooltip } from './ui/tooltip'
@@ -36,6 +37,30 @@ export function resolveSourceRange(conversations: readonly Conversation[], sourc
 
 function Initial({ name }: { name: string }) {
   return <span className="conversation-avatar" aria-hidden="true">{[...name.trim()][0] || '·'}</span>
+}
+
+function ReaderDialog({ children, busy, onDismiss, returnFocus, labelledBy }: {
+  children: ReactNode
+  busy: boolean
+  onDismiss: () => void
+  returnFocus: RefObject<HTMLButtonElement | null>
+  labelledBy: string
+}) {
+  const dialog = useRef<HTMLDialogElement>(null)
+  useLayoutEffect(() => {
+    const element = dialog.current
+    if (!element) return
+    if (typeof element.showModal === 'function') element.showModal()
+    else element.setAttribute('open', '')
+    return () => {
+      if (typeof element.close === 'function') element.close()
+      returnFocus.current?.focus({ preventScroll: true })
+    }
+  }, [returnFocus])
+  // 原生模态层隔离侧栏和窗口拖拽区域，并提供浏览器焦点约束。
+  return createPortal(<dialog ref={dialog} className="reader-modal-root" aria-modal="true" aria-labelledby={labelledBy}
+    onKeyDown={event => { if (event.key === 'Escape') event.stopPropagation() }}
+    onCancel={event => { event.preventDefault(); if (!busy) onDismiss() }}>{children}</dialog>, document.body)
 }
 
 export function ConversationNavigation({ wide, conversations, activeId, onSelect, onImport, hasMore, loading, error, onLoadMore, onRefresh }: {
@@ -355,8 +380,8 @@ export function ConversationReader({ conversation, range, sourceStatus, onReturn
   }
 
   return <ConversationWorkspace conversationId={conversation.id} title={conversation.title} messageCount={messageCount}
-    references={selection.references} onClearReferences={selection.clear} onJumpReference={reference => { void jumpToReference(reference) }} adapter={aiAdapter}>
-    {({ analysisControl, composer }) => <section className="conversation-reader" aria-labelledby="conversation-title" onKeyDown={event => {
+    references={selection.references} onClearReferences={selection.clear} onRestoreReferences={selection.restore} onJumpReference={reference => { void jumpToReference(reference) }} adapter={aiAdapter}>
+    {({ analysisControl, chatControl, composer }) => <section className="conversation-reader" aria-labelledby="conversation-title" onKeyDown={event => {
       if (event.key !== 'Escape' || event.defaultPrevented || !selectionMode) return
       if ((event.target as HTMLElement).closest('input, textarea, select, [contenteditable="true"]')) return
       event.preventDefault()
@@ -374,6 +399,7 @@ export function ConversationReader({ conversation, range, sourceStatus, onReturn
             <MousePointer2 aria-hidden="true" />
           </button>
           {analysisControl}
+          {chatControl}
           <div className="reader-more-wrapper" ref={moreRef}>
             <button ref={moreButton} className="reader-more-toggle" type="button" aria-label="更多操作"
               title="更多操作" aria-haspopup="menu" aria-expanded={moreOpen} onClick={() => setMoreOpen(open => !open)}>
@@ -390,7 +416,7 @@ export function ConversationReader({ conversation, range, sourceStatus, onReturn
         onClick={() => { void navigateQuote({ targetId: quoteReturnId }) }}><ArrowLeft aria-hidden="true" />返回引用位置</button>}
       {quoteFailure && <p className="reader-source-note" role="alert">未找到原消息，请重试。{' '}
         <button type="button" onClick={() => { void navigateQuote(quoteFailure) }}>重试定位</button></p>}
-      {selectionMode && <p className="reader-selection-hint" role="status">单击选择，长按后拖动或滚轮多选{selection.selectedIds.size > 0 && <span>已选 {selection.selectedIds.size} 条</span>}</p>}
+      {selectionMode && <div className="reader-selection-hint"><span className="reader-selection-instructions">单击选择，长按后拖动或滚轮多选</span>{selection.selectedIds.size > 0 && <><span role="status">已选 {selection.selectedIds.size} 条</span><button type="button" onClick={selection.clear}>取消选择</button></>}</div>}
       {sourceStatus && <p className="reader-source-note" role="status">{sourceStatus === 'available'
         ? '已定位相关交流，可继续阅读前后文。' : sourceStatus === 'loading' ? '正在定位原文…' : '原文不可用，请返回后重试。'}</p>}
       {error && <p className="reader-source-note" role="alert">{error} <button type="button" onClick={onRetry}>重新打开会话</button></p>}
@@ -438,8 +464,9 @@ export function ConversationReader({ conversation, range, sourceStatus, onReturn
     </div>
     {composer}
     {selfModalOpen && (
+      <ReaderDialog busy={selfSaving} onDismiss={() => setSelfModalOpen(false)} returnFocus={moreButton} labelledBy="self-modal-title">
       <div className="reader-modal-overlay" role="presentation" onClick={e => { if (e.target === e.currentTarget && !selfSaving) setSelfModalOpen(false) }}>
-        <div className="reader-modal-card" role="dialog" aria-modal="true" aria-labelledby="self-modal-title">
+        <div className="reader-modal-card">
           <h2 id="self-modal-title">选择本人</h2>
           <p className="reader-modal-description">选择该会话中代表本人的发言成员。设置后，该成员的消息将作为本人发言靠右展示。</p>
           {selfError && <p className="import-error" role="alert">{selfError}</p>}
@@ -498,10 +525,12 @@ export function ConversationReader({ conversation, range, sourceStatus, onReturn
           </div>
         </div>
       </div>
+      </ReaderDialog>
     )}
     {deleteModalOpen && (
+      <ReaderDialog busy={deleteSaving} onDismiss={() => setDeleteModalOpen(false)} returnFocus={moreButton} labelledBy="delete-modal-title">
       <div className="reader-modal-overlay" role="presentation" onClick={e => { if (e.target === e.currentTarget && !deleteSaving) setDeleteModalOpen(false) }}>
-        <div className="reader-modal-card" role="dialog" aria-modal="true" aria-labelledby="delete-modal-title">
+        <div className="reader-modal-card">
           <h2 id="delete-modal-title">删除会话</h2>
           <p className="reader-modal-description">将彻底删除该会话及其全部聊天记录、成员、本人设置、对话记录与分析报告。此操作无法撤销。</p>
           {deleteError && <p className="import-error" role="alert">{deleteError}</p>}
@@ -525,6 +554,7 @@ export function ConversationReader({ conversation, range, sourceStatus, onReturn
           </div>
         </div>
       </div>
+      </ReaderDialog>
     )}
   </section>}
   </ConversationWorkspace>

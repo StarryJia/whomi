@@ -12,6 +12,7 @@ import './settings.css'
 import './model-services.css'
 import './message-processing.css'
 import './about-whomi.css'
+import './cherry-settings.css'
 
 const categories = [{ id: 'models', label: '模型服务', icon: SlidersHorizontal }, { id: 'messages', label: '消息处理', icon: MessageSquare }, { id: 'storage', label: '数据存储', icon: Database }, { id: 'about', label: '关于whomi', icon: Info }] as const
 type Category = typeof categories[number]['id']

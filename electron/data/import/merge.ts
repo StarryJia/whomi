@@ -3,9 +3,10 @@ import type { Candidate, TargetDecision } from '../../../src/shared/import-contr
 import { classifyMessage, resolveTarget, validateResolvedTarget, type ResolvedTarget } from './identity'
 import type { StagedConversation } from './staging'
 import { checkSignal, ImportFailure, importLimits } from './limits'
+import { createFallbackDeduplicator, prepareFallbackLedger } from './message-deduplicator'
 export type CommitResult = { conversationId: string; inserted: number; duplicates: number; summaryChanged: boolean; committedAt: number; candidates: {candidateId:string;inserted:number;duplicates:number}[] }
 /** Trusted backend dependencies only; never accept hooks through IPC. */
-export type CommitDependencies = { afterInsert?(count:number): void; beforeCommit?(): void; afterCommit?(): void }
+export type CommitDependencies = { afterInsert?(count:number): void; beforeCommit?(): void; afterCommit?(): void; progress?(processed:number):void }
 export function targetDecision(target: ResolvedTarget, candidateId = target.candidateId): TargetDecision {
   return { candidateId, target: target.kind === 'new' ? {kind:'new'} : {kind:'existing',conversationId:target.conversationId!}, confirmedAliases: [...target.confirmedAliases], selfMemberKey:target.selfMemberKey }
 }
@@ -20,13 +21,14 @@ export function createCommitter(dependencies: CommitDependencies = {}) {
     if (!staged.candidateIds.length || new Set(staged.candidateIds).size !== staged.candidateIds.length || staged.candidates.length !== staged.candidateIds.length) throw new ImportFailure('INVALID_SELECTION')
     let committed = false, inserted = 0, duplicates = 0, membershipChanged = false
     const repliesToResolve = new Set<bigint>()
+    prepareFallbackLedger(store)
     db.exec('BEGIN IMMEDIATE')
     try {
       if (!db.prepare('SELECT id FROM import_jobs WHERE id=?').get(BigInt(staged.jobId))) throw new ImportFailure('INVALID_JOB')
       const originals = new Map(staged.candidates.map(c => [c.candidateId,c]))
       const first = originals.get(target.candidateId)
       if (!first) throw new ImportFailure('INVALID_CANDIDATE')
-      const decisions = new Map((staged.decisions ?? [targetDecision(target)]).map(d => [d.candidateId,d]))
+      const decisions = new Map(staged.candidates.map(c => [c.candidateId, staged.decisions?.find(d => d.candidateId === c.candidateId) ?? targetDecision(target, c.candidateId)]))
       const resolved = staged.candidates.map(c => {
         const r=resolveTarget(store,c,decisions.get(c.candidateId))
         if (r.status !== 'matched') throw new ImportFailure('TARGET_CONFLICT')
@@ -78,17 +80,23 @@ export function createCommitter(dependencies: CommitDependencies = {}) {
         members.set(lookup,row.id); return row.id
       }
       const insertMessage = db.prepare('INSERT INTO messages(conversation_id,member_id,sender_kind,sender_name,sent_at_ms,time_raw,time_precision,timezone,kind,text,ordinal,source_type,extra) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)')
+      let fallbackDuplicate = createFallbackDeduplicator(store, conversationId,signal), fallbackCandidate = ''
       let batchCount = 0, batchBytes = 0
       for (const record of staged.messages()) {
         checkSignal(signal)
         const {candidateId,message:m,origin:o} = record, t = bound.get(candidateId), c = originals.get(candidateId), result = results.get(candidateId)
         const size=Buffer.byteLength(JSON.stringify(m))
         if(batchCount && (batchCount>=importLimits.batchRecords || batchBytes+size>importLimits.batchBytes)) {
+          dependencies.progress?.(inserted+duplicates)
           await new Promise<void>(resolve=>setImmediate(resolve));checkSignal(signal);batchCount=0;batchBytes=0
         }
         if (!t || !c || !result) throw new ImportFailure('INVALID_CANDIDATE')
-        const classification = classifyMessage(store,t,m,o)
-        if (classification === 'ambiguous') throw new ImportFailure('AMBIGUOUS_MESSAGE')
+        if(fallbackCandidate!==candidateId) {
+          fallbackCandidate=candidateId
+          fallbackDuplicate=createFallbackDeduplicator(store,conversationId,signal)
+        }
+        let classification = m.originalId===null && await fallbackDuplicate(c,m) ? 'duplicate':classifyMessage(store,t,m,o)
+        if (classification === 'ambiguous') classification = 'new'
         if (classification === 'duplicate') {
           result.duplicates++; duplicates++
           if (m.reply?.originalId && m.reply.idNamespace === 'wechat:server-message' && m.originalId && m.idNamespace === 'wechat:server-message') {
@@ -116,8 +124,9 @@ export function createCommitter(dependencies: CommitDependencies = {}) {
           result.inserted++; inserted++; dependencies.afterInsert?.(inserted)
         }
         batchCount++; batchBytes += size
-        if (batchCount >= importLimits.batchRecords || batchBytes >= importLimits.batchBytes) { await new Promise<void>(resolve => setImmediate(resolve)); checkSignal(signal); batchCount=0; batchBytes=0 }
+        if (batchCount >= importLimits.batchRecords || batchBytes >= importLimits.batchBytes) { dependencies.progress?.(inserted+duplicates); await new Promise<void>(resolve => setImmediate(resolve)); checkSignal(signal); batchCount=0; batchBytes=0 }
       }
+      dependencies.progress?.(inserted+duplicates)
       const resolveReply = db.prepare(`UPDATE message_replies SET target_message_id=(SELECT k.message_id FROM message_keys k WHERE k.conversation_id=message_replies.conversation_id AND k.id_namespace=message_replies.id_namespace AND k.original_id=message_replies.original_id), state='resolved'
         WHERE message_id=? AND EXISTS (SELECT 1 FROM message_keys k WHERE k.conversation_id=message_replies.conversation_id AND k.id_namespace=message_replies.id_namespace AND k.original_id=message_replies.original_id)`)
       for (const id of repliesToResolve) resolveReply.run(id)

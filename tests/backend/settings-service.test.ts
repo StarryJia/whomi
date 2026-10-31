@@ -15,6 +15,12 @@ async function setup(fetcher?: typeof fetch, beforeModelChange = async (_ids: st
 }
 const providerInput = { name: '示例服务', baseUrl: 'http://127.0.0.1:1234/v1/', enabled: true }
 
+test('catalog preserves bounded model metadata without copying untrusted credential fields', async () => {
+  const { service } = await setup(async () => Response.json({ data: [{ id: 'alpha', name: '示例模型', context_length: 200000, max_output_tokens: 32768, max_input_tokens: 180000, group: '示例组', api_key: 'never-copy' }] }))
+  const provider = await service.saveProvider(providerInput)
+  expect(await service.syncModels(provider.id)).toEqual([{ id: 'alpha', label: '示例模型', contextWindow: 200000, maxTokens: 32768, maxInputTokens: 180000, group: '示例组' }])
+})
+
 test('sync reads only the saved endpoint with its credential and never persists unselected models', async () => {
   let observed: { url: string; headers: Headers; redirect: RequestRedirect | undefined } | undefined
   const { service, repository } = await setup(async (url, init) => { observed = { url: String(url), headers: new Headers(init?.headers), redirect: init?.redirect }; return Response.json({ data: [{ id: 'example-model', api_key: 'server-secret' }, { id: 'example-model' }, { id: 'other-model' }] }) })

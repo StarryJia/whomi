@@ -48,6 +48,8 @@ button { color: inherit; }
 }
 .app-shell.sidebar-open { --sidebar-width: var(--sidebar-expanded); }
 .desktop-shell { --desktop-caption-width: 140px; }
+:root:has(.desktop-shell) { --desktop-titlebar-height: 36px; }
+body:has(.desktop-shell) .cherry-panel-header { padding-top: calc(var(--desktop-titlebar-height) + 12px); }
 .desktop-shell .sidebar-header {
   -webkit-app-region: drag;
   app-region: drag;

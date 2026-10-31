@@ -20,6 +20,22 @@ async function setup() {
 const providerInput = { name: '示例服务', baseUrl: 'http://127.0.0.1:1234/v1', enabled: true }
 const modelInput = { label: '示例模型', model: 'example-model', contextWindow: 4096, maxTokens: 512, enabled: true }
 
+test('independent maximum input and output metadata remains valid within the context ceiling', async () => {
+  const { settings, ai } = await setup(), provider = await settings.saveProvider(providerInput)
+  const saved = await settings.saveModel({ ...modelInput, providerId: provider.id, contextWindow: 128000, maxTokens: 16000, maxInputTokens: 128000 })
+  expect(settings.get().models[0]).toMatchObject({ contextWindow: 128000, maxTokens: 16000, maxInputTokens: 128000 })
+  expect(ai.modelSecret(saved.id).model.maxInputTokens).toBe(128000)
+})
+
+test('provider notes and model input limit persist without changing encrypted credentials', async () => {
+  const { settings } = await setup()
+  const provider = await settings.saveProvider({ ...providerInput, notes: '示例备注' } as Parameters<typeof settings.saveProvider>[0], 'encrypted-original')
+  const saved = await settings.saveModel({ ...modelInput, providerId: provider.id, group: '示例组', maxInputTokens: 3000 } as Parameters<typeof settings.saveModel>[0])
+  expect(settings.get().providers[0]).toMatchObject({ notes: '示例备注' })
+  expect(settings.get().models[0]).toMatchObject({ id: saved.id, group: '示例组', maxInputTokens: 3000 })
+  expect(settings.providerSecret(provider.id).encryptedKey).toBe('encrypted-original')
+})
+
 test('saved providers, per-feature choices and processing survive restart without exposing encrypted credentials', async () => {
   const { settings, store, temp, write } = await setup()
   const provider = await settings.saveProvider(providerInput, 'encrypted-key')

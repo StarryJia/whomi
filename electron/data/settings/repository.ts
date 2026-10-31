@@ -6,6 +6,7 @@ import type { AiModel } from '../../../src/shared/ai-contract'
 import { defaultProcessing, type ModelFeature, type ProcessingSettings, type Provider, type ProviderInput, type SettingsModel, type SettingsModelInput, type SettingsSnapshot } from '../../../src/shared/settings-contract'
 import { failSettings, settingsId, validateProcessing, validateProvider, validateSettingsModel } from './validation'
 import { localId } from '../../../src/shared/desktop-validation'
+import { defaultModelProtocol } from '../../../src/shared/model-protocol'
 
 type ProviderRow = { data: string; encrypted_key: string | null }
 type ModelRow = { model_id: string; provider_id: string; enabled: bigint; data: string }
@@ -25,10 +26,10 @@ export function createSettingsRepository(store: Store, write: WriterQueue) {
     settingsId(id)
     const row = reader.prepare('SELECT data,encrypted_key FROM settings_providers WHERE id=?').get(id) as ProviderRow | undefined
     if (!row) failSettings('INVALID_PROVIDER', '请重新选择服务商。')
-    return { provider: { ...JSON.parse(row.data) as StoredProvider, hasCredential: row.encrypted_key !== null }, encryptedKey: row.encrypted_key }
+    return { provider: { protocol: defaultModelProtocol, ...JSON.parse(row.data) as StoredProvider, hasCredential: row.encrypted_key !== null }, encryptedKey: row.encrypted_key }
   }
   function modelRows(providerId?: string): ModelRow[] { return reader.prepare(`SELECT s.model_id,s.provider_id,s.enabled,m.data FROM settings_models s JOIN ai_models m ON m.id=s.model_id${providerId === undefined ? '' : ' WHERE s.provider_id=?'} ORDER BY s.model_id`).all(...(providerId === undefined ? [] : [providerId])) as ModelRow[] }
-  function models(providerId?: string): SettingsModel[] { return modelRows(providerId).map(row => ({ ...JSON.parse(row.data) as AiModel, providerId: row.provider_id, enabled: row.enabled === 1n })) }
+  function models(providerId?: string): SettingsModel[] { const metadata = setting<Record<string, Pick<SettingsModel, 'group' | 'maxInputTokens'>>>('modelMetadata', {}); return modelRows(providerId).map(row => ({ protocol: defaultModelProtocol, ...JSON.parse(row.data) as AiModel, ...metadata[row.model_id], providerId: row.provider_id, enabled: row.enabled === 1n })) }
   function model(id: string): SettingsModel { settingsId(id); const value = models().find(item => item.id === id); if (!value) failSettings('INVALID_MODEL', '请重新选择模型。'); return value }
   function idle(ids: string[]) {
     const query = db.prepare("SELECT 1 FROM ai_analysis_tasks WHERE model_id=? AND state IN ('queued','running','summarizing') UNION ALL SELECT 1 FROM ai_turns WHERE model_id=? AND state IN ('queued','running','summarizing') LIMIT 1")
@@ -42,11 +43,11 @@ export function createSettingsRepository(store: Store, write: WriterQueue) {
         if (db.prepare("SELECT 1 FROM app_settings WHERE key='legacyModelsMigrated'").get()) return
         const groups = new Map<string, string>()
         for (const row of db.prepare('SELECT data,encrypted_key FROM ai_models ORDER BY id').all() as ProviderRow[]) {
-          const value = JSON.parse(row.data) as AiModel, group = JSON.stringify([value.baseUrl, row.encrypted_key])
+          const value = JSON.parse(row.data) as AiModel, group = JSON.stringify([value.baseUrl, value.protocol ?? defaultModelProtocol, row.encrypted_key])
           let providerId = groups.get(group)
           if (!providerId) {
             providerId = randomUUID(); groups.set(group, providerId)
-            const provider: StoredProvider = { id: providerId, name: `已导入 · ${new URL(value.baseUrl).host}`, baseUrl: value.baseUrl, enabled: true }
+            const provider: StoredProvider = { id: providerId, name: `已导入 · ${new URL(value.baseUrl).host}`, baseUrl: value.baseUrl, protocol: value.protocol ?? defaultModelProtocol, enabled: true }
             db.prepare('INSERT INTO settings_providers(id,data,encrypted_key) VALUES(?,?,?)').run(providerId, JSON.stringify(provider), row.encrypted_key)
           }
           db.prepare('INSERT INTO settings_models(model_id,provider_id,enabled) VALUES(?,?,?)').run(value.id, providerId, value.enabled ? 1 : 0)
@@ -56,7 +57,7 @@ export function createSettingsRepository(store: Store, write: WriterQueue) {
     },
     get(): SettingsSnapshot {
       const rows = reader.prepare('SELECT data,encrypted_key FROM settings_providers ORDER BY id').all() as ProviderRow[]
-      return { providers: rows.map(row => ({ ...JSON.parse(row.data) as StoredProvider, hasCredential: row.encrypted_key !== null })), models: models(), processing: setting('processing', defaultProcessing), selectedModels: setting('selectedModels', {}), debug: setting('debug', false) }
+      return { providers: rows.map(row => ({ protocol: defaultModelProtocol, ...JSON.parse(row.data) as StoredProvider, hasCredential: row.encrypted_key !== null })), models: models(), processing: setting('processing', defaultProcessing), selectedModels: setting('selectedModels', {}), debug: setting('debug', false) }
     },
     providerSecret,
     async claimProcessing(taskId: string, signature: string): Promise<void> {
@@ -76,11 +77,11 @@ export function createSettingsRepository(store: Store, write: WriterQueue) {
       return write(() => db.transaction(() => {
         const previous = input.id ? providerSecret(input.id) : null, providerId = input.id ?? randomUUID()
         const key = encryptedKey === undefined ? previous?.encryptedKey ?? null : encryptedKey
-        const provider: StoredProvider = { id: providerId, name: input.name.trim(), baseUrl: input.baseUrl.trim().replace(/\/+$/, ''), enabled: input.enabled, ...(input.image === undefined ? {} : { image: input.image }) }
-        const linked = models(providerId), changesModels = previous && (previous.provider.baseUrl !== provider.baseUrl || previous.provider.enabled !== provider.enabled || previous.encryptedKey !== key)
+        const provider: StoredProvider = { id: providerId, name: input.name.trim(), baseUrl: input.baseUrl.trim().replace(/\/+$/, ''), protocol: input.protocol ?? previous?.provider.protocol ?? defaultModelProtocol, enabled: input.enabled, ...(input.image === undefined ? {} : { image: input.image }), ...(input.notes === undefined ? {} : { notes: input.notes }) }
+        const linked = models(providerId), changesModels = previous && (previous.provider.baseUrl !== provider.baseUrl || previous.provider.protocol !== provider.protocol || previous.provider.enabled !== provider.enabled || previous.encryptedKey !== key)
         if (changesModels) idle(linked.map(value => value.id))
         db.prepare('INSERT INTO settings_providers(id,data,encrypted_key) VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data,encrypted_key=excluded.encrypted_key').run(providerId, JSON.stringify(provider), key)
-        if (changesModels) for (const value of linked) saveAiModelVersion(db, { ...value, baseUrl: provider.baseUrl, enabled: provider.enabled && value.enabled }, key)
+        if (changesModels) for (const value of linked) saveAiModelVersion(db, { ...value, baseUrl: provider.baseUrl, protocol: provider.protocol, enabled: provider.enabled && value.enabled }, key)
         return { ...provider, hasCredential: key !== null }
       })())
     },
@@ -100,9 +101,12 @@ export function createSettingsRepository(store: Store, write: WriterQueue) {
         if (previous && previous.providerId !== provider.id) failSettings('INVALID_MODEL')
         if (models(provider.id).some(value => value.id !== input.id && value.model === input.model.trim())) failSettings('DUPLICATE_MODEL', '该模型已添加，请修改已有模型。')
         if (previous) idle([previous.id])
-        const saved = saveAiModelVersion(db, { id: input.id ?? randomUUID(), label: input.label.trim(), model: input.model.trim(), baseUrl: provider.baseUrl, contextWindow: input.contextWindow, maxTokens: input.maxTokens, enabled: provider.enabled && input.enabled }, encryptedKey)
+        const saved = saveAiModelVersion(db, { id: input.id ?? randomUUID(), label: input.label.trim(), model: input.model.trim(), baseUrl: provider.baseUrl, protocol: provider.protocol, contextWindow: input.contextWindow, maxTokens: input.maxTokens, ...(input.maxInputTokens === undefined ? {} : { maxInputTokens: input.maxInputTokens }), enabled: provider.enabled && input.enabled }, encryptedKey)
         db.prepare('INSERT INTO settings_models(model_id,provider_id,enabled) VALUES(?,?,?) ON CONFLICT(model_id) DO UPDATE SET enabled=excluded.enabled').run(saved.id, provider.id, input.enabled ? 1 : 0)
-        return { ...saved, providerId: provider.id, enabled: input.enabled }
+        const metadata = setting<Record<string, Pick<SettingsModel, 'group' | 'maxInputTokens'>>>('modelMetadata', {})
+        metadata[saved.id] = { ...(input.group === undefined ? {} : { group: input.group }), ...(input.maxInputTokens === undefined ? {} : { maxInputTokens: input.maxInputTokens }) }
+        saveSetting('modelMetadata', metadata)
+        return { ...saved, ...metadata[saved.id], providerId: provider.id, enabled: input.enabled }
       })())
     },
     async removeModel(id: string): Promise<void> {

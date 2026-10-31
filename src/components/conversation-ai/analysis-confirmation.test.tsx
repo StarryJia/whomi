@@ -2,10 +2,10 @@ import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { ConversationWorkspace } from './workspace'
-import type { AnalysisResult, ConversationAiAdapter } from './types'
+import type { AnalysisResult, ConversationAiAdapter, GenerationUsage } from './types'
 
 function setupAnalysis(onOpenAnalysisResult?: (taskId: string) => void) {
-  let complete: (result: { taskId: string; usage?: { inputTokens?: number; outputTokens?: number; outputTokensPerSecond?: number } }) => void = () => {}
+  let complete: (result: { taskId: string; usage?: GenerationUsage }) => void = () => {}
   let progress: Parameters<ConversationAiAdapter['analyze']>[1]['onProgress'] = () => {}
   const adapter: ConversationAiAdapter = {
     models: [{ id: 'example-model', label: '示例模型' }], skills: [],
@@ -18,7 +18,7 @@ function setupAnalysis(onOpenAnalysisResult?: (taskId: string) => void) {
   render(<ConversationWorkspace conversationId="example-conversation" title="示例会话" messageCount={7}
     references={[]} onClearReferences={() => {}} onJumpReference={() => {}} adapter={adapter}
     onOpenAnalysisResult={onOpenAnalysisResult}>
-    {({ analysisControl, composer }) => <>{analysisControl}{composer}</>}
+    {({ analysisControl, chatControl }) => <>{analysisControl}{chatControl}</>}
   </ConversationWorkspace>)
   return { adapter, finish: (result: Parameters<typeof complete>[0]) => complete(result), update: (value: Parameters<typeof progress>[0]) => progress(value) }
 }
@@ -52,10 +52,12 @@ describe('会话分析确认与任务用量', () => {
     const stats = screen.getByRole('group', { name: '分析用量' })
     expect(within(stats).getByText('1,200')).toBeInTheDocument()
     expect(within(stats).getByText('180')).toBeInTheDocument()
-    await act(async () => finish({ taskId: 'analysis-example-42', usage: { inputTokens: 2400, outputTokens: 386, outputTokensPerSecond: 58.3 } }))
+    expect(within(stats).getByText('总耗时').nextElementSibling).toHaveTextContent('未提供')
+    await act(async () => finish({ taskId: 'analysis-example-42', usage: { inputTokens: 2400, outputTokens: 386, outputTokensPerSecond: 58.3, durationMs: 2000 } }))
     expect(screen.getByText('分析完成')).toBeInTheDocument()
     expect(within(stats).getByText('2,400')).toBeInTheDocument()
     expect(within(stats).getByText('386')).toBeInTheDocument()
+    expect(within(stats).getByText('总耗时').nextElementSibling).toHaveTextContent('2 秒')
     await user.click(screen.getByRole('button', { name: '查看分析结果' }))
     expect(navigate).toHaveBeenCalledWith('analysis-example-42')
     await user.click(screen.getByRole('button', { name: '重新分析' }))
