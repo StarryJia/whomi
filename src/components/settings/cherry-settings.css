@@ -75,6 +75,10 @@
 .cherry-sync-row { display:flex; align-items:center; gap:8px; min-height:40px; padding:4px 8px; border-radius:6px; }
 .cherry-sync-row:hover { background:var(--hover); }
 .cherry-sync-row[data-added=true] { background:#38834d0d; }
+.cherry-sync-choice { cursor:pointer; }
+.cherry-sync-choice[data-selected=true] { background:var(--pressed); }
+.cherry-panel .cherry-sync-checkbox { width:16px; height:16px; flex:0 0 16px; margin:8px; accent-color:var(--focus); cursor:pointer; }
+.cherry-panel .cherry-sync-checkbox:disabled { cursor:default; }
 .cherry-sync-row .ms-model-description strong,.cherry-sync-row .ms-model-description>span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .cherry-catalog-capacity { color:var(--text-muted); font-size:12px; font-variant-numeric:tabular-nums; }
 @keyframes cherry-panel-enter { from { transform:translateX(100%); } to { transform:translateX(0); } }

@@ -47,7 +47,7 @@ test('existing data and encrypted models survive the packaged upgrade and subseq
     let page = await app.firstWindow()
     await expect(page.locator('main')).toBeVisible()
     const oldInfo = await app.evaluate(({ app }) => ({ version: app.getVersion(), name: app.getName() }))
-    expect(['0.1.2', '0.1.3']).toContain(oldInfo.version)
+    expect(['0.1.2', '0.1.3', '0.1.4']).toContain(oldInfo.version)
     await app.evaluate(async () => globalThis.__whomiRuntimeProbe.request('probe.seed', null))
     const model = await page.evaluate(async baseUrl => {
       if (window.whomi.settings) {
@@ -83,7 +83,7 @@ test('existing data and encrypted models survive the packaged upgrade and subseq
     await page.getByRole('button', { name: '展开会话列表' }).click()
     await page.getByRole('button', { name: '升级验收 · 虚构会话', exact: true }).click()
     await expect(page.locator('.message-text')).toContainText('升级前保存的消息，保留原文。')
-    await page.getByRole('button', { name: '继续 AI 对话', exact: true }).click()
+    await page.getByRole('button', { name: 'AI 对话', exact: true }).click()
     await expect(page.getByText('升级验收合成回答', { exact: true })).toBeVisible()
     await page.screenshot({ path: join(evidence, 'upgrade-conversation-preserved.png') })
     await page.evaluate(async modelId => { const current = await window.whomi.settings.get(); await window.whomi.settings.saveProcessing({ ...current.processing, mergeSeconds: 17, denoise: true }); await window.whomi.settings.selectModel('conversation', modelId); await window.whomi.settings.selectModel('analysis', modelId) }, model.id)

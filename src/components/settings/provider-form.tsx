@@ -1,9 +1,22 @@
 import { useEffect, useId, useRef, useState } from 'react'
-import { Eye, EyeOff } from 'lucide-react'
+import { Check, ChevronDown, Eye, EyeOff } from 'lucide-react'
+import * as Select from '@radix-ui/react-select'
 import type { Provider, ProviderInput } from '../../shared/settings-contract'
+import { defaultModelProtocol, isModelProtocol, modelProtocolLabels, modelProtocols, type ModelProtocol } from '../../shared/model-protocol'
+import './provider-form.css'
+
+export function ProtocolSelect({ value, onChange, disabled = false, id }: { value?: ModelProtocol; onChange: (value: ModelProtocol) => void; disabled?: boolean; id?: string }) {
+  return <Select.Root value={value ?? defaultModelProtocol} onValueChange={value => { if (isModelProtocol(value)) onChange(value) }} disabled={disabled}>
+    <Select.Trigger id={id} className="ms-protocol-trigger" aria-label="连接协议"><Select.Value /><Select.Icon><ChevronDown size={14} /></Select.Icon></Select.Trigger>
+    <Select.Portal><Select.Content className="ms-protocol-menu cherry-context-menu" position="popper" sideOffset={4} onEscapeKeyDown={event => event.stopPropagation()}><Select.Viewport>
+      {modelProtocols.map(protocol => <Select.Item key={protocol} value={protocol} className="cherry-menu-item ms-protocol-option"><Select.ItemText>{modelProtocolLabels[protocol]}</Select.ItemText><Select.ItemIndicator><Check size={14} /></Select.ItemIndicator></Select.Item>)}
+    </Select.Viewport></Select.Content></Select.Portal>
+  </Select.Root>
+}
 
 export function providerErrors(input: ProviderInput) {
   const errors: Record<string, string> = {}
+  if (input.protocol !== undefined && !isModelProtocol(input.protocol)) errors.protocol = '请选择连接协议。'
   if (!input.name.trim()) errors.name = '请输入服务商名称。'
   try {
     const url = new URL(input.baseUrl)
@@ -37,8 +50,8 @@ export function ProviderForm({ draft, provider, errors, onChange, busy }: { draf
   return <fieldset className="ms-form ms-connection settings-fieldset" disabled={busy}>
     <legend className="settings-section-title">连接配置</legend>
     <div className="ms-form-pair"><div className="ms-field"><label htmlFor={`${prefix}-name`}>服务商名称</label><input id={`${prefix}-name`} name="name" value={draft.name} maxLength={100} onChange={event => edit('name', event.target.value)} aria-invalid={!!errors.name} aria-describedby={errors.name ? `${prefix}-name-error` : undefined} />{errors.name && <p id={`${prefix}-name-error`} className="ms-error" role="alert">{errors.name}</p>}</div>
-      <div className="ms-field"><span className="ms-field-label" id={`${prefix}-protocol`}>连接协议</span><p className="ms-static-value" aria-labelledby={`${prefix}-protocol`}>OpenAI Chat Completions 兼容</p></div></div>
-    <div className="ms-field"><label htmlFor={`${prefix}-address`}>接口地址</label><input id={`${prefix}-address`} name="baseUrl" type="url" value={draft.baseUrl} placeholder="https://api.example.com/v1" onChange={event => edit('baseUrl', event.target.value)} aria-invalid={!!errors.baseUrl} aria-describedby={errors.baseUrl ? `${prefix}-address-error` : undefined} />{errors.baseUrl && <p id={`${prefix}-address-error`} className="ms-error" role="alert">{errors.baseUrl}</p>}</div>
+      <div className="ms-field"><label htmlFor={`${prefix}-protocol`}>连接协议</label><ProtocolSelect id={`${prefix}-protocol`} value={draft.protocol} disabled={busy} onChange={value => edit('protocol', value)} />{errors.protocol && <p className="ms-error" role="alert">{errors.protocol}</p>}</div></div>
+    <div className="ms-field"><label htmlFor={`${prefix}-address`}>接口地址</label><input id={`${prefix}-address`} name="baseUrl" type="url" value={draft.baseUrl} placeholder={draft.protocol === 'google-generative-ai' ? 'https://api.example.com/v1beta' : draft.protocol === 'anthropic-messages' ? 'https://api.example.com' : 'https://api.example.com/v1'} onChange={event => edit('baseUrl', event.target.value)} aria-invalid={!!errors.baseUrl} aria-describedby={errors.baseUrl ? `${prefix}-address-error` : undefined} />{errors.baseUrl && <p id={`${prefix}-address-error`} className="ms-error" role="alert">{errors.baseUrl}</p>}</div>
     <div className="ms-field"><label htmlFor={`${prefix}-key`}>{provider?.hasCredential ? '替换密钥' : '密钥'}</label>
       {provider?.hasCredential && <p className="ms-hint">{draft.apiKey === null ? '保存后清除密钥。' : '已保存密钥。'}</p>}
       <div className="settings-key"><input id={`${prefix}-key`} type={showKey ? 'text' : 'password'} autoComplete="off" spellCheck={false} value={draft.apiKey ?? ''} onChange={event => edit('apiKey', event.target.value || undefined)} placeholder={provider?.hasCredential ? '留空保留已存密钥' : '无需认证时可留空'} /><button type="button" className="ms-icon" aria-label={showKey ? '隐藏输入的密钥' : '显示输入的密钥'} onClick={() => setShowKey(value => !value)}>{showKey ? <EyeOff size={18} /> : <Eye size={18} />}</button></div>

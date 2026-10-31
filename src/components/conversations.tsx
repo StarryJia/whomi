@@ -381,7 +381,7 @@ export function ConversationReader({ conversation, range, sourceStatus, onReturn
 
   return <ConversationWorkspace conversationId={conversation.id} title={conversation.title} messageCount={messageCount}
     references={selection.references} onClearReferences={selection.clear} onJumpReference={reference => { void jumpToReference(reference) }} adapter={aiAdapter}>
-    {({ analysisControl, composer }) => <section className="conversation-reader" aria-labelledby="conversation-title" onKeyDown={event => {
+    {({ analysisControl, chatControl, composer }) => <section className="conversation-reader" aria-labelledby="conversation-title" onKeyDown={event => {
       if (event.key !== 'Escape' || event.defaultPrevented || !selectionMode) return
       if ((event.target as HTMLElement).closest('input, textarea, select, [contenteditable="true"]')) return
       event.preventDefault()
@@ -399,6 +399,7 @@ export function ConversationReader({ conversation, range, sourceStatus, onReturn
             <MousePointer2 aria-hidden="true" />
           </button>
           {analysisControl}
+          {chatControl}
           <div className="reader-more-wrapper" ref={moreRef}>
             <button ref={moreButton} className="reader-more-toggle" type="button" aria-label="更多操作"
               title="更多操作" aria-haspopup="menu" aria-expanded={moreOpen} onClick={() => setMoreOpen(open => !open)}>
@@ -415,7 +416,7 @@ export function ConversationReader({ conversation, range, sourceStatus, onReturn
         onClick={() => { void navigateQuote({ targetId: quoteReturnId }) }}><ArrowLeft aria-hidden="true" />返回引用位置</button>}
       {quoteFailure && <p className="reader-source-note" role="alert">未找到原消息，请重试。{' '}
         <button type="button" onClick={() => { void navigateQuote(quoteFailure) }}>重试定位</button></p>}
-      {selectionMode && <p className="reader-selection-hint" role="status">单击选择，长按后拖动或滚轮多选{selection.selectedIds.size > 0 && <span>已选 {selection.selectedIds.size} 条</span>}</p>}
+      {selectionMode && <div className="reader-selection-hint"><span className="reader-selection-instructions">单击选择，长按后拖动或滚轮多选</span>{selection.selectedIds.size > 0 && <><span role="status">已选 {selection.selectedIds.size} 条</span><button type="button" onClick={selection.clear}>取消选择</button></>}</div>}
       {sourceStatus && <p className="reader-source-note" role="status">{sourceStatus === 'available'
         ? '已定位相关交流，可继续阅读前后文。' : sourceStatus === 'loading' ? '正在定位原文…' : '原文不可用，请返回后重试。'}</p>}
       {error && <p className="reader-source-note" role="alert">{error} <button type="button" onClick={onRetry}>重新打开会话</button></p>}

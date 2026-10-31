@@ -15,7 +15,7 @@ function Fixture({ client, initialReferences = [] }: { client: ConversationAiAda
   const [references, setReferences] = useState(initialReferences)
   return <ConversationWorkspace conversationId="example" title="不需要重复的会话名" references={references}
     onClearReferences={() => setReferences([])} onJumpReference={() => {}} adapter={client}>
-    {({ composer }) => <section aria-label="原文区域">{composer}</section>}
+    {({ chatControl }) => <><header>{chatControl}</header><section aria-label="原文区域" /></>}
   </ConversationWorkspace>
 }
 
@@ -27,10 +27,11 @@ describe('Cherry 对话流程接入', () => {
       const [references, setReferences] = useState<ReferenceRange[]>([])
       return <ConversationWorkspace conversationId="example" title="示例会话" references={references} adapter={client}
         onClearReferences={() => setReferences([])} onJumpReference={() => {}}>
-        {({ composer }) => <section><button onClick={() => setReferences([{ id: 'r', messages: [] }])}>引用示例</button>{composer}</section>}
+        {({ chatControl }) => <section><button onClick={() => setReferences([{ id: 'r', messages: [] }])}>引用示例</button>{chatControl}</section>}
       </ConversationWorkspace>
     }
     render(<SkillFixture />)
+    await user.click(screen.getByRole('button', { name: 'AI 对话' }))
     await user.type(screen.getByRole('textbox'), '示例问题')
     await user.click(screen.getByRole('button', { name: '发送给 AI' }))
     await screen.findByText('示例回答')
@@ -46,6 +47,7 @@ describe('Cherry 对话流程接入', () => {
     let finish!: (value: { text: string }) => void
     client.respond = () => new Promise(resolve => { finish = resolve })
     render(<Fixture client={client} />)
+    await user.click(screen.getByRole('button', { name: 'AI 对话' }))
     await user.type(screen.getByRole('textbox', { name: '向 AI 提问' }), '示例问题')
     await user.click(screen.getByRole('button', { name: '发送给 AI' }))
     expect(screen.getByRole('textbox', { name: '向 AI 提问' })).toHaveValue('')
@@ -60,6 +62,7 @@ describe('Cherry 对话流程接入', () => {
     const requests: string[] = []
     client.respond = async request => { requests.push(request.prompt); if (requests.length === 1) throw new Error('连接失败'); return { text: '重试成功' } }
     render(<Fixture client={client} />)
+    await user.click(screen.getByRole('button', { name: 'AI 对话' }))
     await user.type(screen.getByRole('textbox'), '第一条')
     await user.click(screen.getByRole('button', { name: '发送给 AI' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('连接失败')
@@ -76,6 +79,7 @@ describe('Cherry 对话流程接入', () => {
     const user = userEvent.setup(), client = adapter()
     const references = [{ id: 'r', messages: [{ id: '9', conversationId: 'example', senderName: '示例成员', text: '引用正文' }] }] as unknown as ReferenceRange[]
     render(<Fixture client={client} initialReferences={references} />)
+    await user.click(screen.getByRole('button', { name: 'AI 对话' }))
     await user.type(screen.getByRole('textbox'), '引用这个问题')
     await user.click(screen.getByRole('button', { name: '发送给 AI' }))
     await screen.findByText('示例回答')
@@ -88,6 +92,7 @@ describe('Cherry 对话流程接入', () => {
   it('模型菜单按服务商搜索与选择，同名模型仍有明确归属', async () => {
     const user = userEvent.setup(), client = adapter()
     render(<Fixture client={client} />)
+    await user.click(screen.getByRole('button', { name: 'AI 对话' }))
     await user.click(screen.getByRole('combobox', { name: '对话模型' }))
     const search = screen.getByRole('textbox', { name: '搜索模型' })
     await user.type(search, '示例服务 B')
@@ -103,6 +108,7 @@ describe('Cherry 对话流程接入', () => {
     client.respond = async () => ({ text: '统计示例', usage: { inputTokens: 200, cacheReadTokens: 800, outputTokens: 100,
       firstTokenMs: 9000, durationMs: 10000, outputTokensPerSecond: 10 } })
     render(<Fixture client={client} />)
+    await user.click(screen.getByRole('button', { name: 'AI 对话' }))
     await user.type(screen.getByRole('textbox'), '统计问题')
     await user.click(screen.getByRole('button', { name: '发送给 AI' }))
     await user.click(await screen.findByRole('button', { name: /输出 100/ }))

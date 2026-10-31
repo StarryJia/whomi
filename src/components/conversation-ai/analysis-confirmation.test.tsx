@@ -18,7 +18,7 @@ function setupAnalysis(onOpenAnalysisResult?: (taskId: string) => void) {
   render(<ConversationWorkspace conversationId="example-conversation" title="示例会话" messageCount={7}
     references={[]} onClearReferences={() => {}} onJumpReference={() => {}} adapter={adapter}
     onOpenAnalysisResult={onOpenAnalysisResult}>
-    {({ analysisControl, composer }) => <>{analysisControl}{composer}</>}
+    {({ analysisControl, chatControl }) => <>{analysisControl}{chatControl}</>}
   </ConversationWorkspace>)
   return { adapter, finish: (result: Parameters<typeof complete>[0]) => complete(result), update: (value: Parameters<typeof progress>[0]) => progress(value) }
 }

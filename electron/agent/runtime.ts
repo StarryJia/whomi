@@ -5,6 +5,8 @@ import { performance } from 'node:perf_hooks'
 import type { AgentRunInput, AgentRunResult } from './protocol'
 import type { AiUsage } from '../../src/shared/ai-contract'
 import { resolveModelLimits } from '../../src/shared/model-limits'
+import { defaultModelProtocol, isModelProtocol, modelProtocolBaseUrl } from '../../src/shared/model-protocol'
+import { protocolUsage } from './protocol-usage'
 import type { ResourceLoader } from '@earendil-works/pi-coding-agent'
 export type { AgentRunInput, AgentRunResult } from './protocol'
 
@@ -12,12 +14,13 @@ function failure(code: string, action: string) {
   return Object.assign(new Error(action), { code, action })
 }
 function abortError() { return new DOMException('回答已停止。', 'AbortError') }
-function finite(value: unknown): value is number { return typeof value === 'number' && Number.isFinite(value) && value >= 0 }
 
 export class PiRuntime {
   constructor(readonly directory: string) {}
   async run(input: AgentRunInput, options: { signal: AbortSignal; onText: (text: string) => void }): Promise<AgentRunResult> {
     options.signal.throwIfAborted()
+    const api = input.model.protocol ?? defaultModelProtocol
+    if (!isModelProtocol(api)) throw failure('INVALID_MODEL', '请选择连接协议后重试。')
     const { createAgentSession, createExtensionRuntime, ModelRuntime, SettingsManager, SessionManager } = await import('@earendil-works/pi-coding-agent')
     options.signal.throwIfAborted()
     const agentDir = join(this.directory, 'ai-runtime')
@@ -47,8 +50,8 @@ export class PiRuntime {
     })
     const limits = resolveModelLimits(input.model)
     modelRuntime.registerProvider(provider, {
-      baseUrl: input.model.baseUrl,
-      api: 'openai-completions',
+      baseUrl: modelProtocolBaseUrl(input.model.baseUrl, api),
+      api,
       apiKey: 'whomi-runtime-credential',
       models: [{ id: input.model.model, name: input.model.label, reasoning: false, input: ['text'], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: limits.contextWindow, maxTokens: limits.maxTokens }],
     })
@@ -58,7 +61,7 @@ export class PiRuntime {
     if (!input.checkpoint) {
       for (const item of input.history ?? []) {
         if (item.role === 'user') manager.appendMessage({ role: 'user', content: item.text, timestamp: Date.now() })
-        else manager.appendMessage({ role: 'assistant', content: [{ type: 'text', text: item.text }], api: 'openai-completions', provider, model: model.id, usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } }, stopReason: 'stop', timestamp: Date.now() })
+        else manager.appendMessage({ role: 'assistant', content: [{ type: 'text', text: item.text }], api, provider, model: model.id, usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } }, stopReason: 'stop', timestamp: Date.now() })
       }
     }
     const settingsManager = SettingsManager.inMemory({ compaction: { enabled: false }, retry: { enabled: false, provider: { maxRetries: 0 } }, cacheWarming: 'off' })
@@ -79,7 +82,7 @@ export class PiRuntime {
     const { session } = await createAgentSession({ cwd, agentDir, modelRuntime, model, resourceLoader: loader, settingsManager, sessionManager: manager, tools: [], customTools: [], thinkingLevel: 'off' })
     let text = ''
     let firstTokenMs: number | undefined
-    let reported: Record<string, unknown> | undefined
+    let reported: AiUsage = {}
     let final: { input: number; output: number; cacheRead: number; cacheWrite: number } | undefined
     let stopReason: string | undefined
     const started = performance.now()
@@ -87,9 +90,7 @@ export class PiRuntime {
     const previousObserver = session.agent.onProviderStreamEvent
     session.agent.onProviderStreamEvent = async (data, selected) => {
       await previousObserver?.(data, selected)
-      const chunk = data as { usage?: Record<string, unknown>; choices?: { usage?: Record<string, unknown> }[] }
-      const usage = chunk.usage ?? chunk.choices?.[0]?.usage
-      if (usage) reported = { ...reported, ...usage }
+      reported = protocolUsage(api, data, reported)
     }
     const unsubscribe = session.subscribe(event => {
       if (event.type === 'message_update' && event.assistantMessageEvent.type === 'text_delta') {
@@ -107,21 +108,10 @@ export class PiRuntime {
     const abort = () => { void session.abort() }
     const usageSnapshot = (): AiUsage => {
       const durationMs = performance.now() - started
-      const inputKnown = finite(reported?.prompt_tokens)
-      const outputKnown = finite(reported?.completion_tokens)
-      const details = reported?.prompt_tokens_details as Record<string, unknown> | undefined
-      const cached = details?.cached_tokens ?? reported?.prompt_cache_hit_tokens ?? reported?.cached_tokens
-      const cacheKnown = finite(cached)
-      const cacheWritten = details?.cache_write_tokens
-      const cacheWriteKnown = finite(cacheWritten)
-      const inputTokens = final?.input ?? (inputKnown ? Math.max(0, (reported!.prompt_tokens as number) - (cacheKnown ? cached : 0) - (cacheWriteKnown ? cacheWritten : 0)) : undefined)
-      const outputTokens = final?.output ?? (outputKnown ? reported!.completion_tokens as number : undefined)
       return {
-        ...(inputKnown ? { inputTokens, totalInputTokens: reported!.prompt_tokens as number } : {}),
-        ...(outputKnown ? { outputTokens, outputTokensPerSecond: outputTokens! / Math.max(durationMs / 1000, 0.001) } : {}),
-        ...(cacheKnown ? { cacheReadTokens: final?.cacheRead ?? cached } : {}),
-        ...(cacheWriteKnown ? { cacheWriteTokens: final?.cacheWrite ?? cacheWritten } : {}),
-        durationMs, firstTokenMs, startedAt, completedAt: Date.now(), incomplete: !inputKnown || !outputKnown,
+        ...reported,
+        ...(reported.outputTokens === undefined ? {} : { outputTokensPerSecond: reported.outputTokens / Math.max(durationMs / 1000, 0.001) }),
+        durationMs, firstTokenMs, startedAt, completedAt: Date.now(), incomplete: reported.inputTokens === undefined || reported.outputTokens === undefined,
       }
     }
     options.signal.addEventListener('abort', abort, { once: true })

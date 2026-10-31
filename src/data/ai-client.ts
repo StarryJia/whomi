@@ -11,7 +11,7 @@ export function createAiClient(transport: { invoke(method: keyof AiMethods, args
     validateAiResult(method, response.value)
     return response.value
   }
-  const names = ['listModels', 'saveModel', 'testModel', 'listSkills', 'prepareAnalysis', 'confirmAnalysis', 'getAnalysis', 'listAnalyses', 'stopAnalysis', 'continueAnalysis', 'getReport', 'openThread', 'getThread', 'sendTurn', 'retryTurn', 'stopTurn'] as const
+  const names = ['listModels', 'saveModel', 'testModel', 'listSkills', 'prepareAnalysis', 'confirmAnalysis', 'getAnalysis', 'listAnalyses', 'stopAnalysis', 'continueAnalysis', 'getReport', 'openThread', 'listThreads', 'createThread', 'getThread', 'sendTurn', 'retryTurn', 'stopTurn'] as const
   const methods = Object.fromEntries(names.map(name => [name, (...args: unknown[]) => call(name, ...args)])) as AiMethods
   return Object.freeze({ ...methods, onEvent(listener) { let active = true; const off = transport.onEvent(event => { if (!active) return; try { validateAiEvent(event) } catch { return }; listener(event) }); return () => { active = false; off() } } })
 }

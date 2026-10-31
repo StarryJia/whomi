@@ -16,7 +16,7 @@ function fakeAdapter(): ConversationAiAdapter {
 function Workspace({ adapter }: { adapter?: ConversationAiAdapter }) {
   return <ConversationWorkspace conversationId="c" title="虚构会话" messageCount={7} references={[]}
     onClearReferences={vi.fn()} onJumpReference={vi.fn()} adapter={adapter}>
-    {({ analysisControl, composer }) => <section>{analysisControl}{composer}</section>}
+    {({ analysisControl, chatControl }) => <section>{analysisControl}{chatControl}</section>}
   </ConversationWorkspace>
 }
 
@@ -35,6 +35,7 @@ describe('对话与后台分析', () => {
     const client = await createConversationAiClient(api, settings)
     const adapter: ConversationAiAdapter = { ...fakeAdapter(), models: client.models, selectedModels: client.selectedModels, selectModel: client.selectModel }
     const view = render(<Workspace key="first" adapter={adapter} />)
+    await user.click(screen.getByRole('button', { name: 'AI 对话' }))
     await chooseDisplayedModel(user, '对话模型', '对话专用')
     await user.click(screen.getByRole('button', { name: '会话分析' }))
     await chooseDisplayedModel(user, '分析模型', '分析专用')
@@ -42,6 +43,7 @@ describe('对话与后台分析', () => {
     expect(selectModel).toHaveBeenNthCalledWith(2, 'analysis', 'analysis')
     expect(screen.getByRole('combobox', { name: '对话模型' })).toHaveAttribute('title', '对话专用')
     view.rerender(<Workspace key="next" adapter={adapter} />)
+    await user.click(screen.getByRole('button', { name: 'AI 对话' }))
     expect(screen.getByRole('combobox', { name: '对话模型' })).toHaveAttribute('title', '对话专用')
     await user.type(screen.getByRole('textbox'), '设置返回后继续编辑的草稿')
     const refreshed = { ...adapter, models: [{ id: 'analysis', label: '分析专用' }], selectedModels: { ...preferences.selectedModels } }
@@ -56,17 +58,18 @@ describe('对话与后台分析', () => {
     expect(selectModel).toHaveBeenCalledTimes(2)
   })
 
-  it('选模保存拒绝时保留原选择，并在尚未打开对话的编辑器与分析选择旁显示错误', async () => {
+  it('选模保存拒绝时保留原选择，并在对话编辑器与分析选择旁显示错误', async () => {
     const user = userEvent.setup(), adapter = fakeAdapter()
     adapter.models = [{ id: 'old', label: '原模型' }, { id: 'next', label: '另一个模型' }]
     adapter.selectedModels = { conversation: 'old' }
     adapter.selectModel = vi.fn().mockRejectedValueOnce(new Error('对话模型保存失败，请重试。')).mockRejectedValueOnce(new Error('分析模型保存失败，请重试。')).mockResolvedValue(undefined)
     render(<Workspace adapter={adapter} />)
+    await user.click(screen.getByRole('button', { name: 'AI 对话' }))
     const form = screen.getByRole('textbox').closest('form')!
     await chooseDisplayedModel(user, '对话模型', '另一个模型')
     expect(await within(form).findByRole('alert')).toHaveTextContent('对话模型保存失败，请重试。')
     expect(screen.getByRole('combobox', { name: '对话模型' })).toHaveAttribute('title', '原模型')
-    expect(screen.queryByRole('complementary', { name: 'AI 对话' })).not.toBeInTheDocument()
+    expect(screen.getByRole('complementary', { name: 'AI 对话' })).toBeVisible()
     await user.click(screen.getByRole('button', { name: '会话分析' }))
     await chooseDisplayedModel(user, '分析模型', '另一个模型')
     expect(await within(screen.getByRole('region', { name: '会话分析状态' })).findByRole('alert')).toHaveTextContent('分析模型保存失败，请重试。')
@@ -85,13 +88,15 @@ describe('对话与后台分析', () => {
     await user.click(await screen.findByRole('button', { name: '确认分析' }))
     expect(adapter.analyze).toHaveBeenCalledWith(expect.objectContaining({ preparationToken: 'verified' }), expect.anything())
   })
-  it('部分请求缺少用量时明确标记统计不完整', async () => {
+  it('部分请求缺少用量时保留已知值，不显示统计不完整提示', async () => {
     const user = userEvent.setup(), adapter = fakeAdapter()
     adapter.respond = async () => ({ text: '可读的回答', usage: { outputTokens: 100, incomplete: true } })
     render(<Workspace adapter={adapter} />)
+    await user.click(screen.getByRole('button', { name: 'AI 对话' }))
     await user.type(screen.getByRole('textbox'), '我的问题')
     await user.click(screen.getByRole('button', { name: '发送给 AI' }))
-    expect(await screen.findByText('统计不完整')).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /输出 100 token/ })).toBeInTheDocument()
+    expect(screen.queryByText('统计不完整')).not.toBeInTheDocument()
   })
   it('后端核对完成才允许确认，确认界面只显示报告范围；取消零分析', async () => {
     const user = userEvent.setup()
@@ -127,7 +132,7 @@ describe('对话与后台分析', () => {
       update([{ id: 'persisted', requestId: 'original', prompt: '原先的问题', referenceIds: ['9'], modelId: 'model', text: '已保存的回答', state: 'completed', usage: {} }])
     })
     const view = render(<Workspace adapter={adapter} />)
-    await user.click(await screen.findByRole('button', { name: '继续 AI 对话' }))
+    await user.click(screen.getByRole('button', { name: 'AI 对话' }))
     expect(screen.getByText('已保存的回答')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '关闭 AI 对话' }))
     expect(signal?.aborted).toBe(false)
@@ -152,6 +157,7 @@ describe('对话与后台分析', () => {
     let oldSignal: AbortSignal | undefined
     oldAdapter.respond = vi.fn((_request, { signal }) => { oldSignal = signal; return new Promise<{ text: string }>(() => {}) })
     const view = render(<Workspace adapter={oldAdapter} />)
+    await user.click(screen.getByRole('button', { name: 'AI 对话' }))
     await user.type(screen.getByRole('textbox'), '保留问题')
     await user.click(screen.getByRole('button', { name: '发送给 AI' }))
     const nextAdapter = fakeAdapter()
@@ -167,17 +173,19 @@ describe('对话与后台分析', () => {
   it('没有模型时保留草稿，不生成回答、进度或统计', async () => {
     const user = userEvent.setup()
     render(<Workspace />)
+    await user.click(screen.getByRole('button', { name: 'AI 对话' }))
     await user.type(screen.getByRole('textbox', { name: '向 AI 提问' }), '我的问题')
     expect(screen.getByRole('button', { name: '发送给 AI' })).toBeDisabled()
     await user.click(screen.getByRole('button', { name: '会话分析' }))
     expect(screen.getByText('请在设置中添加模型。')).toBeInTheDocument()
     expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
-    expect(screen.queryByRole('log')).not.toBeInTheDocument()
+    expect(screen.getByRole('log').querySelectorAll('.conversation-user-turn')).toHaveLength(0)
   })
 
   it('发送后只保留一个编辑器和模型选择，统计缺失项不显示为零', async () => {
     const user = userEvent.setup()
     render(<Workspace adapter={fakeAdapter()} />)
+    await user.click(screen.getByRole('button', { name: 'AI 对话' }))
     await user.type(screen.getByRole('textbox', { name: '向 AI 提问' }), '帮我梳理一下')
     await user.click(screen.getByRole('button', { name: '发送给 AI' }))
     expect(await screen.findByText('完整回答')).toBeInTheDocument()
@@ -192,7 +200,8 @@ describe('对话与后台分析', () => {
     await user.keyboard('{Escape}')
     expect(screen.queryByRole('region', { name: '生成统计' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '关闭 AI 对话' }))
-    await user.click(screen.getByRole('button', { name: '继续 AI 对话' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'AI 对话' })).toHaveFocus())
+    await user.click(screen.getByRole('button', { name: 'AI 对话' }))
     expect(screen.getByText('完整回答')).toBeInTheDocument()
   })
 
@@ -201,6 +210,7 @@ describe('对话与后台分析', () => {
     const adapter = fakeAdapter()
     vi.mocked(adapter.respond).mockRejectedValueOnce(new Error('连接失败，请重试。'))
     render(<Workspace adapter={adapter} />)
+    await user.click(screen.getByRole('button', { name: 'AI 对话' }))
     await user.type(screen.getByRole('textbox'), '保留我的问题')
     await user.click(screen.getByRole('button', { name: '发送给 AI' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('连接失败')
@@ -221,6 +231,7 @@ describe('对话与后台分析', () => {
     adapter.respond = vi.fn((_request: ConversationRequest, options) => { chatOptions = options; return new Promise<{ text: string }>(() => {}) })
     adapter.analyze = vi.fn((_request, options) => { analysisOptions = options; return new Promise<void>(() => {}) })
     const view = render(<Workspace adapter={adapter} />)
+    await user.click(screen.getByRole('button', { name: 'AI 对话' }))
     await user.type(screen.getByRole('textbox'), '慢慢回答')
     await user.click(screen.getByRole('button', { name: '发送给 AI' }))
     act(() => chatOptions.onText('已有片段'))

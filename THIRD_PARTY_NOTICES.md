@@ -40,9 +40,13 @@ SOFTWARE.
 
 新增的 Radix Context Menu、Dropdown Menu、Popover 和 Select 按安装包声明的 MIT 许可提供，实际版本以锁文件为准。本地安装包同时附上 Cherry 许可证和迁入清单。
 
+后续文本协议映射与模型目录交互仍对照同一固定版本。协议映射文件为 `src/shared/model-protocol.ts`，原生请求使用已安装的 Pi 软件开发工具包；准确来源、地址兼容规则与界面差异见[协议接入](docs/research/cherry-protocol-reuse.md)及[模型目录选择](docs/research/cherry-catalog-selection.md)。
+
 ### ChatLab 会话解析模块
 
 自动追加同时参考 [ChatLab 提交 bf8d5ac77443512b9973ff3a236f258424202bbc](https://github.com/ChatLab/ChatLab/tree/bf8d5ac77443512b9973ff3a236f258424202bbc) 的可靠身份与连续消息匹配机制；该版本根许可证同为 AGPL-3.0。Whomi 的来源指纹、冲突排除、歧义新建和逐条去重适配见[自动导入来源记录](docs/research/whomi-auto-import-reuse.md)。
+
+会话内多条 AI 对话参考同一 ChatLab 版本的历史列表与按原始会话保存的规则；Whomi 的数据库迁移、线程隔离与本地草稿适配见[AI 对话来源记录](docs/research/chatlab-ai-thread-reuse.md)。
 
 本地导入后端复用 [ChatLab/ChatLab 固定提交 f19beeadda27bd57eedc1bfbe75e7ed1b9e86833](https://github.com/ChatLab/ChatLab/tree/f19beeadda27bd57eedc1bfbe75e7ed1b9e86833) 的 14 个格式模块与必要工具、类型。原始代码按 GNU Affero General Public License v3（AGPL-3.0）提供，完整原文保存在 [electron/vendor/chatlab-parser/LICENSE](electron/vendor/chatlab-parser/LICENSE)，逐文件来源、原始摘要及本地修改见 [UPSTREAM.md](electron/vendor/chatlab-parser/UPSTREAM.md)。没有复制上游测试样本、原生加速或桌面业务代码。
 

@@ -29,7 +29,7 @@ export function createAiRouter(service: AiMethods) {
       if (method === 'prepareAnalysis') claim('token', (value as AnalysisPreparation).token, owner)
       if (method === 'confirmAnalysis' || method === 'getAnalysis' || method === 'continueAnalysis' || method === 'stopAnalysis') claim('analysis', (value as AnalysisTask).id, owner)
       if (method === 'listAnalyses') for (const task of value as AnalysisTask[]) claim('analysis', task.id, owner)
-      if (method === 'openThread' || method === 'getThread') { const thread = value as AiThread; claim('thread', thread.id, owner); for (const turn of thread.turns) claim('turn', turn.id, owner) }
+      if (method === 'openThread' || method === 'getThread' || method === 'createThread') { const thread = value as AiThread; claim('thread', thread.id, owner); for (const turn of thread.turns) claim('turn', turn.id, owner) }
       if (method === 'sendTurn' || method === 'retryTurn' || method === 'stopTurn') claim('turn', (value as AiTurn).id, owner)
       return value
     },

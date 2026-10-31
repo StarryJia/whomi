@@ -21,6 +21,12 @@ extraResources:
     to: licenses/cherry-studio/settings-reuse.md
   - from: docs/research/cherry-conversation-reuse.md
     to: licenses/cherry-studio/conversation-reuse.md
+  - from: docs/research/cherry-protocol-reuse.md
+    to: licenses/cherry-studio/protocol-reuse.md
+  - from: docs/research/cherry-catalog-selection.md
+    to: licenses/cherry-studio/catalog-selection.md
+  - from: docs/research/chatlab-ai-thread-reuse.md
+    to: licenses/chatlab/ai-thread-reuse.md
 asar: true
 asarUnpack:
   - '**/*.node'

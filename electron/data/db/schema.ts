@@ -1,4 +1,4 @@
-export const schemaVersion = 4
+export const schemaVersion = 5
 export const schema = `
 CREATE TABLE conversations (
  id INTEGER PRIMARY KEY AUTOINCREMENT,

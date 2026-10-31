@@ -8,8 +8,8 @@ const turn = (state: AiTurn['state'] = 'completed', eventSequence = 1): AiTurn =
 function api() {
   const listeners = new Set<(event: AiEvent) => void>()
   const methods = { listModels: vi.fn(async () => [model, { ...model, id: 'disabled', enabled: false }]), listSkills: vi.fn(async () => []),
-    openThread: vi.fn(async () => ({ id: 'thread', conversationId: 'c', turns: [] as AiTurn[] })),
-    getThread: vi.fn(async () => ({ id: 'thread', conversationId: 'c', turns: [turn()] })), sendTurn: vi.fn(async () => turn()), stopTurn: vi.fn(async () => turn('stopped', 3)),
+    openThread: vi.fn<AiApi['openThread']>(async () => ({ id: 'thread', conversationId: 'c', title: '示例对话', createdAtMs: 1, updatedAtMs: 1, turns: [] as AiTurn[] })),
+    getThread: vi.fn<AiApi['getThread']>(async () => ({ id: 'thread', conversationId: 'c', title: '示例对话', createdAtMs: 1, updatedAtMs: 1, turns: [turn()] })), sendTurn: vi.fn<AiApi['sendTurn']>(async () => turn()), stopTurn: vi.fn(async () => turn('stopped', 3)),
     onEvent: (listener: (event: AiEvent) => void) => { listeners.add(listener); return () => { listeners.delete(listener) } },
     prepareAnalysis: vi.fn(async () => ({ token: 'prepared', conversationId: 'c', title: '会话', selfName: '我', totalMessages: 8, analyzableMessages: 7, snapshotMaxId: '8', expiresAt: Date.now() + 10000, model })),
     confirmAnalysis: vi.fn(async (): Promise<AnalysisTask> => ({ id: 'task', conversationId: 'c', modelId: 'm', state: 'completed', analyzedMessages: 7, totalMessages: 7, skippedMessages: 1, usage: {}, valid: true, eventSequence: 1 })),
@@ -18,6 +18,32 @@ function api() {
   return { methods, client: methods as unknown as AiApi, emit: (event: AiEvent) => listeners.forEach(listener => listener(event)), listeners }
 }
 describe('正式会话 AI 适配器', () => {
+  it('显式选择的对话控制恢复与发送，拒绝另一会话的线程', async () => {
+    const { client, methods } = api()
+    methods.getThread.mockImplementation(async (id: string) => ({ id, conversationId: id === 'foreign' ? 'other' : 'c', title: '示例对话', createdAtMs: 1, updatedAtMs: 1, turns: [{ ...turn(), threadId: id, text: `回答 ${id}` }] }))
+    methods.sendTurn.mockImplementation(async input => ({ ...turn(), threadId: input.threadId, text: `回答 ${input.threadId}` }))
+    const adapter = await createConversationAiClient(client)
+    expect((await adapter.restoreThread!('c', 'second'))[0].text).toBe('回答 second')
+    const response = await adapter.respond({ conversationId: 'c', threadId: 'second', modelId: 'm', prompt: '问题', references: [] }, { signal: new AbortController().signal, onText: vi.fn() })
+    expect(response.text).toBe('回答 second')
+    expect(methods.openThread).not.toHaveBeenCalled()
+    await expect(adapter.restoreThread!('c', 'foreign')).rejects.toThrow()
+    await expect(adapter.respond({ conversationId: 'c', threadId: 'foreign', modelId: 'm', prompt: '问题', references: [] }, { signal: new AbortController().signal, onText: vi.fn() })).rejects.toThrow()
+    expect(methods.sendTurn).toHaveBeenCalledTimes(1)
+  })
+  it('所选线程的事件更新不会显示另一线程的内容，离开时不停止回答', async () => {
+    const { client, methods, emit } = api()
+    methods.getThread.mockImplementation(async (id: string) => ({ id, conversationId: 'c', title: '示例对话', createdAtMs: 1, updatedAtMs: 1, turns: [{ ...turn('running'), threadId: id }] }))
+    const adapter = await createConversationAiClient(client), controller = new AbortController(), change = vi.fn()
+    const pending = adapter.watchThread!('c', change, controller.signal, 'second')
+    await vi.waitFor(() => expect(change).toHaveBeenCalledTimes(1))
+    emit({ kind: 'turn', snapshot: { ...turn('completed', 2), threadId: 'first', text: '其他线程' } })
+    expect(change).toHaveBeenCalledTimes(1)
+    emit({ kind: 'turn', snapshot: { ...turn('completed', 2), threadId: 'second', text: '当前线程' } })
+    expect(change.mock.lastCall?.[0][0].text).toBe('当前线程')
+    controller.abort('detach'); await pending
+    expect(methods.stopTurn).not.toHaveBeenCalled()
+  })
   it('同名模型保留服务商归属，已停用服务商不进入可选菜单', async () => {
     const { client, methods } = api()
     methods.listModels.mockResolvedValue([model, { ...model, id: 'second' }, { ...model, id: 'off' }])
@@ -55,7 +81,7 @@ describe('正式会话 AI 适配器', () => {
     await vi.waitFor(() => expect(methods.getThread).toHaveBeenCalled())
     const recent = { ...turn('running', 2), id: 'new-turn' }
     emit({ kind: 'turn', snapshot: recent })
-    complete({ id: 'thread', conversationId: 'c', turns: [{ ...turn(), id: 'old-turn' }, recent] })
+    complete({ id: 'thread', conversationId: 'c', title: '示例对话', createdAtMs: 1, updatedAtMs: 1, turns: [{ ...turn(), id: 'old-turn' }, recent] })
     await vi.waitFor(() => expect(change.mock.lastCall?.[0].map((value: AiTurn) => value.id)).toEqual(['old-turn', 'new-turn']))
     controller.abort('detach')
     await pending
@@ -76,7 +102,7 @@ describe('正式会话 AI 适配器', () => {
   it('等待中的响应按事件序号去重，显式停止通知后端', async () => {
     const { methods, client, emit } = api()
     methods.sendTurn.mockImplementation(async () => turn('running', 2))
-    methods.getThread.mockImplementation(async () => ({ id: 'thread', conversationId: 'c', turns: [turn('running', 2)] }))
+    methods.getThread.mockImplementation(async () => ({ id: 'thread', conversationId: 'c', title: '示例对话', createdAtMs: 1, updatedAtMs: 1, turns: [turn('running', 2)] }))
     const adapter = await createConversationAiClient(client)
     const controller = new AbortController(), text = vi.fn()
     const pending = adapter.respond({ conversationId: 'c', modelId: 'm', prompt: '提问', references: [] }, { signal: controller.signal, onText: text })
@@ -92,7 +118,7 @@ describe('正式会话 AI 适配器', () => {
   it('离页只解除观察，不停止后台；已取消请求不会提交', async () => {
     const { methods, client } = api()
     methods.sendTurn.mockImplementation(async () => turn('running', 1))
-    methods.getThread.mockImplementation(async () => ({ id: 'thread', conversationId: 'c', turns: [turn('running', 1)] }))
+    methods.getThread.mockImplementation(async () => ({ id: 'thread', conversationId: 'c', title: '示例对话', createdAtMs: 1, updatedAtMs: 1, turns: [turn('running', 1)] }))
     const adapter = await createConversationAiClient(client)
     const controller = new AbortController()
     const pending = adapter.respond({ conversationId: 'c', modelId: 'm', prompt: '提问', references: [] }, { signal: controller.signal, onText: vi.fn() })

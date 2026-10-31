@@ -30,23 +30,24 @@ beforeEach(() => {
 })
 
 describe('正式设置', () => {
-  it('单一协议在服务商编辑抽屉显示，名称显式保存', async () => {
+  it('服务商编辑选择文本协议并随名称保存', async () => {
     const { user, api } = setup()
     await user.click(await screen.findByRole('button', { name: '本地服务更多操作' }))
     await user.click(screen.getByRole('menuitem', { name: '编辑' }))
     const editor = screen.getByRole('dialog', { name: '编辑服务商' })
-    expect(within(editor).getByText('OpenAI Chat Completions 兼容')).toBeInTheDocument()
-    expect(within(editor).queryByRole('combobox', { name: '连接协议' })).not.toBeInTheDocument()
+    await user.click(within(editor).getByRole('combobox', { name: '连接协议' }))
+    expect(screen.getAllByRole('option')).toHaveLength(4)
+    await user.click(screen.getByRole('option', { name: 'Anthropic Messages' }))
     await user.type(within(editor).getByLabelText('服务商名称'), ' 更新')
     await user.click(within(editor).getByRole('button', { name: '保存' }))
-    await waitFor(() => expect(api.saveProvider).toHaveBeenCalledWith(expect.objectContaining({ name: '本地服务 更新' })))
+    await waitFor(() => expect(api.saveProvider).toHaveBeenCalledWith(expect.objectContaining({ name: '本地服务 更新', protocol: 'anthropic-messages' })))
   })
 
   it('关闭同步抽屉保留服务商配置和已保存模型', async () => {
     const { api, user } = setup(true, true)
     await user.click(await screen.findByRole('button', { name: '同步模型' }))
     const catalog = screen.getByRole('dialog', { name: '本地服务 模型' })
-    await within(catalog).findByRole('button', { name: '添加beta' })
+    await within(catalog).findByRole('checkbox', { name: '选择beta' })
     await user.click(within(catalog).getByRole('button', { name: '关闭本地服务 模型' }))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(screen.getByLabelText('接口地址')).toHaveValue('http://127.0.0.1:1234/v1')
@@ -87,17 +88,20 @@ describe('正式设置', () => {
     await waitFor(() => expect(screen.getByLabelText('密钥')).toBeInTheDocument())
   })
 
-  it('同步目录可直接添加搜索结果，未提供容量保留未知', async () => {
+  it('搜索结果全选后确认添加，未提供容量保留未知', async () => {
     const { api, user } = setup()
     await user.click(await screen.findByRole('button', { name: '同步模型' }))
     const catalog = screen.getByRole('dialog', { name: '本地服务 模型' })
-    await within(catalog).findByRole('button', { name: '添加alpha' })
+    await within(catalog).findByRole('checkbox', { name: '选择alpha' })
     await user.type(within(catalog).getByRole('textbox', { name: '搜索模型' }), 'beta')
-    await user.click(within(catalog).getByRole('button', { name: '添加当前列表' }))
+    await user.click(within(catalog).getByRole('button', { name: '全选' }))
+    expect(api.saveModel).not.toHaveBeenCalled()
+    await user.click(within(catalog).getByRole('button', { name: '添加 1 项' }))
     await waitFor(() => expect(api.saveModel).toHaveBeenCalledTimes(1))
     expect(api.saveModel).toHaveBeenCalledWith(expect.objectContaining({ model: 'beta', contextWindow: null, maxTokens: null }))
-    await user.click(within(catalog).getByRole('button', { name: '清空模型搜索' }))
-    expect(within(catalog).getByRole('button', { name: '添加alpha' })).toBeInTheDocument()
+    await waitFor(() => expect(catalog).not.toBeInTheDocument())
+    await user.click(screen.getByRole('button', { name: '添加模型' }))
+    expect(await screen.findByRole('checkbox', { name: '选择alpha' })).toBeInTheDocument()
   })
 
   it('处理自动保存失败恢复原开关，重试提交原设置', async () => {
@@ -159,12 +163,53 @@ describe('正式设置', () => {
     vi.mocked(api.saveModel).mockImplementationOnce(originalSave).mockRejectedValueOnce(new Error('添加失败，请重试。'))
     await user.click(await screen.findByRole('button', { name: '同步模型' }))
     const catalog = screen.getByRole('dialog', { name: '本地服务 模型' })
-    await within(catalog).findByRole('button', { name: '添加alpha' })
-    await user.click(within(catalog).getByRole('button', { name: '添加当前列表' }))
+    await within(catalog).findByRole('checkbox', { name: '选择alpha' })
+    await user.click(within(catalog).getByRole('button', { name: '全选' }))
+    await user.click(within(catalog).getByRole('button', { name: '添加 3 项' }))
     await within(catalog).findByText('已添加 1 项。添加失败，请重试。')
     expect(within(catalog).getByRole('button', { name: '移除alpha' })).toBeInTheDocument()
+    expect(within(catalog).getByRole('checkbox', { name: '选择beta' })).toBeChecked()
+    expect(within(catalog).getByRole('checkbox', { name: '选择gamma' })).toBeChecked()
+    expect(within(catalog).getByRole('button', { name: '添加 2 项' })).toBeEnabled()
     await user.click(within(catalog).getByRole('button', { name: '重试剩余模型' }))
     await waitFor(() => expect(vi.mocked(api.saveModel).mock.calls.map(call => call[0].model)).toEqual(['alpha', 'beta', 'beta', 'gamma']))
+    await waitFor(() => expect(catalog).not.toBeInTheDocument())
+  })
+
+  it('部分添加失败后取消剩余选择，关闭保留已保存模型', async () => {
+    const { api, user } = setup()
+    const originalSave = vi.mocked(api.saveModel).getMockImplementation()!
+    vi.mocked(api.saveModel).mockImplementationOnce(originalSave).mockRejectedValueOnce(new Error('添加失败，请重试。'))
+    await user.click(await screen.findByRole('button', { name: '添加模型' }))
+    const catalog = screen.getByRole('dialog', { name: '本地服务 模型' })
+    await within(catalog).findByRole('checkbox', { name: '选择alpha' })
+    await user.click(within(catalog).getByRole('button', { name: '全选' }))
+    await user.click(within(catalog).getByRole('button', { name: '添加 3 项' }))
+    await within(catalog).findByText('已添加 1 项。添加失败，请重试。')
+    await user.click(within(catalog).getByRole('button', { name: '取消' }))
+    expect(vi.mocked(api.saveModel).mock.calls.map(([input]) => input.model)).toEqual(['alpha', 'beta'])
+    expect(api.removeModel).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: '添加模型' }))
+    const reopened = screen.getByRole('dialog', { name: '本地服务 模型' })
+    expect(await within(reopened).findByRole('button', { name: '移除alpha' })).toBeInTheDocument()
+    expect(within(reopened).getByRole('checkbox', { name: '选择beta' })).not.toBeChecked()
+    expect(within(reopened).getByRole('checkbox', { name: '选择gamma' })).not.toBeChecked()
+  })
+
+  it('部分添加失败后可取消一个余项，重试采用当前选择', async () => {
+    const { api, user } = setup()
+    const originalSave = vi.mocked(api.saveModel).getMockImplementation()!
+    vi.mocked(api.saveModel).mockImplementationOnce(originalSave).mockRejectedValueOnce(new Error('添加失败，请重试。'))
+    await user.click(await screen.findByRole('button', { name: '添加模型' }))
+    const catalog = screen.getByRole('dialog', { name: '本地服务 模型' })
+    await within(catalog).findByRole('checkbox', { name: '选择alpha' })
+    await user.click(within(catalog).getByRole('button', { name: '全选' }))
+    await user.click(within(catalog).getByRole('button', { name: '添加 3 项' }))
+    await within(catalog).findByText('已添加 1 项。添加失败，请重试。')
+    await user.click(within(catalog).getByRole('checkbox', { name: '选择beta' }))
+    await user.click(within(catalog).getByRole('button', { name: '重试剩余模型' }))
+    await waitFor(() => expect(catalog).not.toBeInTheDocument())
+    expect(vi.mocked(api.saveModel).mock.calls.map(([input]) => input.model)).toEqual(['alpha', 'beta', 'gamma'])
   })
 
   it('手动模型可保留未知容量，取消新建不保存且恢复焦点', async () => {

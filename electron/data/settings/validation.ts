@@ -1,4 +1,5 @@
 import { BoundaryError } from '../../../src/shared/desktop-validation'
+import { isModelProtocol } from '../../../src/shared/model-protocol'
 import { redactionRules, type ProcessingSettings, type ProviderInput, type SettingsModelInput } from '../../../src/shared/settings-contract'
 
 export function failSettings(code: string, action = '请检查设置后重试。'): never { throw new BoundaryError(code, action) }
@@ -8,7 +9,8 @@ function fields(value: unknown, allowed: string[], code: string): asserts value 
   if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).some(key => !allowed.includes(key))) failSettings(code)
 }
 export function validateProvider(value: ProviderInput): void {
-  fields(value, ['id', 'name', 'baseUrl', 'enabled', 'image', 'apiKey', 'notes'], 'INVALID_PROVIDER')
+  fields(value, ['id', 'name', 'baseUrl', 'protocol', 'enabled', 'image', 'apiKey', 'notes'], 'INVALID_PROVIDER')
+  if (value.protocol !== undefined && !isModelProtocol(value.protocol)) failSettings('INVALID_PROVIDER', '请选择连接协议。')
   if (value.id !== undefined) settingsId(value.id)
   if (!text(value.name, 256) || !text(value.baseUrl, 2048) || typeof value.enabled !== 'boolean') failSettings('INVALID_PROVIDER')
   if (value.notes !== undefined && (typeof value.notes !== 'string' || value.notes.length > 10000)) failSettings('INVALID_PROVIDER')

@@ -1,10 +1,11 @@
 import type { AiModel } from './ai-contract'
+import type { ModelProtocol } from './model-protocol'
 
 export const redactionRules = ['key', 'token', 'email', 'credit-card', 'ipv4', 'url', 'mobile', 'identity', 'bank-card', 'landline'] as const
 export type RedactionRule = typeof redactionRules[number]
 export type ProcessingSettings = { clean: boolean; merge: boolean; mergeSeconds: number; denoise: boolean; anonymize: boolean; redact: boolean; rules: RedactionRule[] }
 export const defaultProcessing: ProcessingSettings = { clean: true, merge: true, mergeSeconds: 60, denoise: false, anonymize: true, redact: true, rules: redactionRules.filter(rule => rule !== 'ipv4' && rule !== 'url') }
-export type Provider = { id: string; name: string; baseUrl: string; enabled: boolean; hasCredential: boolean; image?: string; notes?: string }
+export type Provider = { id: string; name: string; baseUrl: string; protocol?: ModelProtocol; enabled: boolean; hasCredential: boolean; image?: string; notes?: string }
 export type ProviderInput = Omit<Provider, 'id' | 'hasCredential'> & { id?: string; apiKey?: string | null }
 export type SettingsModel = AiModel & { providerId: string; group?: string; maxInputTokens?: number | null }
 export type SettingsModelInput = Pick<SettingsModel, 'providerId' | 'label' | 'model' | 'contextWindow' | 'maxTokens' | 'enabled' | 'group' | 'maxInputTokens'> & { id?: string }

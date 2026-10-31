@@ -1,5 +1,9 @@
 # Whomi 设计原则
 
+2026-10-31 追加约束：原文阅读区只保留顶部 AI 对话入口，输入框放在打开后的侧窗中。一个原始会话可建立多条独立 AI 对话，左侧历史列表负责切换；当前对话使用背景高亮，不再叠加红色边条。模型目录的勾选与保存分开：全选后可取消个别项，点击添加才保存。当前实现与验收见[会话与模型交互补正](docs/designs/whomi-conversation-model-refinements.md)。
+
+界面边界必须在真实桌面中检查。侧窗、抽屉和弹窗均须避开系统窗口控制区，不能只提高层级。例如在 360 像素窗口中打开 AI 侧窗，关闭按钮仍应完整可见且能用鼠标点击。新建对话或保存模型等待回执时，后来输入的内容不能被旧状态覆盖；切换对话也不能把上一条对话的草稿写到当前对话。
+
 2026-10-31 最新决定：能直接复用成熟项目的模块，优先迁入其完整界面与操作逻辑，最后统一 Whomi 的视觉风格。AI 对话发送框、服务商管理、模型选择及相关配置、编辑、统计采用 Cherry Studio。下方旧方案与本决定冲突时，以本决定为准。
 
 本轮已接入服务商菜单与自动保存、模型同步及容量编辑、分组模型菜单、发送后的草稿交接和生成统计；导入改为自动归属并保存，移除目标、账号别名和消息预览步骤。原始记录与 AI 发送材料仍分别处理。来源与兼容边界见[设置接入](docs/research/cherry-settings-reuse.md)、[对话接入](docs/research/cherry-conversation-reuse.md)和[自动导入](docs/research/whomi-auto-import-reuse.md)。这些记录列出实际接入的能力，不代表 Cherry 的全部运行平台已经迁入。
@@ -39,7 +43,7 @@
 - [模型选择数据](https://github.com/CherryHQ/cherry-studio/blob/f19aa72f969b782ed72f81be80976b237ae26605/src/renderer/components/ModelSelector/useModelSelectorData.ts)按服务商组织，并处理服务商与模型启用状态、隐藏和可用性。照搬 Cherry 不应被改写成无条件展示互联网上所有模型；应完整沿用其目录管理到会话选择的实际流程。
 - 统计已有[详情组件](https://github.com/CherryHQ/cherry-studio/blob/f19aa72f969b782ed72f81be80976b237ae26605/src/renderer/components/chat/messages/frame/MessageTokenDetailsCard.tsx)和[用量与耗时计算](https://github.com/CherryHQ/cherry-studio/blob/f19aa72f969b782ed72f81be80976b237ae26605/src/renderer/components/chat/messages/frame/messagePerformance.ts)，需要一并核对数据含义，不能只复制字段名。
 
-复用路径为按模块迁入，保留源模块的结构、状态和必要依赖，再接 Whomi 接口。当前单个文本模型链路已完成接入；上游多协议、工具调用、附件、云认证和其他未接通能力按来源记录继续列为缺口，不用相似外观代替功能。
+复用路径为按模块迁入，保留源模块的结构、状态和必要依赖，再接 Whomi 接口。当前已接通四种自定义文本协议，具体范围见[协议接入记录](docs/research/cherry-protocol-reuse.md)；图片端点、多端点编辑、工具调用、附件和云认证仍未接入，不用相似外观代替功能。
 
 许可证按实际文件与包分别记录：[Cherry 社区版根许可证](https://github.com/CherryHQ/cherry-studio/blob/f19aa72f969b782ed72f81be80976b237ae26605/LICENSE)为 GNU Affero General Public License 第 3 版（AGPL-3.0），其[共用界面包声明](https://github.com/CherryHQ/cherry-studio/blob/f19aa72f969b782ed72f81be80976b237ae26605/packages/ui/package.json)标为 MIT。业务代码、界面包和新增 Radix 依赖分别保留来源；完整许可证及本地打包清单见 `THIRD_PARTY_NOTICES.md`。本轮没有更改 Whomi 的整体许可证或进行公开发布。
 

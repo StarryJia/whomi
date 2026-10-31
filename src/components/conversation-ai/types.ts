@@ -1,5 +1,5 @@
 import type { ReferenceRange } from './selection'
-import type { AnalysisPreparation, AnalysisTask, AiState, AiUsage } from '../../shared/ai-contract'
+import type { AnalysisPreparation, AnalysisTask, AiState, AiUsage, AiThread, AiThreadSummary } from '../../shared/ai-contract'
 import type { ModelOption } from './model-selector'
 
 export type GenerationUsage = AiUsage
@@ -13,6 +13,7 @@ export type AnalysisResult = { taskId?: string; usage?: GenerationUsage }
 export type ConversationRequest = {
   requestId?: string
   turnId?: string
+  threadId?: string
   referenceIds?: readonly string[]
   conversationId: string
   prompt: string
@@ -31,8 +32,10 @@ export type ConversationAiAdapter = {
   models: readonly ModelOption[]
   skills: readonly { id: string; label: string }[]
   prepareAnalysis?: (request: { conversationId: string; modelId: string }) => Promise<AnalysisPreparation>
-  restoreThread?: (conversationId: string) => Promise<RestoredConversationTurn[]>
-  watchThread?: (conversationId: string, onChange: (turns: RestoredConversationTurn[]) => void, signal: AbortSignal) => Promise<void>
+  listThreads?: (conversationId: string) => Promise<AiThreadSummary[]>
+  createThread?: (conversationId: string) => Promise<AiThread>
+  restoreThread?: (conversationId: string, threadId?: string) => Promise<RestoredConversationTurn[]>
+  watchThread?: (conversationId: string, onChange: (turns: RestoredConversationTurn[]) => void, signal: AbortSignal, threadId?: string) => Promise<void>
   watchAnalysis?: (conversationId: string, onChange: (task: AnalysisTask) => void, signal: AbortSignal) => Promise<void>
   stopTurn?: (turnId: string) => Promise<void>
   stopAnalysis?: (taskId: string) => Promise<void>
