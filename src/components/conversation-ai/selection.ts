@@ -219,6 +219,16 @@ export function useMessageSelection(messages: readonly MessageView[], enabled = 
   }
 
   const clear = useCallback(() => { finish(); anchor.current = undefined; setSelected(new Map()) }, [finish])
+  const restore = useCallback((ranges: readonly ReferenceRange[]) => {
+    finish()
+    anchor.current = undefined
+    setSelected(new Map(ranges.flatMap(range => range.messages.map(message => [message.id, message] as const))))
+    setNext(previous => {
+      const updated = new Map(previous)
+      for (const range of ranges) for (let index = 1; index < range.messages.length; index++) updated.set(range.messages[index - 1].id, range.messages[index].id)
+      return updated
+    })
+  }, [finish])
   const references = useMemo(() => groupReferences(selected, next), [selected, next])
-  return { selectedIds: useMemo(() => new Set(selected.keys()), [selected]), references, clear, bindings }
+  return { selectedIds: useMemo(() => new Set(selected.keys()), [selected]), references, clear, restore, bindings }
 }

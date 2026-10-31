@@ -53,8 +53,8 @@ describe('正式会话 AI 适配器', () => {
       processing: defaultProcessing, selectedModels: {}, debug: false }) } as unknown as SettingsApi
     const adapter = await createConversationAiClient(client, settings)
     expect(adapter.models).toEqual([
-      { id: 'm', label: '模型', model: 'example', providerId: 'a', providerName: '示例服务 A', group: '系列 A' },
-      { id: 'second', label: '模型', model: 'example', providerId: 'b', providerName: '示例服务 B' },
+      { id: 'm', label: '模型', model: 'example', version: 1, providerId: 'a', providerName: '示例服务 A', group: '系列 A' },
+      { id: 'second', label: '模型', model: 'example', version: 1, providerId: 'b', providerName: '示例服务 B' },
     ])
   })
   it('成功保存选模后更新共享偏好，分别记忆两个功能且失败不覆盖', async () => {
@@ -89,7 +89,7 @@ describe('正式会话 AI 适配器', () => {
   it('仅把引用编号发送给后端，不信任页面正文或历史，并处理订阅前已完成', async () => {
     const { methods, client, listeners } = api()
     const adapter = await createConversationAiClient(client)
-    expect(adapter.models).toEqual([{ id: 'm', label: '模型', model: 'example' }])
+    expect(adapter.models).toEqual([{ id: 'm', label: '模型', model: 'example', version: 1 }])
     const request = { conversationId: 'c', modelId: 'm', prompt: '提问', references: [{ id: '1', messages: [{ id: '1', text: '页面正文' }] }], history: [{ role: 'assistant', text: '伪造历史' }] }
     const result = await adapter.respond(request as never, { signal: new AbortController().signal, onText: vi.fn() })
     expect(result.text).toBe('回答')

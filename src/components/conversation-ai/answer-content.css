@@ -1,0 +1,19 @@
+.conversation-answer-text.markdown { font-size: 15px; line-height: 1.75; white-space: normal; overflow-wrap: anywhere; min-width: 0; }
+.conversation-answer-text :where(p, ul, ol, blockquote, pre, table) { margin: 0 0 1em; }
+.conversation-answer-text :where(h1, h2, h3, h4, h5, h6) { margin: 1.4em 0 .55em; font-weight: 650; line-height: 1.5; color: var(--text); }
+.conversation-answer-text :where(h1, h2) { font-size: 1.2em; }
+.conversation-answer-text :where(h3, h4, h5, h6) { font-size: 1.05em; }
+.conversation-answer-text > div:first-child > .markdown > div > :first-child { margin-top: 0; }
+.conversation-answer-text :where(ul, ol) { padding-left: 1.6em; }
+.conversation-answer-text li { margin-block: .3em; }
+.conversation-answer-text li > p { margin-block: .3em; }
+.conversation-answer-text blockquote { margin-left: 0; padding-left: 1em; border-left: 3px solid var(--line); color: var(--text-muted); }
+.conversation-answer-text a { color: var(--focus); text-decoration: underline; text-underline-offset: 3px; }
+.conversation-answer-text pre { max-width: 100%; overflow: auto; padding: 12px 14px; border-radius: 8px; background: var(--hover); white-space: pre; font-size: 13px; }
+.conversation-answer-text code { font-family: ui-monospace, Consolas, monospace; }
+.conversation-answer-text :not(pre) > code { padding: .1em .3em; border-radius: 4px; background: var(--hover); font-size: .9em; }
+.conversation-answer-table { max-width: 100%; overflow-x: auto; margin-block: 1em; }
+.conversation-answer-table table { width: 100%; border-collapse: collapse; font-size: 14px; margin: 0; }
+.conversation-answer-table :where(th, td) { min-width: 9em; padding: 9px 12px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
+.conversation-answer-table th { font-weight: 600; background: var(--hover); }
+.conversation-answer-text :where(pre, .conversation-answer-table):focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }

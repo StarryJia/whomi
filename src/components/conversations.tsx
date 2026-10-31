@@ -380,7 +380,7 @@ export function ConversationReader({ conversation, range, sourceStatus, onReturn
   }
 
   return <ConversationWorkspace conversationId={conversation.id} title={conversation.title} messageCount={messageCount}
-    references={selection.references} onClearReferences={selection.clear} onJumpReference={reference => { void jumpToReference(reference) }} adapter={aiAdapter}>
+    references={selection.references} onClearReferences={selection.clear} onRestoreReferences={selection.restore} onJumpReference={reference => { void jumpToReference(reference) }} adapter={aiAdapter}>
     {({ analysisControl, chatControl, composer }) => <section className="conversation-reader" aria-labelledby="conversation-title" onKeyDown={event => {
       if (event.key !== 'Escape' || event.defaultPrevented || !selectionMode) return
       if ((event.target as HTMLElement).closest('input, textarea, select, [contenteditable="true"]')) return

@@ -6,6 +6,8 @@ import type { ConversationAiAdapter } from './types'
 import type { AiThread } from '../../shared/ai-contract'
 import App from '../../App'
 import { createPreviewClient } from '../../data/preview-client'
+import { useState } from 'react'
+import type { ReferenceRange } from './selection'
 
 function Fixture({ adapter }: { adapter: ConversationAiAdapter }) {
   return <ConversationWorkspace conversationId="c" title="示例原始聊天" references={[]} onClearReferences={() => {}} onJumpReference={() => {}} adapter={adapter}>
@@ -17,6 +19,47 @@ function client(): ConversationAiAdapter {
 }
 
 describe('会话工作区的明确入口和独立对话', () => {
+  it('切换历史时待发送引用跟随各自草稿，返回后用于原对话请求', async () => {
+    const adapter = client(), user = userEvent.setup()
+    adapter.listThreads = async () => ['first', 'second'].map(id => ({ id, conversationId: 'c', title: id, createdAtMs: 1, updatedAtMs: 1 }))
+    adapter.restoreThread = async () => []
+    function ReferencesFixture() {
+      const [references, setReferences] = useState<readonly ReferenceRange[]>([])
+      return <ConversationWorkspace conversationId="c" title="示例" references={references} onRestoreReferences={setReferences}
+        onClearReferences={() => setReferences([])} onJumpReference={() => {}} adapter={adapter}>
+        {({ chatControl }) => <>{chatControl}<button onClick={() => setReferences([{ id: 'r1', messages: [{ id: '9', text: '引用文字' } as never] }])}>选取原文</button></>}
+      </ConversationWorkspace>
+    }
+    render(<ReferencesFixture />)
+    await user.click(screen.getByRole('button', { name: 'AI 对话' }))
+    await user.type(screen.getByRole('textbox'), '草稿甲')
+    await user.click(screen.getByRole('button', { name: '选取原文' }))
+    await user.click(screen.getByRole('button', { name: '显示对话列表' }))
+    await user.click(screen.getByRole('button', { name: 'second' }))
+    expect(screen.queryByRole('button', { name: '1 条引用' })).not.toBeInTheDocument()
+    await user.type(screen.getByRole('textbox'), '草稿乙')
+    await user.click(screen.getByRole('button', { name: '显示对话列表' }))
+    await user.click(screen.getByRole('button', { name: 'first' }))
+    expect(screen.getByRole('textbox')).toHaveValue('草稿甲')
+    expect(screen.getByRole('button', { name: '1 条引用' })).toBeVisible()
+    await user.click(screen.getByRole('button', { name: '发送给 AI' }))
+    expect(adapter.respond).toHaveBeenCalledWith(expect.objectContaining({ threadId: 'first', prompt: '草稿甲', references: [{ id: 'r1', messages: [{ id: '9', text: '引用文字' }] }] }), expect.anything())
+  })
+  it('宽屏默认收起历史，打开后 Escape 只收起历史并恢复触发焦点', async () => {
+    const media = window.matchMedia('')
+    vi.spyOn(window, 'matchMedia').mockImplementation(query => ({ ...media, media: query, matches: query === '(min-width: 1200px)' }))
+    const user = userEvent.setup()
+    render(<Fixture adapter={client()} />)
+    await user.click(screen.getByRole('button', { name: 'AI 对话' }))
+    expect(screen.queryByRole('navigation', { name: 'AI 对话列表' })).not.toBeInTheDocument()
+    await user.type(screen.getByRole('textbox'), '保留这个草稿')
+    await user.click(screen.getByRole('button', { name: '显示对话列表' }))
+    await user.keyboard('{Escape}')
+    expect(screen.getByRole('complementary', { name: 'AI 对话' })).toBeVisible()
+    expect(screen.queryByRole('navigation', { name: 'AI 对话列表' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '显示对话列表' })).toHaveFocus()
+    expect(screen.getByRole('textbox')).toHaveValue('保留这个草稿')
+  })
   it('窄窗历史列表可以单独退出，不遮住可继续操作的输入框', async () => {
     const media = window.matchMedia('')
     vi.spyOn(window, 'matchMedia').mockImplementation(query => ({ ...media, media: query, matches: query === '(max-width: 1000px)' }))

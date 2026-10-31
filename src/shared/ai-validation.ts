@@ -21,7 +21,8 @@ const usage = object({ inputTokens: optional(count), totalInputTokens: optional(
 const state: Check = value => ['queued', 'running', 'summarizing', 'completed', 'stopped', 'failed', 'interrupted'].includes(value as string)
 const report = object({ summary: text(100000, true), observations: array(object({ text: text(20000, true), evidenceMessageIds: ids, limitations: text(20000) }), 200), limitations: text(20000) })
 const analysis = object({ id: localId, conversationId: localId, modelId: key, state, analyzedMessages: count, totalMessages: count, skippedMessages: count, usage, error: optional(text(2000)), report: optional(report), valid: bool, eventSequence: count })
-const turn = object({ id: localId, threadId: localId, requestId: key, prompt: text(100000, true), referenceIds: ids, modelId: key, skillId: optional(key), text: text(2 * 1024 ** 2), state, attempt: positive, usage, error: optional(text(2000)), eventSequence: count })
+const modelIdentity = object({ id: key, version: positive, label: text(256, true), model: key })
+const turn = object({ id: localId, threadId: localId, requestId: key, prompt: text(100000, true), referenceIds: ids, modelId: key, modelIdentity: optional(modelIdentity), skillId: optional(key), text: text(2 * 1024 ** 2), state, attempt: positive, usage, error: optional(text(2000)), eventSequence: count })
 const threadFields = { id: localId, conversationId: localId, title: text(200, true), createdAtMs: count, updatedAtMs: count }
 const thread = object({ ...threadFields, turns: array(turn, 10000) })
 const preparation = object({ token: key, conversationId: localId, title: text(2000), selfName: text(2000), totalMessages: count, analyzableMessages: count, snapshotMaxId: localId, expiresAt: count, model })

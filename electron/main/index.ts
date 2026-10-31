@@ -160,7 +160,7 @@ else {
     window.webContents.setWindowOpenHandler(({ url }) => {
       try {
         const link = new URL(url)
-        if (link.protocol === 'https:' && !link.username && !link.password && !link.port && !link.search && ['github.com', 'ui.shadcn.com', 'gsap.com', 'loading.io'].includes(link.hostname)) {
+        if (['https:', 'http:'].includes(link.protocol) && link.hostname && !link.username && !link.password && url.length <= 8192 && !/[\u0000-\u001f\u007f]/.test(url)) {
           void shell.openExternal(link.href).catch(() => { if (!window.isDestroyed()) void dialog.showMessageBox(window, { type: 'error', message: '无法打开链接。', detail: '请将链接复制到浏览器中打开。' }) })
         }
       } catch { /* 非网页地址不能交给系统执行。 */ }

@@ -114,7 +114,7 @@ describe('Cherry 对话流程接入', () => {
     await user.click(await screen.findByRole('button', { name: /输出 100/ }))
     const card = screen.getByRole('region', { name: '生成统计' })
     expect(card).toHaveTextContent('同名模型')
-    expect(card).toHaveTextContent('示例服务 A')
+    expect(card).toHaveTextContent('model-a')
     expect(card).toHaveTextContent('1,000 Tokens')
     expect(card).toHaveTextContent('100 Token/秒')
     expect(card).toHaveTextContent('10 Token/秒')

@@ -1,5 +1,7 @@
 # Whomi 产品上下文
 
+2026-10-31 会话阅读完善：AI回答支持标题、列表和表格，桌面与原文并排，历史默认收起。逐条回答显示生成时模型，统计摘要与详情共用模型生成速度，底部可复制原始回答。切换历史保留各自草稿、待发送引用与阅读位置。例如甲回答后切乙，再将甲改名停用并重启，旧回答及其统计仍显示生成时的甲。实现、截图与验证范围见[阅读完善记录](docs/designs/whomi-conversation-reading-polish.md)。
+
 2026-10-31 交互补正：原文右上角打开 AI 侧窗，同一原始会话支持新建、切换和恢复多条独立 AI 对话。服务商文本连接支持 OpenAI Chat Completions、OpenAI Responses、Anthropic Messages、Google Generate Content；模型目录采用勾选后确认添加，工具栏保留再次打开目录的加号。例：先全选目录中的示例模型，排除两个，再点击添加；取消不会保存待添加项。图片生成和云账号登录不属于这四种文本连接。验证与边界见[本轮记录](docs/designs/whomi-conversation-model-refinements.md)。
 
 2026-10-31 本轮接入 Cherry 的服务商菜单、自动保存、模型同步与容量编辑、按服务商分组的选模和生成统计。发送问题后腾出输入区，失败重试保留原请求及后续草稿。导入单个已识别文件时自动解析、匹配并保存：唯一可靠匹配追加，零个或多个匹配新建；本人设置仍在会话右上角操作，导入不要求填写目标或账号别名，也不预览消息。例：再次拖入同一份导出，重复消息不新增；保存完成后直接打开会话。来源、边界与验证见 `docs/research/cherry-settings-reuse.md`、`cherry-conversation-reuse.md` 和 `whomi-auto-import-reuse.md`；下方与本段冲突的旧流程属于历史记录。

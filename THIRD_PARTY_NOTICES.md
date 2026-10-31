@@ -69,3 +69,6 @@ SOFTWARE.
 本轮会话后台使用 [Pi](https://github.com/earendil-works/pi) 的完整 `@earendil-works/pi-coding-agent@1.4.0` 发布包，安装包元数据声明为 MIT。模型适配、Agent 会话和原生历史复用该包；本项目自行维护业务权限、任务和统计归属。锁定依赖及传递依赖见 `package-lock.json`；仅在应用专用后台进程运行，没有把上游终端界面代码复制到本项目源文件。
 
 React、Vite、Radix、Lucide 等运行和开发依赖的实际版本见 `package-lock.json`，各自许可按安装包声明提供。本文件不替代各依赖的许可声明。
+## Cherry MarkdownCore
+
+会话回答排版复用 Cherry Studio 界面包 packages/ui 的 MarkdownCore 及内部转换插件，固定提交 f19aa72f969b782ed72f81be80976b237ae26605。该包声明 MIT，作者 Cherry Studio；源文件、许可和本地适配记录位于 src/vendor/cherry-markdown。Streamdown 2.5.0、remend 1.3.0 与其依赖由包管理器固定。模型署名和复制反馈沿用既有 Cherry 业务模块的 AGPL-3.0 来源约定。

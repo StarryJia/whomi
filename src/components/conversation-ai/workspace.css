@@ -16,7 +16,7 @@
 .conversation-ai-header { display: flex; flex: 0 0 auto; align-items: center; gap: 4px; padding: calc(var(--desktop-titlebar-height, 0px) + 10px) 12px 10px; border-bottom: 1px solid var(--line); -webkit-app-region: no-drag; }
 .conversation-ai-header h2 { flex: 1; }
 .conversation-ai-body { display: flex; flex: 1; min-height: 0; position: relative; }
-.conversation-thread-list { flex: 0 0 180px; min-width: 0; padding: 8px; border-right: 1px solid var(--line); overflow-y: auto; background: var(--surface); scrollbar-width: thin; }
+.conversation-thread-list { position: absolute; inset: 0 auto 0 0; z-index: 2; width: min(260px, 80%); min-width: 0; padding: 8px; border-right: 1px solid var(--line); box-shadow: 6px 0 18px rgb(38 48 61 / 8%); overflow-y: auto; background: var(--surface); scrollbar-width: thin; }
 .conversation-thread-list > button { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 36px; padding: 8px; border: 0; border-radius: 8px; background: transparent; color: var(--text-muted); font: inherit; font-size: 13px; cursor: pointer; text-align: left; }
 .conversation-thread-list > button span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .conversation-thread-list > button:hover, .conversation-thread-list > button[aria-current='true'] { background: var(--hover); color: var(--text); }
@@ -98,7 +98,14 @@
 .conversation-reference-list button > span { display: block; min-width: 0; }
 .conversation-reference-list strong { display: block; margin-bottom: 4px; font-size: 13px; font-weight: 500; color: var(--text-muted); }
 .conversation-reference-list button > span > span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
-.conversation-usage { display: flex; justify-content: flex-end; margin-top: 14px; font-variant-numeric: tabular-nums; }
+.conversation-answer-label strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.conversation-answer-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; margin-top: 12px; }
+.conversation-answer-actions { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--focus); }
+.conversation-answer-actions > button { display: inline-grid; place-items: center; width: 32px; height: 32px; padding: 6px; border: 0; border-radius: 6px; background: transparent; color: var(--text-muted); cursor: pointer; }
+.conversation-answer-actions > button:hover { background: var(--hover); color: var(--text); }
+.conversation-answer-actions > button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.conversation-answer-actions svg { width: 16px; height: 16px; }
+.conversation-usage { display: flex; justify-content: flex-end; margin-left: auto; font-variant-numeric: tabular-nums; }
 .conversation-usage > button { display: inline-flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 2px 10px; min-height: 32px; padding: 6px 0 6px 6px; border: 0; color: var(--text-muted); background: transparent; font-size: 12px; cursor: pointer; }
 .conversation-usage > button:hover { color: var(--focus); }
 .conversation-usage > button svg { width: 14px; }
@@ -163,7 +170,7 @@
 .cherry-usage-primary { gap: 8px; }
 .cherry-usage-primary > div { background: var(--hover); border-radius: 6px; padding: 8px 10px; }
 .cherry-usage-primary dt, .cherry-usage-details dt { color: var(--text-muted); font-size: 11px; }
-.cherry-usage-primary dd { margin: 4px 0 0; font-weight: 650; font-size: 15px; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cherry-usage-primary dd { margin: 4px 0 0; font-weight: 650; font-size: 15px; line-height: 1.4; overflow-wrap: anywhere; }
 .cherry-usage-details { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; margin: 12px 0 0; padding-top: 10px; border-top: 1px solid var(--line); font-variant-numeric: tabular-nums; }
 .cherry-usage-details dd { margin: 0; color: var(--text-muted); font-size: 12px; }
 .conversation-usage > button:focus-visible, .cherry-model-trigger:focus-visible, .conversation-icon-button:focus-visible { outline: 2px solid var(--text-muted); outline-offset: 2px; border-radius: 6px; }
@@ -172,13 +179,11 @@
 @media (max-width: 1200px) and (min-width: 1001px) {
   .has-ai-panel .conversation-ai-panel { flex-basis: 60%; }
   .conversation-ai-timeline { padding: 20px; }
-  .conversation-thread-list { flex-basis: 160px; }
   .conversation-panel-composer { padding-inline: 12px; }
 }
 @media (max-width: 1000px) {
   .conversation-ai-panel { position: absolute; inset: 0; z-index: 25; width: 100%; border-left: 0; transform: translateX(100%); transition: transform 260ms var(--ease-sidebar), visibility 260ms; }
   .has-ai-panel .conversation-ai-panel { position: absolute; transform: translateX(0); border-left: 0; }
-  .conversation-thread-list { position: absolute; inset: 0 auto 0 0; z-index: 2; width: min(240px, 75%); }
   .conversation-workspace { overflow: hidden; }
 }
 @media (max-width: 640px) {
@@ -192,6 +197,11 @@
   .conversation-composer-top > .conversation-references { margin-left: 0; }
   .conversation-composer-top { justify-content: space-between; }
   .conversation-analysis-trigger { padding-inline: 10px; font-size: 13px; }
+}
+@media (max-width: 480px) {
+  .cherry-usage-primary { grid-template-columns: 1fr; }
+  .cherry-usage-primary > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .cherry-usage-primary dd { margin: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
   .conversation-ai-panel, .conversation-popover, .conversation-progress circle, .conversation-send { transition: none; animation: none; }

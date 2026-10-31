@@ -6,7 +6,7 @@ import { createContext, useContext, useId, useMemo, useRef, useState } from 'rea
 
 export const ConversationPopoverOwner = createContext<string | undefined>(undefined)
 
-export type ModelOption = { id: string; label: string; model?: string; providerId?: string; providerName?: string; providerImage?: string; group?: string }
+export type ModelOption = { id: string; label: string; model?: string; version?: number; providerId?: string; providerName?: string; providerImage?: string; group?: string }
 
 export function ModelSelector({ models, value, onSelect, label, disabled, describedBy }: {
   models: readonly ModelOption[]; value: string; onSelect: (id: string) => void

@@ -77,7 +77,7 @@ export async function createConversationAiClient(api: AiApi, settings?: Settings
       const configured = preferences?.models.find(item => item.id === model.id)
       const provider = preferences?.providers.find(item => item.id === configured?.providerId)
       if (provider && !provider.enabled) return []
-      return [{ id: model.id, label: model.label, model: model.model,
+      return [{ id: model.id, label: model.label, model: model.model, version: model.version,
         ...(configured?.group ? { group: configured.group } : {}),
         ...(provider ? { providerId: provider.id, providerName: provider.name, ...(provider.image ? { providerImage: provider.image } : {}) } : {}) }]
     }),
@@ -163,7 +163,7 @@ export async function createConversationAiClient(api: AiApi, settings?: Settings
         return value
       }, () => api.stopTurn(initial.id), value => onText(value.text))
       if (result.state !== 'completed') throw new Error(result.error ?? (result.state === 'stopped' ? '已停止回答。' : '回答中断，请重试。'))
-      return { text: result.text, usage: result.usage }
+      return { text: result.text, usage: result.usage, ...(result.modelIdentity ? { modelIdentity: result.modelIdentity } : {}) }
     },
     async analyze(request, { signal, onProgress }) {
       check(signal)

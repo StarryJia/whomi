@@ -83,7 +83,7 @@ test('real Pi process persists analysis reports and dialogue through the isolate
     await page.screenshot({ path: join(evidence, '02-conversation.png') })
     await page.locator('.conversation-usage button').click()
     await expect(page.getByRole('region', { name: '生成统计' })).toContainText('模型生成 TPS')
-    await expect(page.getByRole('region', { name: '生成统计' })).toContainText('合成本地服务')
+    await expect(page.getByRole('region', { name: '生成统计' })).toContainText('example')
     await page.screenshot({ path: join(evidence, '03-token-statistics.png'), animations: 'disabled' })
     await page.keyboard.press('Escape')
     await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(574, 800))

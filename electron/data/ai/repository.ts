@@ -134,7 +134,17 @@ export function createAiRepository(store: Store, write: WriterQueue) {
   }
   function turnView(row: TurnRow): AiTurn {
     const skill = row.skill ? parse<RegisteredSkill>(row.skill) : null
-    return { id: String(row.id), threadId: String(row.thread_id), requestId: row.request_id, prompt: row.prompt, referenceIds: parse<string[]>(row.reference_ids), modelId: row.model_id, ...(skill ? { skillId: skill.id } : {}), text: row.text, state: row.state, attempt: Number(row.attempt), usage: aggregate('turn', String(row.id)), eventSequence: Number(row.event_sequence), ...(row.error ? { error: row.error } : {}) }
+    const snapshot = reader.prepare('SELECT data FROM ai_model_versions WHERE model_id=? AND version=?').get(row.model_id, row.model_version) as { data: string } | undefined
+    let modelIdentity: AiTurn['modelIdentity']
+    if (snapshot) {
+      try {
+        const model = parse<Partial<AiModel>>(snapshot.data)
+        if (typeof model?.label === 'string' && model.label.trim() && typeof model.model === 'string' && model.model.trim()) {
+          modelIdentity = { id: row.model_id, version: Number(row.model_version), label: model.label, model: model.model }
+        }
+      } catch { /* 缺失或损坏的旧模型身份不阻止读取已保存的正文。 */ }
+    }
+    return { id: String(row.id), threadId: String(row.thread_id), requestId: row.request_id, prompt: row.prompt, referenceIds: parse<string[]>(row.reference_ids), modelId: row.model_id, ...(modelIdentity ? { modelIdentity } : {}), ...(skill ? { skillId: skill.id } : {}), text: row.text, state: row.state, attempt: Number(row.attempt), usage: aggregate('turn', String(row.id)), eventSequence: Number(row.event_sequence), ...(row.error ? { error: row.error } : {}) }
   }
   function assertCurrent(row: AnalysisRow) {
     if (row.prompt_version !== ANALYSIS_PROMPT_VERSION) fail('PROMPT_CHANGED', '请重新准备分析。')

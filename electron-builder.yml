@@ -7,6 +7,10 @@ files:
   - out/**
   - package.json
 extraResources:
+  - from: src/vendor/cherry-markdown/LICENSE
+    to: licenses/cherry-markdown/LICENSE
+  - from: src/vendor/cherry-markdown/UPSTREAM.md
+    to: licenses/cherry-markdown/UPSTREAM.md
   - from: build/icon.png
     to: branding/icon.png
   - from: THIRD_PARTY_NOTICES.md

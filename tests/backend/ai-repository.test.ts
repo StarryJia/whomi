@@ -28,6 +28,24 @@ async function setup() {
   return { store, repository, model, path: temp.path }
 }
 const report: AiReport = { summary: '示例观察', observations: [{ text: '尝试了解对方', evidenceMessageIds: ['1'], limitations: '仅限本段记录' }], limitations: '材料有限' }
+
+test('turn identity preserves its generating version after rename, disable and restart without exposing credentials', async () => {
+  const { repository, store, model, path } = await setup()
+  const thread = await repository.openThread('1')
+  const turn = await repository.createTurn({ threadId: thread.id, requestId: 'identity', prompt: '问题', referenceIds: [], modelId: model.id })
+  await repository.saveTurn(turn.id, { state: 'completed', text: '回答' })
+  await repository.saveModel({ ...model, label: '新名称', model: 'changed-model', enabled: false })
+  store.close()
+  const reopened = openStore(path); cleanup.push(() => reopened.close())
+  const restored = createAiRepository(reopened, async operation => operation())
+  const value = restored.getThread(thread.id)
+  expect(value.turns[0]).toMatchObject({ modelIdentity: { id: 'example', version: 1, label: '示例服务', model: 'example-model' } })
+  expect(Object.keys(value.turns[0].modelIdentity!).sort()).toEqual(['id', 'label', 'model', 'version'])
+  expect(() => validateAiResult('getThread', value)).not.toThrow()
+  reopened.writer.prepare('DELETE FROM ai_model_versions WHERE model_id=? AND version=?').run(model.id, 1)
+  expect(restored.getThread(thread.id).turns[0]).toMatchObject({ modelId: 'example', text: '回答' })
+  expect(restored.getThread(thread.id).turns[0].modelIdentity).toBeUndefined()
+})
 async function task(repository: Awaited<ReturnType<typeof setup>>['repository'], requestId = 'confirm') {
   const preparation = await repository.prepareAnalysis({ conversationId: '1', modelId: 'example' }, 1000)
   return repository.confirmAnalysis({ token: preparation.token, requestId }, 1001)

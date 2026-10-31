@@ -1,5 +1,7 @@
 # Cherry 对话模块接入记录
 
+2026-10-31 阅读完善已追加：回答使用 Cherry MarkdownCore，标题与统计改为读取该轮生成时的模型版本；摘要与主要详情共用生成速度，并加入原始回答复制。下方关于统计显示当前模型的描述为本次完善前行为。完整来源、适配与截图见[阅读完善记录](../designs/whomi-conversation-reading-polish.md)。例如模型改名或停用后，已有回答不随当前模型菜单改名。
+
 本轮固定参考 Cherry Studio 提交 `f19aa72f969b782ed72f81be80976b237ae26605`。上游包版本标记为 2.1.9；没有把这一标记当作用户截图所用版本的证明。许可证全文见 `electron/vendor/cherry-studio/LICENSE`，业务模块按 AGPL-3.0 记录。
 
 ## 来源与适配

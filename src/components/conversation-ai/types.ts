@@ -1,5 +1,5 @@
 import type { ReferenceRange } from './selection'
-import type { AnalysisPreparation, AnalysisTask, AiState, AiUsage, AiThread, AiThreadSummary } from '../../shared/ai-contract'
+import type { AnalysisPreparation, AnalysisTask, AiState, AiUsage, AiThread, AiThreadSummary, AiModelIdentity } from '../../shared/ai-contract'
 import type { ModelOption } from './model-selector'
 
 export type GenerationUsage = AiUsage
@@ -25,6 +25,7 @@ export type ConversationRequest = {
 export type RestoredConversationTurn = {
   id: string; requestId: string; prompt: string; referenceIds: string[]; modelId: string; skillId?: string
   text: string; state: AiState; usage?: GenerationUsage; error?: string
+  modelIdentity?: AiModelIdentity
 }
 export type ConversationAiAdapter = {
   selectedModels?: Partial<Record<'analysis' | 'conversation', string>>
@@ -42,7 +43,7 @@ export type ConversationAiAdapter = {
   respond(request: ConversationRequest, options: {
     signal: AbortSignal
     onText: (text: string) => void
-  }): Promise<{ text: string; usage?: GenerationUsage }>
+  }): Promise<{ text: string; usage?: GenerationUsage; modelIdentity?: AiModelIdentity }>
   analyze(request: { conversationId: string; modelId: string; preparationToken?: string; requestId?: string }, options: {
     signal: AbortSignal
     onProgress: (progress: AnalysisProgress) => void
