@@ -7,6 +7,7 @@ import { SettingsPage } from './settings-page'
 function setup(withProvider = true, withModel = false) {
   let state: SettingsSnapshot = { providers: withProvider ? [{ id: 'p1', name: '本地服务', baseUrl: 'http://127.0.0.1:1234/v1', enabled: true, hasCredential: true }] : [], models: withModel ? [{ id: 'm1', providerId: 'p1', label: '测试模型', model: 'alpha', baseUrl: 'http://127.0.0.1:1234/v1', enabled: true, hasCredential: true, contextWindow: 8192, maxTokens: 1024, version: 1 }] : [], processing: structuredClone(defaultProcessing), selectedModels: {}, debug: false }
   const api: SettingsApi = {
+    getCodexQuota: async () => ({ state: 'disconnected' }),
     getAccountUsage: async () => ({ requests:0, inputTokens:null, outputTokens:null, partial:false }),
     getAccountStatus: async () => ({ state: 'disconnected' }), signInAccount: async () => ({ state: 'disconnected' }), cancelAccountSignIn: async () => {}, signOutAccount: async () => {}, setAccountEnabled: async () => {},
     get: vi.fn(async () => structuredClone(state)),

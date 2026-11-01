@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { CircleCheck, Info, LogIn } from 'lucide-react'
-import type { AccountUsage, Provider, SettingsApi } from '../../shared/settings-contract'
-import { chatgptUsageUrl, subscriptionProviders, type ChatgptStatus, type SubscriptionProviderId } from '../../shared/chatgpt-plan'
+import type { Provider, SettingsApi } from '../../shared/settings-contract'
+import { subscriptionProviders, type ChatgptStatus, type SubscriptionProviderId } from '../../shared/chatgpt-plan'
 import { Modal, Switch, errorText } from './common'
 import { ProviderAvatar, presetAccounts } from './provider-presets'
+import { CodexUsage } from './codex-usage'
 import './chatgpt-account.css'
 
 const accountNames: Record<SubscriptionProviderId, string> = { 'openai-codex': 'ChatGPT', 'grok-cli': 'Grok', copilot: 'GitHub' }
@@ -24,36 +25,6 @@ function markSeen(key: string) {
 function accountError(cause: unknown) {
   if (cause && typeof cause === 'object' && 'action' in cause && typeof cause.action === 'string' && cause.action.trim()) return cause.action
   return errorText(cause)
-}
-
-function UsageCard({ api }: { api: SettingsApi }) {
-  const [usage, setUsage] = useState<AccountUsage>()
-  const [attempt, setAttempt] = useState(0)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  useEffect(() => {
-    let current = true
-    setLoading(true)
-    setError('')
-    void api.getAccountUsage('openai-codex').then(value => {
-      if (current) setUsage(value)
-    }).catch(cause => {
-      if (current) { setUsage(undefined); setError(accountError(cause)) }
-    }).finally(() => { if (current) setLoading(false) })
-    return () => { current = false }
-  }, [api, attempt])
-  const format = (value: number | null) => value === null ? '未记录' : value.toLocaleString('zh-CN')
-  return <section className="account-usage-card" aria-label="套餐用量">
-    <header><h3>套餐用量</h3><button className="ms-text-button" type="button" disabled={loading} onClick={() => setAttempt(value => value + 1)}>{error ? '重读本机用量' : '刷新本机用量'}</button></header>
-    <p>当前账号在本机保留的对话与记忆生成用量</p>
-    {error ? <p role="alert" className="ms-error">{error}</p> : usage ? <>
-      {usage.requests > 0 ? <><dl><div><dt>输入词元</dt><dd>{format(usage.inputTokens)}</dd></div>
-        <div><dt>输出词元</dt><dd>{format(usage.outputTokens)}</dd></div></dl>
-        <p>已记录 {usage.requests.toLocaleString('zh-CN')} 次请求{usage.partial ? '，部分请求未返回完整用量。' : '。'}</p></>
-        : <p>暂无本机请求记录。</p>}
-    </> : <p role="status">正在读取本机用量…</p>}
-    <div className="account-usage-plan"><span>套餐剩余额度与重置时间</span><a href={chatgptUsageUrl} target="_blank" rel="noreferrer">在 ChatGPT 查看套餐用量</a></div>
-  </section>
 }
 
 export function ProviderAccount({ id, api, provider, refresh, onConnection }: {
@@ -173,7 +144,7 @@ export function ProviderAccount({ id, api, provider, refresh, onConnection }: {
         {error && <p role="alert" className="ms-error">{error}</p>}
       </div>
     </section>
-    {isCodex && connected && <UsageCard key={status.accountId ?? status.email} api={api} />}
+    {isCodex && connected && <CodexUsage key={status.accountId ?? status.email} api={api} accountId={status.accountId ?? ''} />}
     {confirmExit && <Modal title={'退出 ' + accountName + ' 登录？'} busy={working} onClose={() => setConfirmExit(false)}>
       <div className="ms-modal-body">退出后，再次使用此账户的模型时需要登录。</div><footer className="ms-modal-footer"><button className="ms-button" onClick={() => setConfirmExit(false)} disabled={working}>取消</button><button className="ms-button ms-primary" disabled={working} onClick={() => void change('logout')}>确认退出</button></footer>
     </Modal>}

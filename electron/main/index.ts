@@ -16,6 +16,7 @@ import { aiChannels, type AiMethods } from '../../src/shared/ai-contract'
 import { createCherryAccount } from './cherry-accounts'
 import type { SubscriptionProviderId } from '../../src/shared/chatgpt-plan'
 import { createChatgptAuth } from './chatgpt-auth'
+import { createCodexQuota } from './codex-quota'
 import { createChatgptRunner } from './chatgpt-responses'
 import { createSettingsService } from './settings-service'
 import { createStorageLocationService, resolveStorageLocation } from './storage-location'
@@ -52,11 +53,12 @@ else {
     const secrets = createCredentialVault(safeStorage)
     const accountOptions = { directory: userDataPath, vault: secrets, openBrowser: (url: string) => shell.openExternal(url) }
     const chatgpt = createChatgptAuth(accountOptions)
+    const codexQuota = createCodexQuota({ directory: userDataPath, vault: secrets })
     const grok = createCherryAccount('grok-cli', { ...accountOptions, clientId: process.env.WHOMI_GROK_CLIENT_ID })
     const copilot = createCherryAccount('copilot', { ...accountOptions, clientId: process.env.WHOMI_COPILOT_CLIENT_ID })
     const accounts = { 'openai-codex': chatgpt, 'grok-cli': grok, copilot }
     const accountRunners = { 'openai-codex': createChatgptRunner((id, signal) => chatgpt.accessToken(id, signal)), 'grok-cli': grok.runner, copilot: copilot.runner }
-    app.once('before-quit', () => { for (const account of Object.values(accounts)) account.close() })
+    app.once('before-quit', () => { codexQuota.close(); for (const account of Object.values(accounts)) account.close() })
     async function startServices(directory: string) {
       dataHost = startDataHost(directory)
       if (probeEnabled) (globalThis as typeof globalThis & { __whomiRuntimeProbe?: DataHost }).__whomiRuntimeProbe = dataHost
@@ -89,7 +91,7 @@ else {
         if (servicesClosed) await startServices(directory)
         suspended = false
       } })
-    const settingsService = createSettingsService({ accounts, storage: (method, args) => dataHost!.request('settingsStorage', [method, args]), secrets,
+    const settingsService = createSettingsService({ accounts, codexQuota, storage: (method, args) => dataHost!.request('settingsStorage', [method, args]), secrets,
       testModel: id => aiService!.testModel(id), beforeModelChange: async ids => { if (aiService!.hasModelWork(ids)) throw new BoundaryError('MODEL_BUSY', '请先停止使用此模型的任务后重试。') } })
     const diagnostics: { code: string; action: string }[] = []
     const credential = randomUUID()

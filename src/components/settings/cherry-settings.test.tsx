@@ -10,6 +10,7 @@ function setup(withModel = true, accountApi: Partial<SettingsApi> = {}) {
   let data: SettingsSnapshot = { providers: [{ id: 'p1', name: '示例服务', baseUrl: 'http://localhost:1234/v1', enabled: true, hasCredential: true }], models: withModel ? [model] : [], processing: defaultProcessing, selectedModels: {}, debug: false }
   const api = {
     get: async () => structuredClone(data),
+    getCodexQuota: async () => ({ state: 'disconnected' }),
     getAccountUsage: async () => ({requests:0,inputTokens:null,outputTokens:null,partial:false}),
     saveProvider: vi.fn(async input => { const { apiKey: _key, ...safe } = input; const saved = { ...safe, id: input.id ?? 'p2', hasCredential: true }; data = { ...data, providers: [...data.providers.filter(p => p.id !== saved.id), saved] }; return saved }),
     removeProvider: vi.fn(async () => {}), stopModelTasks: vi.fn(async () => {}),
@@ -331,7 +332,7 @@ test('ChatGPT 仅首次连接提示套餐用量，退出失败仍保留真实账
   await user.click(screen.getByRole('button', { name: 'OpenAI Codex' }))
   await user.click(await screen.findByRole('button', { name: '使用 ChatGPT 登录' }))
   await user.click(await screen.findByRole('button', { name: '知道了' }))
-  expect(screen.getByRole('link', { name: '在 ChatGPT 查看套餐用量' })).toHaveAttribute('href', 'https://chatgpt.com/settings/usage')
+  expect(screen.getByRole('link', { name: '在 ChatGPT 管理用量' })).toHaveAttribute('href', 'https://chatgpt.com/settings/usage')
   await user.click(screen.getByRole('button', { name: '退出登录' }))
   await user.click(screen.getByRole('button', { name: '确认退出' }))
   expect(await screen.findByRole('alert')).toHaveTextContent('请重试退出登录。')
@@ -358,12 +359,13 @@ test('Codex displays only local counters returned for the active account and pre
   const getAccountUsage = vi.fn().mockRejectedValueOnce(new Error('读取失败')).mockResolvedValue({requests:2,inputTokens:1234,outputTokens:0,partial:true})
   const { user } = setup(false, { getAccountUsage, getAccountStatus: async () => ({state:'connected', accountId:'a', email:'演示账号'}) })
   await user.click(screen.getByRole('button', {name:'OpenAI Codex'}))
+  await user.click(await screen.findByText('本机使用记录', {exact:true}))
   await user.click(await screen.findByRole('button', {name:'重读本机用量'}))
-  const region = await screen.findByRole('region',{name:'套餐用量'})
+  const region = screen.getByText('本机使用记录', {exact:true}).closest('details')!
   expect(await within(region).findByText('1,234')).toBeVisible()
   expect(within(region).getByText('0',{exact:true})).toBeVisible()
   expect(region).toHaveTextContent('部分请求未返回完整用量')
-  expect(within(region).getByRole('link',{name:'在 ChatGPT 查看套餐用量'})).toHaveAttribute('href','https://chatgpt.com/settings/usage')
+  expect(screen.getByRole('link',{name:'在 ChatGPT 管理用量'})).toHaveAttribute('href','https://chatgpt.com/settings/usage')
   expect(region).not.toHaveTextContent('%')
 })
 

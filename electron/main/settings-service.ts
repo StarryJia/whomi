@@ -4,8 +4,10 @@ import { failSettings, settingsId, validateProcessing, validateProvider, validat
 import { defaultModelProtocol } from '../../src/shared/model-protocol'
 import { getSubscriptionId, isSubscriptionId, type SubscriptionProviderId, type ChatgptStatus } from '../../src/shared/chatgpt-plan'
 import { fetchModelCatalog } from './model-catalog'
+import type { createCodexQuota } from './codex-quota'
 
 export type SettingsServiceOptions = {
+  codexQuota?: ReturnType<typeof createCodexQuota>
   storage(method: string, args: unknown[]): Promise<unknown>
   secrets: { encrypt(value: string): string; decrypt(value: string): string }
   testModel(id: string): Promise<void>
@@ -19,13 +21,14 @@ export type SettingsServiceOptions = {
   }>>
   fetch?: typeof globalThis.fetch
 }
-export type SettingsService = Pick<SettingsApi, 'getAccountUsage' | 'getAccountStatus' | 'signInAccount' | 'cancelAccountSignIn' | 'signOutAccount' | 'setAccountEnabled' | 'get' | 'saveProvider' | 'removeProvider' | 'saveModel' | 'removeModel' | 'syncModels' | 'testModel' | 'saveProcessing' | 'selectModel' | 'setDebug'>
+export type SettingsService = Pick<SettingsApi, 'getCodexQuota' | 'getAccountUsage' | 'getAccountStatus' | 'signInAccount' | 'cancelAccountSignIn' | 'signOutAccount' | 'setAccountEnabled' | 'get' | 'saveProvider' | 'removeProvider' | 'saveModel' | 'removeModel' | 'syncModels' | 'testModel' | 'saveProcessing' | 'selectModel' | 'setDebug'>
 
 export function createSettingsService(options: SettingsServiceOptions): SettingsService {
   const storage = <T>(method: string, ...args: unknown[]) => options.storage(method, args) as Promise<T>
   const get = () => storage<SettingsSnapshot>('get')
   const affected = async (id: string) => (await get()).models.filter(model => model.providerId === id).map(model => model.id)
   const accountCatalog = new Map<string, Map<string, ThinkingLevel[]>>()
+  const closingAccounts = new Set<SubscriptionProviderId>()
   let mutations: Promise<unknown> = Promise.resolve()
   function mutate<T>(operation: () => Promise<T>): Promise<T> { const result = mutations.then(operation); mutations = result.catch(() => {}); return result }
   function account(id: SubscriptionProviderId) {
@@ -41,6 +44,18 @@ export function createSettingsService(options: SettingsServiceOptions): Settings
   }
   return {
     get,
+    async getCodexQuota(expected, action) {
+      settingsId(expected)
+      if (!['read', 'connect', 'disconnect'].includes(action)) failSettings('INVALID_ARGUMENT')
+      const service = account('openai-codex'), status = await service.getStatus()
+      if (closingAccounts.has('openai-codex')) failSettings('ACCOUNT_BUSY', '账户正在退出，请稍后重试。')
+      if (status.state !== 'connected' || status.accountId !== expected) failSettings('ACCOUNT_CHANGED', '账户已变化，请重新打开此账户。')
+      if (!options.codexQuota) failSettings('ACCOUNT_UNAVAILABLE', '请重新打开账户设置。')
+      const result = await options.codexQuota.read(expected, action)
+      const current = await service.getStatus()
+      if (closingAccounts.has('openai-codex') || current.state !== 'connected' || current.accountId !== expected) return { state: 'disconnected' }
+      return result
+    },
     getAccountStatus: id => mutate(() => reconcile(id)),
     getAccountUsage: id => mutate(async () => {
       const service = account(id)
@@ -69,9 +84,15 @@ export function createSettingsService(options: SettingsServiceOptions): Settings
     },
     signOutAccount(id) {
       return mutate(async () => {
-        await options.beforeModelChange(await affected('cherry:' + id))
-        await storage('setAccountConnection', id, null)
-        await account(id).signOut()
+        const service = account(id)
+        closingAccounts.add(id)
+        try {
+          await options.beforeModelChange(await affected('cherry:' + id))
+          const status = await service.getStatus()
+          if (id === 'openai-codex' && status.accountId) await options.codexQuota?.read(status.accountId, 'disconnect')
+          await storage('setAccountConnection', id, null)
+          await service.signOut()
+        } finally { closingAccounts.delete(id) }
       })
     },
     async saveProvider(input: ProviderInput) {

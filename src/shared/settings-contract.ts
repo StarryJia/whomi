@@ -1,6 +1,7 @@
 import type { ChatgptStatus, SubscriptionProviderId } from './chatgpt-plan'
 import type { AiModel } from './ai-contract'
 import type { ModelProtocol } from './model-protocol'
+import type { CodexQuotaAction, CodexQuotaState } from './codex-quota'
 
 export const redactionRules = ['key', 'token', 'email', 'credit-card', 'ipv4', 'url', 'mobile', 'identity', 'bank-card', 'landline'] as const
 export type RedactionRule = typeof redactionRules[number]
@@ -20,6 +21,7 @@ export type StorageChoice = { token: string; path: string }
 export type Diagnostics = { version: string; platform: string; entries: { code: string; action: string }[] }
 export type AccountUsage = { requests: number; inputTokens: number | null; outputTokens: number | null; partial: boolean }
 export interface SettingsApi {
+  getCodexQuota(accountId: string, action: CodexQuotaAction): Promise<CodexQuotaState>
   getAccountUsage(id: SubscriptionProviderId): Promise<AccountUsage>
   get(): Promise<SettingsSnapshot>
   getAccountStatus(id: SubscriptionProviderId): Promise<ChatgptStatus>

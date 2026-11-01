@@ -5,6 +5,7 @@ export type LeaveGuard = (action: () => void) => void
 export type RegisterGuard = (guard: LeaveGuard | null) => void
 
 export function errorText(error: unknown, fallback = '操作失败，请重试。') {
+  if (error && typeof error === 'object' && 'action' in error && typeof error.action === 'string' && error.action.trim()) return error.action
   return error instanceof Error && error.message ? error.message : fallback
 }
 export function isModelBusy(error: unknown) {

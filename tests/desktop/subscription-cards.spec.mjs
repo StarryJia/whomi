@@ -38,6 +38,7 @@ for (const width of [1920, 360]) test(`订阅服务商在 ${width} 像素下可�
         let value
         if (method === 'get') value = snapshot
         else if (method === 'getAccountStatus') value = statuses.get(id) ?? disconnected
+        else if (method === 'getCodexQuota') value = disconnected
         else if (method === 'getAccountUsage') {
           if (statuses.get(id)?.state !== 'connected') throw Error('用量查询缺少当前账号')
           if (!globalThis.localUsageFixture) return {ok:false, error:{code:'READ_FAILED', action:'读取本机用量失败，请重试。'}}
@@ -113,8 +114,9 @@ for (const width of [1920, 360]) test(`订阅服务商在 ${width} 像素下可�
     await button('知道了').click()
     await expect(page.getByText('演示账号', { exact: true })).toBeVisible()
     await expect(button('同步模型')).toBeEnabled()
-    await expect(page.getByRole('link', { name: '在 ChatGPT 查看套餐用量' })).toHaveAttribute('href', 'https://chatgpt.com/settings/usage')
-    const usage = page.getByRole('region', { name:'套餐用量' })
+    await expect(page.getByRole('link', { name: '在 ChatGPT 管理用量' })).toHaveAttribute('href', 'https://chatgpt.com/settings/usage')
+    await page.getByText('本机使用记录', { exact: true }).click()
+    const usage = page.locator('.codex-local-usage')
     await expect(usage).toContainText('部分请求未返回完整用量')
     await expect(usage.getByText('98', {exact:true})).toBeVisible()
     await expect(usage.getByText('12', {exact:true})).toBeVisible()
@@ -161,7 +163,7 @@ for (const width of [1920, 360]) test(`订阅服务商在 ${width} 像素下可�
     expect(await page.locator('.account-login-card').evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
     if (await button('分类').isVisible()) await button('分类').click()
     await button('关于 Whomi').click()
-    await expect(page.getByText('从对话中，慢慢了解自己。')).toBeVisible()
+    await expect(page.getByText('从对话中找出你不曾注意的细节')).toBeVisible()
     await shot('07-about')
   } finally {
     await app?.close()
