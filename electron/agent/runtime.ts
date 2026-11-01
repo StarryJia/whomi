@@ -62,8 +62,10 @@ export class PiRuntime {
     await modelRuntime.setRuntimeApiKey(provider, input.apiKey ?? 'whomi-no-credential')
     const model = modelRuntime.getModel(provider, input.model.model)
     if (!model) throw failure('MODEL_UNAVAILABLE', '请检查模型配置后重试。')
-    if (!input.checkpoint) {
-      for (const item of input.history ?? []) {
+    if (input.history !== undefined) {
+      // 显式历史已按当前隐私规则处理，不能被断点中的原始回答替代。
+      if (input.checkpoint) manager = SessionManager.create(cwd, sessionDir)
+      for (const item of input.history) {
         if (item.role === 'user') manager.appendMessage({ role: 'user', content: item.text, timestamp: Date.now() })
         else manager.appendMessage({ role: 'assistant', content: [{ type: 'text', text: item.text }], api, provider, model: model.id, usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } }, stopReason: 'stop', timestamp: Date.now() })
       }

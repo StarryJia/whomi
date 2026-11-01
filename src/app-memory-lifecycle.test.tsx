@@ -84,7 +84,7 @@ it('更正本人后只撤回该会话的贡献并重读暂停任务，保留对�
   expect(screen.getByLabelText('各段关系中的表现')).not.toHaveTextContent('周末')
 })
 
-it('空库保留四维和 Spark，仓库有文稿预览与导入入口，问一问能返回原入口', async () => {
+it('空库保留四维和 Spark，仓库有文稿预览与导入入口，问一问通过侧栏切回仓库', async () => {
   const user = userEvent.setup()
   render(<App conversations={[]} />)
   await user.click(screen.getByRole('button', { name: '个人总览' }))
@@ -97,7 +97,8 @@ it('空库保留四维和 Spark，仓库有文稿预览与导入入口，问一�
   expect(screen.getByRole('button', { name: '导入聊天记录' })).toBeVisible()
   await user.click(screen.getByRole('button', { name: '问一问' }))
   expect(screen.getByRole('heading', { name: '目前还没有问题哦' })).toBeVisible()
-  await user.click(screen.getByRole('button', { name: '返回记忆仓库' }))
+  expect(screen.queryByRole('button', { name: /^返回/ })).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: '记忆仓库' }))
   expect(screen.getByRole('heading', { name: '记忆仓库' })).toBeVisible()
 })
 

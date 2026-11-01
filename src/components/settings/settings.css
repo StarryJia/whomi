@@ -59,7 +59,6 @@
 .settings-storage .mp-content-section>.ms-button { margin-top:20px; }
 .settings-diagnostics { padding-left:20px; line-height:1.75; overflow-wrap:anywhere; }
 .settings-diagnostics p { margin:4px 0 12px; }
-.settings-notices { width:min(760px,calc(100vw - 32px)); }
 .ms-modal-footer { flex-wrap:wrap; }
 @media(min-width:721px) and (max-width:1040px) { .settings-page .ms-workspace { grid-template-columns:180px minmax(0,1fr); } .settings-page .ms-form-pair { grid-template-columns:minmax(0,1fr); } .settings-page .ms-detail { padding-inline:24px; } }
 @media(max-width:720px) { .settings-page .sp-sidebar { padding:12px 16px; } .settings-page .sp-brand { display:none; } .settings-page .sp-return { margin:0 0 8px; } .settings-page .ms-workspace { display:flex; } .settings-page .ms-provider-list { flex:1; width:100%; border:0; } .settings-page .ms-detail { display:none; flex:1; padding:20px; } .settings-page .ms-show-detail .ms-provider-list { display:none; } .settings-page .ms-show-detail .ms-detail { display:block; } .settings-page .ms-mobile-back { display:inline-flex; margin-bottom:16px; } .settings-page .ms-form-pair { grid-template-columns:minmax(0,1fr); } .settings-model-actions { flex-wrap:wrap; } .ms-model-row { flex-wrap:wrap; gap:8px; } .ms-model-row>.ms-model-description { flex-basis:100%; } .settings-page .ms-models-heading { flex-direction:column; align-items:flex-start; } }

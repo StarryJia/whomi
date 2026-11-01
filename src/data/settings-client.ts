@@ -1,7 +1,7 @@
 import { BoundaryError, validateError } from '../shared/desktop-validation'
 import type { SettingsApi } from '../shared/settings-contract'
 
-export const settingsMethods = { get: 0, getAccountStatus: 1, getAccountUsage: 1, signInAccount: 2, cancelAccountSignIn: 1, signOutAccount: 1, setAccountEnabled: 2, saveProvider: 1, removeProvider: 1, saveModel: 1, removeModel: 1, syncModels: 1, testModel: 1, stopModelTasks: 1, saveProcessing: 1, selectModel: 2, setDebug: 1, getDiagnostics: 0, getStorage: 0, chooseStorage: 0, relocateStorage: 1, restart: 0 } as const satisfies Record<keyof SettingsApi, number>
+export const settingsMethods = { getPrompts: 0, savePrompt: 2, get: 0, getAccountStatus: 1, getAccountUsage: 1, getCodexQuota: 2, signInAccount: 2, cancelAccountSignIn: 1, signOutAccount: 1, setAccountEnabled: 2, saveProvider: 1, removeProvider: 1, saveModel: 1, removeModel: 1, syncModels: 1, testModel: 1, stopModelTasks: 1, saveProcessing: 1, selectModel: 2, setDebug: 1, getDiagnostics: 0, getStorage: 0, chooseStorage: 0, relocateStorage: 1, restart: 0 } as const satisfies Record<keyof SettingsApi, number>
 export function createSettingsClient(invoke: (method: keyof SettingsApi, args: unknown[]) => Promise<unknown>): SettingsApi {
   return Object.freeze(Object.fromEntries(Object.entries(settingsMethods).map(([method, arity]) => [method, async (...args: unknown[]) => {
     if (args.length !== arity) throw new BoundaryError('INVALID_ARGUMENT')

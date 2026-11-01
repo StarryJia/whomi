@@ -19,7 +19,7 @@ const aiStorageArity = {
   recordUsage: [1, 1], recover: [0, 0],
 } as const satisfies Record<keyof AiRepository, readonly [number, number]>
 
-const settingsStorageArity = { accountUsage: [2, 2], setAccountConnection: [2, 3], get: [0, 0], providerSecret: [1, 1], saveProvider: [1, 2], removeProvider: [1, 1], saveModel: [1, 1], removeModel: [1, 1], saveProcessing: [1, 1], selectModel: [2, 2], setDebug: [1, 1], claimProcessing: [2, 2] } as const
+const settingsStorageArity = { getPrompts: [0, 0], savePrompt: [2, 2], accountUsage: [2, 2], setAccountConnection: [2, 3], get: [0, 0], providerSecret: [1, 1], saveProvider: [1, 2], removeProvider: [1, 1], saveModel: [1, 1], removeModel: [1, 1], saveProcessing: [1, 1], selectModel: [2, 2], setDebug: [1, 1], claimProcessing: [2, 2] } as const
 
 export function createDataDispatcher(store: Store, service: ReturnType<typeof createDataService>, ai?: AiRepository, settings?: SettingsRepository) {
   const queries = createQueries(store), db = store.reader

@@ -86,6 +86,14 @@ describe('Pi runtime over a controlled OpenAI compatible service', () => {
     expect(JSON.stringify(requests[2].messages)).not.toContain('未提交提问')
   }, 20000)
 
+  it('honors an explicitly empty history instead of restoring checkpoint messages', async () => {
+    const first = await new PiRuntime(directory).run(input(model, '不应恢复的旧提问'), options())
+    await new PiRuntime(directory).run({ ...input(model, '当前提问'), history: [], checkpoint: first.checkpoint }, options())
+    expect(requests[1].messages.filter(message => message.role !== 'system')).toEqual([
+      { role: 'user', content: [{ type: 'text', text: '当前提问' }] },
+    ])
+  }, 20000)
+
   it('never scans the host skill directory even when it exists', async () => {
     const hostSkills = resolve(process.env.HOME || homedir(), '.agents', 'skills')
     const scans: string[] = []

@@ -3,10 +3,13 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { defaultProcessing, type SettingsApi, type SettingsSnapshot } from '../../shared/settings-contract'
 import { SettingsPage } from './settings-page'
+import { defaultPrompts } from '../../shared/system-prompts'
 
 function setup(withProvider = true, withModel = false) {
   let state: SettingsSnapshot = { providers: withProvider ? [{ id: 'p1', name: '本地服务', baseUrl: 'http://127.0.0.1:1234/v1', enabled: true, hasCredential: true }] : [], models: withModel ? [{ id: 'm1', providerId: 'p1', label: '测试模型', model: 'alpha', baseUrl: 'http://127.0.0.1:1234/v1', enabled: true, hasCredential: true, contextWindow: 8192, maxTokens: 1024, version: 1 }] : [], processing: structuredClone(defaultProcessing), selectedModels: {}, debug: false }
   const api: SettingsApi = {
+    getPrompts: async () => ({ ...defaultPrompts }), savePrompt: async (id, text) => ({ ...defaultPrompts, [id]: text }),
+    getCodexQuota: async () => ({ state: 'disconnected' }),
     getAccountUsage: async () => ({ requests:0, inputTokens:null, outputTokens:null, partial:false }),
     getAccountStatus: async () => ({ state: 'disconnected' }), signInAccount: async () => ({ state: 'disconnected' }), cancelAccountSignIn: async () => {}, signOutAccount: async () => {}, setAccountEnabled: async () => {},
     get: vi.fn(async () => structuredClone(state)),
@@ -278,6 +281,9 @@ describe('正式设置', () => {
     await screen.findByRole('button', { name: '添加服务商' })
     await user.click(screen.getByRole('button', { name: '消息处理' }))
     expect(screen.getByText('已选 8/10 项')).toBeInTheDocument()
+    expect(screen.getByRole('switch', { name: '合并连续发言' })).toHaveAttribute('aria-checked', 'false')
+    expect(screen.queryByRole('spinbutton', { name: '合并时间窗口' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('switch', { name: '合并连续发言' }))
     expect(screen.getByRole('spinbutton', { name: '合并时间窗口' })).toHaveValue(60)
     expect(screen.getByRole('switch', { name: '智能去噪' })).toHaveAttribute('aria-checked', 'false')
     await user.click(screen.getByRole('button', { name: '增加合并时间窗口 1 秒' }))
@@ -289,28 +295,26 @@ describe('正式设置', () => {
     await user.click(screen.getByRole('button', { name: '恢复默认规则' }))
     await user.click(screen.getByRole('button', { name: '确认恢复' }))
     expect(screen.getByText('已选 8/10 项')).toBeInTheDocument()
-    expect(vi.mocked(api.saveProcessing).mock.lastCall?.[0]).toEqual({ ...defaultProcessing, mergeSeconds: 61 })
+    expect(vi.mocked(api.saveProcessing).mock.lastCall?.[0]).toEqual({ ...defaultProcessing, merge: true, mergeSeconds: 61 })
     const seconds = screen.getByRole('spinbutton', { name: '合并时间窗口' })
     await user.clear(seconds); await user.type(seconds, '601'); await user.tab()
     expect(screen.getByText('请输入 1～600 的整数秒数。')).toBeInTheDocument()
     expect(vi.mocked(api.saveProcessing).mock.lastCall?.[0].mergeSeconds).toBe(61)
   })
 
-  it('调试默认关闭，开启后读取真实诊断并复制，声明来自项目文件', async () => {
+  it('关于页保留项目仓库，调试默认关闭，开启后读取真实诊断并复制', async () => {
     const { api, user } = setup(false)
     await screen.findByRole('button', { name: '添加服务商' })
     await user.click(screen.getByRole('button', { name: '关于 Whomi' }))
-    expect(await screen.findByText('从对话中，慢慢了解自己。')).toBeVisible()
+    expect(await screen.findByText('从对话中找出你不曾注意的细节')).toBeVisible()
     expect(api.getDiagnostics).not.toHaveBeenCalled()
     await user.click(screen.getByRole('switch', { name: '调试模式' }))
     await screen.findByText('win32')
     const copy = vi.spyOn(navigator.clipboard, 'writeText')
     await user.click(screen.getByRole('button', { name: '复制诊断信息' }))
     expect(copy).toHaveBeenCalledWith(JSON.stringify({ version: '0.1.2', platform: 'win32', entries: [] }, null, 2))
-    await user.click(screen.getByRole('button', { name: '第三方声明' }))
-    const modal = screen.getByRole('dialog', { name: '第三方声明' })
-    expect(within(modal).getByRole('heading', { name: 'ChatLab 会话解析模块' })).toBeInTheDocument()
-    expect(within(modal).getByRole('link', { name: 'GSAP Standard License' })).toHaveAttribute('href', 'https://gsap.com/standard-license')
+    expect(screen.getByRole('link', { name: /项目仓库/ })).toHaveAttribute('href', 'https://github.com/StarryJia/whomi')
+    expect(screen.queryByRole('button', { name: '第三方声明' })).not.toBeInTheDocument()
   })
 
   it('服务商编辑图片失败保留表单，正确图片随显式保存提交', async () => {

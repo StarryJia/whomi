@@ -1,15 +1,96 @@
-.file-import.import-workspace { width: min(100%, 560px); padding: 32px; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); box-shadow: 0 8px 28px rgba(27, 38, 55, .05); }
-.file-import.is-dragging { border: 2px dashed var(--focus); background: #fff3ec; }
-.import-dropzone { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 220px; text-align: center; }
-.import-meter { display: block; width: 100%; height: 6px; margin-block: 20px; accent-color: var(--focus); }
+.file-import.import-workspace {
+  --import-edge: color-mix(in srgb, var(--focus) 33%, var(--line));
+  --import-tint: color-mix(in srgb, var(--focus) 7%, var(--surface));
+  display: grid;
+  position: relative;
+  align-content: start;
+  width: min(100%, 480px);
+  min-width: 0;
+  padding: 0 0 58px;
+}
+.import-workspace > :is(.import-dropzone, .import-step) {
+  min-height: 244px;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: var(--surface);
+  box-shadow: 0 3px 6px -4px #202b3826, 0 12px 32px -16px #202b382b;
+}
+.import-workspace > .import-dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 28px 20px 32px;
+  color: var(--text);
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+  transition: background-color 180ms, border-color 180ms, box-shadow 180ms;
+}
+.import-art { width: 88px; height: 77px; margin-bottom: 6px; }
+.import-art-sheet, .import-art-arrow { transition: transform 220ms cubic-bezier(.2,.7,.25,1); }
+.import-picker-title { font-size: clamp(19px, 2.2vw, 23px); font-weight: 600; line-height: 1.4; }
+.import-picker-hint { color: var(--text-muted); font-size: 14px; line-height: 1.65; text-wrap: balance; }
+@media (hover: hover) {
+  .import-dropzone:enabled:hover {
+    border-color: var(--import-edge);
+    box-shadow: 0 4px 8px -5px #64331c20, 0 14px 34px -15px #88411f30;
+  }
+  .import-dropzone:enabled:hover .import-art-sheet { transform: translateY(-3px); }
+  .import-dropzone:enabled:hover .import-art-arrow { transform: translateY(-2px); }
+}
+.import-workspace.is-dragging > .import-dropzone {
+  border-color: var(--focus);
+  background: var(--import-tint);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 13%, transparent);
+}
+.import-workspace.is-dragging .import-dropzone .import-art-sheet { transform: translateY(4px); }
+.import-workspace.is-dragging .import-dropzone .import-art-arrow { transform: translateY(5px); }
+.import-workspace > .import-folder {
+  position: absolute;
+  top: calc(100% - 50px);
+  justify-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 42px;
+  padding: 0 13px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.import-folder:enabled:hover { color: var(--text); background: var(--hover); }
+.import-picker-feedback { text-align: center; font-size: 14px; line-height: 1.6; }
+.import-picker-feedback p { margin: 12px 0 0; }
+.import-meter { display: block; width: 100%; height: 6px; margin: 16px auto; accent-color: var(--focus); }
+.import-step-centered .import-meter { max-width: 320px; }
+.import-state-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin: 0 auto 12px;
+  border-radius: 14px;
+  background: var(--import-tint);
+  color: var(--focus);
+}
+.import-state-mark.is-saved { background: #edf5ec; color: #476d4b; }
+.import-state-mark.is-failed { background: #fff2dd; color: #8b5b17; }
+.import-state-mark.is-working svg { animation: import-spin 1s linear infinite; }
+@keyframes import-spin { to { transform: rotate(1turn); } }
+@keyframes import-appear { from { opacity: 0; transform: translateY(6px); } }
+.import-workspace, .import-folder { animation: import-appear 220ms ease-out both; }
+.import-folder { animation-duration: 300ms; }
 .import-workspace button:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
-.import-dropzone .import-file-icon { width: 44px; height: 44px; margin-bottom: 16px; color: #748192; stroke-width: 1.35; }
-.import-dropzone .import-heading { margin: 0 0 20px; font-size: clamp(20px, 2.2vw, 24px); font-weight: 550; line-height: 1.4; }
-.import-dropzone-actions { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
-.import-dropzone .import-hint { margin: 0; color: var(--text-muted); font-size: 14px; }
-.import-dropzone .import-feedback { margin-top: 16px; text-align: center; }
-.import-step { line-height: 1.7; overflow-wrap: anywhere; }
-.import-step-centered { text-align: center; padding-block: 12px; }
+.import-step { padding: 28px 32px; line-height: 1.7; overflow-wrap: anywhere; }
+.import-step-centered { display: flex; flex-direction: column; justify-content: center; text-align: center; }
+.import-step-centered > p { margin: 0; }
 .import-step-centered .import-step-actions { justify-content: center; }
 .import-result-single .import-status { margin: 0 0 16px; font-size: 20px; font-weight: 550; }
 .import-result-single .import-results { margin: 0; }
@@ -46,9 +127,15 @@
 .import-results li { padding-block: 16px; border-top: 1px solid var(--line); }
 .import-results button + button { margin-left: 8px; }
 @media (max-width: 640px) {
-  .file-import.import-workspace { padding: 20px 16px; }
+  .import-step { padding: 22px 16px; }
   .import-candidate { padding: 12px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .file-import.import-workspace { transition: none; }
+  .import-workspace .import-dropzone :is(.import-art-sheet, .import-art-arrow) { transform: none !important; }
+  .import-meter:indeterminate { appearance: none; border: 0; border-radius: 4px; background: var(--line); }
+  .import-meter:indeterminate::-webkit-progress-bar { background: var(--line); border-radius: inherit; }
+}
+@media (forced-colors: active) {
+  .import-workspace .import-dropzone { border-color: ButtonText; }
+  .import-workspace.is-dragging .import-dropzone { outline: 2px dashed Highlight; }
 }

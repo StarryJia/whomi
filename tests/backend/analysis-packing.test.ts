@@ -112,7 +112,7 @@ test.each([['source','原文分片'],['merge','事件归并'],['final','文稿�
 
 test('a missing member identifier cannot borrow the preceding author identity through an equal display name', () => {
   const source = messages(2)
-  const processed = createMessageProcessor({ ...defaultProcessing, anonymize: false }, []).messages([
+  const processed = createMessageProcessor({ ...defaultProcessing, anonymize: false, merge: true }, []).messages([
     source[0], { ...source[1], senderName: source[0].senderName, memberId: null },
   ])
   expect(processed.map(item => [item.isSelf, item.sourceIds])).toEqual([[true,['1']],[false,['2']]])

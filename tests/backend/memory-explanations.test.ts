@@ -1,5 +1,7 @@
 import { expect, test } from 'vitest'
 import { generateMemory } from '../../electron/main/memory-generation'
+import { memoryPrompts } from '../../electron/main/prompt-contracts'
+import { defaultPrompts } from '../../src/shared/system-prompts'
 import { createMessageProcessor } from '../../electron/main/message-processing'
 import { defaultProcessing } from '../../src/shared/settings-contract'
 import { validateAiResult } from '../../src/shared/ai-validation'
@@ -71,9 +73,11 @@ test('multi-level event compression retains self signals for final scoring and e
   const saved = (await generate()).committed.map(node => ({ ...node, report: { events: node.report.events.map(event => ({ ...event, text: event.text.repeat(20) })) } }))
   const stages: string[] = []
   const result = await generateMemory({ plan: source.map((item, index) => ({ index, items: [item], messageIds: [item.id] })), source,
+    prompts: memoryPrompts({ ...defaultPrompts, memoryMerge: '合并相同经历，保留关键选择。' }),
     saved, scored: true, explained: true, budget: 1800, sourceBudget: 10000, signal: new AbortController().signal,
-    summarizing: async () => {}, save: async () => {}, request: async (_index, _system, payload: any, stage) => {
+    summarizing: async () => {}, save: async () => {}, request: async (_index, system, payload: any, stage) => {
       stages.push(stage)
+      if (stage === 'merge') expect(system).toContain('合并相同经历，保留关键选择。')
       expect(payload.events.every((event: { signals: unknown[] }) => event.signals.length)).toBe(true)
       return { text: JSON.stringify(stage === 'merge' ? { groups: payload.events.map((event: { key: string }) => [event.key]), events: payload.events.map((event: { key: string }) => ({ key: event.key, text: '本人选择的事件进展。' })) } : final), usage: {} }
     } })

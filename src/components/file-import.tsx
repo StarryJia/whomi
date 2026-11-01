@@ -1,10 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState, type DragEvent } from 'react'
-import { FileText } from 'lucide-react'
+import { FolderOpen } from 'lucide-react'
 import clsx from 'clsx'
 import type { DesktopApi } from '../shared/desktop-api'
 import { isPersistedResult, useImport } from '../data/use-import'
 import { DiscoveryChoices } from './import/import-candidates'
 import { ImportProgress } from './import/import-progress'
+import { ChatImportArt, ImportStateMark } from './import/import-artwork'
 import './import/import.css'
 
 export function FileImport({ api, onSaved, onOpenConversation }: {
@@ -76,7 +77,7 @@ export function FileImport({ api, onSaved, onOpenConversation }: {
   const isCancelledBeforeSave = snapshot?.status === 'cancelled' && !snapshot.results.some(isPersistedResult)
   const showInitial = !snapshot || isCancelledBeforeSave
 
-  return <section className={clsx('file-import', api && 'import-workspace', dragging && 'is-dragging')} aria-label="文件导入"
+  return <section className={clsx('file-import import-workspace', dragging && 'is-dragging')} aria-label="文件导入"
     onDragEnter={event => {
       if (!event.dataTransfer.types.includes('Files')) return
       event.preventDefault()
@@ -96,33 +97,33 @@ export function FileImport({ api, onSaved, onOpenConversation }: {
       onChange={event => { if (event.target.files) selectFiles(event.target.files); event.target.value = '' }} />}
 
     {showInitial ? (
-      <div className="import-dropzone">
-        <FileText className="import-file-icon" aria-hidden="true" />
-        <h2 className="import-heading">{dragging ? '松开，选择聊天记录' : '选择聊天记录'}</h2>
-        <div className="import-dropzone-actions">
-          <button ref={choose} className="import-primary" type="button" aria-label={filename ? '重新选择文件' : '选择文件'}
-            disabled={busy} onClick={() => { if (api) void controller.choose('files'); else input.current?.click() }}>
-            {filename ? '重新选择文件' : '选择文件'}
-          </button>
-          {api && (
-            <button className="import-secondary" type="button" disabled={busy} onClick={() => { void controller.choose('directory') }}>
-              选择文件夹
-            </button>
-          )}
-        </div>
-        <span className="import-hint">{api ? '或将文件、文件夹拖到这里' : '或将文件拖到这里'}</span>
-        <div className="import-feedback">
+      <>
+        <button ref={choose} className="import-dropzone" type="button" aria-labelledby="import-picker-title" aria-describedby="import-picker-hint"
+          disabled={busy} onClick={() => { if (api) void controller.choose('files'); else input.current?.click() }}>
+          <ChatImportArt />
+          <span className="import-picker-title" id="import-picker-title">
+            {dragging ? (api ? '松开以导入聊天记录' : '松开以选择文件') : filename ? '重新选择文件' : '选择文件'}
+          </span>
+          <span className="import-picker-hint" id="import-picker-hint">
+            {api ? '可多选，也可将聊天文件或文件夹拖到这里' : '或将一份聊天文件拖到这里'}
+          </span>
+        </button>
+        {api && <button className="import-folder" type="button" disabled={busy} onClick={() => { void controller.choose('directory') }}>
+          <FolderOpen size={17} aria-hidden="true" />选择文件夹
+        </button>}
+        <div className="import-picker-feedback">
           {busy && <p className="import-muted" role="status">正在处理…</p>}
           {!api && <p className="import-muted">请在桌面应用中导入；此处仅预览文件选择。</p>}
           {filename && <p role="status"><span className="selected-filename">{filename}</span><span className="file-selection-note">已选择 · 尚未导入</span></p>}
           {error && <p className="import-error" role="alert">{error}</p>}
           {controller.error && <p className="import-error" role="alert" data-error-code={controller.error.code}>{controller.error.action}</p>}
         </div>
-      </div>
+      </>
     ) : (
       <>
         {(snapshot.status === 'preparing' || snapshot.status === 'scanning') && (
           <div className="import-step import-step-centered" role="region" aria-label="导入准备">
+            <ImportStateMark state={controller.error ? 'failed' : 'working'} />
             <h2>{snapshot.status === 'scanning' ? '正在查找文件入口…' : '正在准备…'}</h2>
             <progress className="import-meter" aria-label="查找文件进度" />
             <div className="import-step-actions">
@@ -139,6 +140,7 @@ export function FileImport({ api, onSaved, onOpenConversation }: {
         )}
         {snapshot.status === 'awaiting_confirmation' && snapshot.discovery?.entries.length === 1 && (
           <div className="import-step import-step-centered" role="region" aria-label="解析进度">
+            <ImportStateMark state={controller.error ? 'failed' : 'working'} />
             <h2>正在解析…</h2>
             <p className="import-muted">{snapshot.discovery.entries[0].displayName}</p>
             <progress className="import-meter" aria-label="解析进度" />
@@ -151,6 +153,7 @@ export function FileImport({ api, onSaved, onOpenConversation }: {
         )}
         {(snapshot.status === 'staging' || snapshot.status === 'validating') && (
           <div className="import-step import-step-centered" role="region" aria-label="解析进度">
+            <ImportStateMark state={controller.error ? 'failed' : 'working'} />
             <h2>{snapshot.status === 'staging' ? '正在解析…' : '正在校验…'}</h2>
             <progress className="import-meter" aria-label="解析进度" />
             <p className="import-muted">已检查 {snapshot.counts.seen} 条记录 · 有效 {snapshot.counts.validRecords} 条 · 异常 {snapshot.counts.invalidRecords} 条</p>
@@ -162,6 +165,7 @@ export function FileImport({ api, onSaved, onOpenConversation }: {
         )}
         {snapshot.status === 'awaiting_commit' && (
           <div className="import-step import-step-centered" role="region" aria-label="保存进度">
+            <ImportStateMark state={controller.error ? 'failed' : 'working'} />
             <h2>正在保存…</h2>
             <progress className="import-meter" aria-label="保存进度" />
             <p className="import-muted">已解析 {snapshot.counts.validRecords} 条记录</p>
