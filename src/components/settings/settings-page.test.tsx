@@ -296,21 +296,19 @@ describe('正式设置', () => {
     expect(vi.mocked(api.saveProcessing).mock.lastCall?.[0].mergeSeconds).toBe(61)
   })
 
-  it('调试默认关闭，开启后读取真实诊断并复制，声明来自项目文件', async () => {
+  it('关于页保留项目仓库，调试默认关闭，开启后读取真实诊断并复制', async () => {
     const { api, user } = setup(false)
     await screen.findByRole('button', { name: '添加服务商' })
     await user.click(screen.getByRole('button', { name: '关于 Whomi' }))
-    expect(await screen.findByText('从对话中，慢慢了解自己。')).toBeVisible()
+    expect(await screen.findByText('从对话中找出你不曾注意的细节')).toBeVisible()
     expect(api.getDiagnostics).not.toHaveBeenCalled()
     await user.click(screen.getByRole('switch', { name: '调试模式' }))
     await screen.findByText('win32')
     const copy = vi.spyOn(navigator.clipboard, 'writeText')
     await user.click(screen.getByRole('button', { name: '复制诊断信息' }))
     expect(copy).toHaveBeenCalledWith(JSON.stringify({ version: '0.1.2', platform: 'win32', entries: [] }, null, 2))
-    await user.click(screen.getByRole('button', { name: '第三方声明' }))
-    const modal = screen.getByRole('dialog', { name: '第三方声明' })
-    expect(within(modal).getByRole('heading', { name: 'ChatLab 会话解析模块' })).toBeInTheDocument()
-    expect(within(modal).getByRole('link', { name: 'GSAP Standard License' })).toHaveAttribute('href', 'https://gsap.com/standard-license')
+    expect(screen.getByRole('link', { name: /项目仓库/ })).toHaveAttribute('href', 'https://github.com/StarryJia/whomi')
+    expect(screen.queryByRole('button', { name: '第三方声明' })).not.toBeInTheDocument()
   })
 
   it('服务商编辑图片失败保留表单，正确图片随显式保存提交', async () => {

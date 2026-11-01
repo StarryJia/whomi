@@ -1,6 +1,7 @@
 import { isImportActive, isPersistedResult } from '../../data/use-import'
 import type { ImportSnapshot } from '../../shared/import-contract'
 import type { ImportIssue } from '../../shared/conversation-model'
+import { ImportStateMark } from './import-artwork'
 
 function visibleIssues(issues:readonly ImportIssue[]) {
   return issues.filter((issue,index)=>!issues.some((other,otherIndex)=>other.candidateId===issue.candidateId &&
@@ -22,12 +23,15 @@ export function ImportProgress({ snapshot, busy, onCancel, onOpen, onRetrySummar
   const hasFailedOrBlocked = snapshot.results.some(result => result.status === 'failed' || result.status === 'blocked')
   const hasSaved = snapshot.results.some(isPersistedResult)
   const singleComplete = !isImportActive(snapshot) && snapshot.results.length===1 && hasSaved
+  const replaceSingleFile = snapshot.status === 'failed' && snapshot.results.length === 1 && !hasSaved && !!onRechoose
   const unassignedIssues = snapshot.issues.filter(issue =>
     !snapshot.results.some(result => result.issues.some(item => item.code === issue.code && item.action === issue.action))
   )
 
   return <section className={`import-step${snapshot.results.length<=1 ? ' import-step-centered import-result-single':''}`} aria-label="导入进度与结果">
-    <p className="import-status" role="status">{statusMessage}</p>
+    {snapshot.results.length <= 1 && (isImportActive(snapshot) ? <ImportStateMark /> :
+      snapshot.status === 'completed' && hasSaved ? <ImportStateMark state="saved" /> : snapshot.status === 'failed' ? <ImportStateMark state="failed" /> : null)}
+    <p className="import-status" role="status">{replaceSingleFile ? '文件导入失败' : statusMessage}</p>
     {['staging', 'validating', 'committing'].includes(snapshot.status) && <>
       <progress className="import-meter" aria-label="保存进度" {...(snapshot.progress?.total ? {value:snapshot.progress.processed,max:snapshot.progress.total}:{})} />
       <p className="import-muted">已处理 {snapshot.progress?.processed ?? snapshot.inserted + snapshot.duplicates}{snapshot.progress?.total ? ` / ${snapshot.progress.total}`:''} 条记录 · 已保存 {snapshot.inserted} 条</p>
@@ -43,7 +47,7 @@ export function ImportProgress({ snapshot, busy, onCancel, onOpen, onRetrySummar
       const title = snapshot.candidates.find(candidate => candidate.candidateId === result.candidateId)?.title || `导入项 ${result.candidateId}`
       return <li key={result.candidateId}>
         <h3>{title}</h3>
-        <p>{persisted ? result.status === 'duplicate' ? `新增 0 条消息，重复 ${result.duplicates} 条。` : `已保存 ${result.inserted} 条消息。` : result.status === 'saved' || result.status === 'duplicate' ? '请重新查询保存结果。' : resultLabels[result.status]}</p>
+        {!replaceSingleFile && <p>{persisted ? result.status === 'duplicate' ? `新增 0 条消息，重复 ${result.duplicates} 条。` : `已保存 ${result.inserted} 条消息。` : result.status === 'saved' || result.status === 'duplicate' ? '请重新查询保存结果。' : resultLabels[result.status]}</p>}
         {persisted && result.status !== 'duplicate' && result.duplicates > 0 && <p className="import-muted">跳过重复 {result.duplicates} 条。</p>}
         {visibleIssues(result.issues).map((issue, index) => <p className="import-error" key={index}>{issue.action}</p>)}
         {persisted && !singleComplete && <button className="import-primary" type="button" disabled={!onOpen} onClick={() => onOpen?.(result.conversationId!)}>打开会话</button>}
@@ -57,8 +61,9 @@ export function ImportProgress({ snapshot, busy, onCancel, onOpen, onRetrySummar
     {!isImportActive(snapshot) && (
       <div className="import-step-actions">
         {singleComplete && <button className="import-primary" type="button" disabled={!onOpen} onClick={()=>onOpen?.(snapshot.results[0].conversationId!)}>打开会话</button>}
+        {replaceSingleFile && <button className="import-primary" type="button" disabled={busy} onClick={onRechoose}>重新选择文件</button>}
         {onReset && (
-          <button className={hasSaved ? 'import-secondary':'import-primary'} type="button" disabled={busy} onClick={onReset}>继续导入</button>
+          <button className={hasSaved || replaceSingleFile ? 'import-secondary':'import-primary'} type="button" disabled={busy} onClick={onReset}>继续导入</button>
         )}
         {onChooseFiles && !onReset && (
           <button className="import-primary" type="button" disabled={busy} onClick={onChooseFiles}>选择文件</button>
@@ -66,7 +71,7 @@ export function ImportProgress({ snapshot, busy, onCancel, onOpen, onRetrySummar
         {onChooseDirectory && !onReset && (
           <button className="import-secondary" type="button" disabled={busy} onClick={onChooseDirectory}>选择文件夹</button>
         )}
-        {hasFailedOrBlocked && onRechoose && (
+        {hasFailedOrBlocked && onRechoose && !replaceSingleFile && (
           <button className="import-secondary" type="button" disabled={busy} onClick={onRechoose}>重新选择失败的来源</button>
         )}
       </div>

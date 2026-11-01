@@ -81,7 +81,7 @@ test('capture comprehensive evidence for import flow, unified top bar, conversat
     const chooseButton = page.getByRole('button', { name: '选择文件', exact: true })
     await expect(chooseButton).toBeVisible()
     await expect(page.getByRole('button', { name: '选择文件夹', exact: true })).toBeVisible()
-    await expect(page.getByText('或将文件、文件夹拖到这里')).toBeVisible()
+    await expect(page.getByText('可多选，也可将聊天文件或文件夹拖到这里')).toBeVisible()
     expect(await page.locator('.import-step').count()).toBe(0)
     await page.screenshot({ path: join(evidence, '04-import-initial-continuous.png') })
 

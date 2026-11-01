@@ -99,7 +99,8 @@ else {
       ...state.bounds, show: false, backgroundColor: '#f5f7f9', title: 'Whomi',
       icon: app.isPackaged ? join(process.resourcesPath, 'branding/icon.png') : join(app.getAppPath(), 'build/icon.png'),
       titleBarStyle: 'hidden',
-      ...(process.platform === 'win32' ? { titleBarOverlay: { color: '#f5f7f9', symbolColor: '#5c6674', height: 36 } } : {}),
+      // 透明底色让窗口按钮区随页面遮罩一起变暗。
+      ...(process.platform === 'win32' ? { titleBarOverlay: { color: '#00000000', symbolColor: '#5c6674', height: 36 } } : {}),
       webPreferences: { preload: join(__dirname, '../preload/index.cjs'), contextIsolation: true, sandbox: true, nodeIntegration: false, additionalArguments: [`--whomi-drop-key=${credential}`] },
     })
     rememberWindowState(window, app.getPath('userData'))

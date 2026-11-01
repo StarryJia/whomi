@@ -104,7 +104,6 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
   const memories = useMemo(() => tasks.filter(task => task.state === 'completed' && !!task.report), [tasks])
   const unfinished = useMemo(() => tasks.filter(task => task.valid && task.state !== 'completed'), [tasks])
   const [memoryEntry, setMemoryEntry] = useState<{ taskId?:string; origin:'overview'|'library' }>()
-  const returnFromQuestion = useRef<typeof view>('overview')
   const [memoryError, setMemoryError] = useState('')
   const [memoryLoading, setMemoryLoading] = useState(Boolean(api?.ai))
   const [memoryLoaded, setMemoryLoaded] = useState(false)
@@ -255,13 +254,13 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
     setImportKey(key => key + 1)
     setView('import')
     closeMobile()
-    requestAnimationFrame(() => mainRef.current?.querySelector<HTMLButtonElement>('.file-drop-target')?.focus())
+    requestAnimationFrame(() => mainRef.current?.querySelector<HTMLButtonElement>('.import-dropzone')?.focus())
   }
 
   function openImport() {
     setView('import')
     closeMobile()
-    requestAnimationFrame(() => mainRef.current?.querySelector<HTMLButtonElement>('.file-drop-target')?.focus())
+    requestAnimationFrame(() => mainRef.current?.querySelector<HTMLButtonElement>('.import-dropzone')?.focus())
   }
 
   async function handleDeleteConversation(id: string) {
@@ -300,22 +299,11 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
   }
 
   function openClarification() {
-    if (view !== 'clarification' && !(view === 'conversation' && source && sourceOrigin === 'clarification')) returnFromQuestion.current = view
     setView('clarification')
     closeMobile()
     requestAnimationFrame(() => clarificationTitleRef.current?.focus())
   }
 
-  const questionReturnLabel = {cover:'返回 Hello', overview:'返回个人总览', library:'返回记忆仓库', import:'返回导入', conversation:'返回会话', clarification:'返回个人总览'}[returnFromQuestion.current]
-  function leaveClarification() {
-    switch (returnFromQuestion.current) {
-      case 'cover': return returnToCover()
-      case 'library': return openLibrary()
-      case 'import': return openImport()
-      case 'conversation': if (activeId && activeSummary) return openConversation(activeId)
-    }
-    enterOverview()
-  }
   function openLibrary(id?: string) {
     setSelectedMemory(id)
     setView('library')
@@ -459,7 +447,7 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
             void reader.open(activeId)
           }} /> : view === 'clarification' ? (
           <ClarificationPage question={clarificationQuestion} models={clarificationModels ?? (conversationAiAdapter ?? desktopAi)?.models.map(model => ({ ...model, available: true })) ?? []} controller={clarification}
-            headingRef={clarificationTitleRef} preview={previewing} onReturn={leaveClarification} returnLabel={questionReturnLabel}
+            headingRef={clarificationTitleRef} preview={previewing}
             onOpenSource={reference => openSource(reference, 'clarification')}
             isSourceAvailable={sourceAvailable} />
         ) : overviewContent()}

@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, type KeyboardEvent, type Ref } from 'react'
-import { ArrowLeft, ArrowUp, Check, ChevronRight, History, Undo2 } from 'lucide-react'
+import { ArrowUp, Check, ChevronRight, History, Undo2 } from 'lucide-react'
 import clsx from 'clsx'
 import type { SourceReference } from '../overview/types'
 import type { ClarificationController, ClarificationModel, ClarificationQuestion } from './types'
@@ -16,19 +16,15 @@ interface ClarificationPageProps {
   headingRef: Ref<HTMLHeadingElement>
   onOpenSource: (source: SourceReference) => void
   isSourceAvailable: (source: SourceReference) => boolean
-  onReturn?: () => void
-  returnLabel?: string
   preview?: boolean
 }
 
 export function ClarificationPage({ question, models, controller, headingRef,
-  onOpenSource, isSourceAvailable, onReturn, returnLabel, preview = false }: ClarificationPageProps) {
+  onOpenSource, isSourceAvailable, preview = false }: ClarificationPageProps) {
   return <section className={clsx('clarification-page', !question && 'is-empty')} aria-labelledby="clarification-title">
     <h1 id="clarification-title" ref={headingRef} tabIndex={-1}>问一问</h1>
     <ClarificationQuestionView key={question?.id ?? 'empty'} question={question} models={models}
       controller={controller} onOpenSource={onOpenSource} isSourceAvailable={isSourceAvailable} preview={preview} />
-    {!question && onReturn && <button className="overview-return clarification-return" type="button" onClick={onReturn}>
-      <ArrowLeft aria-hidden="true" />{returnLabel ?? '返回个人总览'}</button>}
   </section>
 }
 

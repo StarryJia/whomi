@@ -59,7 +59,6 @@
 .clarification-switch { border: 0; padding: 4px 8px; min-height: 32px; background: transparent; }
 .clarification-composer .conversation-composer-tools { flex-wrap: wrap; }
 .clarification-composer .cherry-model-trigger { max-width: min(100%, 19rem); }
-.clarification-return { margin-top: 16px; }
 .clarification-card.blank-card { cursor: default; pointer-events: none; border: 1px solid var(--line); box-shadow: 0 4px 12px rgb(38 48 61 / 4%); }
 .clarification-page.is-empty .clarification-answer-area { padding-top: 46px; }
 .clarification-cards[data-count='4'], .clarification-cards[data-count='5'] { max-width: 100%; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); }

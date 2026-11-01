@@ -37,6 +37,26 @@ for (const width of [1280, 360]) test(`首次整理在 ${width} 像素窗口从�
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
       await page.screenshot({ path:join(evidence, `${width}-${name}.png`), animations:'disabled' })
     }
+    const snapCaption = async name => {
+      // 网页截图不包含原生窗口按钮，必须检查桌面合成后的像素。
+      const capture = await app.evaluate(async ({ BrowserWindow, desktopCapturer }) => {
+        const window = BrowserWindow.getAllWindows()[0]
+        const bounds = window.getBounds()
+        const sources = await desktopCapturer.getSources({ types: ['window'], thumbnailSize: { width: bounds.width, height: bounds.height } })
+        const source = sources.find(item => item.id === window.getMediaSourceId())
+        if (!source) throw new Error('Test window capture unavailable')
+        const size = source.thumbnail.getSize()
+        const pixels = source.thumbnail.toBitmap()
+        const sample = offset => {
+          const x = Math.round(size.width - offset * size.width / bounds.width)
+          const y = Math.round(8 * size.height / bounds.height)
+          return [...pixels.subarray((y * size.width + x) * 4, (y * size.width + x) * 4 + 3)]
+        }
+        return { png: source.thumbnail.toPNG().toString('base64'), adjacent: sample(160), controls: sample(120) }
+      })
+      await writeFile(join(evidence, `${width}-caption-${name}.png`), Buffer.from(capture.png, 'base64'))
+      expect(capture.controls).toEqual(capture.adjacent)
+    }
     await app.evaluate(({BrowserWindow}, width) => { const w=BrowserWindow.getAllWindows()[0]; w.setMinimumSize(320,320); w.setSize(width,800) }, width)
     await expect.poll(() => page.evaluate(() => innerWidth)).toBe(width)
     await button('个人总览').click()
@@ -52,7 +72,8 @@ for (const width of [1280, 360]) test(`首次整理在 ${width} 像素窗口从�
     await expect(page.locator('.clarification-card.blank-card')).toHaveCount(3)
     await expect(page.getByRole('textbox',{name:'我有自己的想法…'})).toBeDisabled()
     await snap('clarification')
-    await button('返回记忆仓库').click()
+    await expect(button('返回记忆仓库')).toHaveCount(0)
+    await button('记忆仓库').click()
     await button('导入聊天记录').click()
     await app.evaluate(({dialog},f)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[f]})},source)
     await button('选择文件').click()
@@ -95,9 +116,11 @@ for (const width of [1280, 360]) test(`首次整理在 ${width} 像素窗口从�
     await expect(article).toContainText('你们约好周六在河边散步。')
     await expect(article.locator('.memory-prediction')).toHaveText('????')
     await snap('memory-article')
+    await snapCaption('memory-open')
     await button('关闭记忆').click()
     await expect(page.getByRole('button',{name:/周末散步.*#0001/})).toBeFocused()
     await snap('library-complete')
+    await snapCaption('memory-closed')
     const row = page.getByRole('button', {name:/周末散步.*#0001/})
     await row.click({button:'right'})
     await page.getByRole('menuitem',{name:'置顶',exact:true}).click()
