@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ArrowLeft, Database, Info, MessageSquare, SlidersHorizontal } from 'lucide-react'
+import { ArrowLeft, Database, Info, MessageSquare, SlidersHorizontal, FileText } from 'lucide-react'
 import symbol from '../../../assets/branding/whomi-symbol.png'
 import wordmark from '../../../assets/branding/whomi-wordmark.png'
 import type { SettingsApi, SettingsSnapshot } from '../../shared/settings-contract'
@@ -7,6 +7,7 @@ import { ModelServices } from './model-services'
 import { MessageProcessing } from './message-processing'
 import { AboutWhomi } from './about-whomi'
 import { StorageSettings } from './storage-settings'
+import { SystemPrompts } from './system-prompts'
 import { errorText, type LeaveGuard } from './common'
 import './settings.css'
 import './model-services.css'
@@ -14,7 +15,7 @@ import './message-processing.css'
 import './about-whomi.css'
 import './cherry-settings.css'
 
-const categories = [{ id: 'models', label: '模型服务', icon: SlidersHorizontal }, { id: 'messages', label: '消息处理', icon: MessageSquare }, { id: 'storage', label: '数据存储', icon: Database }, { id: 'about', label: '关于 Whomi', icon: Info }] as const
+const categories = [{ id: 'models', label: '模型服务', icon: SlidersHorizontal }, { id: 'messages', label: '消息处理', icon: MessageSquare }, { id: 'prompts', label: '系统提示词', icon: FileText }, { id: 'storage', label: '数据存储', icon: Database }, { id: 'about', label: '关于 Whomi', icon: Info }] as const
 type Category = typeof categories[number]['id']
 
 export function SettingsPage({ api, onClose, onChanged }: { api: SettingsApi; onClose: () => void; onChanged?: () => void }) {
@@ -49,6 +50,7 @@ export function SettingsPage({ api, onClose, onChanged }: { api: SettingsApi; on
       {category === 'messages' && <MessageProcessing api={api} value={snapshot.processing} onSaved={processing => { setSnapshot(current => current && { ...current, processing }); changed() }} onBusy={setBusy} />}
       {category === 'about' && <AboutWhomi api={api} debug={snapshot.debug} onDebug={debug => setSnapshot(current => current && { ...current, debug })} onBusy={setBusy} />}
       {category === 'storage' && <StorageSettings api={api} onBusy={setBusy} onRestartRequired={setRestartRequired} />}
+      {category === 'prompts' && <SystemPrompts api={api} registerGuard={registerGuard} onBusy={setBusy} />}
     </>}</main>
   </div>
 }

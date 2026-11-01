@@ -10,12 +10,13 @@ type Persisted = { index: number; report: MemoryNotes }
 type Request = (index: number, system: string, payload: unknown, stage: AnalysisStage) => Promise<{ text: string; usage: AiUsage }>
 type Save = (index: number, messageIds: string[], report: MemoryNotes, usage: AiUsage) => Promise<void>
 type Input = {
+  prompts?: { source: string; merge: string; final: string }
   plan: { index: number; items: Source[]; messageIds: string[] }[]; scored: boolean; explained?: boolean
-  saved: Persisted[]; source: Source[]; budget: number; sourceBudget: number
+  saved: Persisted[]; source: Source[]; budget: number; mergeBudget?: number; sourceBudget: number
   request: Request; save: Save; clean?: <T>(value: T) => T; summarizing: () => Promise<void>; signal: AbortSignal
 }
 
-export async function generateMemory({ plan, saved, source, budget, sourceBudget, request, save, clean, summarizing, signal, scored, explained = false }: Input) {
+export async function generateMemory({ plan, saved, source, budget, mergeBudget = budget, sourceBudget, request, save, clean, summarizing, signal, scored, explained = false, prompts }: Input) {
   const previous = new Map(saved.map(node => [node.index, node.report]))
   const notes: MemoryNotes[] = []
   const knownEvents = new Set<string>()
@@ -31,7 +32,7 @@ export async function generateMemory({ plan, saved, source, budget, sourceBudget
         payload.knownEvents.push(key)
         remaining -= size
       }
-      const response = await request(batch.index, explained ? explainedSourcePrompt : scored ? scoredSourcePrompt : memorySourcePrompt, payload, 'source')
+      const response = await request(batch.index, prompts?.source ?? (explained ? explainedSourcePrompt : scored ? scoredSourcePrompt : memorySourcePrompt), payload, 'source')
       signal.throwIfAborted()
       const ids = (message: Source) => message.sourceIds ?? [message.id]
       note = readNotes(modelJson(response.text), new Set(batch.items.flatMap(ids)), new Set(batch.items.filter(item => item.isSelf).flatMap(ids)))
@@ -57,8 +58,8 @@ export async function generateMemory({ plan, saved, source, budget, sourceBudget
     // 跨分片的长经历先按原始片段压缩，再在下一层重新归并。
     const inputs = level === 0 && !scored ? notes.flatMap(note => note.events) : material
     for (const event of inputs) {
-      if (bytes([event]) > budget) throw tooLarge()
-      if (group.length && bytes([...group, event]) > budget) { groups.push(group); group = [] }
+      if (bytes([event]) > mergeBudget) throw tooLarge()
+      if (group.length && bytes([...group, event]) > mergeBudget) { groups.push(group); group = [] }
       group.push(event)
     }
     if (group.length) groups.push(group)
@@ -68,7 +69,7 @@ export async function generateMemory({ plan, saved, source, budget, sourceBudget
       const index = nextIndex++
       let note = previous.get(index)
       if (!note) {
-        const response = await request(index, explained ? explainedMergePrompt : scored ? scoredMergePrompt : memoryMergePrompt, payload(events), 'merge')
+        const response = await request(index, prompts?.merge ?? (explained ? explainedMergePrompt : scored ? scoredMergePrompt : memoryMergePrompt), payload(events), 'merge')
         signal.throwIfAborted()
         if (scored) note = { events: compactScoredEvents(modelJson(response.text), events) }
         else {
@@ -89,7 +90,7 @@ export async function generateMemory({ plan, saved, source, budget, sourceBudget
   }
   const order = new Map(source.map((message, index) => [message.id, index]))
   for (let attempt = 0; ; attempt++) {
-    const final = await request(nextIndex + attempt, explained ? explainedFinalPrompt : scored ? scoredFinalPrompt : memoryFinalPrompt, payload(material), 'final')
+    const final = await request(nextIndex + attempt, prompts?.final ?? (explained ? explainedFinalPrompt : scored ? scoredFinalPrompt : memoryFinalPrompt), payload(material), 'final')
     signal.throwIfAborted()
     try {
       const report = (explained ? finishExplainedMemory : scored ? finishScoredMemory : finishMemory)(modelJson(final.text), material, order)

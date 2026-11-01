@@ -32,6 +32,8 @@ export function migrateStore(store: Pick<Store, 'writer'>): void {
           ALTER TABLE ai_turns ADD COLUMN thinking_level TEXT;
           CREATE INDEX analysis_list_order ON ai_analysis_tasks(conversation_id,pinned DESC,list_rank,id DESC);`)
       }
+      if (version < 8n) db.exec(`ALTER TABLE ai_analysis_tasks ADD COLUMN prompt_snapshot TEXT CHECK(prompt_snapshot IS NULL OR json_valid(prompt_snapshot));
+        ALTER TABLE ai_turns ADD COLUMN system_prompt TEXT;`)
       if ((db.pragma('foreign_key_check') as unknown[]).length) throw new Error('资料库迁移失败，请从备份恢复后重试。')
       db.pragma(`user_version = ${schemaVersion}`)
     }).immediate()

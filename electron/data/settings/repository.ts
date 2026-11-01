@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto'
+import { defaultPrompts, validatePrompt, type PromptId, type PromptValues } from '../../../src/shared/system-prompts'
+import { readPromptValues } from '../ai/system-prompts'
 import type { Store } from '../db/open'
 import type { WriterQueue } from '../import/runner'
 import { saveAiModelVersion } from '../ai/repository'
@@ -168,6 +170,17 @@ export function createSettingsRepository(store: Store, write: WriterQueue) {
     async removeModel(id: string): Promise<void> {
       settingsId(id)
       await write(() => db.transaction(() => { const value = model(id); idle([id]); saveAiModelVersion(db, { ...value, enabled: false }); db.prepare('DELETE FROM settings_models WHERE model_id=?').run(id) })())
+    },
+    getPrompts(): PromptValues { return readPromptValues(reader) },
+    async savePrompt(id: PromptId, text: string): Promise<PromptValues> {
+      validatePrompt(id, text)
+      return write(() => {
+        const overrides = setting<Partial<PromptValues>>('systemPrompts', {})
+        if (text === defaultPrompts[id]) delete overrides[id]
+        else overrides[id] = text
+        saveSetting('systemPrompts', overrides)
+        return readPromptValues(db)
+      })
     },
     async saveProcessing(input: ProcessingSettings): Promise<ProcessingSettings> { validateProcessing(input); return write(() => { saveSetting('processing', input); return structuredClone(input) }) },
     async selectModel(feature: ModelFeature, id: string | null): Promise<void> {

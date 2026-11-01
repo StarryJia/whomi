@@ -1,4 +1,5 @@
 import type { ThinkingLevel } from '../../src/shared/thinking'
+import { validatePrompt } from '../../src/shared/system-prompts'
 import type { AccountUsage, SettingsApi, Provider, ProviderInput, SettingsSnapshot } from '../../src/shared/settings-contract'
 import { failSettings, settingsId, validateProcessing, validateProvider, validateSettingsModel } from '../data/settings/validation'
 import { defaultModelProtocol } from '../../src/shared/model-protocol'
@@ -21,7 +22,7 @@ export type SettingsServiceOptions = {
   }>>
   fetch?: typeof globalThis.fetch
 }
-export type SettingsService = Pick<SettingsApi, 'getCodexQuota' | 'getAccountUsage' | 'getAccountStatus' | 'signInAccount' | 'cancelAccountSignIn' | 'signOutAccount' | 'setAccountEnabled' | 'get' | 'saveProvider' | 'removeProvider' | 'saveModel' | 'removeModel' | 'syncModels' | 'testModel' | 'saveProcessing' | 'selectModel' | 'setDebug'>
+export type SettingsService = Pick<SettingsApi, 'getPrompts' | 'savePrompt' | 'getCodexQuota' | 'getAccountUsage' | 'getAccountStatus' | 'signInAccount' | 'cancelAccountSignIn' | 'signOutAccount' | 'setAccountEnabled' | 'get' | 'saveProvider' | 'removeProvider' | 'saveModel' | 'removeModel' | 'syncModels' | 'testModel' | 'saveProcessing' | 'selectModel' | 'setDebug'>
 
 export function createSettingsService(options: SettingsServiceOptions): SettingsService {
   const storage = <T>(method: string, ...args: unknown[]) => options.storage(method, args) as Promise<T>
@@ -43,6 +44,8 @@ export function createSettingsService(options: SettingsServiceOptions): Settings
     return status
   }
   return {
+    getPrompts: () => storage('getPrompts'),
+    async savePrompt(id, text) { validatePrompt(id, text); return mutate(() => storage('savePrompt', id, text)) },
     get,
     async getCodexQuota(expected, action) {
       settingsId(expected)

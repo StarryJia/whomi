@@ -1,0 +1,46 @@
+.prompt-settings { padding: 64px 44px 32px; }
+.prompt-content { width: 100%; max-width: 768px; margin-inline: auto; }
+.prompt-content h2 { margin: 0 0 28px; font-size: 26px; line-height: 1.3; }
+.prompt-content h2:focus { outline: none; }
+.prompt-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+.prompt-list li { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 84px; border-bottom: 1px solid var(--line); padding: 12px 0; }
+.prompt-list li.is-editing { background: var(--hover); }
+.prompt-name { display: flex; align-items: center; gap: 2px; min-width: 0; font-size: 16px; font-weight: 600; }
+.prompt-help,.prompt-edit,.prompt-restore { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 8px 12px; border: 0; border-radius: 8px; background: transparent; color: var(--text-muted); cursor: pointer; font: inherit; }
+.prompt-help { width: 44px; flex-shrink: 0; }
+.prompt-edit { color: var(--focus); flex-shrink: 0; }
+.prompt-help:hover,.prompt-edit:hover,.prompt-restore:not(:disabled):hover { background: var(--hover); }
+.prompt-help:active,.prompt-edit:active,.prompt-restore:not(:disabled):active { background: var(--pressed); }
+.prompt-help:focus-visible,.prompt-edit:focus-visible,.prompt-restore:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.prompt-restore:disabled { opacity: .5; cursor: not-allowed; }
+.prompt-load { color: var(--text-muted); }
+.prompt-popover { z-index: 100; width: min(330px,calc(100vw - 32px)); padding: 20px; border-radius: 12px; background: var(--surface); color: var(--text); box-shadow: 0 8px 32px #25303c26; font-size: 14px; line-height: 1.6; }
+.prompt-popover dl { margin: 0; }
+.prompt-popover dt { color: var(--text-muted); margin: 0 0 4px; }
+.prompt-popover dd { margin: 0; overflow-wrap: anywhere; }
+.prompt-popover dt:not(:first-child) { border-top: 1px solid var(--line); padding-top: 12px; margin-top: 12px; }
+.prompt-popover-arrow { fill: var(--surface); }
+.ms-dialog.prompt-drawer { position: fixed; inset: var(--desktop-titlebar-height,0px) 0 0 auto; width: min(680px,calc(100vw - 200px)); max-width: 100vw; height: calc(100dvh - var(--desktop-titlebar-height,0px)); max-height: calc(100dvh - var(--desktop-titlebar-height,0px)); margin: 0; border-radius: 0; animation: prompt-slide-in 180ms ease-out; }
+.prompt-drawer .ms-modal-header { flex-shrink: 0; padding: 24px; }
+.prompt-drawer .ms-modal-header h2 { font-size: 18px; line-height: 1.5; }
+.prompt-drawer .ms-modal-header .ms-icon { width: 44px; height: 44px; flex-shrink: 0; }
+.prompt-editor-body { display: flex; flex: 1; flex-direction: column; min-height: 0; padding: 0 24px 24px; }
+.prompt-editor-body textarea { flex: 1; width: 100%; min-height: 120px; resize: none; padding: 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--text); font: inherit; font-size: 15px; line-height: 1.8; caret-color: var(--focus); }
+.prompt-editor-body textarea:disabled { opacity: .7; }
+.prompt-editor-body textarea[aria-invalid="true"] { border-color: var(--focus); }
+.prompt-editor-body .ms-error { flex-shrink: 0; margin-bottom: 0; }
+.prompt-editor-footer { flex-shrink: 0; padding: 16px 24px; gap: 12px; }
+.prompt-editor-footer .prompt-restore { margin-right: auto; padding-inline: 0; }
+.prompt-editor-footer .ms-button { min-height: 44px; min-width: 80px; }
+@keyframes prompt-slide-in { from { transform: translateX(24px); opacity: .7; } to { transform: translateX(0); opacity: 1; } }
+@media (max-width:720px) {
+  .prompt-settings { padding: 24px 20px; }
+  .prompt-content h2 { font-size: 22px; margin-bottom: 24px; }
+  .prompt-list li { min-height: 76px; }
+  .ms-dialog.prompt-drawer { width: 100vw; }
+  .prompt-drawer .ms-modal-header { padding: 12px 16px; }
+  .prompt-editor-body { padding: 0 16px 16px; }
+  .prompt-editor-footer { padding: 12px 16px; gap: 8px; flex-wrap: nowrap; }
+  .prompt-editor-footer .ms-button { min-width: 64px; }
+}
+@media (prefers-reduced-motion:reduce) { .ms-dialog.prompt-drawer { animation: none; } }

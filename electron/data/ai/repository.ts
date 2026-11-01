@@ -1,3 +1,5 @@
+import { readPromptValues } from './system-prompts'
+import { defaultPrompts, type PromptValues } from '../../../src/shared/system-prompts'
 import { isThinkingLevel, type ThinkingLevel } from '../../../src/shared/thinking'
 import { arrangeList, threadOrder } from '../db/list-order'
 import { purgeThread } from '../db/purge'
@@ -18,16 +20,16 @@ import { threadTitle } from './thread-title'
 
 export type AiSourceMessage = { id: string; senderName: string; text: string; isSelf: boolean; kind: string; sentAtMs: number | null; memberId: string | null }
 export type AnalysisBatch = { index: number; messageIds: string[]; report: AiReport | MemoryNotes; usage: AiUsage }
-export type AnalysisContext = { task: AnalysisTask; promptVersion: string; model: AiModel; selfFingerprint: string; messages: AiSourceMessage[]; batches: AnalysisBatch[]; checkpoint: string | null }
+export type AnalysisContext = { systemPrompts?: PromptValues; task: AnalysisTask; promptVersion: string; model: AiModel; selfFingerprint: string; messages: AiSourceMessage[]; batches: AnalysisBatch[]; checkpoint: string | null }
 export type RegisteredSkill = AiSkill & { content: string; enabled?: boolean }
-export type TurnContext = { turn: AiTurn; threadId: string; conversationId: string; model: AiModel; selfFingerprint: string; references: AiSourceMessage[]; history: { role: 'user' | 'assistant'; text: string; references?: AiSourceMessage[] }[]; profile: SavedReport | null; skill: RegisteredSkill | null; checkpoint: string | null }
+export type TurnContext = { systemPrompt?: string; turn: AiTurn; threadId: string; conversationId: string; model: AiModel; selfFingerprint: string; references: AiSourceMessage[]; history: { role: 'user' | 'assistant'; text: string; references?: AiSourceMessage[] }[]; profile: SavedReport | null; skill: RegisteredSkill | null; checkpoint: string | null }
 export type AnalysisPatch = { state?: AiState; error?: string; usage?: AiUsage; checkpoint?: string | null }
 export type TurnPatch = AnalysisPatch & { text?: string }
 export type NewTurn = { thinkingLevel?: ThinkingLevel; threadId: string; requestId: string; prompt: string; referenceIds: string[]; modelId: string; skillId?: string }
 export type ModelInput = Omit<AiModel, 'version' | 'hasCredential'>
 export type UsageRecord = { ownerKind: 'analysis' | 'turn'; ownerId: string; requestId: string; usage: AiUsage }
-type AnalysisRow = { thinking_level: ThinkingLevel | null; id: bigint; conversation_id: bigint; model_id: string; model_version: bigint; created_at_ms: bigint | null; completed_at_ms: bigint | null; pinned: bigint; prompt_version: string; self_fingerprint: string; snapshot_max_id: bigint; state: AiState; total_messages: bigint; skipped_messages: bigint; event_sequence: bigint; error: string | null; checkpoint: string | null }
-type TurnRow = { thinking_level: ThinkingLevel | null; id: bigint; thread_id: bigint; request_id: string; prompt: string; reference_ids: string; model_id: string; model_version: bigint; skill: string | null; self_fingerprint: string; text: string; state: AiState; attempt: bigint; event_sequence: bigint; error: string | null; checkpoint: string | null }
+type AnalysisRow = { prompt_snapshot: string | null; thinking_level: ThinkingLevel | null; id: bigint; conversation_id: bigint; model_id: string; model_version: bigint; created_at_ms: bigint | null; completed_at_ms: bigint | null; pinned: bigint; prompt_version: string; self_fingerprint: string; snapshot_max_id: bigint; state: AiState; total_messages: bigint; skipped_messages: bigint; event_sequence: bigint; error: string | null; checkpoint: string | null }
+type TurnRow = { system_prompt: string | null; thinking_level: ThinkingLevel | null; id: bigint; thread_id: bigint; request_id: string; prompt: string; reference_ids: string; model_id: string; model_version: bigint; skill: string | null; self_fingerprint: string; text: string; state: AiState; attempt: bigint; event_sequence: bigint; error: string | null; checkpoint: string | null }
 type ThreadRow = { pinned: bigint; id: bigint; conversation_id: bigint; title: string; created_at_ms: bigint; updated_at_ms: bigint }
 function threadView(row: ThreadRow): AiThreadSummary { return { pinned: !!row.pinned, id: String(row.id), conversationId: String(row.conversation_id), title: row.title, createdAtMs: Number(row.created_at_ms), updatedAtMs: Number(row.updated_at_ms) } }
 const activeStates = new Set<AiState>(['queued', 'running', 'summarizing'])
@@ -242,7 +244,7 @@ export function createAiRepository(store: Store, write: WriterQueue) {
         const preparation = parse<AnalysisPreparation>(row.data), self = identity(preparation.conversationId), model = enabledModel(preparation.model.id)
         if (self.fingerprint !== row.self_fingerprint || model.version !== preparation.model.version) fail('CONFIRMATION_CHANGED', '配置或本人身份已更新，请重新准备分析。')
         if (db.prepare("SELECT 1 FROM ai_analysis_tasks WHERE conversation_id=? AND state IN ('queued','running','summarizing')").get(id(preparation.conversationId))) fail('ANALYSIS_BUSY', '请先完成或停止当前分析。')
-        return String(db.prepare("INSERT INTO ai_analysis_tasks(conversation_id,request_id,preparation_token,model_id,model_version,prompt_version,self_fingerprint,snapshot_max_id,state,total_messages,skipped_messages,created_at_ms,thinking_level) VALUES(?,?,?,?,?,?,?,?,'queued',?,?,?,?)").run(id(preparation.conversationId), input.requestId, input.token, model.id, model.version, ANALYSIS_PROMPT_VERSION, self.fingerprint, BigInt(preparation.snapshotMaxId), preparation.analyzableMessages, preparation.totalMessages - preparation.analyzableMessages, now, preparation.thinkingLevel ?? null).lastInsertRowid)
+        return String(db.prepare("INSERT INTO ai_analysis_tasks(conversation_id,request_id,preparation_token,model_id,model_version,prompt_version,self_fingerprint,snapshot_max_id,state,total_messages,skipped_messages,created_at_ms,thinking_level,prompt_snapshot) VALUES(?,?,?,?,?,?,?,?,'queued',?,?,?,?,?)").run(id(preparation.conversationId), input.requestId, input.token, model.id, model.version, ANALYSIS_PROMPT_VERSION, self.fingerprint, BigInt(preparation.snapshotMaxId), preparation.analyzableMessages, preparation.totalMessages - preparation.analyzableMessages, now, preparation.thinkingLevel ?? null, JSON.stringify(readPromptValues(db))).lastInsertRowid)
       })())
       return repository.getAnalysis(taskId)
     },
@@ -283,7 +285,7 @@ export function createAiRepository(store: Store, write: WriterQueue) {
     analysisContext(taskId: string): AnalysisContext {
       const row = analysisRow(taskId); assertCurrent(row)
       const model = modelSecret(row.model_id, Number(row.model_version)).model
-      return { task: taskView(row), model, promptVersion: row.prompt_version, selfFingerprint: row.self_fingerprint, messages: messages(String(row.conversation_id), row.snapshot_max_id).filter(analyzable), batches: (reader.prepare('SELECT data FROM ai_analysis_batches WHERE task_id=? ORDER BY batch_index').all(row.id) as { data: string }[]).map(batch => parse<AnalysisBatch>(batch.data)), checkpoint: row.checkpoint }
+      return { systemPrompts: row.prompt_snapshot ? parse<PromptValues>(row.prompt_snapshot) : undefined, task: taskView(row), model, promptVersion: row.prompt_version, selfFingerprint: row.self_fingerprint, messages: messages(String(row.conversation_id), row.snapshot_max_id).filter(analyzable), batches: (reader.prepare('SELECT data FROM ai_analysis_batches WHERE task_id=? ORDER BY batch_index').all(row.id) as { data: string }[]).map(batch => parse<AnalysisBatch>(batch.data)), checkpoint: row.checkpoint }
     },
     async saveAnalysis(taskId: string, patch: AnalysisPatch): Promise<AnalysisTask> {
       patchState(patch)
@@ -416,7 +418,7 @@ export function createAiRepository(store: Store, write: WriterQueue) {
         }
         if (db.prepare("SELECT 1 FROM ai_turns WHERE thread_id=? AND state IN ('queued','running','summarizing')").get(id(input.threadId))) fail('TURN_BUSY', '请等待回答完成或先停止回答。')
         const first = !db.prepare('SELECT 1 FROM ai_turns WHERE thread_id=? LIMIT 1').get(id(input.threadId))
-        const turnId = String(db.prepare("INSERT INTO ai_turns(thread_id,request_id,prompt,reference_ids,model_id,model_version,skill,self_fingerprint,state,thinking_level) VALUES(?,?,?,?,?,?,?,?,'queued',?)").run(id(input.threadId), input.requestId, input.prompt, JSON.stringify(input.referenceIds), model.id, model.version, skill ? JSON.stringify(skill) : null, self.fingerprint, input.thinkingLevel ?? null).lastInsertRowid)
+        const turnId = String(db.prepare("INSERT INTO ai_turns(thread_id,request_id,prompt,reference_ids,model_id,model_version,skill,self_fingerprint,state,thinking_level,system_prompt) VALUES(?,?,?,?,?,?,?,?,'queued',?,?)").run(id(input.threadId), input.requestId, input.prompt, JSON.stringify(input.referenceIds), model.id, model.version, skill ? JSON.stringify(skill) : null, self.fingerprint, input.thinkingLevel ?? null, readPromptValues(db).dialogue).lastInsertRowid)
         db.prepare('UPDATE ai_threads SET title=CASE WHEN ? THEN ? ELSE title END,updated_at_ms=max(updated_at_ms,?) WHERE id=?').run(first ? 1 : 0, threadTitle(input.prompt), Date.now(), id(input.threadId))
         return turnId
       })())
@@ -432,9 +434,9 @@ export function createAiRepository(store: Store, write: WriterQueue) {
         history.push({ role: 'user', text: turn.prompt, ...(references.length ? { references } : {}) }, { role: 'assistant', text: turn.text })
       }
       const latest = previous.at(-1), skill = row.skill ? parse<RegisteredSkill>(row.skill) : null
-      const sameCheckpointContext = latest?.model_id === row.model_id && latest?.model_version === row.model_version && latest?.skill === row.skill
+      const sameCheckpointContext = latest?.model_id === row.model_id && latest?.model_version === row.model_version && latest?.skill === row.skill && (latest?.system_prompt ?? defaultPrompts.dialogue) === (row.system_prompt ?? defaultPrompts.dialogue)
       const profile = repository.listAnalyses(conversationId).find(task => task.state === 'completed' && task.valid && task.report)?.report ?? null
-      return { turn: turnView(row), threadId: String(row.thread_id), conversationId, model: modelSecret(row.model_id, Number(row.model_version)).model, selfFingerprint: self.fingerprint, references: sources(conversationId, parse<string[]>(row.reference_ids)), history, profile, skill, checkpoint: sameCheckpointContext ? latest!.checkpoint : null }
+      return { systemPrompt: row.system_prompt ?? defaultPrompts.dialogue, turn: turnView(row), threadId: String(row.thread_id), conversationId, model: modelSecret(row.model_id, Number(row.model_version)).model, selfFingerprint: self.fingerprint, references: sources(conversationId, parse<string[]>(row.reference_ids)), history, profile, skill, checkpoint: sameCheckpointContext ? latest!.checkpoint : null }
     },
     async saveTurn(turnId: string, patch: TurnPatch): Promise<AiTurn> {
       patchState(patch, true)
