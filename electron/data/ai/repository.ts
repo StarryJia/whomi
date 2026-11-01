@@ -1,3 +1,4 @@
+import { isThinkingLevel, type ThinkingLevel } from '../../../src/shared/thinking'
 import { arrangeList, threadOrder } from '../db/list-order'
 import { purgeThread } from '../db/purge'
 import type { ListArrangement } from '../../../src/shared/desktop-api'
@@ -6,7 +7,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import type { Store } from '../db/open'
 import type { WriterQueue } from '../import/runner'
 import { confirmedSelfSql } from '../db/self'
-import { ANALYSIS_PROMPT_VERSION, LEGACY_ANALYSIS_VERSION, LEGACY_MEMORY_VERSION } from './prompt-version'
+import { ANALYSIS_PROMPT_VERSION, LEGACY_ANALYSIS_VERSION, LEGACY_MEMORY_VERSION, LEGACY_SCORED_MEMORY_VERSION } from './prompt-version'
 import { dimensionKeys, isMemoryReport, scoreDimensions, type SavedReport } from '../../../src/shared/memory'
 import { validateAiResult } from '../../../src/shared/ai-validation'
 import { readNotes, type MemoryNotes } from './memory-notes'
@@ -22,11 +23,11 @@ export type RegisteredSkill = AiSkill & { content: string; enabled?: boolean }
 export type TurnContext = { turn: AiTurn; threadId: string; conversationId: string; model: AiModel; selfFingerprint: string; references: AiSourceMessage[]; history: { role: 'user' | 'assistant'; text: string; references?: AiSourceMessage[] }[]; profile: SavedReport | null; skill: RegisteredSkill | null; checkpoint: string | null }
 export type AnalysisPatch = { state?: AiState; error?: string; usage?: AiUsage; checkpoint?: string | null }
 export type TurnPatch = AnalysisPatch & { text?: string }
-export type NewTurn = { threadId: string; requestId: string; prompt: string; referenceIds: string[]; modelId: string; skillId?: string }
+export type NewTurn = { thinkingLevel?: ThinkingLevel; threadId: string; requestId: string; prompt: string; referenceIds: string[]; modelId: string; skillId?: string }
 export type ModelInput = Omit<AiModel, 'version' | 'hasCredential'>
 export type UsageRecord = { ownerKind: 'analysis' | 'turn'; ownerId: string; requestId: string; usage: AiUsage }
-type AnalysisRow = { id: bigint; conversation_id: bigint; model_id: string; model_version: bigint; prompt_version: string; self_fingerprint: string; snapshot_max_id: bigint; state: AiState; total_messages: bigint; skipped_messages: bigint; event_sequence: bigint; error: string | null; checkpoint: string | null }
-type TurnRow = { id: bigint; thread_id: bigint; request_id: string; prompt: string; reference_ids: string; model_id: string; model_version: bigint; skill: string | null; self_fingerprint: string; text: string; state: AiState; attempt: bigint; event_sequence: bigint; error: string | null; checkpoint: string | null }
+type AnalysisRow = { thinking_level: ThinkingLevel | null; id: bigint; conversation_id: bigint; model_id: string; model_version: bigint; created_at_ms: bigint | null; completed_at_ms: bigint | null; pinned: bigint; prompt_version: string; self_fingerprint: string; snapshot_max_id: bigint; state: AiState; total_messages: bigint; skipped_messages: bigint; event_sequence: bigint; error: string | null; checkpoint: string | null }
+type TurnRow = { thinking_level: ThinkingLevel | null; id: bigint; thread_id: bigint; request_id: string; prompt: string; reference_ids: string; model_id: string; model_version: bigint; skill: string | null; self_fingerprint: string; text: string; state: AiState; attempt: bigint; event_sequence: bigint; error: string | null; checkpoint: string | null }
 type ThreadRow = { pinned: bigint; id: bigint; conversation_id: bigint; title: string; created_at_ms: bigint; updated_at_ms: bigint }
 function threadView(row: ThreadRow): AiThreadSummary { return { pinned: !!row.pinned, id: String(row.id), conversationId: String(row.conversation_id), title: row.title, createdAtMs: Number(row.created_at_ms), updatedAtMs: Number(row.updated_at_ms) } }
 const activeStates = new Set<AiState>(['queued', 'running', 'summarizing'])
@@ -59,7 +60,7 @@ function validateReport(value: AiReport, allowed: Set<string>) {
 export function saveAiModelVersion(db: Store['writer'], input: ModelInput, encryptedKey?: string | null): AiModel {
   const previous = db.prepare('SELECT version,encrypted_key FROM ai_models WHERE id=?').get(input.id) as { version: bigint; encrypted_key: string | null } | undefined
   const secret = encryptedKey === undefined ? previous?.encrypted_key ?? null : encryptedKey
-  const model: AiModel = { ...(input.planAccount ? { planAccount: input.planAccount, planProvider: input.planProvider } : {}), id: input.id, label: input.label, model: input.model, baseUrl: input.baseUrl, protocol: input.protocol ?? defaultModelProtocol, contextWindow: input.contextWindow, maxTokens: input.maxTokens, ...(input.maxInputTokens !== undefined ? { maxInputTokens: input.maxInputTokens } : {}), enabled: input.enabled, version: Number(previous?.version ?? 0n) + 1, hasCredential: secret !== null }
+  const model: AiModel = { ...(input.thinkingLevels ? { thinkingLevels: input.thinkingLevels } : {}), ...(input.planAccount ? { planAccount: input.planAccount, planProvider: input.planProvider } : {}), id: input.id, label: input.label, model: input.model, baseUrl: input.baseUrl, protocol: input.protocol ?? defaultModelProtocol, contextWindow: input.contextWindow, maxTokens: input.maxTokens, ...(input.maxInputTokens !== undefined ? { maxInputTokens: input.maxInputTokens } : {}), enabled: input.enabled, version: Number(previous?.version ?? 0n) + 1, hasCredential: secret !== null }
   db.prepare('INSERT INTO ai_models(id,version,data,encrypted_key) VALUES(?,?,?,?) ON CONFLICT(id) DO UPDATE SET version=excluded.version,data=excluded.data,encrypted_key=excluded.encrypted_key').run(model.id, model.version, JSON.stringify(model), secret)
   db.prepare('INSERT INTO ai_model_versions(model_id,version,data,encrypted_key) VALUES(?,?,?,?)').run(model.id, model.version, JSON.stringify(model), secret)
   return model
@@ -92,7 +93,9 @@ export function createAiRepository(store: Store, write: WriterQueue) {
     if (!current.planAccount) return false
     const original = modelSecret(id, version).model
     // 同一套餐账号重新授权只改变可用状态；任务仍使用保存时的完整配置。
-    return isDeepStrictEqual({ ...original, version: current.version, enabled: current.enabled }, current)
+    const { thinkingLevels: _snapshotLevels, ...snapshotConfig } = original
+    const { thinkingLevels: _currentLevels, ...currentConfig } = current
+    return isDeepStrictEqual({ ...snapshotConfig, version: current.version, enabled: current.enabled }, currentConfig)
   }
   function analysisRow(taskId: string): AnalysisRow {
     const row = reader.prepare('SELECT * FROM ai_analysis_tasks WHERE id=?').get(id(taskId)) as AnalysisRow | undefined
@@ -146,7 +149,16 @@ export function createAiRepository(store: Store, write: WriterQueue) {
     const coverage = reader.prepare('SELECT count(*) AS n FROM ai_analysis_coverage WHERE task_id=?').get(row.id) as { n: bigint }
     const report = reader.prepare('SELECT data FROM ai_reports WHERE task_id=?').get(row.id) as { data: string } | undefined
     const current = identity(String(row.conversation_id))
-    return { id: String(row.id), conversationId: String(row.conversation_id), conversationTitle: current.title, modelId: row.model_id, state: row.state, analyzedMessages: Number(coverage.n), totalMessages: Number(row.total_messages), skippedMessages: Number(row.skipped_messages), usage: aggregate('analysis', String(row.id)), valid: row.self_fingerprint === current.fingerprint, eventSequence: Number(row.event_sequence), ...(row.error ? { error: row.error } : {}), ...(report ? { report: parse<SavedReport>(report.data) } : {}) }
+    const range = reader.prepare('SELECT min(sent_at_ms) AS start,max(sent_at_ms) AS end FROM messages WHERE conversation_id=? AND id<=?').get(row.conversation_id, row.snapshot_max_id) as { start: bigint | null; end: bigint | null }
+    const snapshot = reader.prepare('SELECT data FROM ai_model_versions WHERE model_id=? AND version=?').get(row.model_id, row.model_version) as { data: string } | undefined
+    let modelIdentity: AnalysisTask['modelIdentity']
+    if (snapshot) {
+      try {
+        const model = parse<Partial<AiModel>>(snapshot.data)
+        if (typeof model.label === 'string' && model.label.trim() && typeof model.model === 'string' && model.model.trim()) modelIdentity = { id: row.model_id, version: Number(row.model_version), label: model.label, model: model.model }
+      } catch { /* 旧模型资料缺失时仍保留文稿。 */ }
+    }
+    return { ...(row.thinking_level ? { thinkingLevel: row.thinking_level } : {}), id: String(row.id), conversationId: String(row.conversation_id), conversationTitle: current.title, modelId: row.model_id, ...(modelIdentity ? { modelIdentity } : {}), createdAtMs: row.created_at_ms === null ? null : Number(row.created_at_ms), completedAtMs: row.completed_at_ms === null ? null : Number(row.completed_at_ms), sourceStartTimeMs: range.start === null ? null : Number(range.start), sourceEndTimeMs: range.end === null ? null : Number(range.end), pinned: !!row.pinned, state: row.state, analyzedMessages: Number(coverage.n), totalMessages: Number(row.total_messages), skippedMessages: Number(row.skipped_messages), usage: aggregate('analysis', String(row.id)), valid: row.self_fingerprint === current.fingerprint, eventSequence: Number(row.event_sequence), ...(row.error ? { error: row.error } : {}), ...(report ? { report: parse<SavedReport>(report.data) } : {}) }
   }
   function turnView(row: TurnRow): AiTurn {
     const skill = row.skill ? parse<RegisteredSkill>(row.skill) : null
@@ -160,10 +172,10 @@ export function createAiRepository(store: Store, write: WriterQueue) {
         }
       } catch { /* 缺失或损坏的旧模型身份不阻止读取已保存的正文。 */ }
     }
-    return { id: String(row.id), threadId: String(row.thread_id), requestId: row.request_id, prompt: row.prompt, referenceIds: parse<string[]>(row.reference_ids), modelId: row.model_id, ...(modelIdentity ? { modelIdentity } : {}), ...(skill ? { skillId: skill.id } : {}), text: row.text, state: row.state, attempt: Number(row.attempt), usage: aggregate('turn', String(row.id)), eventSequence: Number(row.event_sequence), ...(row.error ? { error: row.error } : {}) }
+    return { ...(row.thinking_level ? { thinkingLevel: row.thinking_level } : {}), id: String(row.id), threadId: String(row.thread_id), requestId: row.request_id, prompt: row.prompt, referenceIds: parse<string[]>(row.reference_ids), modelId: row.model_id, ...(modelIdentity ? { modelIdentity } : {}), ...(skill ? { skillId: skill.id } : {}), text: row.text, state: row.state, attempt: Number(row.attempt), usage: aggregate('turn', String(row.id)), eventSequence: Number(row.event_sequence), ...(row.error ? { error: row.error } : {}) }
   }
   function assertCurrent(row: AnalysisRow) {
-    if (![LEGACY_ANALYSIS_VERSION, LEGACY_MEMORY_VERSION, ANALYSIS_PROMPT_VERSION].includes(row.prompt_version)) fail('PROMPT_CHANGED', '请重新准备分析。')
+    if (![LEGACY_ANALYSIS_VERSION, LEGACY_MEMORY_VERSION, LEGACY_SCORED_MEMORY_VERSION, ANALYSIS_PROMPT_VERSION].includes(row.prompt_version)) fail('PROMPT_CHANGED', '请重新准备分析。')
     if (row.self_fingerprint !== identity(String(row.conversation_id)).fingerprint) fail('IDENTITY_CHANGED', '本人身份已更新，请重新准备分析。')
   }
   function insertUsage(record: UsageRecord) {
@@ -203,8 +215,8 @@ export function createAiRepository(store: Store, write: WriterQueue) {
       if (!key(skill.id) || !text(skill.label, 256) || !key(skill.version) || !text(skill.content) || (skill.enabled !== undefined && typeof skill.enabled !== 'boolean')) fail('INVALID_SKILL')
       return write(() => { db.prepare('INSERT INTO ai_skills(id,data) VALUES(?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data').run(skill.id, JSON.stringify(skill)); return { id: skill.id, label: skill.label, version: skill.version } })
     },
-    async prepareAnalysis(input: { conversationId: string; modelId: string }, now = Date.now()): Promise<AnalysisPreparation> {
-      fields(input, ['conversationId', 'modelId'])
+    async prepareAnalysis(input: { conversationId: string; modelId: string; thinkingLevel?: ThinkingLevel }, now = Date.now()): Promise<AnalysisPreparation> {
+      fields(input, ['conversationId', 'modelId', 'thinkingLevel']); if (input.thinkingLevel !== undefined && !isThinkingLevel(input.thinkingLevel)) fail('INVALID_ARGUMENT')
       return write(() => {
         const { title } = conversation(input.conversationId), self = identity(input.conversationId)
         if (!self.selfName) fail('SELF_REQUIRED', '请先确认当前会话中的本人身份。')
@@ -213,7 +225,7 @@ export function createAiRepository(store: Store, write: WriterQueue) {
         const usable = all.filter(analyzable)
         if (!usable.length) fail('NO_ANALYZABLE_MESSAGES', '请导入包含文字的聊天记录。')
         const snapshotMaxId = all.reduce((max, message) => BigInt(message.id) > max ? BigInt(message.id) : max, 0n).toString()
-        const preparation: AnalysisPreparation = { token: randomUUID(), conversationId: input.conversationId, title, selfName: self.selfName, totalMessages: all.length, analyzableMessages: usable.length, snapshotMaxId, expiresAt: now + 5 * 60 * 1000, model }
+        const preparation: AnalysisPreparation = { ...(input.thinkingLevel ? { thinkingLevel: input.thinkingLevel } : {}), token: randomUUID(), conversationId: input.conversationId, title, selfName: self.selfName, totalMessages: all.length, analyzableMessages: usable.length, snapshotMaxId, expiresAt: now + 5 * 60 * 1000, model }
         db.prepare('INSERT INTO ai_preparations(token,conversation_id,data,self_fingerprint,model_version,prompt_version,expires_at_ms) VALUES(?,?,?,?,?,?,?)').run(preparation.token, id(input.conversationId), JSON.stringify(preparation), self.fingerprint, model.version, ANALYSIS_PROMPT_VERSION, preparation.expiresAt)
         return preparation
       })
@@ -230,12 +242,43 @@ export function createAiRepository(store: Store, write: WriterQueue) {
         const preparation = parse<AnalysisPreparation>(row.data), self = identity(preparation.conversationId), model = enabledModel(preparation.model.id)
         if (self.fingerprint !== row.self_fingerprint || model.version !== preparation.model.version) fail('CONFIRMATION_CHANGED', '配置或本人身份已更新，请重新准备分析。')
         if (db.prepare("SELECT 1 FROM ai_analysis_tasks WHERE conversation_id=? AND state IN ('queued','running','summarizing')").get(id(preparation.conversationId))) fail('ANALYSIS_BUSY', '请先完成或停止当前分析。')
-        return String(db.prepare("INSERT INTO ai_analysis_tasks(conversation_id,request_id,preparation_token,model_id,model_version,prompt_version,self_fingerprint,snapshot_max_id,state,total_messages,skipped_messages) VALUES(?,?,?,?,?,?,?,?,'queued',?,?)").run(id(preparation.conversationId), input.requestId, input.token, model.id, model.version, ANALYSIS_PROMPT_VERSION, self.fingerprint, BigInt(preparation.snapshotMaxId), preparation.analyzableMessages, preparation.totalMessages - preparation.analyzableMessages).lastInsertRowid)
+        return String(db.prepare("INSERT INTO ai_analysis_tasks(conversation_id,request_id,preparation_token,model_id,model_version,prompt_version,self_fingerprint,snapshot_max_id,state,total_messages,skipped_messages,created_at_ms,thinking_level) VALUES(?,?,?,?,?,?,?,?,'queued',?,?,?,?)").run(id(preparation.conversationId), input.requestId, input.token, model.id, model.version, ANALYSIS_PROMPT_VERSION, self.fingerprint, BigInt(preparation.snapshotMaxId), preparation.analyzableMessages, preparation.totalMessages - preparation.analyzableMessages, now, preparation.thinkingLevel ?? null).lastInsertRowid)
       })())
       return repository.getAnalysis(taskId)
     },
     getAnalysis(taskId: string): AnalysisTask { return taskView(analysisRow(taskId)) },
-    listAnalyses(conversationId?: string): AnalysisTask[] { if (conversationId !== undefined) conversation(conversationId); return (reader.prepare(`SELECT * FROM ai_analysis_tasks${conversationId === undefined ? '' : ' WHERE conversation_id=?'} ORDER BY id DESC`).all(...(conversationId === undefined ? [] : [id(conversationId)])) as AnalysisRow[]).map(taskView) },
+    listAnalyses(conversationId?: string): AnalysisTask[] { if (conversationId !== undefined) conversation(conversationId); return (reader.prepare(`SELECT * FROM ai_analysis_tasks${conversationId === undefined ? '' : ' WHERE conversation_id=?'} ORDER BY pinned DESC,list_rank,id DESC`).all(...(conversationId === undefined ? [] : [id(conversationId)])) as AnalysisRow[]).map(taskView) },
+    async arrangeAnalysis(change: ListArrangement): Promise<void> {
+      await write(() => db.transaction(() => {
+        const row = analysisRow(change.id)
+        if ('pinned' in change) {
+          if (typeof change.pinned !== 'boolean') fail('INVALID_ARGUMENT')
+          db.prepare('UPDATE ai_analysis_tasks SET pinned=?,list_rank=0,event_sequence=event_sequence+1 WHERE id=?').run(Number(change.pinned), row.id)
+          return
+        }
+        const rows = db.prepare('SELECT id FROM ai_analysis_tasks WHERE conversation_id=? AND pinned=? ORDER BY list_rank,id DESC').all(row.conversation_id, row.pinned) as { id: bigint }[]
+        const from = rows.findIndex(item => String(item.id) === change.id)
+        const [moving] = rows.splice(from, 1)
+        const target = rows.findIndex(item => String(item.id) === change.targetId)
+        if (target < 0 || !['before', 'after'].includes(change.placement)) fail('INVALID_LIST_ITEM', '请刷新列表后重试。')
+        rows.splice(target + Number(change.placement === 'after'), 0, moving)
+        const update = db.prepare('UPDATE ai_analysis_tasks SET list_rank=? WHERE id=?')
+        rows.forEach((item, index) => update.run(index + 1, item.id))
+      })())
+    },
+    async deleteAnalysis(taskId: string): Promise<void> {
+      await write(() => db.transaction(() => {
+        const row = analysisRow(taskId)
+        if (activeStates.has(row.state)) fail('ANALYSIS_BUSY', '请暂停生成后重试。')
+        const preparation = db.prepare('SELECT preparation_token FROM ai_analysis_tasks WHERE id=?').get(row.id) as { preparation_token: string }
+        db.prepare('DELETE FROM ai_analysis_batches WHERE task_id=?').run(row.id)
+        db.prepare('DELETE FROM ai_analysis_coverage WHERE task_id=?').run(row.id)
+        db.prepare('DELETE FROM ai_reports WHERE task_id=?').run(row.id)
+        db.prepare("DELETE FROM ai_request_usage WHERE owner_kind='analysis' AND owner_id=?").run(row.id)
+        db.prepare('DELETE FROM ai_analysis_tasks WHERE id=?').run(row.id)
+        db.prepare('DELETE FROM ai_preparations WHERE token=?').run(preparation.preparation_token)
+      })())
+    },
     getReport(taskId: string): SavedReport { const task = repository.getAnalysis(taskId); if (task.state !== 'completed' || !task.report) fail('REPORT_UNAVAILABLE', '生成完成后再查看文稿。'); return task.report },
     analysisContext(taskId: string): AnalysisContext {
       const row = analysisRow(taskId); assertCurrent(row)
@@ -282,16 +325,26 @@ export function createAiRepository(store: Store, write: WriterQueue) {
         else {
           if (!isMemoryReport(report)) fail('INVALID_MEMORY', '文稿格式有误，请重试生成。')
           validateAiResult('getReport', report)
-          if ((row.prompt_version === LEGACY_MEMORY_VERSION) !== (report.format === 'memory-v2')) fail('INVALID_MEMORY')
-          if (report.format === 'memory-v3') {
+          const expectedFormat = row.prompt_version === LEGACY_MEMORY_VERSION ? 'memory-v2' : row.prompt_version === LEGACY_SCORED_MEMORY_VERSION ? 'memory-v3' : 'memory-v4'
+          if (report.format !== expectedFormat) fail('INVALID_MEMORY')
+          if (report.format !== 'memory-v2') {
             const scored = scoreDimensions(report.eventVotes)
             if (dimensionKeys.some(key => report.dimensions[key] !== scored[key])) fail('INVALID_MEMORY')
+          }
+          if (report.format === 'memory-v4') {
+            const self = new Set(messages(String(row.conversation_id), row.snapshot_max_id).filter(message => message.isSelf && analyzable(message)).map(message => message.id))
+            const batches = db.prepare('SELECT data FROM ai_analysis_batches WHERE task_id=?').all(row.id) as { data: string }[]
+            const signals = new Set(batches.flatMap(batch => (parse<AnalysisBatch>(batch.data).report as MemoryNotes).events.flatMap(event => event.signals.map(signal => signal.direction + ':' + signal.messageId))))
+            for (const axis of dimensionKeys) {
+              const explanation = report.dimensionExplanations[axis]
+              if (report.dimensions[axis] === null ? explanation !== null : !explanation || !explanation.evidenceMessageIds.length || explanation.evidenceMessageIds.some(id => !self.has(id) || !signals.has(report.dimensions[axis] + ':' + id))) fail('INVALID_MEMORY')
+            }
           }
         }
         const covered = db.prepare('SELECT count(*) AS n FROM ai_analysis_coverage WHERE task_id=?').get(row.id) as { n: bigint }
         if (covered.n !== row.total_messages) fail('ANALYSIS_INCOMPLETE', '请继续分析剩余消息。')
         db.prepare('INSERT INTO ai_reports(task_id,data) VALUES(?,?)').run(row.id, JSON.stringify(report))
-        db.prepare("UPDATE ai_analysis_tasks SET state='completed',error=NULL,event_sequence=event_sequence+1 WHERE id=?").run(row.id)
+        db.prepare("UPDATE ai_analysis_tasks SET state='completed',completed_at_ms=?,error=NULL,event_sequence=event_sequence+1 WHERE id=?").run(Date.now(), row.id)
       })())
       return repository.getAnalysis(taskId)
     },
@@ -342,14 +395,14 @@ export function createAiRepository(store: Store, write: WriterQueue) {
       return { ...threadView(row), turns: (reader.prepare('SELECT * FROM ai_turns WHERE thread_id=? ORDER BY id').all(row.id) as TurnRow[]).map(turnView) }
     },
     async createTurn(input: NewTurn): Promise<AiTurn> {
-      fields(input, ['threadId', 'requestId', 'prompt', 'referenceIds', 'modelId', 'skillId'])
+      fields(input, ['threadId', 'requestId', 'prompt', 'referenceIds', 'modelId', 'skillId', 'thinkingLevel']); if (input.thinkingLevel !== undefined && !isThinkingLevel(input.thinkingLevel)) fail('INVALID_ARGUMENT')
       if (!key(input.requestId) || !text(input.prompt, 65536) || !input.prompt.trim()) fail('INVALID_ARGUMENT')
       const turnId = await write(() => db.transaction(() => {
         const conversationId = threadConversation(input.threadId)
         const existing = db.prepare('SELECT * FROM ai_turns WHERE thread_id=? AND request_id=?').get(id(input.threadId), input.requestId) as TurnRow | undefined
         if (existing) {
           const skill = existing.skill ? parse<RegisteredSkill>(existing.skill) : null
-          if (existing.prompt !== input.prompt || existing.reference_ids !== JSON.stringify(input.referenceIds) || existing.model_id !== input.modelId || skill?.id !== input.skillId) fail('REQUEST_CONFLICT')
+          if (existing.prompt !== input.prompt || existing.reference_ids !== JSON.stringify(input.referenceIds) || existing.model_id !== input.modelId || existing.thinking_level !== (input.thinkingLevel ?? null) || skill?.id !== input.skillId) fail('REQUEST_CONFLICT')
           return String(existing.id)
         }
         sources(conversationId, input.referenceIds)
@@ -363,7 +416,7 @@ export function createAiRepository(store: Store, write: WriterQueue) {
         }
         if (db.prepare("SELECT 1 FROM ai_turns WHERE thread_id=? AND state IN ('queued','running','summarizing')").get(id(input.threadId))) fail('TURN_BUSY', '请等待回答完成或先停止回答。')
         const first = !db.prepare('SELECT 1 FROM ai_turns WHERE thread_id=? LIMIT 1').get(id(input.threadId))
-        const turnId = String(db.prepare("INSERT INTO ai_turns(thread_id,request_id,prompt,reference_ids,model_id,model_version,skill,self_fingerprint,state) VALUES(?,?,?,?,?,?,?,?,'queued')").run(id(input.threadId), input.requestId, input.prompt, JSON.stringify(input.referenceIds), model.id, model.version, skill ? JSON.stringify(skill) : null, self.fingerprint).lastInsertRowid)
+        const turnId = String(db.prepare("INSERT INTO ai_turns(thread_id,request_id,prompt,reference_ids,model_id,model_version,skill,self_fingerprint,state,thinking_level) VALUES(?,?,?,?,?,?,?,?,'queued',?)").run(id(input.threadId), input.requestId, input.prompt, JSON.stringify(input.referenceIds), model.id, model.version, skill ? JSON.stringify(skill) : null, self.fingerprint, input.thinkingLevel ?? null).lastInsertRowid)
         db.prepare('UPDATE ai_threads SET title=CASE WHEN ? THEN ? ELSE title END,updated_at_ms=max(updated_at_ms,?) WHERE id=?').run(first ? 1 : 0, threadTitle(input.prompt), Date.now(), id(input.threadId))
         return turnId
       })())

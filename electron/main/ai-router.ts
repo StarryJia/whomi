@@ -23,6 +23,8 @@ export function createAiRouter(service: AiMethods) {
       if (method === 'sendTurn') requireOwner('thread', (input[0] as { threadId: string }).threadId, owner)
       if (method === 'retryTurn' || method === 'stopTurn') requireOwner('turn', input[0] as string, owner)
       if (method === 'continueAnalysis' || method === 'stopAnalysis') requireOwner('analysis', input[0] as string, owner)
+      if (method === 'deleteAnalysis') requireOwner('analysis', input[0] as string, owner)
+      if (method === 'arrangeAnalysis') requireOwner('analysis', (input[0] as { id: string }).id, owner)
       if (method === 'getAnalysis' || method === 'getReport') claim('analysis', input[0] as string, owner)
       if (method === 'getThread') claim('thread', input[0] as string, owner)
       const invoke = service[method] as (...args: unknown[]) => Promise<unknown>
@@ -37,7 +39,7 @@ export function createAiRouter(service: AiMethods) {
     },
     publish(event: AiEvent) {
       validateAiEvent(event)
-      const owner = owners.get(`${event.kind === 'turn' ? 'turn' : 'analysis'}:${event.snapshot.id}`)
+      const owner = owners.get(`${event.kind === 'turn' ? 'turn' : 'analysis'}:${event.kind === 'analysis-deleted' ? event.taskId : event.snapshot.id}`)
       if (owner !== undefined) for (const listener of listeners.get(owner) ?? []) { try { listener(event) } catch { /* 已关闭窗口不影响后台运行。 */ } }
     },
     subscribe(owner: number, listener: (event: AiEvent) => void) { const group = listeners.get(owner) ?? new Set(); group.add(listener); listeners.set(owner, group); return () => { group.delete(listener) } },

@@ -72,7 +72,7 @@ export interface AppProps {
 }
 
 function HomeShell({ displayName = '', conversations, overview, saveFeedback,
-  clarificationQuestion, clarificationModels = [], clarificationAdapter, conversationAiAdapter, previewConversationId, preview = false, importApi, client }: AppProps) {
+  clarificationQuestion, clarificationModels, clarificationAdapter, conversationAiAdapter, previewConversationId, preview = false, importApi, client }: AppProps) {
   const api = importApi ?? (window.whomi ? getDesktopClient() : undefined)
   const [desktopAi, setDesktopAi] = useState<ConversationAiAdapter>()
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -106,26 +106,49 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
   const [memoryEntry, setMemoryEntry] = useState<{ taskId?:string; origin:'overview'|'library' }>()
   const returnFromQuestion = useRef<typeof view>('overview')
   const [memoryError, setMemoryError] = useState('')
-  const [memoryLoading, setMemoryLoading] = useState(false)
+  const [memoryLoading, setMemoryLoading] = useState(Boolean(api?.ai))
+  const [memoryLoaded, setMemoryLoaded] = useState(false)
   const [memoryRevision, setMemoryRevision] = useState(0)
   const refreshMemories = useCallback(() => setMemoryRevision(revision => revision + 1), [])
   useEffect(() => {
-    if (!api?.ai || (view !== 'overview' && view !== 'library' && view !== 'cover')) return
+    if (!api?.ai) return
     let active = true
+    const changes = new Map<string, AnalysisTask | null>()
     setMemoryError('')
     setMemoryLoading(true)
-    void api.ai.listAnalyses().then(tasks => {
-      if (active) setTasks(tasks)
+    const unsubscribe = api.ai.onEvent(event => {
+      if (!active || event.kind === 'turn') return
+      if (event.kind === 'analysis-deleted') {
+        changes.set(event.taskId, null)
+        setTasks(items => items.filter(task => task.id !== event.taskId))
+        setSelectedMemory(id => id === event.taskId ? undefined : id)
+      } else {
+        const task = event.snapshot
+        const last = changes.get(task.id)
+        if (last === null || (last && last.eventSequence > task.eventSequence)) return
+        changes.set(task.id, task)
+        setTasks(items => {
+          const stored = items.find(item => item.id === task.id)
+          return stored && stored.eventSequence > task.eventSequence ? items : [task, ...items.filter(item => item.id !== task.id)]
+        })
+        if (task.state === 'completed') refreshMemories()
+      }
+    })
+    void api.ai.listAnalyses().then(snapshot => {
+      if (!active) return
+      // 初读期间也可能收到进度或删除事件，以较新的记录为准。
+      const current = new Map(snapshot.map(task => [task.id, task]))
+      for (const [id, task] of changes) {
+        if (!task) current.delete(id)
+        else if (task.eventSequence >= (current.get(id)?.eventSequence ?? -1)) current.set(id, task)
+      }
+      setTasks([...current.values()])
+      setMemoryLoaded(true)
     }).catch(() => {
       if (active) setMemoryError('读取记忆失败。')
     }).finally(() => { if (active) setMemoryLoading(false) })
-    const unsubscribe = api.ai.onEvent(event => {
-      if (event.kind !== 'analysis' || !active) return
-      if (event.snapshot.state === 'completed') refreshMemories()
-      else setTasks(items => [event.snapshot, ...items.filter(task => task.id !== event.snapshot.id)])
-    })
     return () => { active = false; unsubscribe() }
-  }, [api?.ai, view, memoryRevision, refreshMemories])
+  }, [api?.ai, memoryRevision, refreshMemories])
   const contributions = useMemo(() => {
     const titles = new Map(memories.map(task => [task.id, task.conversationTitle]))
     return currentMemoryContributions(memories).filter(item => dimensionKeys.some(key => item.dimensions[key]))
@@ -299,10 +322,12 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
     closeMobile()
   }
 
-  const overviewContent = <>
-    {previewing && <p className="overview-preview-label">开发预览 · 全部内容为虚构示例 · 未写入真实存储</p>}
-    {!queryClient && <p className="reader-availability">请在桌面应用中查看已保存的会话。</p>}
-    <PersonalOverview data={overview ?? { materialStatus: memories.length ? 'ready' : reader.conversations.length ? 'unanalysed' : 'none', discoveries: [], preferences }}
+  const overviewContent = (concealed = false) => <>
+    {!concealed && previewing && <p className="overview-preview-label">开发预览 · 全部内容为虚构示例 · 未写入真实存储</p>}
+    {!concealed && !queryClient && <p className="reader-availability">请在桌面应用中查看已保存的会话。</p>}
+    <PersonalOverview concealed={concealed} status={!overview && !memoryLoaded && (memoryLoading || memoryError) ? (memoryLoading ? 'loading' : 'error')
+      : !overview && !memories.length && !reader.conversations.length && (reader.listLoading || reader.listError) ? (reader.listLoading ? 'loading' : 'error') : 'ready'}
+      retry={() => { refreshMemories(); if (reader.listError) void reader.refresh() }} data={overview ?? { materialStatus: memories.length ? 'ready' : reader.conversations.length ? 'unanalysed' : 'none', discoveries: [], preferences }}
       conversationTitle={(activeSummary ?? reader.conversations[0])?.title}
       onOpenConversation={reader.conversations[0] ? () => openConversation(activeSummary?.id ?? reader.conversations[0].id, {origin:'overview'}) : undefined}
       onOpenMemory={memories[0] ? () => openLibrary(memories[0].id) : undefined}
@@ -312,7 +337,7 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
       feedback={feedback}>
       <RelationshipObservations observations={contributions} onRead={openLibrary} />
     </PersonalOverview>
-    {memoryError && <p role="alert">{memoryError} <button type="button" onClick={refreshMemories}>重试</button></p>}
+    {!concealed && memoryLoaded && memoryError && <p role="alert">{memoryError} <button type="button" onClick={refreshMemories}>重试</button></p>}
   </>
 
   return (
@@ -407,16 +432,19 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
         </footer>
       </aside>
       <main id="main-content" ref={mainRef} className={clsx('home', view === 'cover' && 'cover-home', (view === 'overview' || view === 'clarification' || view === 'library') && 'overview-home', view === 'conversation' && 'reading-home')} tabIndex={-1} inert={mobileDialog || introActive}>
-        {view === 'cover' ? <HelloCover key={coverKey} name={name} buttonRef={greetingRef} onEnter={enterOverview}><div className="hello-overview-outline"><strong>个人总览</strong><div>人格偏好</div>
-            {['精力来源','理解信息','做决定','安排方式'].map(label => <p key={label}>{label}<i /></p>)}<div>Spark · 不一样的自己</div></div></HelloCover>
+        {view === 'cover' ? <HelloCover key={coverKey} name={name} buttonRef={greetingRef} onEnter={enterOverview}>{revealing => overviewContent(!revealing)}</HelloCover>
           : view === 'library' ? <MemoryLibrary entries={memories} selectedId={selectedMemory} onSelect={setSelectedMemory}
             unfinished={unfinished} conversations={reader.conversations} onStart={(id, taskId) => openConversation(id, { origin:'library', taskId })}
             onImport={startNewImport} hasMore={!!reader.listCursor} loadMore={() => { void reader.loadMore() }}
             listLoading={reader.listLoading} listError={reader.listError} retryList={() => { void reader.refresh() }}
+            arrange={api?.ai?.arrangeAnalysis && (async change => { await api.ai!.arrangeAnalysis(change); refreshMemories() })}
+            remove={api?.ai?.deleteAnalysis && (async id => { await api.ai!.deleteAnalysis(id); setTasks(items => items.filter(task => task.id !== id)); refreshMemories() })}
+            arrangeConversation={api?.arrangeConversation && (async change => { await api.arrangeConversation(change); await reader.refresh({ preserveReader: true }) })}
+            removeConversation={api?.deleteConversation && handleDeleteConversation}
             loading={memoryLoading} error={memoryError} retry={refreshMemories} />
           : view === 'import' ? <FileImport key={importKey} api={api} onSaved={saved} onOpenConversation={openConversation} />
           : view === 'conversation' && activeId && reader.current ? <ConversationReader
-          key={`${activeId}-${source?.id ?? ''}`} conversation={{ id: activeId, title: activeSummary?.title ?? '会话', messages: reader.current.messages }}
+          key={`${activeId}-${source?.id ?? ''}-${memoryEntry?.taskId ?? memoryEntry?.origin ?? ''}`} conversation={{ id: activeId, title: activeSummary?.title ?? '会话', messages: reader.current.messages }}
           openAnalysisOnEntry={!!memoryEntry} initialAnalysisTaskId={memoryEntry?.taskId}
           range={reader.current.range} sourceStatus={reader.current.sourceStatus} loading={reader.loading} error={reader.error} preview={previewing}
           beforeCursor={reader.current.beforeCursor} afterCursor={reader.current.afterCursor}
@@ -425,16 +453,16 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
           onBefore={reader.loadBefore} onAfter={reader.loadAfter} onRetry={() => { void reader.open(activeId) }}
           onReturn={source ? (sourceOrigin === 'clarification' ? openClarification : enterOverview) : memoryEntry ? (memoryEntry.origin === 'library' ? () => openLibrary() : enterOverview) : fromImport ? openImport : undefined}
           returnLabel={memoryEntry?.origin === 'library' ? '返回记忆仓库' : fromImport ? '返回导入结果' : sourceOrigin === 'clarification' ? '返回问一问' : '返回个人总览'}
-          api={api} onConfigureModels={api?.settings ? onReturn => { settingsReturn.current = onReturn; closeMobile(); setSettingsOpen(true) } : undefined} onOpenMemory={openLibrary} onDeleteConversation={handleDeleteConversation} onSelfChanged={() => {
+          api={api} onConfigureModels={api?.settings ? onReturn => { settingsReturn.current = onReturn; closeMobile(); setSettingsOpen(true) } : undefined} onOpenMemory={openLibrary} onSelfChanged={() => {
             setTasks(entries => entries.map(entry => entry.conversationId === activeId ? { ...entry, valid: false } : entry))
             refreshMemories()
             void reader.open(activeId)
           }} /> : view === 'clarification' ? (
-          <ClarificationPage question={clarificationQuestion} models={clarificationModels} controller={clarification}
+          <ClarificationPage question={clarificationQuestion} models={clarificationModels ?? (conversationAiAdapter ?? desktopAi)?.models.map(model => ({ ...model, available: true })) ?? []} controller={clarification}
             headingRef={clarificationTitleRef} preview={previewing} onReturn={leaveClarification} returnLabel={questionReturnLabel}
             onOpenSource={reference => openSource(reference, 'clarification')}
             isSourceAvailable={sourceAvailable} />
-        ) : overviewContent}
+        ) : overviewContent()}
       </main>
       {introActive && <StartupIntro targetRef={brandImageRef} onComplete={finishIntro} />}
     </div>{settingsOpen && api?.settings && <><div className="desktop-drag-strip settings-drag-strip" aria-hidden="true" /><SettingsPage api={api.settings} onChanged={() => { settingsChanged.current = true }} onClose={() => {

@@ -1,3 +1,4 @@
+import { isThinkingLevel, type ThinkingLevel } from '../../src/shared/thinking'
 import { createHash, randomBytes } from 'node:crypto'
 import { chatgptBaseUrl, type ChatgptStatus } from '../../src/shared/chatgpt-plan'
 import { BoundaryError } from '../../src/shared/desktop-validation'
@@ -118,7 +119,7 @@ export function createChatgptAuth(options: Options) {
     if (signal?.aborted) throw cancelled()
     return requireAccount(expected).tokens.access
   }
-  async function listModels(expected: string): Promise<{id:string; name:string}[]> {
+  async function listModels(expected: string): Promise<{id:string; name:string; thinkingLevels?: ThinkingLevel[]}[]> {
     const signal = session.signal
     const token = await accessToken(expected,signal)
     const response = await client.send(chatgptBaseUrl + '/models', {headers:{Authorization:'Bearer ' + token}}, signal)
@@ -131,7 +132,8 @@ export function createChatgptAuth(options: Options) {
     return value.models.flatMap(item => {
       if (!item || item.visibility !== 'list' || typeof item.slug !== 'string' || !item.slug || seen.has(item.slug)) return []
       seen.add(item.slug)
-      return [{id:item.slug,name:typeof item.display_name === 'string' && item.display_name ? item.display_name : item.slug}]
+      const levels = Array.isArray(item.supported_reasoning_levels) ? [...new Set<ThinkingLevel>(item.supported_reasoning_levels.flatMap((entry: unknown) => { const effort = entry && typeof entry === 'object' && 'effort' in entry ? (entry as { effort: unknown }).effort : undefined; const level = effort === 'none' ? 'off' : effort; return isThinkingLevel(level) ? [level] : [] }))] : []
+      return [{id:item.slug,name:typeof item.display_name === 'string' && item.display_name ? item.display_name : item.slug, ...(Array.isArray(item.supported_reasoning_levels) ? { thinkingLevels: levels } : {})}]
     })
   }
   function cancel() { attempt?.abort(cancelled()); attempt = undefined }

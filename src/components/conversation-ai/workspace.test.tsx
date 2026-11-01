@@ -271,3 +271,24 @@ describe('对话与后台分析', () => {
     expect(screen.queryByRole('region', { name: '记忆生成状态' })).not.toBeInTheDocument()
   })
 })
+
+it('passes a supported analysis strength without preparation and drops it when capabilities change', async () => {
+  const user = userEvent.setup(), adapter = fakeAdapter()
+  adapter.models = [{id:'model',label:'示例模型',thinkingLevels:['high']}]
+  const view = render(<Workspace adapter={adapter} />)
+  await user.click(screen.getByRole('button',{name:'整理成记忆'}))
+  await user.click(screen.getByRole('button',{name:'思考强度：默认'}))
+  await user.click(screen.getByRole('option',{name:'高'}))
+  await user.click(screen.getByRole('button',{name:'生成记忆'}))
+  expect(adapter.analyze).toHaveBeenCalledWith(expect.objectContaining({thinkingLevel:'high'}),expect.anything())
+  view.unmount()
+  const second = fakeAdapter()
+  second.models = [{id:'model',label:'示例模型',thinkingLevels:['high']}]
+  const refreshed = render(<Workspace adapter={second} />)
+  await user.click(screen.getByRole('button',{name:'整理成记忆'}))
+  await user.click(screen.getByRole('button',{name:'思考强度：默认'}))
+  await user.click(screen.getByRole('option',{name:'高'}))
+  refreshed.rerender(<Workspace adapter={{...second,models:[{id:'model',label:'示例模型',thinkingLevels:['low']}]}} />)
+  await user.click(screen.getByRole('button',{name:'生成记忆'}))
+  expect(second.analyze).toHaveBeenCalledWith(expect.not.objectContaining({thinkingLevel:'high'}),expect.anything())
+})

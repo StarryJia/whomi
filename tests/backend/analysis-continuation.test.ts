@@ -5,6 +5,7 @@ import { createAiRepository } from '../../electron/data/ai/repository'
 import { createSettingsRepository } from '../../electron/data/settings/repository'
 import { createAiService, type RuntimeRunner } from '../../electron/main/ai-service'
 import { temporaryStore } from './helpers'
+import { currentMemoryContributions } from '../../src/shared/memory'
 
 const cleanups: (() => void)[] = []
 afterEach(() => { for (const cleanup of cleanups.splice(0).reverse()) cleanup() })
@@ -16,7 +17,7 @@ function connection(path: string) {
   return { store, repository: createAiRepository(store, write), settings: createSettingsRepository(store, write) }
 }
 
-async function fixture(legacy: 'conversation-analysis-v1' | 'conversation-memory-v2' | false = 'conversation-analysis-v1') {
+async function fixture(legacy: 'conversation-analysis-v1' | 'conversation-memory-v2' | 'conversation-memory-v3' | 'conversation-memory-v4' | false = 'conversation-analysis-v1') {
   const temp = temporaryStore(); cleanups.push(temp.cleanup)
   const data = connection(temp.path)
   if (legacy) data.store.writer.exec(`CREATE TEMP TRIGGER old_analysis AFTER INSERT ON ai_analysis_tasks BEGIN
@@ -63,12 +64,12 @@ test('a new manuscript merges the first and third moving fragments and only admi
     const moving = payload.events.filter((event: {key:string}) => event.key === '周六搬家')
     expect(moving).toHaveLength(1)
     expect(moving[0]).toMatchObject({ messageCount: 2 })
-    return { ...response, text: JSON.stringify({ groups: [['周六搬家'],['试讲']], events: [{ key: '周六搬家', title: '周六搬家', text: '约好日期后等到了货车。' }], relationship: '你们似乎能彼此分工。' }) }
+    return { ...response, text: JSON.stringify({ groups: [['周六搬家'],['试讲']], dimensionExplanations: dims, events: [{ key: '周六搬家', title: '周六搬家', text: '约好日期后等到了货车。' }], relationship: '你们似乎能彼此分工。' }) }
   })
   const task = await start(service)
   await service.idle()
   expect(data.repository.getAnalysis(task.id)).toMatchObject({ state: 'completed', conversationTitle: '合成会话', report: {
-    format: 'memory-v3', dimensions: dims, events: [{ title: '周六搬家', text: '约好日期后等到了货车。' }], relationship: '你们似乎能彼此分工。' } })
+    format: 'memory-v4', dimensions: dims, dimensionExplanations: dims, events: [{ title: '周六搬家', text: '约好日期后等到了货车。' }], relationship: '你们似乎能彼此分工。' } })
   expect(requests).toEqual(['1','2','3','final'])
 })
 
@@ -77,8 +78,8 @@ async function start(service: ReturnType<typeof analysisService>) {
   return service.confirmAnalysis({ token: preparation.token, requestId: 'fixture' })
 }
 
-test('a saved v2 source batch resumes with v2 writing instructions after upgrade', async () => {
-  const { data, path } = await fixture('conversation-memory-v2')
+test.each(['conversation-memory-v2', 'conversation-memory-v3', 'conversation-memory-v4'] as const)('a saved %s source batch resumes with its own writing instructions after upgrade', async version => {
+  const { data, path } = await fixture(version)
   const notes = (id: string) => ({ events: [{ key: '搬家', text: '事先安排', evidenceMessageIds: [id], signals: [{ direction: 'J', messageId: id }] }] })
   const waiting = Promise.withResolvers<void>()
   const first = analysisService(data, async (input, { signal }) => {
@@ -96,19 +97,48 @@ test('a saved v2 source batch resumes with v2 writing instructions after upgrade
   const reopened = connection(path), seen: string[] = []
   const resumed = analysisService(reopened, async input => {
     const payload = JSON.parse(input.prompt)
-    expect(input.systemPrompt).not.toContain('groups')
+    if (version !== 'conversation-memory-v4') expect(input.systemPrompt).not.toContain('dimensionExplanations')
     if (payload.messages) {
       const id = payload.messages[0].id
       seen.push(id)
       return { ...response, text: JSON.stringify(notes(id)) }
     }
-    return { ...response, text: JSON.stringify({ dimensions: { EI: null, SN: null, TF: null, JP: 'J' }, events: [{ key: '搬家', title: '搬家', text: '先订好了车。' }], relationship: '你们有商有量。' }) }
+    return { ...response, text: JSON.stringify({ ...(version === 'conversation-memory-v2' ? { dimensions: { EI: null, SN: null, TF: null, JP: 'J' } } : { groups: [['搬家']] }),
+      ...(version === 'conversation-memory-v4' ? { dimensionExplanations: { EI: null, SN: null, TF: null, JP: null } } : {}),
+      events: [{ key: '搬家', title: '搬家', text: '先订好了车。' }], relationship: '你们有商有量。' }) }
   })
   await resumed.continueAnalysis(task.id)
   await resumed.idle()
   expect(seen).toEqual(['2','3'])
-  expect(reopened.repository.getReport(task.id)).toMatchObject({ format: 'memory-v2', dimensions: { JP: 'J' } })
+  expect(reopened.repository.getReport(task.id)).toMatchObject({ format: version.replace('conversation-', ''), dimensions: { JP: version === 'conversation-memory-v2' ? 'J' : null } })
   expect(reopened.repository.listAnalyses()).toHaveLength(1)
+})
+
+test('a v4 task saves contextual explanations from self signals and restores the same manuscript after restart', async () => {
+  const { data, path } = await fixture(false)
+  const contexts = ['搬家前我先订货车。', '看展前我先订票。', '试讲前我先写提纲。']
+  for (let i = 0; i < contexts.length; i++) data.store.writer.prepare('UPDATE messages SET text=? WHERE id=?').run(contexts[i] + '补充。'.repeat(450), i + 1)
+  const service = analysisService(data, async input => {
+    const payload = JSON.parse(input.prompt)
+    if (payload.messages) {
+      const id = payload.messages[0].id
+      return { ...response, text: JSON.stringify({ events: [{ key: id, text: contexts[Number(id) - 1], evidenceMessageIds: [id], signals: [{ direction: 'J', messageId: id }] }] }) }
+    }
+    expect(payload.events.every((event: { signals: unknown[] }) => event.signals.length)).toBe(true)
+    return { ...response, text: JSON.stringify({ groups: [['1'], ['2'], ['3']], events: [{ key: '1', title: '搬家', text: contexts[0] }], relationship: '你们会一起准备。',
+      dimensionExplanations: { EI: null, SN: null, TF: null, JP: { text: '搬家订车、看展订票和试讲列提纲时，你都主动提前安排。', eventKeys: ['1', '2', '3'] } } }) }
+  })
+  const task = await start(service)
+  await service.idle()
+  expect(data.repository.getAnalysis(task.id).state).toBe('completed')
+  const saved = data.repository.getReport(task.id)
+  expect(saved).toMatchObject({ format: 'memory-v4', dimensions: { JP: 'J' }, eventVotes: { JP: [3, 0] },
+    dimensionExplanations: { JP: { text: '搬家订车、看展订票和试讲列提纲时，你都主动提前安排。', evidenceMessageIds: ['1', '2', '3'] } } })
+  await service.close()
+  data.store.close()
+  const reopened = connection(path)
+  expect(reopened.repository.getReport(task.id)).toEqual(saved)
+  expect(currentMemoryContributions(reopened.repository.listAnalyses())).toMatchObject([{ conversationId: '1', taskId: task.id, dimensions: { JP: 'J' } }])
 })
 
 test('immediate continuation waits for the stopped attempt and skips the committed source batch', async () => {

@@ -6,7 +6,7 @@ interface HelloCoverProps {
   name: string
   buttonRef: RefObject<HTMLButtonElement | null>
   onEnter: () => void
-  children: ReactNode
+  children: ReactNode | ((revealing: boolean) => ReactNode)
 }
 
 export function HelloCover({ name, buttonRef, onEnter, children }: HelloCoverProps) {
@@ -58,7 +58,7 @@ export function HelloCover({ name, buttonRef, onEnter, children }: HelloCoverPro
 
   return <div className={clsx('hello-cover', peeking && 'is-peeking', revealing && 'is-revealing')} data-keyboard-focus={keyboardFocus}>
     <div className="hello-cover-preview" inert aria-hidden="true">
-      {previewMounted && children}
+      {previewMounted && (typeof children === 'function' ? children(revealing) : children)}
     </div>
     <div className="hello-cover-veil" aria-hidden="true" onTransitionEnd={event => {
       if (revealing && event.target === event.currentTarget && event.propertyName === 'opacity') complete()

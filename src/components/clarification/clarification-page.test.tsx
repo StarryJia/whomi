@@ -6,7 +6,7 @@ import { ClarificationPage } from './clarification-page'
 import { useClarification } from './use-clarification'
 import type { ClarificationAdapter, ClarificationModel, ClarificationQuestion, ClarificationWithdrawal } from './types'
 
-const prompt = '以上都不符合，我有自己的想法…'
+const prompt = '我有自己的想法…'
 const question: ClarificationQuestion = {
   id: 'friend', title: '朋友准备答辩时，你当时更想怎么帮他？',
   context: '他担心讲不清楚，你们聊了准备进度，也调整了练习时间。',
@@ -18,7 +18,7 @@ const question: ClarificationQuestion = {
   source: { id: 'friend-source', conversationId: 'c1', messageId: 'm1', title: '朋友答辩', context: '准备与改约' },
 }
 const models: readonly ClarificationModel[] = [
-  { id: 'demo', label: '示例模型', available: true },
+  { id: 'demo', label: '示例模型', available: true, thinkingLevels: ['low', 'high'] },
   { id: 'unavailable', label: '不可用模型', available: false },
 ]
 
@@ -42,12 +42,14 @@ function Harness({ item = question, availableModels = models, adapter, available
 }
 
 describe('问一问页面', () => {
-  it('无问题时保留页面主题和用途说明，不提供虚构作答', () => {
+  it('无问题时仍显示问题、三张空卡和不可操作的输入框', () => {
     render(<Harness item={null} />)
     expect(screen.getByRole('heading', { level: 1, name: '问一问' })).toBeInTheDocument()
-    expect(screen.getByText('目前没有需要你澄清的问题')).toBeInTheDocument()
-    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+    expect(screen.getByText('目前还没有问题哦')).toBeInTheDocument()
+    expect(document.querySelectorAll('.blank-card')).toHaveLength(3)
+    expect(screen.getByRole('textbox')).toBeDisabled()
+    expect(screen.getByRole('combobox')).toBeDisabled()
+    expect(screen.getByRole('button', { name: '发送回答' })).toBeDisabled()
   })
 
   it('三张牌直接可读，键盘聚焦不提交，空格可提交', async () => {
@@ -68,7 +70,8 @@ describe('问一问页面', () => {
     render(<Harness adapter={adapter} />)
     const user = userEvent.setup()
     const first = screen.getByRole('button', { name: question.options[0].title })
-    await user.selectOptions(screen.getByRole('combobox', { name: '选择模型' }), 'demo')
+    await user.click(screen.getByRole('combobox', { name: '选择模型' }))
+    await user.click(screen.getByRole('option', { name: '示例模型' }))
     expect(first).toBeEnabled()
     await user.type(screen.getByRole('textbox', { name: prompt }), '我当时更担心他熬夜。')
     expect(first).toBeDisabled()
@@ -86,7 +89,10 @@ describe('问一问页面', () => {
     const user = userEvent.setup()
     const input = screen.getByRole('textbox', { name: prompt })
     await user.type(input, '我想先听他说完。')
-    await user.selectOptions(screen.getByRole('combobox', { name: '选择模型' }), 'demo')
+    await user.click(screen.getByRole('combobox', { name: '选择模型' }))
+    await user.click(screen.getByRole('option', { name: '示例模型' }))
+    await user.click(screen.getByRole('button', { name: '思考强度：默认' }))
+    await user.click(screen.getByRole('option', { name: '高' }))
     fireEvent.compositionStart(input)
     fireEvent.keyDown(input, { key: 'Enter', code: 'Enter', isComposing: true })
     fireEvent.compositionEnd(input)
@@ -94,7 +100,7 @@ describe('问一问页面', () => {
     fireEvent.keyDown(input, { key: 'Enter', code: 'Enter', shiftKey: true })
     expect(adapter.submit).not.toHaveBeenCalled()
     fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' })
-    expect(adapter.submit).toHaveBeenCalledWith(question.id, { kind: 'text', text: '我想先听他说完。', modelId: 'demo' })
+    expect(adapter.submit).toHaveBeenCalledWith(question.id, { kind: 'text', text: '我想先听他说完。', modelId: 'demo', thinkingLevel: 'high' })
     expect(await screen.findByText('已模拟提交，未保存。')).toBeInTheDocument()
   })
 

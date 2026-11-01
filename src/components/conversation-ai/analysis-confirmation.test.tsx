@@ -1,4 +1,4 @@
-import { act, render, screen, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { ConversationWorkspace } from './workspace'
@@ -130,4 +130,24 @@ it('工具栏圆环按已保存原文计数，未保存完不能显示百分之�
   expect(Number(trigger.querySelector('circle[pathLength]')?.getAttribute('stroke-dasharray')?.split(' ')[0])).toBeCloseTo(100 / 3)
   act(() => update({ analyzedMessages: 14638, totalMessages: 14639 }))
   expect(screen.getByText('>99%')).toBeVisible()
+})
+
+it('仓库打开正在整理的任务只订阅指定编号；生成新记忆不误接旧任务', async () => {
+  const active: AnalysisTask = { id: '7', conversationId: 'c', modelId: 'm', state: 'running',
+    analyzedMessages: 9, totalMessages: 16, skippedMessages: 0, usage: {}, valid: true, eventSequence: 3 }
+  const adapter: ConversationAiAdapter = { models: [{ id: 'm', label: '本机模型' }], skills: [], respond: vi.fn(), analyze: vi.fn(),
+    watchAnalysis: vi.fn(async (_id, publish) => publish(active)), continueAnalysis: vi.fn() }
+  function workspace(taskId?: string) {
+    return <ConversationWorkspace key={taskId ?? 'new'} conversationId="c" title="示例会话" messageCount={16} references={[]}
+      openAnalysisOnEntry initialAnalysisTaskId={taskId} onClearReferences={() => {}} onJumpReference={() => {}} adapter={adapter}>
+      {({ analysisControl }) => analysisControl}</ConversationWorkspace>
+  }
+  const { rerender } = render(workspace('7'))
+  expect(await screen.findByText('已整理 9 / 16 条')).toBeVisible()
+  expect(adapter.watchAnalysis).toHaveBeenCalledWith('c', expect.any(Function), expect.any(AbortSignal), '7')
+  expect(adapter.continueAnalysis).not.toHaveBeenCalled()
+  rerender(workspace())
+  await waitFor(() => expect(screen.getByRole('button', { name: '生成记忆' })).toBeEnabled())
+  expect(adapter.watchAnalysis).toHaveBeenCalledTimes(1)
+  expect(adapter.analyze).not.toHaveBeenCalled()
 })

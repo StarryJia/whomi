@@ -11,7 +11,7 @@ export type Provider = { planAccount?: string; id: string; name: string; baseUrl
 export type ProviderInput = Omit<Provider, 'id' | 'hasCredential' | 'planAccount'> & { id?: string; presetId?: string; apiKey?: string | null }
 export function presetAccountId(presetId: string): string { return `cherry:${presetId}` }
 export type SettingsModel = AiModel & { providerId: string; group?: string; maxInputTokens?: number | null }
-export type SettingsModelInput = Pick<SettingsModel, 'providerId' | 'label' | 'model' | 'contextWindow' | 'maxTokens' | 'enabled' | 'group' | 'maxInputTokens'> & { id?: string }
+export type SettingsModelInput = Pick<SettingsModel, 'providerId' | 'label' | 'model' | 'contextWindow' | 'maxTokens' | 'enabled' | 'group' | 'maxInputTokens' | 'thinkingLevels'> & { id?: string }
 export type CatalogModel = { id: string; label?: string; group?: string; contextWindow?: number; maxTokens?: number; maxInputTokens?: number }
 export type ModelFeature = 'analysis' | 'conversation'
 export type SettingsSnapshot = { providers: Provider[]; models: SettingsModel[]; processing: ProcessingSettings; selectedModels: Partial<Record<ModelFeature, string>>; debug: boolean }

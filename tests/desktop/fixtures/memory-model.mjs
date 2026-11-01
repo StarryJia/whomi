@@ -17,6 +17,8 @@ export function memoryModelReply(messages, { title = '约好通话', text = '你
   }
   if (system.includes('撰写《我们的记忆》')) {
     const { events } = JSON.parse(prompt)
-    return JSON.stringify({ ...(system.includes('groups') ? { groups: events.map(event => [event.key]) } : { dimensions: { EI: null, SN: null, TF: null, JP: null } }), events: [{ key: title, title, text }], relationship })
+    return JSON.stringify({ ...(system.includes('groups') ? { groups: events.map(event => [event.key]) } : { dimensions: { EI: null, SN: null, TF: null, JP: null } }),
+      ...(system.includes('dimensionExplanations') ? { dimensionExplanations: { EI: null, SN: null, TF: null, JP: null } } : {}),
+      events: [{ key: title, title, text }], relationship })
   }
 }

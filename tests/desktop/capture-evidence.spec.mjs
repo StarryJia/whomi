@@ -150,16 +150,14 @@ test('capture comprehensive evidence for import flow, unified top bar, conversat
 
     await page.screenshot({ path: join(evidence, '10-conversation-header-and-bubbles.png') })
 
-    // 9. 验证更多操作菜单（F11）
-    const moreButton = page.getByRole('button', { name: '更多操作', exact: true })
-    await expect(moreButton).toBeVisible()
-    await moreButton.click()
-    await expect(page.getByRole('menuitem', { name: '选择本人' })).toBeVisible()
-    await expect(page.getByRole('menuitem', { name: '删除会话' })).toBeVisible()
-    await page.screenshot({ path: join(evidence, '11-conversation-more-menu.png') })
+    // 9. 验证直接选择本人入口。
+    const selfButton = page.getByRole('button', { name: '选择本人', exact: true })
+    await expect(selfButton).toBeVisible()
+    await expect(page.getByRole('button', { name: '更多操作', exact: true })).toHaveCount(0)
+    await page.screenshot({ path: join(evidence, '11-conversation-identity-entry.png') })
 
     // 10. 验证“选择本人”对话框
-    await page.getByRole('menuitem', { name: '选择本人' }).click()
+    await selfButton.click()
     const selfModal = page.getByRole('dialog', { name: '选择本人' })
     await expect(selfModal).toBeVisible()
     await expect(selfModal.getByText('小林')).toBeVisible()
@@ -180,8 +178,9 @@ test('capture comprehensive evidence for import flow, unified top bar, conversat
     await page.screenshot({ path: join(evidence, '13-conversation-self-bubbles-right.png') })
 
     // 11. 验证“删除会话”二次确认对话框
-    await moreButton.click()
-    await page.getByRole('menuitem', { name: '删除会话' }).click()
+    if (await page.getByRole('button', { name: '展开会话列表', exact: true }).isVisible()) await page.getByRole('button', { name: '展开会话列表', exact: true }).click()
+    await page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name: sampleData.meta.name, exact: true }).click({ button: 'right' })
+    await page.getByRole('menuitem', { name: '删除', exact: true }).click()
     const deleteModal = page.getByRole('dialog', { name: '删除会话' })
     await expect(deleteModal).toBeVisible()
     await expect(deleteModal.getByText(/原文、成员、本人设置、关联 AI 对话和记忆成稿。此操作无法撤销。/)).toBeVisible()

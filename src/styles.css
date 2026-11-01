@@ -77,7 +77,7 @@ body:has(.desktop-shell) .cherry-panel-header { padding-top: calc(var(--desktop-
   padding-top: calc(36px + 12px);
   padding-right: 24px;
 }
-.desktop-shell .reader-header :is(a, button, input, select, [role="button"], h1, .reader-actions, .reader-actions *, .reader-more-wrapper, .reader-more-wrapper *, .reader-modal-card, .reader-modal-card *) {
+.desktop-shell .reader-header :is(a, button, input, select, [role="button"], h1, .reader-actions, .reader-actions *, .reader-identity-entry, .reader-identity-entry *, .reader-modal-card, .reader-modal-card *) {
   -webkit-app-region: no-drag;
   app-region: no-drag;
 }

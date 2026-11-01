@@ -75,7 +75,7 @@ export async function createConversationAiClient(api: AiApi, settings?: Settings
         }
         if (!closed) timer = setTimeout(() => { void poll() }, delay)
       }
-      unsubscribe = api.onEvent(event => { if (event.kind === kind) accept(event.snapshot as T) })
+      unsubscribe = api.onEvent(event => { if (event.kind === kind && 'snapshot' in event) accept(event.snapshot as T) })
       signal.addEventListener('abort', abort, { once: true })
       if (signal.aborted) { abort(); return }
       // 先订阅再读快照，覆盖提交已完成或事件先于提交回执的情况。
@@ -101,7 +101,7 @@ export async function createConversationAiClient(api: AiApi, settings?: Settings
       const configured = preferences?.models.find(item => item.id === model.id)
       const provider = preferences?.providers.find(item => item.id === configured?.providerId)
       if (provider && !provider.enabled) return []
-      return [{ id: model.id, label: model.label, model: model.model, version: model.version,
+      return [{ id: model.id, label: model.label, model: model.model, version: model.version, ...(model.thinkingLevels ? { thinkingLevels: model.thinkingLevels } : {}),
         ...(configured?.group ? { group: configured.group } : {}),
         ...(provider ? { providerId: provider.id, providerName: provider.name, providerImage: provider.image || (provider.avatarId && cherryProviderIcon(provider.avatarId)) } : {}) }]
     }),
@@ -195,7 +195,7 @@ export async function createConversationAiClient(api: AiApi, settings?: Settings
       if (!id) { id = requestId(); requestIds.set(request, id) }
       const referenceIds = [...new Set([...request.referenceIds ?? [], ...request.references.flatMap(reference => reference.messages.map(message => message.id))])]
       const initial = request.turnId ? await api.retryTurn(request.turnId) : await api.sendTurn({ threadId: thread.id, requestId: id, prompt: request.prompt, referenceIds,
-        modelId: request.modelId, ...(referenceIds.length && request.skillId ? { skillId: request.skillId } : {}) })
+        modelId: request.modelId, ...(request.thinkingLevel ? { thinkingLevel: request.thinkingLevel } : {}), ...(referenceIds.length && request.skillId ? { skillId: request.skillId } : {}) })
       const result = await observe(initial, signal, 'turn', async () => {
         const value = (await api.getThread(thread.id)).turns.find(turn => turn.id === initial.id)
         if (!value) throw new Error('未找到这轮对话，请重新打开会话。')

@@ -1,3 +1,4 @@
+import { acceptedThinking, reasoningCapabilities } from './reasoning-capabilities'
 import { createHash } from 'node:crypto'
 import { mkdirSync, realpathSync, existsSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
@@ -50,11 +51,13 @@ export class PiRuntime {
       modelsPath: null, refreshOnCreate: false, allowModelNetwork: false,
     })
     const limits = resolveModelLimits(input.model)
+    const capabilities = await reasoningCapabilities(input.model)
+    const thinkingLevel = await acceptedThinking(input.model, input.thinkingLevel)
     modelRuntime.registerProvider(provider, {
       baseUrl: modelProtocolBaseUrl(input.model.baseUrl, api),
       api,
       apiKey: 'whomi-runtime-credential',
-      models: [{ id: input.model.model, name: input.model.label, reasoning: false, input: ['text'], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: limits.contextWindow, maxTokens: limits.maxTokens }],
+      models: [{ id: input.model.model, name: input.model.label, reasoning: !!thinkingLevel, ...(capabilities?.model?.thinkingLevelMap ? { thinkingLevelMap: capabilities.model.thinkingLevelMap } : {}), input: ['text'], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: limits.contextWindow, maxTokens: limits.maxTokens }],
     })
     await modelRuntime.setRuntimeApiKey(provider, input.apiKey ?? 'whomi-no-credential')
     const model = modelRuntime.getModel(provider, input.model.model)
@@ -80,7 +83,7 @@ export class PiRuntime {
       extendResources: () => {},
       reload: async () => {},
     }
-    const { session } = await createAgentSession({ cwd, agentDir, modelRuntime, model, resourceLoader: loader, settingsManager, sessionManager: manager, tools: [], customTools: [], thinkingLevel: 'off' })
+    const { session } = await createAgentSession({ cwd, agentDir, modelRuntime, model, resourceLoader: loader, settingsManager, sessionManager: manager, tools: [], customTools: [], thinkingLevel: thinkingLevel ?? 'off' })
     let text = ''
     let firstTokenMs: number | undefined
     let reported: AiUsage = {}

@@ -8,7 +8,7 @@ import type { AnalysisPreparation, AiThreadSummary } from '../../shared/ai-contr
 import './workspace.css'
 import './analysis-panel.css'
 import { useAnalysisTask } from './use-analysis-task'
-import { ConversationPopoverOwner, ModelSelector, type ModelOption } from './model-selector'
+import { ConversationPopoverOwner, ModelSelector, ThinkingSelector, type ThinkingLevel, type ModelOption } from './model-selector'
 import { messagePerformance } from './message-performance'
 import { AnswerContent } from './answer-content'
 import { usePaneDivider } from '../ui/pane-divider'
@@ -184,6 +184,8 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
   const initialModel = (feature: 'analysis' | 'conversation') => adapter?.selectedModels ? adapter.selectedModels[feature] ?? '' : adapter?.models[0]?.id ?? ''
   const [modelId, setModelId] = useState(initialModel('conversation'))
   const [analysisModelId, setAnalysisModelId] = useState(initialModel('analysis'))
+  const [thinkingLevel, setThinkingLevel] = useState<ThinkingLevel>()
+  const [analysisThinkingLevel, setAnalysisThinkingLevel] = useState<ThinkingLevel>()
   const [modelErrors, setModelErrors] = useState<Partial<Record<'analysis' | 'conversation', string>>>({})
   const [modelSaving, setModelSaving] = useState<Partial<Record<'analysis' | 'conversation', boolean>>>({})
   const [skillId, setSkillId] = useState('')
@@ -196,7 +198,7 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
   latestReferences.current = references
   const [busy, setBusy] = useState(false)
   const [analysisOpen, setAnalysisOpen] = useState(openAnalysisOnEntry)
-  const analysis = useAnalysisTask(adapter, conversationId, identityRevision, initialAnalysisTaskId)
+  const analysis = useAnalysisTask(adapter, conversationId, identityRevision, initialAnalysisTaskId, openAnalysisOnEntry)
   const { confirming: analysisConfirming, setConfirming: setAnalysisConfirming, phase: analysisState,
     error: analysisError, setError: setAnalysisError, progress, result: analysisResult } = analysis
   const [showReport, setShowReport] = useState(false)
@@ -224,6 +226,8 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
   const atEnd = useRef(true)
   const selectedModel = adapter?.models.find(model => model.id === modelId)
   const selectedAnalysisModel = adapter?.models.find(model => model.id === analysisModelId)
+  const effectiveThinkingLevel = thinkingLevel && selectedModel?.thinkingLevels?.includes(thinkingLevel) ? thinkingLevel : undefined
+  const effectiveAnalysisThinkingLevel = analysisThinkingLevel && selectedAnalysisModel?.thinkingLevels?.includes(analysisThinkingLevel) ? analysisThinkingLevel : undefined
   async function chooseModel(feature: 'analysis' | 'conversation', id: string) {
     const generation = ++selectionGeneration.current[feature]
     setModelErrors(current => ({ ...current, [feature]: '' }))
@@ -231,7 +235,7 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
     try {
       await adapter?.selectModel?.(feature, id || null)
       if (selectionGeneration.current[feature] !== generation) return
-      if (feature === 'analysis') setAnalysisModelId(id); else setModelId(id)
+      if (feature === 'analysis') { setAnalysisModelId(id); setAnalysisThinkingLevel(undefined) } else { setModelId(id); setThinkingLevel(undefined) }
     } catch (error) { if (selectionGeneration.current[feature] === generation) setModelErrors(current => ({ ...current, [feature]: errorText(error) })) }
     finally { if (selectionGeneration.current[feature] === generation) setModelSaving(current => ({ ...current, [feature]: false })) }
   }
@@ -325,7 +329,7 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
         const restored: Turn[] = values.map(value => {
           const existing = previous.find(turn => turn.request.requestId === value.requestId)
           return { id: value.id, remote: true, request: { conversationId, threadId, turnId: value.id, referenceIds: value.referenceIds, requestId: value.requestId, prompt: value.prompt,
-            modelId: value.modelId, skillId: value.skillId, references: existing?.request.references ?? [] },
+            modelId: value.modelId, thinkingLevel: value.thinkingLevel, skillId: value.skillId, references: existing?.request.references ?? [] },
             modelIdentity: value.modelIdentity, referenceIds: value.referenceIds, text: value.text, usage: value.usage, error: value.error,
             status: ['queued', 'running', 'summarizing'].includes(value.state) ? 'running' : value.state === 'completed' ? 'done' : value.state === 'stopped' ? 'stopped' : 'failed' }
         })
@@ -344,11 +348,11 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
     setPreparing(true)
     setPreparation(undefined)
     setAnalysisError('')
-    void adapter.prepareAnalysis({ conversationId, modelId: analysisModelId }).then(value => {
+    void adapter.prepareAnalysis({ conversationId, modelId: analysisModelId, ...(effectiveAnalysisThinkingLevel ? { thinkingLevel: effectiveAnalysisThinkingLevel } : {}) }).then(value => {
       if (current) setPreparation(value)
     }, error => { if (current) setAnalysisError(errorText(error)) }).finally(() => { if (current) setPreparing(false) })
     return () => { current = false }
-  }, [analysisOpen, analysisConfirming, adapter, conversationId, identityRevision, analysisModelId, selectedAnalysisModel, prepareAttempt])
+  }, [analysisOpen, analysisConfirming, adapter, conversationId, identityRevision, analysisModelId, effectiveAnalysisThinkingLevel, selectedAnalysisModel, prepareAttempt])
   useEffect(() => {
     const query = window.matchMedia('(max-width: 1000px)')
     const update = () => { setNarrow(query.matches); if (query.matches) setThreadListOpen(false) }
@@ -394,7 +398,7 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
   async function send(retry?: Turn) {
     if (!adapter || busy || chatRun.current || (!retry && !canSend)) return
     const request: ConversationRequest = retry?.request ?? { requestId: crypto.randomUUID(), conversationId, threadId, prompt: draft.trim(),
-      references: references.map(reference => ({ ...reference, messages: [...reference.messages] })), modelId,
+      references: references.map(reference => ({ ...reference, messages: [...reference.messages] })), modelId, ...(effectiveThinkingLevel ? { thinkingLevel: effectiveThinkingLevel } : {}),
       history: turns.filter(turn => turn.status === 'done').flatMap(turn => [
         { role: 'user' as const, text: turn.request.prompt, references: turn.request.references },
         { role: 'assistant' as const, text: turn.text },
@@ -440,7 +444,7 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
   }
   function analyze() {
     if (!selectedAnalysisModel || modelSaving.analysis || preparing || (adapter?.prepareAnalysis && !preparation)) return
-    void analysis.run({ conversationId, modelId: analysisModelId,
+    void analysis.run({ conversationId, modelId: analysisModelId, ...(effectiveAnalysisThinkingLevel ? { thinkingLevel: effectiveAnalysisThinkingLevel } : {}),
       ...(preparation ? { preparationToken: preparation.token, requestId: crypto.randomUUID() } : {}) })
   }
   const completed = valid(progress?.analyzedMessages) ? progress.analyzedMessages : 0
@@ -502,6 +506,7 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
             <ModelSelector label="分析模型" models={adapter.models} value={selectedAnalysisModel?.id ?? ''}
               disabled={modelSaving.analysis} describedBy={modelErrors.analysis ? `${panelId}-analysis-model-error` : undefined}
               onSelect={id => { void chooseModel('analysis', id) }} />
+            <ThinkingSelector levels={selectedAnalysisModel?.thinkingLevels} value={analysisThinkingLevel} onSelect={setAnalysisThinkingLevel} disabled={modelSaving.analysis || !selectedAnalysisModel} />
           </div>}
           {modelErrors.analysis && <p id={`${panelId}-analysis-model-error`} role="alert" className="conversation-error">{modelErrors.analysis}</p>}
           {preparing && <p role="status" className="analysis-notice">正在核对分析范围…</p>}
@@ -560,6 +565,7 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
     <div className="conversation-composer-tools">
       {!adapter?.models.length && onConfigureModels ? <button className="cherry-model-trigger" type="button" onClick={() => configureModels(false)}><Box aria-hidden="true" />配置模型</button> : <ModelSelector label="对话模型" models={adapter?.models ?? []} value={selectedModel?.id ?? ''} disabled={busy || modelSaving.conversation}
         describedBy={modelErrors.conversation ? `${panelId}-conversation-model-error` : undefined} onSelect={id => { void chooseModel('conversation', id) }} />}
+      {selectedModel && <ThinkingSelector levels={selectedModel.thinkingLevels} value={thinkingLevel} onSelect={setThinkingLevel} disabled={busy || modelSaving.conversation} />}
       {references.length > 0 && !!adapter?.skills.length && <Select.Root value={skillId || 'default'} onValueChange={value => setSkillId(value === 'default' ? '' : value)} disabled={busy}>
         <Select.Trigger aria-label="对话技能" className="cherry-model-trigger cherry-skill-trigger"><FileText aria-hidden="true" /><Select.Value /><Select.Icon><ChevronDown /></Select.Icon></Select.Trigger>
         <Select.Portal><Select.Content className="cherry-skill-menu" position="popper" side="top" sideOffset={8} onEscapeKeyDown={event => event.stopPropagation()}><Select.Viewport>

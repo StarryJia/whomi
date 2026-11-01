@@ -29,6 +29,7 @@ function fixture(runtime: RuntimeRunner, beforeResponse?: (method: string) => Pr
     if (method === 'saveTurn') return Object.assign(turns.get(args[0] as string)!, args[1])
     if (method === 'confirmAnalysis' || method === 'resumeAnalysis') { analysis.state = 'queued'; await beforeResponse?.(method); return analysis }
     if (method === 'getAnalysis') return analysis
+    if (method === 'deleteAnalysis') { deleted = true; return }
     if (method === 'beginRetryTurn') { const turn = turns.get(args[0] as string)!; turn.state = 'queued'; await beforeResponse?.(method); return turn }
     if (method === 'analysisContext') return { task: analysis, model, selfFingerprint: 'self', messages: [{ id: '1', text: '测试正文', senderName: '本人', isSelf: true, kind: 'text' }], batches: [], checkpoint: null }
     if (method === 'saveAnalysis') return Object.assign(analysis, args[1])
@@ -40,6 +41,25 @@ function fixture(runtime: RuntimeRunner, beforeResponse?: (method: string) => Pr
   return { service, lateWrites, turns, analysis, markDeleted() { deleted = true } }
 }
 const send = (threadId: string, requestId = threadId) => ({ threadId, requestId, prompt: '测试问题', referenceIds: [], modelId: 'm' })
+
+test('删除单份记忆等待运行器退出，发布确切任务删除事件，保留同时运行的对话', async () => {
+  const signals = new Map<string, AbortSignal>()
+  const state = fixture({ run: async (input, options) => {
+    signals.set(input.key, options.signal)
+    return await new Promise((_resolve, reject) => options.signal.addEventListener('abort', () => reject(new DOMException('stopped', 'AbortError')), { once: true }))
+  } })
+  const events: unknown[] = []
+  state.service.subscribe(event => events.push(event))
+  await state.service.confirmAnalysis({ token: 'token', requestId: 'single-memory' })
+  await vi.waitFor(() => expect(signals.size).toBe(1))
+  await state.service.sendTurn(send('1'))
+  await state.service.deleteAnalysis('1')
+  expect([...signals.values()][0].aborted).toBe(true)
+  expect(events).toContainEqual({ kind: 'analysis-deleted', taskId: '1', conversationId: '1' })
+  expect(state.turns.has('1')).toBe(true)
+  expect(state.lateWrites).toEqual([])
+  await state.service.close()
+})
 
 test('删除同一会话中排队的历史对话时保留另一条正在生成的回答', async () => {
   let release!: () => void

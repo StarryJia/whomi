@@ -72,7 +72,7 @@ describe('总览导航与原文范围', () => {
     expect(within(screen.getByRole('main')).queryByRole('button', { name: '问一问' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '问一问' }))
     await waitFor(() => expect(screen.getByRole('heading', { name: '问一问' })).toHaveFocus())
-    expect(screen.getByText('目前没有需要你澄清的问题')).toBeInTheDocument()
+    expect(screen.getByText('目前还没有问题哦')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '问一问' })).toHaveAttribute('aria-current', 'page')
   })
 

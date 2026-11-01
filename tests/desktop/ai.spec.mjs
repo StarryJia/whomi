@@ -64,7 +64,7 @@ test('real Pi process persists analysis reports and dialogue through the isolate
     expect(requests).toHaveLength(0)
     const task = await page.evaluate(token => window.whomi.ai.confirmAnalysis({ token, requestId: 'analysis-one' }), preparation.token)
     await expect.poll(() => page.evaluate(id => window.whomi.ai.getAnalysis(id), task.id), { timeout: 30000 }).toMatchObject({ state: 'completed', analyzedMessages: 1, usage: { inputTokens: 40, outputTokens: 20 } })
-    expect(await page.evaluate(id => window.whomi.ai.getReport(id), task.id)).toMatchObject({ format: 'memory-v3', events: [{ title: '约好通话' }] })
+    expect(await page.evaluate(id => window.whomi.ai.getReport(id), task.id)).toMatchObject({ format: 'memory-v4', events: [{ title: '约好通话' }] })
     const thread = await page.evaluate(() => window.whomi.ai.openThread('1'))
     await page.getByRole('button', { name: '选择消息', exact: true }).click()
     await page.getByRole('option', { name: '本人：明晚九点我听你讲' }).click()
@@ -139,7 +139,7 @@ test('real Pi process persists analysis reports and dialogue through the isolate
     const restarted = await application.firstWindow()
     expect((await restarted.evaluate(id => window.whomi.ai.getThread(id), thread.id)).turns).toHaveLength(1)
     expect(await restarted.evaluate(() => window.whomi.ai.listThreads('1'))).toHaveLength(2)
-    expect(await restarted.evaluate(id => window.whomi.ai.getReport(id), task.id)).toMatchObject({ format: 'memory-v3', events: [{ title: '约好通话' }] })
+    expect(await restarted.evaluate(id => window.whomi.ai.getReport(id), task.id)).toMatchObject({ format: 'memory-v4', events: [{ title: '约好通话' }] })
   } finally {
     await application?.close()
     server.closeAllConnections(); await new Promise(resolve => server.close(resolve))

@@ -24,7 +24,8 @@ function phaseOf(task: AnalysisTask): Phase {
   }
 }
 
-export function useAnalysisTask(adapter: ConversationAiAdapter | undefined, conversationId: string, identityRevision: number, initialTaskId?: string) {
+export function useAnalysisTask(adapter: ConversationAiAdapter | undefined, conversationId: string, identityRevision: number, initialTaskId?: string, fromMemory = false) {
+  const resumeOnEntry = useRef(fromMemory ? initialTaskId : undefined)
   const preferredTask = useRef(initialTaskId)
   const [phase, setPhase] = useState<Phase>('idle')
   const [progress, setProgress] = useState<AnalysisProgress>()
@@ -52,7 +53,7 @@ export function useAnalysisTask(adapter: ConversationAiAdapter | undefined, conv
     const version = ++generation.current
     setPhase('idle'); setProgress(undefined); setResult(undefined)
     setError(''); setConfirming(true); setBlocked(false); setStopping(false)
-    void adapter?.watchAnalysis?.(conversationId, snapshot => {
+    if (!fromMemory || preferredTask.current) void adapter?.watchAnalysis?.(conversationId, snapshot => {
       if (version === generation.current) receive(snapshot)
     }, observer.signal, preferredTask.current).catch(cause => {
       if (version !== generation.current) return
@@ -65,7 +66,7 @@ export function useAnalysisTask(adapter: ConversationAiAdapter | undefined, conv
       operation.current?.abort('detach')
       operation.current = undefined
     }
-  }, [adapter, conversationId, identityRevision])
+  }, [adapter, conversationId, identityRevision, fromMemory])
 
   async function run(request?: Request) {
     if (!adapter || stopping || operation.current || (!request && !resumable)) return
@@ -98,6 +99,12 @@ export function useAnalysisTask(adapter: ConversationAiAdapter | undefined, conv
       if (operation.current === controller) operation.current = undefined
     }
   }
+
+  useEffect(() => {
+    if (!task || task.id !== resumeOnEntry.current) return
+    resumeOnEntry.current = undefined
+    if (resumable) void run()
+  }, [task, resumable])
 
   async function stop() {
     if (stopping || phase !== 'running') return

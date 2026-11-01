@@ -18,7 +18,7 @@ const question: ClarificationQuestion = {
 }
 
 const models: readonly ClarificationModel[] = [
-  { id: 'example-model-a', label: '示例模型 A', available: true },
+  { id: 'example-model-a', label: '示例模型 A', available: true, thinkingLevels: ['low', 'medium', 'high'] },
   { id: 'example-model-b', label: '示例模型 B', available: true },
 ]
 
@@ -34,6 +34,8 @@ interface ClarificationScenario {
 export const clarificationConversations = overviewScenarios[0].conversations
 export const clarificationScenarios: readonly ClarificationScenario[] = [
   { id: 'normal', label: '选卡与自己回答', description: '选卡立即模拟提交；自己回答需选择示例模型。可撤回后重新作答。', question, models },
+  { id: 'five', label: '五张回答卡', description: '五个示例回答，也可以输入自己的想法。', models, question: { ...question, options: [...question.options,
+    { id: 'rehearse', title: '陪他演练' }, { id: 'outline', title: '一起梳理思路' }] } },
   { id: 'empty', label: '暂无问题', description: '没有问题时保留空状态。', models },
   { id: 'no-model', label: '无可用模型', description: '卡牌仍可模拟提交；自己回答可写草稿，但无法发送。', question, models: [] },
   { id: 'source-unavailable', label: '原文不可用', description: '原文入口不可用，不跳转到其他会话。', question: { ...question, source: { ...question.source!, unavailable: true } }, models },

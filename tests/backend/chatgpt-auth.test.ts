@@ -13,6 +13,7 @@ import { createAiService } from '../../electron/main/ai-service'
 import { temporaryStore } from './helpers'
 import { sourceMessages } from '../desktop/fixtures/moving-chat.mjs'
 import { memoryModelReply } from '../desktop/fixtures/memory-model.mjs'
+import { explainedSourcePrompt, scoredSourcePrompt } from '../../electron/data/ai/memory-scoring'
 
 const issuer = 'https://auth.openai.com'
 const resource = 'https://api.openai.com/v1'
@@ -44,7 +45,7 @@ function fixture() {
     }
     if (path === '/v1/models') {
       modelCredential = new Headers(init?.headers).get('authorization')
-      return Response.json({ models:[{slug:'gpt-visible',display_name:'可用示例',visibility:'list'}, {slug:'gpt-hidden',display_name:'隐藏示例',visibility:'hide'}] })
+      return Response.json({ models:[{slug:'gpt-visible',display_name:'可用示例',visibility:'list',supported_reasoning_levels:[{effort:'low'},{effort:'high'},{effort:'unknown'}]}, {slug:'gpt-hidden',display_name:'隐藏示例',visibility:'hide'}] })
     }
     expect(path).toBe('/api/accounts/oauth/token')
     expect(body.get('client_id')).toBe(issuedClient)
@@ -103,7 +104,7 @@ test('Whomi owns its browser grant, rejects unbound callbacks, and shows only th
   const restored = createChatgptAuth(f.options)
   expect(await restored.getStatus()).toEqual(state)
   await expect(restored.listModels('another-account')).rejects.toMatchObject({code:'CHATGPT_ACCOUNT_CHANGED'})
-  expect(await restored.listModels(state.accountId!)).toEqual([{id:'gpt-visible',name:'可用示例'}])
+  expect(await restored.listModels(state.accountId!)).toEqual([{id:'gpt-visible',name:'可用示例',thinkingLevels:['low','high']}])
   expect(f.counters().modelCredential).toBe('Bearer access-private-1')
   restored.close()
 })
@@ -230,7 +231,8 @@ test('a ChatGPT-authenticated memory pauses at 8/24, rotates the protected crede
   const data = database()
   await data.settings.initialize()
   await data.settings.setAccountConnection('openai-codex',account,true)
-  const model = await data.settings.saveModel({providerId:'cherry:openai-codex',label:'虚构套餐模型',model:'sample',enabled:true,contextWindow:3584,maxTokens:512})
+  const model = await data.settings.saveModel({providerId:'cherry:openai-codex',label:'虚构套餐模型',model:'sample',enabled:true,
+    contextWindow:3584 + Buffer.byteLength(explainedSourcePrompt) - Buffer.byteLength(scoredSourcePrompt),maxTokens:512})
   const originalVersion = model.version
   data.db.writer.exec(`INSERT INTO conversations(id,title,kind,created_at_ms) VALUES(1,'搬家','direct',0);
     INSERT INTO source_conversations(id,conversation_id,platform,namespace) VALUES(1,1,'example','one');
