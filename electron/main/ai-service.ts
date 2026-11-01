@@ -251,7 +251,7 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
         const fixedSize = Buffer.byteLength(instruction + prompt, 'utf8')
         if (fixedSize > budget) throw new BoundaryError('CONTEXT_TOO_LARGE', '当前问题或引用超出模型容量，请减少引用或选择更大上下文的模型。')
         let history = context.history.map(item => {
-          const question = processor ? processor.text(item.text) : item.text
+          const question = !processor ? item.text : item.role === 'assistant' ? processor.modelText(item.text) : processor.text(item.text)
           return { role: item.role, text: item.references?.length ? JSON.stringify({ question, references: processor ? processor.messages(item.references) : item.references }) : question }
         })
         let checkpoint = context.checkpoint

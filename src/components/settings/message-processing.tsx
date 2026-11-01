@@ -7,7 +7,7 @@ const ruleGroups = [
   { id: 'credentials', label: '密码与访问凭据', rules: [{ id: 'key', label: '已知前缀的接口密钥' }, { id: 'token', label: 'Bearer 授权令牌' }] },
   { id: 'contact', label: '通用联系方式', rules: [{ id: 'email', label: '电子邮箱' }] },
   { id: 'finance', label: '通用金融信息', rules: [{ id: 'credit-card', label: '信用卡号' }] },
-  { id: 'network', label: '通用网络信息', rules: [{ id: 'ipv4', label: '互联网协议第四版地址' }, { id: 'url', label: '网址' }] },
+  { id: 'network', label: '通用网络信息', rules: [{ id: 'ipv4', label: 'IPv4 地址' }, { id: 'url', label: '网址' }] },
   { id: 'china', label: '中国大陆', rules: [{ id: 'mobile', label: '手机号' }, { id: 'identity', label: '身份证号' }, { id: 'bank-card', label: '银行卡号' }, { id: 'landline', label: '座机号' }] },
 ] as const
 
