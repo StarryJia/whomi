@@ -42,7 +42,7 @@ it('后台更新列表失败时仍能读完原文并回到对应的仓库条目'
   const api = { ai: { listAnalyses: list, onEvent: (cb: typeof listener) => { listener = cb; return () => { listener = undefined } } } } as unknown as DesktopApi
   render(<App conversations={[]} preview importApi={api} />)
   await user.click(screen.getByRole('button', { name: '记忆仓库' }))
-  const row = await screen.findByRole('button', { name: /周末.*文稿 1/ })
+  const row = await screen.findByRole('button', { name: /周末.*#0001/ })
   const scroll = vi.spyOn(row, 'scrollIntoView')
   await user.click(row)
   expect(screen.getByRole('dialog')).toHaveTextContent('你们会一起商量。')
@@ -73,8 +73,7 @@ it('更正本人后只撤回该会话的贡献并重读暂停任务，保留对�
   await user.click(screen.getAllByRole('button', { name: '周末' })[0])
   await user.click(await screen.findByRole('button', { name: 'AI 对话' }))
   await user.type(screen.getByRole('textbox', { name: '向 AI 提问' }), '等一等再发')
-  await user.click(screen.getByRole('button', { name: /更多操作/ }))
-  await user.click(screen.getByRole('menuitem', { name: '选择本人' }))
+  await user.click(screen.getByRole('button', { name: '选择本人' }))
   await user.click(await screen.findByRole('radio', { name: '小华' }))
   await user.click(screen.getByRole('button', { name: '设为本人' }))
   await user.click(screen.getByRole('button', { name: '整理成记忆' }))
@@ -97,7 +96,7 @@ it('空库保留四维和 Spark，仓库有文稿预览与导入入口，问一�
   expect(screen.getByText('文稿预览')).toBeVisible()
   expect(screen.getByRole('button', { name: '导入聊天记录' })).toBeVisible()
   await user.click(screen.getByRole('button', { name: '问一问' }))
-  expect(screen.getByRole('heading', { name: '目前没有需要你澄清的问题' })).toBeVisible()
+  expect(screen.getByRole('heading', { name: '目前还没有问题哦' })).toBeVisible()
   await user.click(screen.getByRole('button', { name: '返回记忆仓库' }))
   expect(screen.getByRole('heading', { name: '记忆仓库' })).toBeVisible()
 })
@@ -107,10 +106,10 @@ it('仓库可取消选会话并回到起点，选定后打开该会话的生成�
   const adapter: ConversationAiAdapter = { models: [{id:'m',label:'测试模型'}], skills: [], analyze: vi.fn(), respond: vi.fn() }
   render(<App conversations={[{id:'1',title:'老同学',messages:[]},{id:'2',title:'周末同行',messages:[]}]} conversationAiAdapter={adapter} />)
   await user.click(screen.getByRole('button', {name:'记忆仓库'}))
-  await user.click(await screen.findByRole('button', {name:'选择会话整理'}))
+  await user.click(await screen.findByRole('button', {name:'生成新记忆'}))
   await user.click(screen.getByRole('button', {name:'取消选择'}))
   expect(screen.getByText('文稿预览')).toBeVisible()
-  await user.click(screen.getByRole('button', {name:'选择会话整理'}))
+  await user.click(screen.getByRole('button', {name:'生成新记忆'}))
   await user.click(screen.getByRole('button', {name:/周末同行/}))
   expect(await screen.findByRole('heading', {name:'整理成记忆'})).toBeVisible()
   expect(adapter.analyze).not.toHaveBeenCalled()
@@ -137,4 +136,36 @@ it('Hello 悬停预览不挂载私人的会话标题或发现内容', async () =
   expect(document.querySelector('.hello-cover-preview')).not.toHaveTextContent(privateName)
   await user.click(screen.getByRole('button', {name:'个人总览'}))
   expect(await screen.findByRole('button', {name:privateName})).toBeVisible()
+})
+
+it('启动时预读一次，读取中进入总览不会误报空库或重新请求', async () => {
+  let loaded!: (tasks: AnalysisTask[]) => void
+  const listAnalyses = vi.fn(() => new Promise<AnalysisTask[]>(resolve => { loaded = resolve }))
+  const api = { ai: { listAnalyses, onEvent: () => () => {} } } as unknown as DesktopApi
+  render(<App conversations={[]} preview importApi={api} />)
+  expect(listAnalyses).toHaveBeenCalledTimes(1)
+  await userEvent.click(screen.getByRole('button', { name: /进入个人总览/ }))
+  expect(screen.getByText('正在读取个人总览…')).toBeVisible()
+  expect(screen.queryByRole('button', { name: '导入聊天记录' })).toBeNull()
+  await act(async () => loaded([memory]))
+  expect(await screen.findByRole('button', { name: '周末' })).toBeVisible()
+  await userEvent.click(screen.getByRole('button', { name: '记忆仓库' }))
+  expect(listAnalyses).toHaveBeenCalledTimes(1)
+})
+
+it('初读与运行进度交错时保留最新版本和删除结果', async () => {
+  let listener!: (event: AiEvent) => void
+  let loaded!: (tasks: AnalysisTask[]) => void
+  const partial: AnalysisTask = { ...memory, id: '10', state: 'running', totalMessages: 12, report: undefined }
+  const api = { ai: { listAnalyses: () => new Promise<AnalysisTask[]>(resolve => { loaded = resolve }),
+    onEvent: (callback: typeof listener) => { listener = callback; return () => {} } } } as unknown as DesktopApi
+  render(<App conversations={[]} preview importApi={api} />)
+  await userEvent.click(screen.getByRole('button', { name: '记忆仓库' }))
+  await act(async () => {
+    listener({ kind: 'analysis', snapshot: { ...partial, analyzedMessages: 3, eventSequence: 2 } })
+    listener({ kind: 'analysis-deleted', taskId: '1', conversationId: '1' })
+    loaded([memory, { ...partial, analyzedMessages: 8, eventSequence: 5 }])
+  })
+  expect(screen.getByRole('button', { name: /#0010/ })).toHaveTextContent('8 / 12')
+  expect(screen.queryByRole('button', { name: /#0001/ })).toBeNull()
 })

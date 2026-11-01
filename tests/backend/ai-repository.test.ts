@@ -13,9 +13,10 @@ import { purgeConversation } from '../../electron/data/db/purge'
 
 const cleanup: (() => void)[] = []
 afterEach(() => { for (const operation of cleanup.splice(0).reverse()) operation() })
-async function setup() {
+async function setup(legacyReports = true) {
   const temp = temporaryStore(), store = openStore(temp.path)
   cleanup.push(() => { store.close(); temp.cleanup() })
+  if (legacyReports) store.writer.exec("CREATE TEMP TRIGGER historical_report AFTER INSERT ON ai_analysis_tasks BEGIN UPDATE ai_analysis_tasks SET prompt_version='conversation-memory-v3' WHERE id=NEW.id; END")
   store.writer.exec(`INSERT INTO conversations(id,title,kind,created_at_ms) VALUES(1,'示例甲','direct',0),(2,'示例乙','direct',0);
     INSERT INTO source_conversations(id,conversation_id,platform,namespace) VALUES(1,1,'example','one'),(2,2,'example','two');
     INSERT INTO memberships(id,conversation_id,source_conversation_id,source_key,display_name) VALUES(1,1,1,'me','本人'),(2,1,1,'other','对方'),(3,2,2,'other','另一人');
@@ -71,6 +72,43 @@ async function task(repository: Awaited<ReturnType<typeof setup>>['repository'],
   return repository.confirmAnalysis({ token: preparation.token, requestId }, 1001)
 }
 function changeSelf(store: Store) { store.writer.exec("UPDATE self_confirmations SET status='revoked'; INSERT INTO self_confirmations(conversation_id,member_id,status,source) VALUES(1,2,'confirmed','user')") }
+
+test('记忆任务保存真实日期和生成时模型，置顶重启仍在，删除只清理指定记忆', async () => {
+  const { repository, store, model, path } = await setup()
+  store.writer.exec('UPDATE messages SET sent_at_ms=1735603200000 WHERE id=1; UPDATE messages SET sent_at_ms=1767196800000 WHERE id=2')
+  const first = await task(repository, 'vault-first')
+  expect(first).toMatchObject({ createdAtMs: 1001, completedAtMs: null, sourceStartTimeMs: 1735603200000, sourceEndTimeMs: 1767196800000,
+    modelIdentity: { id: model.id, version: model.version, label: model.label, model: model.model } })
+  await repository.commitBatch(first.id, { index: 0, messageIds: ['1','2'], report: notes, usage: {} })
+  const completed = await repository.completeAnalysis(first.id, report)
+  expect(completed.completedAtMs).toBeGreaterThanOrEqual(first.createdAtMs!)
+  const second = await task(repository, 'vault-second')
+  await repository.saveAnalysis(second.id, { state: 'stopped' })
+  await repository.arrangeAnalysis({ id: first.id, pinned: true })
+  await repository.saveModel({ ...model, label: '更名后', model: 'new-model', enabled: false })
+  store.close()
+  const reopened = openStore(path); cleanup.push(() => reopened.close())
+  const restored = createAiRepository(reopened, async operation => operation())
+  expect(restored.listAnalyses()[0]).toMatchObject({ id: first.id, pinned: true, modelIdentity: { label: model.label, model: model.model } })
+  expect(() => validateAiResult('listAnalyses', restored.listAnalyses())).not.toThrow()
+  await restored.deleteAnalysis(first.id)
+  expect(restored.listAnalyses().map(item => item.id)).toEqual([second.id])
+  expect(reopened.reader.prepare('SELECT id FROM messages').all()).toHaveLength(3)
+  expect(reopened.reader.prepare('SELECT * FROM ai_analysis_coverage WHERE task_id=?').all(BigInt(first.id))).toEqual([])
+  expect(reopened.reader.prepare('SELECT * FROM ai_reports WHERE task_id=?').all(BigInt(first.id))).toEqual([])
+})
+
+test('任务缺失的历史时间保持未知，跨会话排序和直接删除活动任务被拒绝', async () => {
+  const { repository, store } = await setup()
+  const first = await task(repository)
+  await expect(repository.deleteAnalysis(first.id)).rejects.toHaveProperty('code', 'ANALYSIS_BUSY')
+  await repository.saveAnalysis(first.id, { state: 'stopped' })
+  store.writer.prepare('UPDATE ai_analysis_tasks SET created_at_ms=NULL,completed_at_ms=NULL WHERE id=?').run(BigInt(first.id))
+  expect(repository.getAnalysis(first.id)).toMatchObject({ createdAtMs: null, completedAtMs: null })
+  await expect(repository.arrangeAnalysis({ id: first.id, targetId: '999', placement: 'before' })).rejects.toHaveProperty('code', 'INVALID_LIST_ITEM')
+  expect(() => validateAiCall('arrangeAnalysis', [{ id: first.id, pinned: 'yes' }])).toThrow()
+  expect(() => validateAiCall('deleteAnalysis', ['../1'])).toThrow()
+})
 
 test('independent threads keep their own history, metadata and conversation scope after restart', async () => {
   const { store, repository, path } = await setup()
@@ -219,6 +257,21 @@ test('invalid reports never publish completion or overwrite the previous valid r
   const second = await task(repository, 'second')
   await repository.saveAnalysis(second.id, { state: 'failed' })
   expect(repository.getReport(analysis.id)).toEqual(report)
+})
+
+test('new v4 reports require same-version data and explanations grounded in saved self signals', async () => {
+  const { repository } = await setup(false), analysis = await task(repository)
+  await repository.commitBatch(analysis.id, { index: 0, messageIds: ['1', '2'], report: notes, usage: {} })
+  const explained = { ...report, format: 'memory-v4' as const, dimensionExplanations: { EI: null, SN: null, TF: null, JP: null } }
+  await expect(repository.completeAnalysis(analysis.id, report)).rejects.toHaveProperty('code', 'INVALID_MEMORY')
+  const judged = { ...explained, dimensions: { ...explained.dimensions, JP: 'J' as const }, eventVotes: { ...explained.eventVotes, JP: [3, 0] as [number, number] } }
+  for (const ids of [['2'], ['3'], []]) {
+    await expect(repository.completeAnalysis(analysis.id, { ...judged, dimensionExplanations: { ...judged.dimensionExplanations, JP: { text: '具体情境中的观察。', evidenceMessageIds: ids } } })).rejects.toHaveProperty('code', 'INVALID_MEMORY')
+  }
+  await expect(repository.completeAnalysis(analysis.id, { ...judged, dimensions: { ...judged.dimensions, JP: 'P' as const }, eventVotes: { ...judged.eventVotes, JP: [0, 3] },
+    dimensionExplanations: { ...judged.dimensionExplanations, JP: { text: '与保存信号方向不符。', evidenceMessageIds: ['1'] } } })).rejects.toHaveProperty('code', 'INVALID_MEMORY')
+  await repository.completeAnalysis(analysis.id, explained)
+  expect(repository.getReport(analysis.id)).toEqual(explained)
 })
 test('identity changes invalidate results and prevent old source history from entering the next context', async () => {
   const { store, repository } = await setup(), analysis = await task(repository)

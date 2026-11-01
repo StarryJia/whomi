@@ -4,12 +4,14 @@ export type MemoryDimensions = { EI: 'E' | 'I' | null; SN: 'S' | 'N' | null; TF:
 export type EventVotes = Record<keyof MemoryDimensions, [number, number]>
 type Manuscript = { dimensions: MemoryDimensions; events: { title: string; text: string }[]; relationship: string }
 export type ScoredMemory = Manuscript & { format: 'memory-v3'; eventVotes: EventVotes }
-export type MemoryReport = (Manuscript & { format: 'memory-v2' }) | ScoredMemory
+export type DimensionExplanations = Record<keyof MemoryDimensions, { text: string; evidenceMessageIds: string[] } | null>
+export type ExplainedMemory = Manuscript & { format: 'memory-v4'; eventVotes: EventVotes; dimensionExplanations: DimensionExplanations }
+export type MemoryReport = (Manuscript & { format: 'memory-v2' }) | ScoredMemory | ExplainedMemory
 export type SavedReport = AiReport | MemoryReport
 export const dimensionKeys = ['EI', 'SN', 'TF', 'JP'] as const
 
 export function isMemoryReport(report: SavedReport | undefined): report is MemoryReport {
-  return !!report && 'format' in report && (report.format === 'memory-v2' || report.format === 'memory-v3')
+  return !!report && 'format' in report && ['memory-v2', 'memory-v3', 'memory-v4'].includes(report.format)
 }
 
 function direction<A extends string, B extends string>(counts: [number, number], a: A, b: B): A | B | null {
@@ -34,7 +36,7 @@ export function aggregateRelationships(relations: readonly { dimensions: MemoryD
 export function currentMemoryContributions(tasks: readonly AnalysisTask[]) {
   const latest = new Map<string, { conversationId: string; taskId: string; dimensions: MemoryDimensions }>()
   for (const task of tasks) {
-    if (!task.valid || task.state !== 'completed' || !isMemoryReport(task.report) || task.report.format !== 'memory-v3') continue
+    if (!task.valid || task.state !== 'completed' || !isMemoryReport(task.report) || task.report.format === 'memory-v2') continue
     const previous = latest.get(task.conversationId)
     if (!previous || BigInt(task.id) > BigInt(previous.taskId)) {
       latest.set(task.conversationId, { conversationId: task.conversationId, taskId: task.id, dimensions: scoreDimensions(task.report.eventVotes) })

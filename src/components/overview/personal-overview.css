@@ -217,3 +217,13 @@
   .overview-preference-row.is-unknown .overview-preference-result:has(p) { grid-column:1/-1; }
   .overview-start { padding-bottom:16px; }
 }
+
+.overview-masked-value { width: min(16rem, 65%); height: 2px; background: var(--line); justify-self: end; }
+
+.relationship-observations { margin: 20px 0; }
+.relationship-observations h3 { font-size: 16px; margin: 22px 0 10px; }
+.overview-memory-link { display: flex; align-items: center; justify-content: space-between; gap: 16px; width: 100%; padding: 16px 20px; margin-bottom: 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--text); text-align: left; cursor: pointer; }
+.overview-memory-link:hover { background: var(--hover); }
+.overview-memory-link strong, .overview-memory-link small { display: block; }
+.overview-memory-link small { margin-top: 4px; color: var(--text-muted); }
+.overview-memory-link svg { width: 18px; flex: none; }

@@ -1,4 +1,4 @@
-import { predictionText } from '../memory-library'
+import { predictionText } from '../memory-article'
 import { ChevronRight } from 'lucide-react'
 import { aggregateRelationships, dimensionKeys, type MemoryDimensions } from '../../shared/memory'
 import type { OverviewData, PreferenceId } from './types'
@@ -41,7 +41,7 @@ export function RelationshipObservations({ observations, onRead }: {
     <h2 id="relationship-heading">各段关系中的表现</h2>
     {Object.values(aggregateRelationships(observations)).every(value => value === null) && <p>各维度暂难汇总，至少需要两段关系提供同一维度的观察。</p>}
     <h3>相关记忆</h3>
-    {observations.map(item => <button className="memory-row" type="button" key={item.taskId} aria-label={item.title} onClick={() => onRead(item.taskId)}>
+    {observations.map(item => <button className="overview-memory-link" type="button" key={item.taskId} aria-label={item.title} onClick={() => onRead(item.taskId)}>
       <span><strong>{item.title}</strong><small>{predictionText(item.dimensions)}</small></span>
       <ChevronRight aria-hidden="true" />
     </button>)}

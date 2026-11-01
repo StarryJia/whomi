@@ -1,13 +1,44 @@
 // Adapted from Cherry Studio ModelSelector / ModelSelectorRow, f19aa72 (AGPL-3.0).
 // Whomi supplies local models and selection persistence in place of Cherry data hooks.
-import { chatgptProviderId, chatgptUsageUrl } from '../../shared/chatgpt-plan'
 import * as Popover from '@radix-ui/react-popover'
 import { Box, Check, ChevronDown, Search } from 'lucide-react'
 import { createContext, useContext, useId, useMemo, useRef, useState } from 'react'
 
-export const ConversationPopoverOwner = createContext<string | undefined>(undefined)
+import type { ThinkingLevel } from '../../shared/thinking'
 
-export type ModelOption = { id: string; label: string; model?: string; version?: number; providerId?: string; providerName?: string; providerImage?: string; group?: string }
+export const ConversationPopoverOwner = createContext<string | undefined>(undefined)
+export type { ThinkingLevel } from '../../shared/thinking'
+export type ModelOption = { id: string; label: string; model?: string; version?: number; providerId?: string; providerName?: string; providerImage?: string; group?: string; thinkingLevels?: readonly ThinkingLevel[] }
+
+const thinkingLabels: Record<ThinkingLevel, string> = { off: '关闭', minimal: '最低', low: '低', medium: '中', high: '高', xhigh: '更高', max: '最高' }
+export function ThinkingSelector({ levels, value, onSelect, disabled }: { levels?: readonly ThinkingLevel[]; value?: ThinkingLevel; onSelect: (level: ThinkingLevel | undefined) => void; disabled?: boolean }) {
+  const [open, setOpen] = useState(false)
+  const owner = useContext(ConversationPopoverOwner)
+  const selected = value && levels?.includes(value) ? value : undefined
+  const list = useRef<HTMLDivElement>(null)
+  const listId = useId()
+  return <Popover.Root open={open} onOpenChange={setOpen}>
+    <Popover.Trigger asChild><button type="button" className="cherry-model-trigger" aria-haspopup="listbox" aria-controls={open ? listId : undefined} aria-label={`思考强度：${selected ? thinkingLabels[selected] : '默认'}`} title={!levels?.length ? '当前模型使用默认思考强度' : undefined} disabled={disabled || !levels?.length}>
+      <span>思考强度：{selected ? thinkingLabels[selected] : '默认'}</span><ChevronDown aria-hidden="true" />
+    </button></Popover.Trigger>
+    <Popover.Portal><Popover.Content data-conversation-popover-owner={owner} className="cherry-model-selector" side="top" align="start" sideOffset={8} collisionPadding={12}
+      onOpenAutoFocus={event => { event.preventDefault(); list.current?.querySelector<HTMLButtonElement>('[aria-selected=true]')?.focus() }}
+      onEscapeKeyDown={event => event.stopPropagation()}>
+      <div className="cherry-model-list" id={listId} ref={list} role="listbox" aria-label="思考强度" onKeyDown={event => {
+        const options = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('[role=option]')]
+        const index = options.indexOf(document.activeElement as HTMLButtonElement)
+        const next = event.key === 'Home' ? 0 : event.key === 'End' ? options.length - 1
+          : event.key === 'ArrowDown' ? (index + 1) % options.length
+          : event.key === 'ArrowUp' ? (index - 1 + options.length) % options.length : undefined
+        if (next !== undefined) { event.preventDefault(); options[next]?.focus() }
+      }}>
+        {[undefined, ...(levels ?? [])].map(level => <button type="button" role="option" aria-selected={selected === level} className="cherry-model-row" key={level ?? 'default'} onClick={() => { onSelect(level); setOpen(false) }}>
+          <span>{level ? thinkingLabels[level] : '默认'}</span>{selected === level && <Check aria-hidden="true" />}
+        </button>)}
+      </div>
+    </Popover.Content></Popover.Portal>
+  </Popover.Root>
+}
 
 export function ModelSelector({ models, value, onSelect, label, disabled, describedBy }: {
   models: readonly ModelOption[]; value: string; onSelect: (id: string) => void
@@ -36,7 +67,7 @@ export function ModelSelector({ models, value, onSelect, label, disabled, descri
   const ordered = groups.flatMap(([, items]) => items)
   const choose = (id: string) => { onSelect(id); setOpen(false) }
   const selectedTitle = selected ? [selected.label, selected.providerName].filter(Boolean).join(' | ') : '选择模型'
-  return <><Popover.Root open={open} onOpenChange={next => { setOpen(next); if (next) { setSearchText(''); setActiveIndex(0) } }}>
+  return <Popover.Root open={open} onOpenChange={next => { setOpen(next); if (next) { setSearchText(''); setActiveIndex(0) } }}>
     <Popover.Trigger asChild><button type="button" role="combobox" aria-label={label} aria-expanded={open}
       aria-controls={open ? listId : undefined} aria-haspopup="listbox" aria-describedby={describedBy}
       className="cherry-model-trigger" disabled={disabled} title={selectedTitle}>
@@ -72,5 +103,5 @@ export function ModelSelector({ models, value, onSelect, label, disabled, descri
         {!ordered.length && <p className="cherry-model-empty">{models.length ? '未找到模型' : '请在设置中添加模型'}</p>}
       </div>
     </Popover.Content></Popover.Portal>
-  </Popover.Root>{selected?.providerId === chatgptProviderId && <a className="chatgpt-usage-link" href={chatgptUsageUrl} target="_blank" rel="noreferrer" title="管理 ChatGPT 用量">使用 ChatGPT 套餐</a>}</>
+  </Popover.Root>
 }

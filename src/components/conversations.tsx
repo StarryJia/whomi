@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { actionError, DeleteListItem, ManagedRow, ReaderDialog } from './ui/managed-row'
-import { ArrowLeft, ChevronRight, Ellipsis, MousePointer2, Plus } from 'lucide-react'
+import { actionError, ManagedRow, ReaderDialog } from './ui/managed-row'
+import { ArrowLeft, ChevronRight, MousePointer2, Plus, UserRound } from 'lucide-react'
 import clsx from 'clsx'
 import { Tooltip } from './ui/tooltip'
 import type { SourceReference } from './overview/types'
@@ -113,7 +113,7 @@ type QuoteJump = { targetId: string; originId?: string; referenceIds?: readonly 
 
 export function ConversationReader({ conversation, initialAnalysisTaskId, openAnalysisOnEntry, range, sourceStatus, onReturn, returnLabel = '返回个人总览',
   beforeCursor, afterCursor, onBefore, onAfter, loading, error, onRetry, messageCount, aiAdapter,
-  onLocateMessageId, api, onDeleteConversation, onSelfChanged, onConfigureModels, onOpenMemory }: {
+  onLocateMessageId, api, onSelfChanged, onConfigureModels, onOpenMemory }: {
   initialAnalysisTaskId?: string
   openAnalysisOnEntry?: boolean
   conversation: { id: string; title: string; messages: readonly MessageView[] }
@@ -132,8 +132,7 @@ export function ConversationReader({ conversation, initialAnalysisTaskId, openAn
   messageCount?: number
   aiAdapter?: ConversationAiAdapter
   onLocateMessageId?: (messageId: string) => Promise<boolean>
-  api?: Pick<DesktopApi, 'listMembers' | 'confirmSelf' | 'deleteConversation'>
-  onDeleteConversation?: (conversationId: string) => Promise<void> | void
+  api?: Pick<DesktopApi, 'listMembers' | 'confirmSelf'>
   onConfigureModels?: (onReturn: () => void) => void
   onOpenMemory?: (taskId: string) => void
   onSelfChanged?: () => Promise<void> | void
@@ -156,9 +155,7 @@ export function ConversationReader({ conversation, initialAnalysisTaskId, openAn
   const [focusedMessageId, setFocusedMessageId] = useState<string>()
   const tabStopId = conversation.messages.some(item => item.id === focusedMessageId) ? focusedMessageId : firstMessage
 
-  const [moreOpen, setMoreOpen] = useState(false)
-  const moreRef = useRef<HTMLDivElement>(null)
-  const moreButton = useRef<HTMLButtonElement>(null)
+  const selfButton = useRef<HTMLButtonElement>(null)
 
   const [selfModalOpen, setSelfModalOpen] = useState(false)
   const [members, setMembers] = useState<MemberView[]>([])
@@ -173,29 +170,6 @@ export function ConversationReader({ conversation, initialAnalysisTaskId, openAn
   const selfRequest = useRef(0)
   const selfCard = useRef<HTMLDivElement>(null)
   const selfFlight = useRef<Animation | null>(null)
-
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
-
-  useEffect(() => {
-    if (!moreOpen) return
-    const handleClickOutside = (event: MouseEvent) => {
-      if (moreRef.current && !moreRef.current.contains(event.target as Node)) {
-        setMoreOpen(false)
-      }
-    }
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setMoreOpen(false)
-        moreButton.current?.focus()
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    document.addEventListener('keydown', handleKeyDown)
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-      document.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [moreOpen])
 
   async function readMembers(onEntry: boolean) {
     const sequence = ++selfRequest.current
@@ -247,7 +221,7 @@ export function ConversationReader({ conversation, initialAnalysisTaskId, openAn
     ++selfRequest.current
     const guide = !members.some(member => member.confirmedSelf)
     const finish = () => { setSelfModalOpen(false); setShowSelfHint(guide) }
-    const card = selfCard.current, target = moreButton.current?.getBoundingClientRect()
+    const card = selfCard.current, target = selfButton.current?.getBoundingClientRect()
     if (!guide || !card?.animate || !target || window.matchMedia('(prefers-reduced-motion: reduce)').matches) { finish(); return }
     const start = card.getBoundingClientRect()
     const dx = target.left + target.width / 2 - start.left - start.width / 2
@@ -391,16 +365,12 @@ export function ConversationReader({ conversation, initialAnalysisTaskId, openAn
           </button>
           {analysisControl}
           {chatControl}
-          <div className="reader-more-wrapper" ref={moreRef}>
-            <button ref={moreButton} className="reader-more-toggle" type="button" aria-label="更多操作"
-              title="更多操作" aria-haspopup="menu" aria-expanded={moreOpen} onClick={() => { setShowSelfHint(false); setMoreOpen(open => !open) }}>
-              <Ellipsis aria-hidden="true" />
+          <div className="reader-identity-entry">
+            <button ref={selfButton} className="reader-identity-toggle" type="button" aria-label="选择本人"
+              title="选择本人" aria-haspopup="dialog" aria-expanded={selfModalOpen} onClick={() => { setShowSelfHint(false); void readMembers(false) }}>
+              <UserRound aria-hidden="true" />
             </button>
             {showSelfHint && <span role="status" className="reader-identity-hint">可在这里选择本人</span>}
-            {moreOpen && <div className="reader-more-menu" role="menu" aria-label="会话管理">
-              <button role="menuitem" type="button" className="reader-more-item" onClick={() => { setMoreOpen(false); void readMembers(false) }}>选择本人</button>
-              <button role="menuitem" type="button" className="reader-more-item reader-more-item-danger" onClick={() => { setMoreOpen(false); setDeleteModalOpen(true) }}>删除会话</button>
-            </div>}
           </div>
         </div>
       </div>
@@ -457,7 +427,7 @@ export function ConversationReader({ conversation, initialAnalysisTaskId, openAn
     </div>
     {composer}
     {selfModalOpen && (
-      <ReaderDialog busy={selfSaving} onDismiss={dismissIdentity} returnFocus={moreButton} labelledBy="self-modal-title">
+      <ReaderDialog busy={selfSaving} onDismiss={dismissIdentity} returnFocus={selfButton} labelledBy="self-modal-title">
       <div className="reader-modal-overlay" role="presentation" onClick={e => { if (e.target === e.currentTarget) dismissIdentity() }}>
         <div className="reader-modal-card" ref={selfCard}>
           <h2 id="self-modal-title">选择本人</h2>
@@ -520,8 +490,6 @@ export function ConversationReader({ conversation, initialAnalysisTaskId, openAn
       </div>
       </ReaderDialog>
     )}
-    {deleteModalOpen && <DeleteListItem title={conversation.title} returnFocus={moreButton} onDismiss={() => setDeleteModalOpen(false)}
-      onDelete={() => onDeleteConversation ? onDeleteConversation(conversation.id) : api?.deleteConversation(conversation.id)} />}
   </section>}
   </ConversationWorkspace>
 }

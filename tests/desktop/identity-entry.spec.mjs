@@ -52,7 +52,7 @@ for (const width of [1280, 360]) test(`导入后在 ${width} 像素确认本人�
         const animation = real(...args)
         const last = animation.effect.getKeyframes().at(-1)
         const here = card.getBoundingClientRect()
-        const menu = document.querySelector('.reader-more-toggle').getBoundingClientRect()
+        const menu = document.querySelector('.reader-identity-toggle').getBoundingClientRect()
         const delta = new DOMMatrix(last.transform)
         window.__identityFlight = { distance: Math.hypot(
           here.left + here.width / 2 + delta.e - menu.left - menu.width / 2,
@@ -63,7 +63,7 @@ for (const width of [1280, 360]) test(`导入后在 ${width} 像素确认本人�
     if (width === 1280) await page.keyboard.press('Escape')
     else await prompt.getByRole('button', { name: '取消' }).click()
     await expect(prompt).toHaveCount(0)
-    await expect(btn('更多操作')).toBeFocused()
+    await expect(btn('选择本人')).toBeFocused()
     await expect(page.getByText('可在这里选择本人')).toBeVisible()
     const animation = await page.evaluate(() => window.__identityFlight)
     if (width === 1280) { expect(animation.distance).toBeLessThan(2); expect(animation.remaining).toBe('0') }
@@ -86,10 +86,11 @@ for (const width of [1280, 360]) test(`导入后在 ${width} 像素确认本人�
     if (await btn('展开会话列表').isVisible()) await btn('展开会话列表').click()
     await btn(summary.title).click()
     await expect(page.locator('.message-self')).toHaveCount(1)
-    await btn('更多操作').click()
-    await expect(page.getByRole('menuitem', { name: '选择本人' })).toBeVisible()
+    await btn('选择本人').click()
+    await expect(dialog()).toBeVisible()
     await page.keyboard.press('Escape')
     await expect(dialog()).toHaveCount(0)
+    await expect(btn('选择本人')).toBeFocused()
     await shot('03-saved-restart')
   } finally {
     await app?.close()

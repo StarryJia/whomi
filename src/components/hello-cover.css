@@ -67,9 +67,3 @@
   .hello-cover-preview { visibility: hidden; }
   .hello-cover-veil { background: Canvas; opacity: 1 !important; }
 }
-
-.hello-overview-outline { width:min(100%,980px); margin:auto; }
-.hello-overview-outline strong { display:block; font-size:32px; margin-bottom:24px; }
-.hello-overview-outline > div { background:var(--surface); padding:20px 28px; font-size:22px; font-weight:600; }
-.hello-overview-outline p { display:flex; justify-content:space-between; align-items:center; background:var(--surface); border-top:1px solid var(--line); padding:18px 28px; margin:0; }
-.hello-overview-outline i { width:40%; height:2px; background:var(--line); }

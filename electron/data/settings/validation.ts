@@ -1,3 +1,4 @@
+import { isThinkingLevel } from '../../../src/shared/thinking'
 import { BoundaryError } from '../../../src/shared/desktop-validation'
 import { getCherryProviderPreset } from '../../../src/vendor/cherry-providers'
 import { isModelProtocol, isValidModelBaseUrl, type ModelProtocol } from '../../../src/shared/model-protocol'
@@ -35,7 +36,8 @@ export function validateProvider(value: ProviderInput): ModelProtocol | undefine
   return protocol
 }
 export function validateSettingsModel(value: SettingsModelInput): void {
-  fields(value, ['id', 'providerId', 'label', 'model', 'contextWindow', 'maxTokens', 'enabled', 'group', 'maxInputTokens'], 'INVALID_MODEL')
+  if (value.thinkingLevels !== undefined && (!Array.isArray(value.thinkingLevels) || value.thinkingLevels.length > 7 || value.thinkingLevels.some(level => !isThinkingLevel(level)))) failSettings('INVALID_MODEL')
+  fields(value, ['id', 'providerId', 'label', 'model', 'contextWindow', 'maxTokens', 'enabled', 'group', 'maxInputTokens', 'thinkingLevels'], 'INVALID_MODEL')
   if (value.id !== undefined) settingsId(value.id)
   settingsId(value.providerId)
   if (!text(value.label, 256) || !text(value.model, 128) || typeof value.enabled !== 'boolean') failSettings('INVALID_MODEL')

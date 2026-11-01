@@ -1,3 +1,4 @@
+import type { ThinkingLevel } from '../../src/shared/thinking'
 import type { AccountUsage, SettingsApi, Provider, ProviderInput, SettingsSnapshot } from '../../src/shared/settings-contract'
 import { failSettings, settingsId, validateProcessing, validateProvider, validateSettingsModel } from '../data/settings/validation'
 import { defaultModelProtocol } from '../../src/shared/model-protocol'
@@ -14,7 +15,7 @@ export type SettingsServiceOptions = {
     signIn(newAccount?: boolean): Promise<ChatgptStatus>
     cancel(): void
     signOut(): Promise<void>
-    listModels(accountId: string): Promise<{ id: string; name: string }[]>
+    listModels(accountId: string): Promise<{ id: string; name: string; thinkingLevels?: ThinkingLevel[] }[]>
   }>>
   fetch?: typeof globalThis.fetch
 }
@@ -24,6 +25,7 @@ export function createSettingsService(options: SettingsServiceOptions): Settings
   const storage = <T>(method: string, ...args: unknown[]) => options.storage(method, args) as Promise<T>
   const get = () => storage<SettingsSnapshot>('get')
   const affected = async (id: string) => (await get()).models.filter(model => model.providerId === id).map(model => model.id)
+  const accountCatalog = new Map<string, Map<string, ThinkingLevel[]>>()
   let mutations: Promise<unknown> = Promise.resolve()
   function mutate<T>(operation: () => Promise<T>): Promise<T> { const result = mutations.then(operation); mutations = result.catch(() => {}); return result }
   function account(id: SubscriptionProviderId) {
@@ -85,7 +87,7 @@ export function createSettingsService(options: SettingsServiceOptions): Settings
       })
     },
     async removeProvider(id) { settingsId(id); await mutate(async () => { await options.beforeModelChange(await affected(id)); await storage('removeProvider', id) }) },
-    async saveModel(input) { validateSettingsModel(input); return mutate(async () => { if (input.id) await options.beforeModelChange([input.id]); return storage('saveModel', input) }) },
+    async saveModel(input) { validateSettingsModel(input); return mutate(async () => { if (input.id) await options.beforeModelChange([input.id]); const previous = input.id ? (await get()).models.find(model => model.id === input.id) : undefined; const levels = accountCatalog.get(input.providerId)?.get(input.model) ?? (previous?.model === input.model ? previous.thinkingLevels : undefined); const { thinkingLevels: _ignored, ...safeInput } = input; return storage('saveModel', { ...safeInput, ...(levels ? { thinkingLevels: levels } : {}) }) }) },
     async removeModel(id) { settingsId(id); await mutate(async () => { await options.beforeModelChange([id]); await storage('removeModel', id) }) },
     async syncModels(providerId) {
       settingsId(providerId)
@@ -94,7 +96,16 @@ export function createSettingsService(options: SettingsServiceOptions): Settings
       const serviceId = getSubscriptionId(providerId)
       if (serviceId) {
         if (!provider.planAccount || !provider.enabled) failSettings('CHATGPT_LOGIN', '请登录并启用此服务商。')
-        return (await account(serviceId).listModels(provider.planAccount)).map(item => ({ id: item.id, label: item.name }))
+        const items = await account(serviceId).listModels(provider.planAccount)
+        if (serviceId === 'openai-codex') {
+          accountCatalog.set(providerId, new Map(items.flatMap(item => item.thinkingLevels ? [[item.id, item.thinkingLevels] as const] : [])))
+          for (const existing of (await get()).models.filter(model => model.providerId === providerId)) {
+            const levels = accountCatalog.get(providerId)?.get(existing.model)
+            if (!levels || JSON.stringify(levels) === JSON.stringify(existing.thinkingLevels)) continue
+            try { await storage('saveModel', { id: existing.id, providerId, model: existing.model, label: existing.label, group: existing.group, contextWindow: existing.contextWindow, maxTokens: existing.maxTokens, maxInputTokens: existing.maxInputTokens, enabled: existing.enabled, thinkingLevels: levels }) } catch (error) { if ((error as { code?: string }).code !== 'MODEL_BUSY') throw error }
+          }
+        }
+        return items.map(item => ({ id: item.id, label: item.name }))
       }
       const key = encryptedKey === null ? null : options.secrets.decrypt(encryptedKey)
       const controller = new AbortController(), timeout = setTimeout(() => controller.abort(), 10000)

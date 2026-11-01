@@ -22,7 +22,9 @@ test('local manuscripts vote once per relationship and retract on identity corre
           text: message.text, evidenceMessageIds: [message.id], signals: [{ direction: message.text.includes('提前') ? 'J' : 'P', messageId: message.id }] })) }
       } else {
         const first = payload.events[0]
-        result = { groups: payload.events.map(event => [event.key]), events: [{ key: first.key, title: first.key, text: first.text }], relationship: '你们会一起商量各自喜欢的安排。' }
+        result = { groups: payload.events.map(event => [event.key]), events: [{ key: first.key, title: first.key, text: first.text }], relationship: '你们会一起商量各自喜欢的安排。',
+          dimensionExplanations: { EI: null, SN: null, TF: null, JP: { text: first.text.includes('提前') ? '旅行、展览和比赛中，你都主动提出提前定好安排。' : '旅行、展览和比赛等事情中，你都提出到时候再决定。',
+            eventKeys: payload.events.map(event => event.key) } } }
       }
       response.writeHead(200, { 'Content-Type': 'text/event-stream' })
       response.write(`data: ${JSON.stringify({ id: 'score', choices: [{ index: 0, delta: { content: JSON.stringify(result) }, finish_reason: null }] })}\n\n`)
@@ -62,7 +64,7 @@ test('local manuscripts vote once per relationship and retract on identity corre
         return (await window.whomi.ai.confirmAnalysis({ token: prepared.token, requestId: crypto.randomUUID() })).id
       }, { conversationId, modelId })
       await expect.poll(() => page.evaluate(id => window.whomi.ai.getAnalysis(id), id), { timeout: 30000 }).toMatchObject({
-        state: 'completed', report: { format: 'memory-v3', dimensions: { JP: conversationId === '1' ? 'J' : 'P' }, eventVotes: { JP: conversationId === '1' ? [3,0] : [0,5] } },
+        state: 'completed', report: { format: 'memory-v4', dimensions: { JP: conversationId === '1' ? 'J' : 'P' }, eventVotes: { JP: conversationId === '1' ? [3,0] : [0,5] } },
       })
     }
     await page.reload()
@@ -72,6 +74,22 @@ test('local manuscripts vote once per relationship and retract on identity corre
       await app.evaluate(({ BrowserWindow }, width) => { const win = BrowserWindow.getAllWindows()[0]; win.setMinimumSize(320,320); win.setSize(width,800) }, width)
       await expect.poll(() => page.evaluate(() => innerWidth)).toBe(width)
     }
+    await page.getByRole('button', { name: '记忆仓库', exact: true }).click()
+    const firstMemory = page.getByRole('region', { name: names[0], exact: true }).getByRole('button', { name: /我们的记忆/ })
+    await firstMemory.click()
+    const manuscript = page.getByRole('dialog', { name: '我们的记忆', exact: true })
+    for (const width of [1280, 360]) {
+      await resize(width)
+      await expect(manuscript.getByText('???J', { exact: true })).toBeVisible()
+      await expect(manuscript.getByText('旅行、展览和比赛中，你都主动提出提前定好安排。', { exact: true })).toBeVisible()
+      await expect(manuscript.locator('.memory-dimension-explanations dt')).toHaveText(['精力来源E / I', '理解信息S / N', '做决定T / F', '安排方式J / P'])
+      await expect(manuscript.getByText('暂难判断', { exact: true })).toHaveCount(3)
+      expect(await manuscript.locator('.memory-prose').evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true)
+      await page.screenshot({ path: join(evidence, `contextual-explanation-${width}.png`), animations: 'disabled' })
+    }
+    await manuscript.getByRole('button', { name: '关闭记忆' }).click()
+    await expect(firstMemory).toBeFocused()
+    await page.getByRole('button', { name: '个人总览', exact: true }).click()
     for (const width of [1280,360]) {
       await resize(width)
       await expect(row).toContainText('关系票数持平')
@@ -85,8 +103,7 @@ test('local manuscripts vote once per relationship and retract on identity corre
     await resize(1280)
     await page.getByRole('button', { name: '展开会话列表' }).click()
     await page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name: names[0], exact: true }).click()
-    await page.getByRole('button', { name: '更多操作' }).click()
-    await page.getByRole('menuitem', { name: '选择本人' }).click()
+    await page.getByRole('button', { name: '选择本人', exact: true }).click()
     const identity = page.getByRole('dialog', { name: '选择本人' })
     await identity.getByRole('radio', { name: '朋友' }).check()
     await identity.getByRole('button', { name: '设为本人' }).click()

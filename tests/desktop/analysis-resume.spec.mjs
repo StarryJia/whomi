@@ -15,7 +15,7 @@ test('resume a paused analysis after restart, retaining committed work and repor
   const summary = '从商量交钥匙到货车抵达东门，你们一起把书箱送进新家。'
   let eventTitle = '周六搬家'
   let includeDirection = false
-  let failFinal = true
+  let invalidFinals = 2
   const batches = []
   let holdSecondBatch = true
   const server = createServer((request, response) => {
@@ -37,8 +37,8 @@ test('resume a paused analysis after restart, retaining committed work and repor
         else if (markers.includes('01')) reply.events[0].signals = [{ direction: 'J', messageId: '1' }]
         text = JSON.stringify(reply)
       }
-      if (failFinal && JSON.stringify(messages[0]).includes('撰写《我们的记忆》')) {
-        failFinal = false
+      if (invalidFinals > 0 && JSON.stringify(messages[0]).includes('撰写《我们的记忆》')) {
+        invalidFinals--
         text = '无效文稿'
       }
       response.writeHead(200, { 'Content-Type': 'text/event-stream' })
@@ -67,7 +67,7 @@ test('resume a paused analysis after restart, retaining committed work and repor
   }
   async function openConversation() {
     await page.getByRole('button', { name: '展开会话列表' }).click()
-    await page.getByRole('button', { name: title, exact: true }).click()
+    await page.getByRole('navigation').getByRole('button', { name: title, exact: true }).click()
     await page.getByRole('button', { name: '整理成记忆', exact: true }).click()
   }
   const screenshot = name => page.screenshot({ path: join(evidence, name + '.png'), animations: 'disabled' })
@@ -97,7 +97,7 @@ test('resume a paused analysis after restart, retaining committed work and repor
     await app.evaluate(() => globalThis.__whomiRuntimeProbe.request('probe.seed', null))
     await page.evaluate(async endpoint => {
       const provider = await window.whomi.settings.saveProvider({ name: '本机验收服务', baseUrl: endpoint, enabled: true, apiKey: 'test-only' })
-      const model = await window.whomi.settings.saveModel({ providerId: provider.id, label: '分析示例模型', model: 'analysis-local', enabled: true, contextWindow: 3584, maxTokens: 512 })
+      const model = await window.whomi.settings.saveModel({ providerId: provider.id, label: '分析示例模型', model: 'analysis-local', enabled: true, contextWindow: 3726, maxTokens: 512 })
       await window.whomi.settings.selectModel('analysis', model.id)
     }, `http://127.0.0.1:${server.address().port}/v1`)
     await app.close()
@@ -157,7 +157,8 @@ test('resume a paused analysis after restart, retaining committed work and repor
     await expect(page.getByText(summary, { exact: true })).toBeVisible()
     const dialog = page.getByRole('dialog', { name: '我们的记忆' })
     await expect(dialog.locator('h3')).toHaveText(['MBTI 预测','我们的记忆','我们的关系'])
-    await expect(dialog.getByText('暂难判断', { exact: true })).toBeVisible()
+    await expect(dialog.locator('.memory-prediction')).toHaveText('????')
+    await expect(dialog.getByText('暂难判断', { exact: true })).toHaveCount(4)
     await expect(dialog.locator('h4')).toHaveText([eventTitle])
     await expect(dialog.locator('.memory-scope')).toHaveCount(1)
     await screenshot('07-report-wide')
@@ -165,7 +166,7 @@ test('resume a paused analysis after restart, retaining committed work and repor
     await dialog.getByRole('heading', { name: '我们的关系' }).scrollIntoViewIfNeeded()
     await screenshot('08-report-narrow')
     await page.keyboard.press('Escape')
-    await expect(page.locator('.memory-row')).toBeFocused()
+    await expect(page.locator('.memory-task-row')).toBeFocused()
     await resize(1280)
     await page.getByRole('button', { name: '个人总览', exact: true }).click()
     await page.getByRole('button', { name: '查看记忆', exact: true }).click()
@@ -174,16 +175,17 @@ test('resume a paused analysis after restart, retaining committed work and repor
     const resumedBatches = batches.slice(2)
     eventTitle = '搬家日的钥匙与货车'
     includeDirection = true
-    await page.getByRole('button', { name: title, exact: true }).click()
+    await page.getByRole('navigation').getByRole('button', { name: title, exact: true }).click()
     await page.getByRole('button', { name: '整理成记忆' }).click()
     await page.getByRole('button', { name: '重新生成' }).click()
     await page.getByRole('button', { name: '生成记忆', exact: true }).click()
     await expect(report).toBeEnabled({ timeout: 30000 })
     await report.click()
     await expect(dialog.locator('h4')).toHaveText([eventTitle])
-    await expect(dialog.getByText('暂难判断', { exact: true })).toBeVisible()
+    await expect(dialog.locator('.memory-prediction')).toHaveText('????')
+    await expect(dialog.getByText('暂难判断', { exact: true })).toHaveCount(4)
     await page.keyboard.press('Escape')
-    const rows = page.locator('.memory-row')
+    const rows = page.locator('.memory-task-row')
     await expect(rows).toHaveCount(2)
     await expect(rows.first()).toBeFocused()
     await screenshot('09-library-two')
@@ -198,9 +200,8 @@ test('resume a paused analysis after restart, retaining committed work and repor
     await page.getByRole('button', { name: '查看记忆', exact: true }).click()
     await expect(dialog.locator('h4')).toHaveText([eventTitle])
     await page.keyboard.press('Escape')
-    await page.getByRole('button', { name: title, exact: true }).click()
-    await page.getByRole('button', { name: '更多操作' }).click()
-    await page.getByRole('menuitem', { name: '选择本人' }).click()
+    await page.getByRole('navigation').getByRole('button', { name: title, exact: true }).click()
+    await page.getByRole('button', { name: '选择本人', exact: true }).click()
     const identity = page.getByRole('dialog', { name: '选择本人' })
     await identity.locator('label', { hasText: '朋友' }).click()
     await identity.getByRole('button', { name: '设为本人' }).click()

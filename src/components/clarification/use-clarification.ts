@@ -1,3 +1,4 @@
+import type { ThinkingLevel } from '../conversation-ai/model-selector'
 import { useCallback, useRef, useState } from 'react'
 import type {
   ClarificationAdapter, ClarificationAnswer, ClarificationController,
@@ -10,8 +11,8 @@ function clearFeedback(entry: ClarificationEntry): ClarificationEntry {
   return { ...entry, answer: undefined, failedAnswer: undefined, error: undefined, withdrawn: undefined }
 }
 
-function hasModel(models: readonly ClarificationModel[], modelId: string) {
-  return Boolean(modelId) && models.some(model => model.id === modelId && model.available)
+function hasModel(models: readonly ClarificationModel[], modelId: string, level?: ThinkingLevel) {
+  return models.some(model => model.id === modelId && model.available && (!level || model.thinkingLevels?.includes(level)))
 }
 
 export function useClarification(adapter?: ClarificationAdapter): ClarificationController {
@@ -46,7 +47,12 @@ export function useClarification(adapter?: ClarificationAdapter): ClarificationC
 
   const setModel = useCallback((questionId: string, modelId: string) => {
     update(questionId, entry => entry.pending || entry.receipt || entry.modelId === modelId
-      ? entry : { ...clearFeedback(entry), modelId })
+      ? entry : { ...clearFeedback(entry), modelId, thinkingLevel: undefined })
+  }, [update])
+
+  const setThinkingLevel = useCallback((questionId: string, thinkingLevel?: ThinkingLevel) => {
+    update(questionId, entry => entry.pending || entry.receipt || entry.thinkingLevel === thinkingLevel
+      ? entry : { ...clearFeedback(entry), thinkingLevel })
   }, [update])
 
   const submit = useCallback(async (questionId: string, answer: ClarificationAnswer) => {
@@ -75,13 +81,13 @@ export function useClarification(adapter?: ClarificationAdapter): ClarificationC
   const sendOwn = useCallback(async (question: ClarificationQuestion, models: readonly ClarificationModel[]) => {
     const entry = entriesRef.current.get(question.id) ?? emptyEntry
     const text = entry.draft.trim()
-    if (entry.mode !== 'own' || !text || !hasModel(models, entry.modelId)) return
-    await submit(question.id, { kind: 'text', text, modelId: entry.modelId })
+    if (entry.mode !== 'own' || !text || !hasModel(models, entry.modelId, entry.thinkingLevel)) return
+    await submit(question.id, { kind: 'text', text, modelId: entry.modelId, ...(entry.thinkingLevel && { thinkingLevel: entry.thinkingLevel }) })
   }, [submit])
 
   const retry = useCallback(async (question: ClarificationQuestion, models: readonly ClarificationModel[]) => {
     const answer = entriesRef.current.get(question.id)?.failedAnswer
-    if (!answer || (answer.kind === 'text' && !hasModel(models, answer.modelId))) return
+    if (!answer || (answer.kind === 'text' && !hasModel(models, answer.modelId, answer.thinkingLevel))) return
     await submit(question.id, answer)
   }, [submit])
 
@@ -101,6 +107,6 @@ export function useClarification(adapter?: ClarificationAdapter): ClarificationC
 
   return {
     canSubmit: Boolean(adapter),
-    get, startOwn, useCards, setDraft, setModel, choose, sendOwn, retry, withdraw,
+    get, startOwn, useCards, setDraft, setModel, setThinkingLevel, choose, sendOwn, retry, withdraw,
   }
 }

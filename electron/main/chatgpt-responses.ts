@@ -1,3 +1,4 @@
+import { acceptedThinking, reasoningCapabilities } from '../agent/reasoning-capabilities'
 import OpenAI from 'openai'
 import { chatgptBaseUrl } from '../../src/shared/chatgpt-plan'
 import { isContextLimitCode, modelContextLimit } from '../../src/shared/model-limits'
@@ -35,7 +36,10 @@ export function createChatgptRunner(accessToken: (accountId: string, signal: Abo
     const startedAt = Date.now()
     let text = '', firstTokenMs: number | undefined
     try {
+      const level = await acceptedThinking(model, input.thinkingLevel)
+      const mapped = level && model.thinkingLevels === undefined ? (await reasoningCapabilities(model))?.model?.thinkingLevelMap?.[level] : undefined
       const stream = await client.responses.create({
+        ...(level && mapped !== null ? { reasoning: { effort: (mapped ?? (level === 'off' ? 'none' : level)) as 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' } } : {}),
         model: model.model, store: false, stream: true, instructions: input.systemPrompt,
         input: [...(input.history ?? []).map(item => ({ role: item.role, content: item.text })), { role: 'user', content: input.prompt }],
       }, { signal })

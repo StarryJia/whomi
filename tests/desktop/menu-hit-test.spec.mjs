@@ -4,7 +4,7 @@ import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 
-test('conversation menu accepts pointer selection outside its draggable header', async () => {
+test('identity entry accepts pointer and keyboard input outside its draggable header', async () => {
   test.setTimeout(60000)
   const directory = await mkdtemp(join(tmpdir(), 'whomi-runtime-menu-hit-'))
   const evidence = resolve('release/menu-hit-test-20261031')
@@ -31,8 +31,7 @@ test('conversation menu accepts pointer selection outside its draggable header',
     await page.getByRole('button', { name: '展开会话列表' }).click()
     await page.getByRole('button', { name: '菜单命中 · 虚构会话', exact: true }).click()
     await dismissIdentity(page)
-    await page.getByRole('button', { name: '更多操作', exact: true }).click()
-    const self = page.getByRole('menuitem', { name: '选择本人', exact: true })
+    const self = page.getByRole('button', { name: '选择本人', exact: true })
     await self.waitFor()
     await page.screenshot({ path: join(evidence, '01-menu-before.png') })
     for (const { width, height, zoom } of [
@@ -46,23 +45,21 @@ test('conversation menu accepts pointer selection outside its draggable header',
         window.setSize(width, height)
         window.webContents.setZoomFactor(zoom)
       }, { width, height, zoom })
-      for (const offset of [2, 18, 33]) {
-        if (!await self.isVisible()) await page.getByRole('button', { name: '更多操作', exact: true }).click()
+      for (const offset of [2, 22, 42]) {
         const hit = await self.evaluate((element, offset) => {
           const bounds = element.getBoundingClientRect()
           const hit = document.elementFromPoint(bounds.x + bounds.width / 2, bounds.y + offset)
           return { hit: element === hit || element.contains(hit), appRegion: getComputedStyle(element).getPropertyValue('app-region') }
         }, offset)
         expect(hit).toEqual({ hit: true, appRegion: 'no-drag' })
-        await self.click({ position: { x: 65, y: offset }, timeout: 4000 })
+        await self.click({ position: { x: 22, y: offset }, timeout: 4000 })
         await expect(page.getByRole('dialog', { name: '选择本人' })).toBeVisible({ timeout: 4000 })
-        if (offset === 18) await page.keyboard.press('Escape')
+        if (offset === 22) await page.keyboard.press('Escape')
         else await page.getByRole('button', { name: '取消', exact: true }).click()
         await expect(page.getByRole('dialog')).toHaveCount(0)
-        await expect(page.getByRole('button', { name: '更多操作', exact: true })).toBeFocused()
+        await expect(self).toBeFocused()
       }
     }
-    await page.getByRole('button', { name: '更多操作', exact: true }).click()
     await self.click()
     await page.screenshot({ path: join(evidence, '02-narrow-self-dialog.png') })
     await page.getByRole('radio', { name: '示例乙' }).check()
@@ -75,18 +72,20 @@ test('conversation menu accepts pointer selection outside its draggable header',
     await page.getByRole('button', { name: '设为本人', exact: true }).click()
     await expect(page.getByRole('dialog')).toHaveCount(0)
     expect(await page.evaluate(async () => (await window.whomi.listMembers('1')).find(member => member.confirmedSelf)?.displayName)).toBe('示例乙')
-    await page.getByRole('button', { name: '更多操作', exact: true }).click()
+    await self.focus()
+    await page.keyboard.press('Enter')
+    await expect(page.getByRole('dialog', { name: '选择本人' })).toBeVisible()
     await page.keyboard.press('Escape')
     await expect(page.getByRole('menu')).toHaveCount(0)
-    await expect(page.getByRole('button', { name: '更多操作', exact: true })).toBeFocused()
-    await page.getByRole('button', { name: '更多操作', exact: true }).click()
-    await page.getByRole('menuitem', { name: '删除会话', exact: true }).click()
+    await expect(self).toBeFocused()
+    const conversation = page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name: '菜单命中 · 虚构会话', exact: true })
+    await conversation.click({ button: 'right' })
+    await page.getByRole('menuitem', { name: '删除', exact: true }).click()
     await expect(page.getByRole('dialog', { name: '删除会话' })).toBeVisible()
     await page.getByRole('button', { name: '取消', exact: true }).click()
     await expect(page.getByRole('dialog')).toHaveCount(0)
-    await expect(page.getByRole('button', { name: '更多操作', exact: true })).toBeFocused()
+    await expect(conversation).toBeFocused()
     await page.getByRole('button', { name: '选择消息', exact: true }).click()
-    await page.getByRole('button', { name: '更多操作', exact: true }).click()
     await self.click()
     await page.getByRole('button', { name: '取消', exact: true }).focus()
     await page.keyboard.press('Escape')

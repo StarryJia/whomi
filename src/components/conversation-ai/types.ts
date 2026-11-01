@@ -1,3 +1,4 @@
+import type { ThinkingLevel } from '../../shared/thinking'
 import type { ReferenceRange } from './selection'
 import type { AnalysisPreparation, AnalysisTask, AiState, AiUsage, AiThread, AiThreadSummary, AiModelIdentity } from '../../shared/ai-contract'
 import type { ModelOption } from './model-selector'
@@ -20,11 +21,12 @@ export type ConversationRequest = {
   prompt: string
   references: readonly ReferenceRange[]
   modelId: string
+  thinkingLevel?: ThinkingLevel
   skillId?: string
   history?: readonly { role: 'user' | 'assistant'; text: string; references?: readonly ReferenceRange[] }[]
 }
 export type RestoredConversationTurn = {
-  id: string; requestId: string; prompt: string; referenceIds: string[]; modelId: string; skillId?: string
+  id: string; requestId: string; prompt: string; referenceIds: string[]; modelId: string; thinkingLevel?: ThinkingLevel; skillId?: string
   text: string; state: AiState; usage?: GenerationUsage; error?: string
   modelIdentity?: AiModelIdentity
 }
@@ -33,7 +35,7 @@ export type ConversationAiAdapter = {
   selectModel?: (feature: 'analysis' | 'conversation', id: string | null) => Promise<void>
   models: readonly ModelOption[]
   skills: readonly { id: string; label: string }[]
-  prepareAnalysis?: (request: { conversationId: string; modelId: string }) => Promise<AnalysisPreparation>
+  prepareAnalysis?: (request: { conversationId: string; modelId: string; thinkingLevel?: ThinkingLevel }) => Promise<AnalysisPreparation>
   arrangeThread?: import('../../shared/ai-contract').AiMethods['arrangeThread']
   deleteThread?: import('../../shared/ai-contract').AiMethods['deleteThread']
   listThreads?: (conversationId: string) => Promise<AiThreadSummary[]>
@@ -48,7 +50,7 @@ export type ConversationAiAdapter = {
     signal: AbortSignal
     onText: (text: string) => void
   }): Promise<{ text: string; usage?: GenerationUsage; modelIdentity?: AiModelIdentity }>
-  analyze(request: { conversationId: string; modelId: string; preparationToken?: string; requestId?: string }, options: {
+  analyze(request: { conversationId: string; modelId: string; thinkingLevel?: ThinkingLevel; preparationToken?: string; requestId?: string }, options: {
     signal: AbortSignal
     onProgress: (progress: AnalysisProgress) => void
   }): Promise<AnalysisResult | void>

@@ -2,19 +2,20 @@ import type { AiUsage } from '../../src/shared/ai-contract'
 import { collectEvents, finishMemory, memoryFinalPrompt, memoryMergePrompt, memorySourcePrompt, modelJson, readNotes, type MemoryEvent, type MemoryNotes } from '../data/ai/memory-notes'
 import type { ProcessingMessage } from './message-processing'
 import { capacityError, type AnalysisStage } from './analysis-packing'
-import { compactScoredEvents, finishScoredMemory, scoredFinalPrompt, scoredMergePrompt, scoredSourcePrompt } from '../data/ai/memory-scoring'
+import { compactScoredEvents, finishScoredMemory, finishExplainedMemory, explainedFinalPrompt, explainedMergePrompt, explainedSourcePrompt, scoredFinalPrompt, scoredMergePrompt, scoredSourcePrompt } from '../data/ai/memory-scoring'
+import { BoundaryError } from '../../src/shared/desktop-validation'
 
 type Source = ProcessingMessage & { isSelf: boolean }
 type Persisted = { index: number; report: MemoryNotes }
 type Request = (index: number, system: string, payload: unknown, stage: AnalysisStage) => Promise<{ text: string; usage: AiUsage }>
 type Save = (index: number, messageIds: string[], report: MemoryNotes, usage: AiUsage) => Promise<void>
 type Input = {
-  plan: { index: number; items: Source[]; messageIds: string[] }[]; scored: boolean
+  plan: { index: number; items: Source[]; messageIds: string[] }[]; scored: boolean; explained?: boolean
   saved: Persisted[]; source: Source[]; budget: number; sourceBudget: number
-  request: Request; save: Save; clean?: (notes: MemoryNotes) => MemoryNotes; summarizing: () => Promise<void>; signal: AbortSignal
+  request: Request; save: Save; clean?: <T>(value: T) => T; summarizing: () => Promise<void>; signal: AbortSignal
 }
 
-export async function generateMemory({ plan, saved, source, budget, sourceBudget, request, save, clean, summarizing, signal, scored }: Input) {
+export async function generateMemory({ plan, saved, source, budget, sourceBudget, request, save, clean, summarizing, signal, scored, explained = false }: Input) {
   const previous = new Map(saved.map(node => [node.index, node.report]))
   const notes: MemoryNotes[] = []
   const knownEvents = new Set<string>()
@@ -30,7 +31,7 @@ export async function generateMemory({ plan, saved, source, budget, sourceBudget
         payload.knownEvents.push(key)
         remaining -= size
       }
-      const response = await request(batch.index, scored ? scoredSourcePrompt : memorySourcePrompt, payload, 'source')
+      const response = await request(batch.index, explained ? explainedSourcePrompt : scored ? scoredSourcePrompt : memorySourcePrompt, payload, 'source')
       signal.throwIfAborted()
       const ids = (message: Source) => message.sourceIds ?? [message.id]
       note = readNotes(modelJson(response.text), new Set(batch.items.flatMap(ids)), new Set(batch.items.filter(item => item.isSelf).flatMap(ids)))
@@ -43,7 +44,8 @@ export async function generateMemory({ plan, saved, source, budget, sourceBudget
   signal.throwIfAborted()
   await summarizing()
   const tooLarge = () => capacityError('merge')
-  const payload = (events: MemoryEvent[]) => ({ events: scored ? events.map(event => ({ key: event.key, text: event.text, messageCount: event.evidenceMessageIds.length })) : events })
+  const payload = (events: MemoryEvent[]) => ({ events: scored ? events.map(event => ({ key: event.key, text: event.text, messageCount: event.evidenceMessageIds.length,
+    ...(explained ? { signals: event.signals } : {}) })) : events })
   const bytes = (events: MemoryEvent[]) => Buffer.byteLength(JSON.stringify(payload(events)), 'utf8')
   let material = collectEvents(notes)
   let nextIndex = plan.length
@@ -66,7 +68,7 @@ export async function generateMemory({ plan, saved, source, budget, sourceBudget
       const index = nextIndex++
       let note = previous.get(index)
       if (!note) {
-        const response = await request(index, scored ? scoredMergePrompt : memoryMergePrompt, payload(events), 'merge')
+        const response = await request(index, explained ? explainedMergePrompt : scored ? scoredMergePrompt : memoryMergePrompt, payload(events), 'merge')
         signal.throwIfAborted()
         if (scored) note = { events: compactScoredEvents(modelJson(response.text), events) }
         else {
@@ -85,8 +87,16 @@ export async function generateMemory({ plan, saved, source, budget, sourceBudget
     if (bytes(reduced) >= bytes(material)) throw tooLarge()
     material = reduced
   }
-  const final = await request(nextIndex, scored ? scoredFinalPrompt : memoryFinalPrompt, payload(material), 'final')
-  signal.throwIfAborted()
   const order = new Map(source.map((message, index) => [message.id, index]))
-  return (scored ? finishScoredMemory : finishMemory)(modelJson(final.text), material, order)
+  for (let attempt = 0; ; attempt++) {
+    const final = await request(nextIndex + attempt, explained ? explainedFinalPrompt : scored ? scoredFinalPrompt : memoryFinalPrompt, payload(material), 'final')
+    signal.throwIfAborted()
+    try {
+      const report = (explained ? finishExplainedMemory : scored ? finishScoredMemory : finishMemory)(modelJson(final.text), material, order)
+      return explained && clean ? clean(report) : report
+    } catch (error) {
+      // 只重试新版本的无效成稿，已保存取材和旧任务的执行路径保持稳定。
+      if (!explained || attempt >= 1 || !(error instanceof BoundaryError) || !['INVALID_MEMORY', 'INVALID_RESPONSE'].includes(error.code)) throw error
+    }
+  }
 }

@@ -35,8 +35,8 @@ export function actionError(error: unknown) {
   return '操作失败，请重试。'
 }
 
-export function DeleteListItem({ title, thread, onDelete, onDismiss, returnFocus }: {
-  title: string; thread?: boolean; onDelete: () => Promise<void> | void; onDismiss: () => void
+export function DeleteListItem({ title, thread, memory, onDelete, onDismiss, returnFocus }: {
+  title: string; thread?: boolean; memory?: boolean; onDelete: () => Promise<void> | void; onDismiss: () => void
   returnFocus: RefObject<HTMLButtonElement | null>
 }) {
   const [busy, setBusy] = useState(false)
@@ -50,8 +50,8 @@ export function DeleteListItem({ title, thread, onDelete, onDismiss, returnFocus
   return <ReaderDialog busy={busy} onDismiss={onDismiss} returnFocus={returnFocus} labelledBy="delete-modal-title">
     <div className="reader-modal-overlay" onClick={e => { if (e.target === e.currentTarget && !busy) onDismiss() }}>
       <div className="reader-modal-card">
-        <h2 id="delete-modal-title">{thread ? '删除 AI 对话' : '删除会话'}</h2>
-        <p className="reader-modal-description">{thread ? `将删除「${title}」的全部提问与回答。` : `将删除「${title}」的原文、成员、本人设置、关联 AI 对话和记忆成稿。`}此操作无法撤销。</p>
+        <h2 id="delete-modal-title">{memory ? '删除记忆' : thread ? '删除 AI 对话' : '删除会话'}</h2>
+        <p className="reader-modal-description">{memory ? `将删除「${title}」及其整理进度，保留原始聊天和其他记忆。` : thread ? `将删除「${title}」的全部提问与回答。` : `将删除「${title}」的原文、成员、本人设置、关联 AI 对话和记忆成稿。`}此操作无法撤销。</p>
         {error && <p className="import-error" role="alert">{error}</p>}
         <div className="reader-modal-footer">
           <button type="button" className="reader-modal-btn" disabled={busy} onClick={onDismiss}>取消</button>
@@ -63,9 +63,10 @@ export function DeleteListItem({ title, thread, onDelete, onDismiss, returnFocus
 }
 
 type Row = { id: string; title: string; pinned?: boolean }
-export function ManagedRow({ item, scope, className, active, disabled, children, onSelect, arrange, remove }: {
+export function ManagedRow({ item, scope, className, active, disabled, children, onSelect, arrange, remove, memory, expanded, controls, hasPopup }: {
   item: Row; scope: string; className?: string; active: boolean; disabled?: boolean; children: ReactNode
   onSelect: () => void; arrange?: (change: ListArrangement) => Promise<void>; remove?: () => Promise<void>
+  memory?: boolean; expanded?: boolean; controls?: string; hasPopup?: 'dialog'
 }) {
   const button = useRef<HTMLButtonElement>(null)
   const [deleting, setDeleting] = useState(false)
@@ -82,8 +83,15 @@ export function ManagedRow({ item, scope, className, active, disabled, children,
     finally { setPending(false) }
   }
   const row = <button ref={button} type="button" className={className} title={item.title} aria-label={item.title}
+    aria-expanded={expanded} aria-controls={controls} aria-haspopup={hasPopup}
     aria-current={active || undefined} data-list-id={item.id} data-pinned={!!item.pinned} data-drop-over={dropOver || undefined}
     disabled={disabled || pending} draggable={!!arrange && !pending} onClick={onSelect}
+    onKeyDown={event => {
+      if ((!arrange && !remove) || !(event.key === 'ContextMenu' || event.key === 'F10' && event.shiftKey)) return
+      event.preventDefault()
+      const bounds = event.currentTarget.getBoundingClientRect()
+      event.currentTarget.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: bounds.left + Math.min(bounds.width / 2, 180), clientY: bounds.bottom }))
+    }}
     onDragStart={event => { event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData(type, item.id) }}
     onDragOver={event => { if (arrange && event.dataTransfer.types.includes(type)) { event.preventDefault(); event.dataTransfer.dropEffect = 'move'; setDropOver(true) } }}
     onDragLeave={() => setDropOver(false)} onDragEnd={() => setDropOver(false)} onDrop={event => {
@@ -100,6 +108,12 @@ export function ManagedRow({ item, scope, className, active, disabled, children,
   return <>
     <ContextMenu.Root><ContextMenu.Trigger asChild>{row}</ContextMenu.Trigger>
       <ContextMenu.Portal><ContextMenu.Content className="cherry-context-menu"
+        onCloseAutoFocus={event => {
+          event.preventDefault()
+          requestAnimationFrame(() => {
+            if (!document.activeElement?.closest('dialog[open]')) button.current?.focus({ preventScroll: true })
+          })
+        }}
         onPointerUpCapture={event => { if (event.button === 2) { event.preventDefault(); event.stopPropagation() } }}
         onEscapeKeyDown={event => event.stopPropagation()}>
         {arrange && <ContextMenu.Item className="cherry-menu-item" onSelect={() => void save({ id: item.id, pinned: !item.pinned })}>
@@ -108,6 +122,6 @@ export function ManagedRow({ item, scope, className, active, disabled, children,
       </ContextMenu.Content></ContextMenu.Portal>
     </ContextMenu.Root>
     {failure && <div role="alert" className="conversation-list-error">{failure.message}<button type="button" onClick={() => void save(failure.change)}>重试</button></div>}
-    {deleting && remove && <DeleteListItem title={item.title} thread={scope !== 'conversations'} returnFocus={button} onDismiss={() => setDeleting(false)} onDelete={remove} />}
+    {deleting && remove && <DeleteListItem title={item.title} thread={scope !== 'conversations'} memory={memory} returnFocus={button} onDismiss={() => setDeleting(false)} onDelete={remove} />}
   </>
 }
