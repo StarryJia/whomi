@@ -1,14 +1,20 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowUp, ArrowRight, Box, Check, ChevronDown, FileText, LoaderCircle, MessageCircle, PanelLeft, Square, SquarePen, X } from 'lucide-react'
+import { ArrowUp, ArrowRight, ArrowLeft, Pause, Play, Box, Check, ChevronDown, FileText, LoaderCircle, MessageCircle, PanelLeft, Square, SquarePen, X } from 'lucide-react'
 import * as Select from '@radix-ui/react-select'
 import type { ReferenceRange } from './selection'
-import type { AnalysisProgress, AnalysisResult, ConversationAiAdapter, ConversationRequest, GenerationUsage } from './types'
+import type { ConversationAiAdapter, ConversationRequest, GenerationUsage } from './types'
 import type { AnalysisPreparation, AiThreadSummary } from '../../shared/ai-contract'
 import './workspace.css'
+import './analysis-panel.css'
+import { useAnalysisTask } from './use-analysis-task'
 import { ConversationPopoverOwner, ModelSelector, type ModelOption } from './model-selector'
 import { messagePerformance } from './message-performance'
 import { AnswerContent } from './answer-content'
+import { usePaneDivider } from '../ui/pane-divider'
+import { ManagedRow } from '../ui/managed-row'
+import { MemoryArticle } from '../memory-library'
+import { isMemoryReport } from '../../shared/memory'
 import { AnswerActions } from './answer-actions'
 
 const number = (value: number) => new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 1 }).format(value)
@@ -16,12 +22,13 @@ const valid = (value: unknown): value is number => typeof value === 'number' && 
 function seconds(ms: number | undefined) { return valid(ms) ? `${number(ms / 1000)} 秒` : '未提供' }
 function errorText(error: unknown) { return error instanceof Error ? error.message : error && typeof error === 'object' && 'action' in error && typeof error.action === 'string' ? error.action : '操作失败，请重试。' }
 
-function Popover({ anchor, label, children, onClose, above = false, onMouseEnter, onMouseLeave, id }: {
+function Popover({ anchor, label, children, onClose, above = false, onMouseEnter, onMouseLeave, id, focusOnOpen }: {
   anchor: RefObject<HTMLElement | null>; label: string; children: ReactNode; onClose: () => void; above?: boolean
   onMouseEnter?: () => void; onMouseLeave?: () => void
-  id?: string
+  id?: string; focusOnOpen?: boolean
 }) {
   const body = useRef<HTMLDivElement>(null)
+  useEffect(() => { if (focusOnOpen) body.current?.focus({ preventScroll: true }) }, [focusOnOpen])
   const ownerId = useId()
   const [position, setPosition] = useState({ top: 0, left: 0 })
   const close = useRef(onClose)
@@ -43,12 +50,12 @@ function Popover({ anchor, label, children, onClose, above = false, onMouseEnter
     const resize = new ResizeObserver(place)
     if (body.current) resize.observe(body.current)
     const outside = (event: PointerEvent) => {
-      if (event.composedPath().some(node => node instanceof HTMLElement && node.dataset.conversationPopoverOwner === ownerId)) return
+      if (event.composedPath().some(node => node instanceof HTMLElement && (node.matches('dialog[open]') || node.dataset.conversationPopoverOwner === ownerId))) return
       if (!body.current?.contains(event.target as Node) && !anchor.current?.contains(event.target as Node)) close.current()
     }
     const escape = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return
-      if (event.composedPath().some(node => node instanceof HTMLElement && node.dataset.conversationPopoverOwner === ownerId)) return
+      if (event.composedPath().some(node => node instanceof HTMLElement && (node.matches('dialog[open]') || node.dataset.conversationPopoverOwner === ownerId))) return
       event.preventDefault()
       event.stopPropagation()
       close.current()
@@ -64,12 +71,13 @@ function Popover({ anchor, label, children, onClose, above = false, onMouseEnter
       document.removeEventListener('keydown', escape, true)
     }
   }, [anchor, above, ownerId])
-  return createPortal(<ConversationPopoverOwner.Provider value={ownerId}><div id={id} ref={body} className="conversation-popover" role="region" aria-label={label}
+  return createPortal(<ConversationPopoverOwner.Provider value={ownerId}><div id={id} ref={body} tabIndex={focusOnOpen ? -1 : undefined} className="conversation-popover" role="region" aria-label={label}
     style={position} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>{children}</div></ConversationPopoverOwner.Provider>, document.body)
 }
 
-function References({ references, onJump, onClear }: {
-  references: readonly ReferenceRange[]; onJump: (reference: ReferenceRange) => void; onClear?: () => void
+function References({ references, savedIds, onJump, onClear }: {
+  references: readonly ReferenceRange[]; savedIds?: readonly string[]
+  onJump: (ids: readonly string[], targetId?: string) => void; onClear?: () => void
 }) {
   const [open, setOpen] = useState(false)
   const anchor = useRef<HTMLButtonElement>(null)
@@ -78,26 +86,30 @@ function References({ references, onJump, onClear }: {
   const keep = () => { clearTimeout(timer.current); setOpen(true) }
   const leave = () => { timer.current = setTimeout(() => setOpen(false), 180) }
   useEffect(() => () => clearTimeout(timer.current), [])
-  if (!references.length) return null
+  const ids = savedIds?.length ? savedIds : references.flatMap(range => range.messages.map(message => message.id))
+  const count = onClear ? references.length : ids.length
+  if (!count) return null
+  if (!references.length) return <button type="button" className="conversation-reference-chip" onClick={() => onJump(ids)}>
+    <FileText aria-hidden="true" />{count} 条引用</button>
   return <div className="conversation-references" onMouseEnter={keep} onMouseLeave={leave}>
     <button ref={anchor} type="button" className="conversation-reference-chip" aria-expanded={open}
-      aria-label={`${references.length} 条引用`} aria-controls={open ? popoverId : undefined} onKeyDown={event => {
+      aria-label={`${count} 条引用`} aria-controls={open ? popoverId : undefined} onKeyDown={event => {
         if (event.key === 'ArrowDown' || (event.key === 'Tab' && !event.shiftKey && open)) {
           event.preventDefault()
           setOpen(true)
           requestAnimationFrame(() => document.getElementById(popoverId)?.querySelector<HTMLButtonElement>('button')?.focus())
         }
       }} onClick={() => {
-        if (references.length === 1) { setOpen(false); onJump(references[0]) }
+        if (!onClear || references.length === 1) { setOpen(false); onJump(ids) }
         else setOpen(true)
       }}>
-      <FileText aria-hidden="true" />{references.length} 条引用<ChevronDown aria-hidden="true" />
+      <FileText aria-hidden="true" />{count} 条引用<ChevronDown aria-hidden="true" />
     </button>
     {onClear && <button type="button" className="conversation-icon-button" aria-label="清除引用" onClick={onClear}><X aria-hidden="true" /></button>}
     {open && <Popover id={popoverId} anchor={anchor} above label="引用预览" onClose={() => setOpen(false)} onMouseEnter={keep} onMouseLeave={leave}>
       <div className="conversation-reference-list">{references.map((reference, index) => {
         const first = reference.messages[0]
-        return <button type="button" key={reference.id} onClick={() => { setOpen(false); onJump(reference) }}>
+        return <button type="button" key={reference.id} onClick={() => { setOpen(false); onJump(ids, first?.id) }}>
           <FileText aria-hidden="true" /><span><strong>引用 {index + 1} · {first?.senderName ?? '消息'}</strong>
           <span>{first?.text || '查看原文'}{reference.messages.length > 1 && ` · 共 ${reference.messages.length} 条消息`}</span></span>
         </button>
@@ -144,10 +156,12 @@ function Usage({ usage, model }: { usage?: GenerationUsage; model?: ModelOption 
 type Turn = { id: number | string; request: ConversationRequest; modelIdentity?: ModelOption; referenceIds?: string[]; text: string; usage?: GenerationUsage; status: 'running' | 'done' | 'failed' | 'stopped'; error?: string; remote?: boolean }
 const turnModel = (turn: Turn): ModelOption => turn.modelIdentity ?? { id: turn.request.modelId, label: '未知模型' }
 type Slots = { analysisControl: ReactNode; chatControl: ReactNode; composer: ReactNode; panelOpen: boolean }
-export function ConversationWorkspace({ conversationId, messageCount, references, onClearReferences, onRestoreReferences, onJumpReference, onOpenAnalysisResult, adapter, children }: {
-  conversationId: string; title: string; messageCount?: number; references: readonly ReferenceRange[]
-  onClearReferences: () => void; onJumpReference: (reference: ReferenceRange) => void
+export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, openAnalysisOnEntry = false, identityRevision = 0, title, messageCount, references, onClearReferences, onRestoreReferences, onJumpReference, onOpenAnalysisResult, onConfigureModels, adapter, children }: {
+  conversationId: string; identityRevision?: number; title: string; messageCount?: number; references: readonly ReferenceRange[]
+  onClearReferences: () => void; onJumpReference: (ids: readonly string[], targetId?: string) => void
   onRestoreReferences?: (references: readonly ReferenceRange[]) => void
+  onConfigureModels?: (onReturn: () => void) => void
+  openAnalysisOnEntry?: boolean; initialAnalysisTaskId?: string
   onOpenAnalysisResult?: (taskId: string) => void
   adapter?: ConversationAiAdapter; children: (slots: Slots) => ReactNode
 }) {
@@ -159,6 +173,7 @@ export function ConversationWorkspace({ conversationId, messageCount, references
   const [threadListLoading, setThreadListLoading] = useState(false)
   const [threadListError, setThreadListError] = useState('')
   const [threadCreating, setThreadCreating] = useState(false)
+  const creatingThread = useRef(false)
   const [threadListAttempt, setThreadListAttempt] = useState(0)
   const activeThread = useRef<string | undefined>(undefined)
   const threadDrafts = useRef(new Map<string, string>())
@@ -180,18 +195,18 @@ export function ConversationWorkspace({ conversationId, messageCount, references
   latestTurns.current = turns
   latestReferences.current = references
   const [busy, setBusy] = useState(false)
-  const [analysisOpen, setAnalysisOpen] = useState(false)
-  const [analysisConfirming, setAnalysisConfirming] = useState(true)
-  const [analysisState, setAnalysisState] = useState<'idle' | 'running' | 'done' | 'failed' | 'stopped'>('idle')
-  const [analysisError, setAnalysisError] = useState('')
-  const [progress, setProgress] = useState<AnalysisProgress>()
-  const [analysisResult, setAnalysisResult] = useState<AnalysisResult>()
+  const [analysisOpen, setAnalysisOpen] = useState(openAnalysisOnEntry)
+  const analysis = useAnalysisTask(adapter, conversationId, identityRevision, initialAnalysisTaskId)
+  const { confirming: analysisConfirming, setConfirming: setAnalysisConfirming, phase: analysisState,
+    error: analysisError, setError: setAnalysisError, progress, result: analysisResult } = analysis
+  const [showReport, setShowReport] = useState(false)
   const [preparation, setPreparation] = useState<AnalysisPreparation>()
   const [preparing, setPreparing] = useState(false)
   const [prepareAttempt, setPrepareAttempt] = useState(0)
   const [restoring, setRestoring] = useState(false)
   const [restoreError, setRestoreError] = useState('')
   const [narrow, setNarrow] = useState(() => window.matchMedia('(max-width: 1000px)').matches)
+  const chatPane = usePaneDivider('assistant', panelOpen && !narrow)
   const source = useRef<HTMLDivElement>(null)
   const aside = useRef<HTMLElement>(null)
   const textarea = useRef<HTMLTextAreaElement>(null)
@@ -199,7 +214,6 @@ export function ConversationWorkspace({ conversationId, messageCount, references
   const chatAnchor = useRef<HTMLButtonElement>(null)
   const historyAnchor = useRef<HTMLButtonElement>(null)
   const chatRun = useRef<AbortController | undefined>(undefined)
-  const analysisRun = useRef<AbortController | undefined>(undefined)
   const sequence = useRef(0)
   const alive = useRef(true)
   const selectionGeneration = useRef({ analysis: 0, conversation: 0 })
@@ -223,7 +237,7 @@ export function ConversationWorkspace({ conversationId, messageCount, references
   }
   const canSend = !!adapter && !!selectedModel && !!draft.trim() && !busy && !restoring && !threadCreating && !threadListLoading && !threadListError && !modelSaving.conversation
 
-  function activateThread(id: string, keepDraft = false) {
+  function activateThread(id: string | undefined, keepDraft = false) {
     threadDrafts.current.set(activeThread.current ?? 'initial', latestDraft.current)
     threadTurns.current.set(activeThread.current ?? 'initial', latestTurns.current)
     threadReferences.current.set(activeThread.current ?? 'initial', latestReferences.current)
@@ -233,34 +247,36 @@ export function ConversationWorkspace({ conversationId, messageCount, references
     activeThread.current = id
     setThreadId(id)
     if (!keepDraft) {
-      setDraft(threadDrafts.current.get(id) ?? '')
-      setTurns(threadTurns.current.get(id) ?? [])
+      setDraft(threadDrafts.current.get(id ?? '') ?? '')
+      setTurns(threadTurns.current.get(id ?? '') ?? [])
     }
     setBusy(false)
+    setRestoring(false)
     setRestoreError('')
-    pendingScroll.current = threadScrolls.current.get(id) ?? { top: 0, atEnd: true }
+    pendingScroll.current = threadScrolls.current.get(id ?? '') ?? { top: 0, atEnd: true }
     atEnd.current = pendingScroll.current.atEnd
     if (!keepDraft) {
-      if (onRestoreReferences) onRestoreReferences(threadReferences.current.get(id) ?? [])
+      if (onRestoreReferences) onRestoreReferences(threadReferences.current.get(id ?? '') ?? [])
       else onClearReferences()
     }
   }
   async function newThread(keepDraft = false) {
-    if (!adapter?.createThread || threadCreating) return
+    if (!adapter?.createThread || creatingThread.current) return
+    creatingThread.current = true
     setThreadCreating(true)
     setThreadListError('')
     const origin = activeThread.current
     try {
       const created = await adapter.createThread(conversationId)
       if (!alive.current) return
-      setThreads(items => [created, ...items.filter(item => item.id !== created.id)])
+      setThreads(items => [...items.filter(item => item.pinned), created, ...items.filter(item => !item.pinned && item.id !== created.id)])
       if (activeThread.current !== origin) return
       activateThread(created.id, keepDraft)
       setThreadListOpen(false)
       requestAnimationFrame(() => textarea.current?.focus())
       return created.id
     } catch (error) { if (keepDraft) throw error; if (alive.current) setThreadListError(errorText(error)) }
-    finally { if (alive.current) setThreadCreating(false) }
+    finally { creatingThread.current = false; if (alive.current) setThreadCreating(false) }
   }
 
   useEffect(() => {
@@ -287,19 +303,13 @@ export function ConversationWorkspace({ conversationId, messageCount, references
     setModelSaving({})
     setBusy(false)
     setTurns(items => items.map(turn => turn.status === 'running' ? { ...turn, status: 'stopped' } : turn))
-    setAnalysisState('idle')
-    setAnalysisConfirming(true)
-    setAnalysisError('')
-    setProgress(undefined)
-    setAnalysisResult(undefined)
+    setShowReport(false)
     return () => {
       alive.current = false
       selectionGeneration.current.analysis++
       selectionGeneration.current.conversation++
       chatRun.current?.abort('detach')
-      analysisRun.current?.abort('detach')
       chatRun.current = undefined
-      analysisRun.current = undefined
     }
   }, [conversationId, adapter])
   useEffect(() => {
@@ -329,20 +339,6 @@ export function ConversationWorkspace({ conversationId, messageCount, references
     return () => controller.abort('detach')
   }, [adapter, conversationId, threadId])
   useEffect(() => {
-    if (!adapter?.watchAnalysis) return
-    const controller = new AbortController()
-    void adapter.watchAnalysis(conversationId, task => {
-      if (controller.signal.aborted || analysisRun.current) return
-      setAnalysisConfirming(false)
-      setAnalysisState(!task.valid ? 'failed' : ['queued', 'running', 'summarizing'].includes(task.state) ? 'running' : task.state === 'completed' ? 'done'
-        : task.state === 'stopped' ? 'stopped' : 'failed')
-      setAnalysisError(!task.valid ? '本人或资料范围已变化，请重新分析。' : task.error ?? (task.state === 'interrupted' ? '分析已中断，请重新确认后继续。' : ''))
-      setProgress({ analyzedMessages: task.analyzedMessages, totalMessages: task.totalMessages, usage: task.usage })
-      setAnalysisResult({ taskId: task.id, usage: task.usage })
-    }, controller.signal).catch(error => { if (!controller.signal.aborted) setAnalysisError(errorText(error)) })
-    return () => controller.abort('detach')
-  }, [adapter, conversationId])
-  useEffect(() => {
     if (!analysisOpen || !analysisConfirming || !adapter?.prepareAnalysis || !selectedAnalysisModel) return
     let current = true
     setPreparing(true)
@@ -352,7 +348,7 @@ export function ConversationWorkspace({ conversationId, messageCount, references
       if (current) setPreparation(value)
     }, error => { if (current) setAnalysisError(errorText(error)) }).finally(() => { if (current) setPreparing(false) })
     return () => { current = false }
-  }, [analysisOpen, analysisConfirming, adapter, conversationId, analysisModelId, selectedAnalysisModel, prepareAttempt])
+  }, [analysisOpen, analysisConfirming, adapter, conversationId, identityRevision, analysisModelId, selectedAnalysisModel, prepareAttempt])
   useEffect(() => {
     const query = window.matchMedia('(max-width: 1000px)')
     const update = () => { setNarrow(query.matches); if (query.matches) setThreadListOpen(false) }
@@ -383,9 +379,9 @@ export function ConversationWorkspace({ conversationId, messageCount, references
       chatAnchor.current?.focus()
     })
   }
-  function jump(reference: ReferenceRange) {
+  function jump(ids: readonly string[], targetId?: string) {
     if (narrow) setPanelOpen(false)
-    onJumpReference(reference)
+    onJumpReference(ids, targetId)
   }
   function stopChat() {
     chatRun.current?.abort()
@@ -442,84 +438,115 @@ export function ConversationWorkspace({ conversationId, messageCount, references
       if (active()) { chatRun.current = undefined; setBusy(false) }
     }
   }
-  function stopAnalysis() {
-    analysisRun.current?.abort()
-    analysisRun.current = undefined
-    setAnalysisState('stopped')
-    if (analysisResult?.taskId) void adapter?.stopAnalysis?.(analysisResult.taskId).catch(error => setAnalysisError(errorText(error)))
-  }
-  async function analyze() {
-    if (!adapter || !selectedAnalysisModel || modelSaving.analysis || (messageCount === 0 && !adapter.prepareAnalysis) || analysisState === 'running' || preparing || (adapter.prepareAnalysis && !preparation)) return
-    const controller = new AbortController()
-    analysisRun.current = controller
-    setAnalysisState('running')
-    setAnalysisConfirming(false)
-    setAnalysisError('')
-    setProgress(undefined)
-    setAnalysisResult(undefined)
-    const active = () => alive.current && analysisRun.current === controller && !controller.signal.aborted
-    try {
-      const result = await adapter.analyze({ conversationId, modelId: analysisModelId,
-        ...(preparation ? { preparationToken: preparation.token, requestId: crypto.randomUUID() } : {}) }, { signal: controller.signal, onProgress: value => {
-        if (!active()) return
-        if (valid(value.analyzedMessages) && valid(value.totalMessages)) setProgress(value)
-      } })
-      if (active()) { setAnalysisResult(result || undefined); setAnalysisState('done') }
-    } catch (error) {
-      if (active()) { setAnalysisState('failed'); setAnalysisError(errorText(error)) }
-    } finally {
-      if (active()) analysisRun.current = undefined
-    }
+  function analyze() {
+    if (!selectedAnalysisModel || modelSaving.analysis || preparing || (adapter?.prepareAnalysis && !preparation)) return
+    void analysis.run({ conversationId, modelId: analysisModelId,
+      ...(preparation ? { preparationToken: preparation.token, requestId: crypto.randomUUID() } : {}) })
   }
   const completed = valid(progress?.analyzedMessages) ? progress.analyzedMessages : 0
   const total = valid(progress?.totalMessages) ? progress.totalMessages : messageCount
-  const percentage = valid(total) && total > 0 ? Math.min(100, Math.round(completed / total * 100)) : undefined
+  const percentage = valid(total) && total > 0 ? Math.min(100, completed / total * 100) : undefined
+  const percentText = percentage === undefined ? undefined : percentage > 0 && percentage < 1 ? '<1%'
+    : percentage > 99 && percentage < 100 ? '>99%' : Math.round(percentage) + '%'
   const analysisUsage = analysisResult?.usage ?? progress?.usage
   const analysisSpeed = analysisUsage?.outputTokensPerSecond ?? progress?.outputTokensPerSecond
   const hasAnalysisUsage = analysisUsage && Object.values(analysisUsage).some(valid)
-  const confirmAnalysis = () => { setAnalysisConfirming(true); setAnalysisError(''); setPrepareAttempt(value => value + 1) }
+  const confirmAnalysis = () => { setPreparation(undefined); setAnalysisConfirming(true); setAnalysisError(''); setPrepareAttempt(value => value + 1) }
+  const activeTask = progress?.task
+  const pauseSupported = !!adapter?.continueAnalysis
+  const waitingForStart = analysisState === 'running' && pauseSupported &&
+    (!activeTask || !['queued', 'running', 'summarizing'].includes(activeTask.state))
+  const report = analysisResult?.task?.report
+  const titles = {
+    idle: '整理成记忆', running: '正在整理', done: '记忆已生成', interrupted: '生成中断',
+    stopped: pauseSupported ? '生成已暂停' : '已停止', failed: '生成失败',
+  }
+  let statusTitle = titles[analysisState]
+  if (analysis.stopping) statusTitle = '正在暂停'
+  else if (waitingForStart) statusTitle = '正在准备生成'
+  else if (analysisState === 'running' && activeTask?.state === 'summarizing') statusTitle = '正在撰写记忆'
+  const closeAnalysis = () => {
+    setAnalysisOpen(false); setShowReport(false)
+    if (analysisState !== 'idle') setAnalysisConfirming(false)
+    analysisAnchor.current?.focus()
+  }
+  function configureModels(fromAnalysis: boolean) {
+    if (!onConfigureModels) return
+    if (fromAnalysis) setAnalysisOpen(false)
+    onConfigureModels(() => {
+      if (!alive.current) return
+      if (fromAnalysis) { confirmAnalysis(); setAnalysisOpen(true) }
+      else textarea.current?.focus({ preventScroll: true })
+    })
+  }
+  const coverageDescription = progress && valid(total) ? `${statusTitle}，已整理 ${number(completed)} / ${number(total)} 条` : statusTitle
   const analysisControl = <>
-    <button ref={analysisAnchor} type="button" className="conversation-analysis-trigger" aria-expanded={analysisOpen}
-      onClick={() => setAnalysisOpen(value => !value)}>
-      {analysisState === 'running' ? <LoaderCircle className="conversation-working" aria-hidden="true" /> : analysisState === 'done' ? <Check aria-hidden="true" /> : <span className="conversation-ring-icon" aria-hidden="true" />}会话分析
+    <button ref={analysisAnchor} type="button" className="conversation-analysis-trigger" aria-expanded={analysisOpen} aria-description={coverageDescription} title={coverageDescription}
+      onClick={() => analysisOpen ? closeAnalysis() : setAnalysisOpen(true)}>
+       {analysisState === 'done' ? <Check aria-hidden="true" /> : <svg className="memory-coverage-ring" viewBox="0 0 24 24" aria-hidden="true">
+        <circle className="memory-ring-track" cx="12" cy="12" r="9" />
+        <circle className="memory-ring-value" cx="12" cy="12" r="9" pathLength="100" strokeDasharray={`${percentage ?? 0} 100`} transform="rotate(-90 12 12)" />
+      </svg>}整理成记忆
     </button>
-    {analysisOpen && <Popover anchor={analysisAnchor} label="会话分析状态" onClose={() => setAnalysisOpen(false)}>
-      <h3>会话分析</h3>
-      {analysisConfirming && !!adapter?.models.length && <ModelSelector label="分析模型" models={adapter.models} value={selectedAnalysisModel?.id ?? ''}
-        disabled={modelSaving.analysis} describedBy={modelErrors.analysis ? `${panelId}-analysis-model-error` : undefined} onSelect={id => { void chooseModel('analysis', id) }} />}
-      {analysisConfirming && modelErrors.analysis && <p id={`${panelId}-analysis-model-error`} role="alert" className="conversation-error">{modelErrors.analysis}</p>}
-      {analysisConfirming && messageCount === 0 && !adapter?.prepareAnalysis ? <p className="conversation-state-copy">巧妇难为无米之炊，先导入一些聊天记录吧。</p> : analysisConfirming && (!adapter || !selectedAnalysisModel) ? <p className="conversation-state-copy">{adapter?.models.length ? '请选择分析模型。' : '请在设置中添加模型。'}</p> : analysisConfirming ? <>
-        {preparing && <p role="status" className="conversation-state-copy">正在核对分析范围…</p>}
-        {analysisError && <p role="alert" className="conversation-error">{analysisError}</p>}
-        <p className="conversation-state-copy">根据当前会话的全部聊天内容，生成一份分析报告。</p>
-        <div className="conversation-analysis-actions">
-          {(!adapter?.prepareAnalysis || preparation) && <button type="button" disabled={preparing || modelSaving.analysis} className="conversation-text-button conversation-primary-button" onClick={() => { void analyze() }}>确认分析</button>}
-          {adapter?.prepareAnalysis && !preparing && !preparation && <button type="button" className="conversation-text-button" onClick={confirmAnalysis}>重新核对</button>}
-          <button type="button" className="conversation-text-button" onClick={() => setAnalysisOpen(false)}>取消</button>
-        </div>
-      </> : <>
-        <div className="conversation-analysis-summary">
-          <div className="conversation-progress" role="progressbar" aria-label="会话分析进度" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percentage}>
-            <svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="20" /><circle cx="24" cy="24" r="20" strokeDasharray={`${(percentage ?? 0) * 1.257} 126`} /></svg>
-            <span>{percentage === undefined ? '—' : `${percentage}%`}</span>
+    {analysisOpen && <Popover anchor={analysisAnchor} focusOnOpen label="记忆生成状态" onClose={closeAnalysis}>
+      <section className="analysis-sheet">
+        {showReport && report ? <>
+          <h3 tabIndex={-1} ref={element => { element?.focus({ preventScroll: true }) }}>{isMemoryReport(report) ? '我们的记忆' : '分析报告'}</h3>
+          <MemoryArticle report={report} />
+          <footer><button type="button" className="analysis-secondary" onClick={() => setShowReport(false)}><ArrowLeft aria-hidden="true" />返回进度</button></footer>
+        </> : analysisConfirming ? <>
+          <h3>整理成记忆</h3>
+          <p className="analysis-description">{preparation?.title ?? title}{(preparation?.analyzableMessages ?? messageCount) !== undefined && ` · ${number(preparation?.analyzableMessages ?? messageCount!)} 条消息`}</p>
+          {!!adapter?.models.length && <div className="analysis-model-row">
+            <span>分析模型</span>
+            <ModelSelector label="分析模型" models={adapter.models} value={selectedAnalysisModel?.id ?? ''}
+              disabled={modelSaving.analysis} describedBy={modelErrors.analysis ? `${panelId}-analysis-model-error` : undefined}
+              onSelect={id => { void chooseModel('analysis', id) }} />
+          </div>}
+          {modelErrors.analysis && <p id={`${panelId}-analysis-model-error`} role="alert" className="conversation-error">{modelErrors.analysis}</p>}
+          {preparing && <p role="status" className="analysis-notice">正在核对分析范围…</p>}
+          {messageCount === 0 && !adapter?.prepareAnalysis ? <p className="analysis-notice">请先导入聊天记录。</p>
+            : !selectedAnalysisModel && <p className="analysis-notice">{adapter?.models.length ? '请选择分析模型。' : onConfigureModels ? '选择模型后即可整理这段聊天。' : '请在设置中添加模型。'}</p>}
+          {analysisError && <p role="alert" className="conversation-error">{analysisError}</p>}
+          <footer>
+            <button type="button" className="analysis-secondary" onClick={closeAnalysis}>取消</button>
+            {!adapter?.models.length && onConfigureModels && <button type="button" className="analysis-primary" onClick={() => configureModels(true)}>配置模型</button>}
+            {selectedAnalysisModel && (adapter?.prepareAnalysis ? !!preparation : messageCount !== 0) &&
+              <button type="button" disabled={preparing || modelSaving.analysis} className="analysis-primary" onClick={analyze}>生成记忆<ArrowRight aria-hidden="true" /></button>}
+            {selectedAnalysisModel && adapter?.prepareAnalysis && !preparing && !preparation &&
+              <button type="button" className="analysis-primary" onClick={confirmAnalysis}>重新核对</button>}
+          </footer>
+        </> : <>
+          <h3><span role="status">{statusTitle}</span></h3>
+          <div className="analysis-meter">
+            <div className="analysis-meter-values"><span>{progress ? `已整理 ${number(completed)} / ${number(progress.totalMessages)} 条` : valid(total) ? `当前会话 ${number(total)} 条消息` : '等待消息总数'}</span>
+              {percentText && <strong>{percentText}</strong>}</div>
+            <div role="progressbar" aria-label="记忆生成进度" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percentage}
+              className="analysis-track"><span style={{ width: `${percentage ?? 0}%` }} /></div>
           </div>
-          <div><p>{progress ? `已分析 ${number(completed)} / ${number(progress.totalMessages)} 条` : valid(total) ? `当前会话 ${number(total)} 条消息` : '等待消息总数'}</p>
-            <p className="conversation-state-copy">{analysisState === 'running' ? '正在分析' : analysisState === 'done' ? '分析完成' : analysisState === 'stopped' ? '已停止' : analysisState === 'failed' ? '分析失败' : '生成当前会话的画像结果'}</p>
-            {valid(analysisSpeed) && <p className="conversation-state-copy">生成速度 {number(analysisSpeed)} token/秒</p>}</div>
-        </div>
-        {hasAnalysisUsage ? <dl className="conversation-analysis-usage conversation-usage-grid" role="group" aria-label="分析用量">
-          <div><dt>输入 token</dt><dd>{valid(analysisUsage.inputTokens) ? number(analysisUsage.inputTokens) : '未提供'}</dd></div>
-          <div><dt>输出 token</dt><dd>{valid(analysisUsage.outputTokens) ? number(analysisUsage.outputTokens) : '未提供'}</dd></div>
-          <div><dt>总耗时</dt><dd>{seconds(analysisUsage.durationMs)}</dd></div>
-        </dl> : analysisState === 'done' && <p className="conversation-state-copy">未提供用量统计。</p>}
-        {analysisError && <p role="alert" className="conversation-error">{analysisError}</p>}
-        <div className="conversation-analysis-actions">{analysisState === 'running' ? <button type="button" className="conversation-text-button" onClick={stopAnalysis}><Square aria-hidden="true" />停止分析</button>
-          : <button type="button" className="conversation-text-button" onClick={confirmAnalysis}>{analysisState === 'failed' ? '重试分析' : '重新分析'}</button>}
-          {analysisState === 'done' && !!onOpenAnalysisResult && !!analysisResult?.taskId && <button type="button" className="conversation-text-button conversation-primary-button"
-            onClick={() => { onOpenAnalysisResult(analysisResult.taskId!) }}>查看分析结果<ArrowRight aria-hidden="true" /></button>}
-        </div>
-        {analysisState === 'done' && onOpenAnalysisResult && !analysisResult?.taskId && <p className="conversation-state-copy">未提供分析报告。</p>}
-      </>}
+          {analysis.resumable && <p className="analysis-notice">{completed > 0 && completed === total ? '继续撰写文稿。'
+            : completed > 0 ? '从已保存的进度继续。' : '继续时从首批消息开始。'}</p>}
+          {hasAnalysisUsage ? <dl className="analysis-usage" role="group" aria-label="分析用量">
+            <div><dt>输入 token</dt><dd>{valid(analysisUsage.inputTokens) ? number(analysisUsage.inputTokens) : '未提供'}</dd></div>
+            <div><dt>输出 token</dt><dd>{valid(analysisUsage.outputTokens) ? number(analysisUsage.outputTokens) : '未提供'}</dd></div>
+            <div><dt>总耗时</dt><dd>{seconds(analysisUsage.durationMs)}</dd></div>
+          </dl> : analysisState === 'done' && <p className="analysis-notice">未提供用量统计。</p>}
+          {valid(analysisSpeed) && <p className="analysis-notice">生成速度 {number(analysisSpeed)} token/秒</p>}
+          {analysisError && <p role="alert" className="conversation-error">{analysisError}</p>}
+          <footer>{analysisState === 'running'
+            ? <button type="button" disabled={analysis.stopping || waitingForStart} className="analysis-secondary" onClick={() => { void analysis.stop() }}>
+                {pauseSupported ? <Pause aria-hidden="true" /> : <Square aria-hidden="true" />}{pauseSupported ? '暂停生成' : '停止生成'}</button>
+            : <button type="button" disabled={analysis.stopping} className="analysis-secondary" onClick={confirmAnalysis}>{analysisState === 'failed' && !activeTask ? '重试生成' : '重新生成'}</button>}
+            {analysis.resumable && <button className="analysis-primary" type="button" disabled={analysis.stopping} onClick={() => { void analysis.run() }}><Play aria-hidden="true" />继续生成</button>}
+            {analysisState === 'done' && analysisResult?.taskId && (report || onOpenAnalysisResult) &&
+              <button type="button" className="analysis-primary" onClick={() => {
+                if (onOpenAnalysisResult) onOpenAnalysisResult(analysisResult.taskId!)
+                else setShowReport(true)
+              }}>查看记忆<ArrowRight aria-hidden="true" /></button>}
+          </footer>
+          {analysisState === 'done' && onOpenAnalysisResult && !analysisResult?.taskId && <p className="analysis-notice">未找到成稿。</p>}
+        </>}
+      </section>
     </Popover>}
   </>
   const referenceControl = <References references={references} onJump={jump} onClear={onClearReferences} />
@@ -531,8 +558,8 @@ export function ConversationWorkspace({ conversationId, messageCount, references
         if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); if (canSend) void send() }
       }} />
     <div className="conversation-composer-tools">
-      <ModelSelector label="对话模型" models={adapter?.models ?? []} value={selectedModel?.id ?? ''} disabled={busy || modelSaving.conversation}
-        describedBy={modelErrors.conversation ? `${panelId}-conversation-model-error` : undefined} onSelect={id => { void chooseModel('conversation', id) }} />
+      {!adapter?.models.length && onConfigureModels ? <button className="cherry-model-trigger" type="button" onClick={() => configureModels(false)}><Box aria-hidden="true" />配置模型</button> : <ModelSelector label="对话模型" models={adapter?.models ?? []} value={selectedModel?.id ?? ''} disabled={busy || modelSaving.conversation}
+        describedBy={modelErrors.conversation ? `${panelId}-conversation-model-error` : undefined} onSelect={id => { void chooseModel('conversation', id) }} />}
       {references.length > 0 && !!adapter?.skills.length && <Select.Root value={skillId || 'default'} onValueChange={value => setSkillId(value === 'default' ? '' : value)} disabled={busy}>
         <Select.Trigger aria-label="对话技能" className="cherry-model-trigger cherry-skill-trigger"><FileText aria-hidden="true" /><Select.Value /><Select.Icon><ChevronDown /></Select.Icon></Select.Trigger>
         <Select.Portal><Select.Content className="cherry-skill-menu" position="popper" side="top" sideOffset={8} onEscapeKeyDown={event => event.stopPropagation()}><Select.Viewport>
@@ -548,7 +575,7 @@ export function ConversationWorkspace({ conversationId, messageCount, references
   </form>
   const chatControl = <button ref={chatAnchor} type="button" className="conversation-analysis-trigger conversation-chat-trigger" aria-expanded={panelOpen} aria-controls={panelId}
     aria-label="AI 对话" title="AI 对话" onClick={() => setPanelOpen(true)}><MessageCircle aria-hidden="true" /><span>AI 对话</span></button>
-  return <div className={`conversation-workspace${panelOpen ? ' has-ai-panel' : ''}`}>
+  return <div style={chatPane.style} className={`conversation-workspace${chatPane.dragging ? ' pane-resizing' : ''}${panelOpen ? ' has-ai-panel' : ''}`}>
     <div ref={source} className="conversation-source" inert={panelOpen && narrow}>{children({ analysisControl, chatControl, composer: null, panelOpen })}</div>
     <aside ref={aside} id={panelId} className="conversation-ai-panel" aria-label="AI 对话" role="complementary"
       inert={!panelOpen} aria-hidden={!panelOpen} onKeyDown={event => {
@@ -558,32 +585,53 @@ export function ConversationWorkspace({ conversationId, messageCount, references
           else closePanel()
         }
       }}>
+      {panelOpen && !narrow && chatPane.divider}
       <header className="conversation-ai-header"><button ref={historyAnchor} type="button" className="conversation-icon-button" aria-label={threadListOpen ? '收起对话列表' : '显示对话列表'} aria-expanded={threadListOpen} onClick={() => setThreadListOpen(value => !value)}><PanelLeft aria-hidden="true" /></button>
         <h2>AI 对话</h2><button type="button" className="conversation-icon-button" aria-label="新建 AI 对话" title="新建 AI 对话" disabled={!adapter?.createThread || threadCreating || threadListLoading} onClick={() => { void newThread() }}><SquarePen aria-hidden="true" /></button>
         <button type="button" className="conversation-icon-button" aria-label="关闭 AI 对话" onClick={closePanel}><X aria-hidden="true" /></button></header>
       <div className="conversation-ai-body">
       {threadListOpen && <button type="button" className="conversation-thread-scrim" aria-label="关闭对话列表" tabIndex={-1} onClick={() => { setThreadListOpen(false); historyAnchor.current?.focus() }} />}
       {threadListOpen && <nav className="conversation-thread-list" aria-label="AI 对话列表">
-        {threads.map(thread => <button type="button" key={thread.id} title={thread.title} disabled={threadCreating} aria-current={thread.id === threadId ? 'true' : undefined} onClick={() => {
-          if (thread.id !== threadId) activateThread(thread.id)
-          setThreadListOpen(false)
-          historyAnchor.current?.focus()
-        }}><MessageCircle aria-hidden="true" /><span>{thread.title}</span></button>)}
-        {!threads.length && !threadListLoading && <p className="conversation-state-copy">暂无对话</p>}
+        {threads.map(thread => <ManagedRow key={thread.id} item={thread} scope={`threads-${conversationId}`} active={thread.id === threadId}
+          disabled={threadCreating} arrange={adapter?.arrangeThread && (async change => {
+            await adapter.arrangeThread!(conversationId, change)
+            const updated = await adapter.listThreads!(conversationId)
+            if (alive.current) setThreads(updated)
+          })} remove={adapter?.deleteThread && (async () => {
+            await adapter.deleteThread!(conversationId, thread.id)
+            if (!alive.current) return
+            const remaining = threads.filter(item => item.id !== thread.id)
+            setThreads(items => items.filter(item => item.id !== thread.id))
+            if (activeThread.current === thread.id) activateThread(remaining[0]?.id)
+            threadDrafts.current.delete(thread.id)
+            threadTurns.current.delete(thread.id)
+            threadScrolls.current.delete(thread.id)
+            threadReferences.current.delete(thread.id)
+          })} onSelect={() => {
+            if (thread.id !== threadId) activateThread(thread.id)
+            setThreadListOpen(false)
+            historyAnchor.current?.focus()
+          }}><MessageCircle aria-hidden="true" /><span>{thread.title}</span></ManagedRow>)}
+        {threadListError && <p role="alert" className="conversation-error">{threadListError} <button type="button" className="conversation-text-button" onClick={() => setThreadListAttempt(value => value + 1)}>重新加载对话</button></p>}
+        {!threads.length && !threadListLoading && adapter?.createThread && <button className="first-conversation" type="button" disabled={threadCreating} onClick={() => void newThread(true).catch(cause => { if (alive.current) setThreadListError(errorText(cause)) })}>
+          <SquarePen aria-hidden="true" />开始新对话
+        </button>}
       </nav>}
       <div className="conversation-thread-content" inert={threadListOpen}>
-      {threadListError && <div className="conversation-thread-error" role="alert"><p>{threadListError}</p><button type="button" className="conversation-text-button" onClick={() => setThreadListAttempt(value => value + 1)}>重新加载对话</button></div>}
+      {!threadListOpen && threadListError && <div className="conversation-thread-error" role="alert"><p>{threadListError}</p><button type="button" className="conversation-text-button" onClick={() => setThreadListAttempt(value => value + 1)}>重新加载对话</button></div>}
       <div ref={scroll} className="conversation-ai-timeline" role="log" aria-label="AI 对话记录" aria-live="polite" onScroll={() => {
         if (scroll.current) atEnd.current = scroll.current.scrollHeight - scroll.current.scrollTop - scroll.current.clientHeight < 64
       }}>
         <div ref={transcript}>
         {restoring && <p role="status" className="conversation-state-copy">正在恢复对话…</p>}
         {restoreError && <p role="alert" className="conversation-error">{restoreError}</p>}
-        {!turns.length && !restoring && !threadListLoading && <div className="conversation-chat-empty"><MessageCircle aria-hidden="true" /><p>开始新对话</p></div>}
+        {!threadListOpen && !turns.length && !restoring && !threadListLoading && <div className="conversation-chat-empty">
+          <MessageCircle aria-hidden="true" /><strong>你想从这段聊天里了解什么？</strong><p>直接写下问题，或从原文选择想讨论的消息。</p>
+        </div>}
         {turns.map(turn => <div className="conversation-turn" key={turn.request.requestId ?? turn.id}>
-          <div className="conversation-user-turn"><p>{turn.request.prompt}</p><References references={turn.request.references} onJump={jump} />
-            {!turn.request.references.length && !!turn.referenceIds?.length && <span className="conversation-state-copy">{turn.referenceIds.length} 条参考消息</span>}</div>
-          <div className="conversation-assistant-turn"><div className="conversation-answer-label"><MessageCircle aria-hidden="true" /><strong title={[turnModel(turn).label, turnModel(turn).model].filter(Boolean).join(' | ')}>{turnModel(turn).label}</strong>{turn.status === 'running' && <span>正在回答…</span>}</div>
+          <div className="conversation-user-turn"><p>{turn.request.prompt}</p><References references={turn.request.references} savedIds={turn.referenceIds} onJump={jump} /></div>
+          <div className="conversation-assistant-turn"><div className="conversation-answer-label"><MessageCircle aria-hidden="true" /><strong title={[turnModel(turn).label, turnModel(turn).model].filter(Boolean).join(' | ')}>{turnModel(turn).label}</strong></div>
+            {turn.status === 'running' && !turn.text && <p className="conversation-waiting" role="status">正在回答…</p>}
             {turn.text && <AnswerContent id={turn.request.requestId ?? String(turn.id)} text={turn.text} status={turn.status} />}
             {turn.status === 'failed' && <div role="alert"><p className="conversation-error">{turn.error}</p><button type="button" className="conversation-text-button" disabled={busy} onClick={() => { void send(turn) }}>重试回答</button></div>}
             {turn.status === 'stopped' && <p className="conversation-state-copy">已停止回答。</p>}

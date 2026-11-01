@@ -1,8 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import type { ConversationAiAdapter } from './types'
 import { ConversationReader } from '../conversations'
 import { createPreviewClient } from '../../data/preview-client'
+import App from '../../App'
 
 async function conversation(id = 'c') {
   const client = createPreviewClient([{ id, title: '选择模式示例', messages: [
@@ -13,6 +15,65 @@ async function conversation(id = 'c') {
 }
 
 describe('阅读与消息选择模式', () => {
+  it('跨页定位未完成又点击当前页引用时，以最后点击的引用为准', async () => {
+    const user = userEvent.setup()
+    const client = createPreviewClient([{ id: 'c', title: '连续核对', messages: Array.from({ length: 110 }, (_, i) => ({
+      id: String(i + 1), sender: '小林', text: `原文 ${i + 1}`,
+    })) }])
+    let release!: () => void
+    const delayed = new Promise<void>(resolve => { release = resolve })
+    const find = client.locateSource
+    const locate = vi.spyOn(client, 'locateSource').mockImplementation(async input => {
+      if (input.messageId === '110') await delayed
+      return find(input)
+    })
+    const adapter: ConversationAiAdapter = {
+      models: [], skills: [], respond: vi.fn(), analyze: vi.fn(),
+      restoreThread: async () => ['110', '1'].map(id => ({ id, requestId: id, prompt: `核对 ${id}`,
+        referenceIds: [id], modelId: 'm', text: '回答', state: 'completed' })),
+    }
+    render(<App client={client} conversationAiAdapter={adapter} />)
+    await user.click(screen.getByRole('button', { name: '展开会话列表' }))
+    await user.click(await screen.findByRole('button', { name: '连续核对' }))
+    await user.click(screen.getByRole('button', { name: 'AI 对话' }))
+    const [offPage, onPage] = await within(screen.getByRole('log')).findAllByRole('button', { name: '1 条引用' })
+    await user.click(offPage)
+    expect(locate).toHaveBeenCalledWith({ conversationId: 'c', messageId: '110' })
+    await user.click(onPage)
+    await act(async () => { release(); await delayed })
+    expect(document.querySelector('[data-message-id="1"]')).toHaveFocus()
+    expect(document.querySelectorAll('.message-reference-target')).toHaveLength(1)
+    expect(document.querySelector('.message-reference-target')).toHaveAttribute('data-message-id','1')
+  })
+
+  it('恢复后的 19 条引用可以重试定位，只高亮真实引用编号，后加载的消息保留高亮', async () => {
+    const user = userEvent.setup()
+    const ids = Array.from({ length: 19 }, (_, index) => String(index * 2 + 1))
+    const client = createPreviewClient([{ id: 'c', title: '跨页核对', messages: Array.from({ length: 40 }, (_, index) => ({
+      id: String(index + 1), sender: '小林', text: `消息 ${index + 1}`,
+    })) }])
+    const { items } = await client.readMessages({ conversationId: 'c', direction: 'after' })
+    const adapter: ConversationAiAdapter = {
+      models: [], skills: [], respond: vi.fn(), analyze: vi.fn(),
+      restoreThread: async () => [{ id: '1', requestId: 'r', prompt: '一起核对', referenceIds: ids, modelId: 'm', text: '回答', state: 'completed' }],
+    }
+    const locate = vi.fn().mockResolvedValueOnce(false).mockImplementation(async () => {
+      view.rerender(reader(items.slice(0, 9)))
+      return true
+    })
+    const reader = (messages: typeof items) => <ConversationReader conversation={{ id: 'c', title: '跨页核对', messages }}
+      aiAdapter={adapter} onLocateMessageId={locate} />
+    const view = render(reader(items.slice(-2)))
+    await user.click(screen.getByRole('button', { name: 'AI 对话' }))
+    await user.click(await screen.findByRole('button', { name: '19 条引用' }))
+    await user.click(await screen.findByRole('button', { name: '重试定位' }))
+    expect(locate).toHaveBeenCalledTimes(2)
+    expect(document.querySelector('[data-message-id="1"]')).toHaveFocus()
+    expect(document.querySelectorAll('.message-reference-target')).toHaveLength(5)
+    view.rerender(reader(items))
+    expect(Array.from(document.querySelectorAll<HTMLElement>('.message-reference-target'), element => element.dataset.messageId)).toEqual(ids)
+  })
+
   it('默认阅读不添加引用，显式开启后才能选择，退出保留引用和草稿', async () => {
     const user = userEvent.setup()
     render(<ConversationReader conversation={await conversation()} />)
@@ -37,9 +98,9 @@ describe('阅读与消息选择模式', () => {
     const first = await conversation()
     const view = render(<ConversationReader conversation={first} />)
     await user.click(screen.getByRole('button', { name: '选择消息' }))
-    await user.click(screen.getByRole('button', { name: '会话分析' }))
+    await user.click(screen.getByRole('button', { name: '整理成记忆' }))
     await user.keyboard('{Escape}')
-    expect(screen.queryByRole('region', { name: '会话分析状态' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: '记忆生成状态' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: '退出选择' })).toBeInTheDocument()
     fireEvent.keyDown(screen.getByRole('region', { name: '聊天记录' }), { key: 'Escape' })
     expect(screen.getByRole('button', { name: '选择消息' })).toHaveAttribute('aria-pressed', 'false')

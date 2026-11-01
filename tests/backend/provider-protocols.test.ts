@@ -41,13 +41,16 @@ const cases = [
   { protocol: 'google-generative-ai', prefix: '/v1beta', path: '/v1beta/models/example-model:streamGenerateContent?alt=sse', header: 'x-goog-api-key', credential: '!literal-$key', body: 'contents', events: [{ candidates: [{ content: { role: 'model', parts: [{ text: '收到' }] }, finishReason: 'STOP' }], usageMetadata: { promptTokenCount: 12, candidatesTokenCount: 3, cachedContentTokenCount: 2, totalTokenCount: 15 } }] },
 ]
 
-test.each(cases)('$protocol sends its native request and reports actual usage', async fixture => {
-  const { directory } = await setup()
+test.each(cases)('$protocol saved as the default of a multi-endpoint provider sends its native request and reports actual usage', async fixture => {
+  const { directory, service, ai } = await setup()
   const http = await server((request, response) => {
     if (request.path !== fixture.path && !(fixture.protocol === 'anthropic-messages' && request.path === `${fixture.path}?beta=true`)) { response.writeHead(400); response.end('{}'); return }
     events(response, fixture.events)
   })
-  const model = { id: 'example', label: '示例模型', model: 'example-model', protocol: fixture.protocol, baseUrl: http.base + fixture.prefix, contextWindow: 32000, maxTokens: 1000, version: 1, enabled: true, hasCredential: true } as AiModel
+  const endpointUrls = Object.fromEntries(cases.map(item => [item.protocol, item.protocol === fixture.protocol ? http.base + fixture.prefix : http.base + '/unused']))
+  const provider = await service.saveProvider({ name: '多端点网关', protocol: fixture.protocol as ProviderInput['protocol'], baseUrl: http.base + fixture.prefix, endpointUrls, enabled: true, apiKey: '!literal-$key' })
+  const configured = await service.saveModel({ providerId: provider.id, label: '示例模型', model: 'example-model', contextWindow: 32000, maxTokens: 1000, enabled: true })
+  const model = ai.modelSecret(configured.id).model
   const result = await new PiRuntime(directory).run({ key: fixture.protocol, model, apiKey: '!literal-$key', systemPrompt: '示例系统提示', prompt: '示例问题' }, { signal: AbortSignal.timeout(10000), onText() {} }).catch(error => { throw new Error(`${error.message}; requested ${http.requests.map(request => request.path).join(',')}`) })
   expect(result.text).toBe('收到')
   expect(http.requests).toHaveLength(1)
@@ -148,6 +151,18 @@ test.each(cases)('$protocol retains unknown usage, rejects service failures and 
   await expect(cancelled).rejects.not.toHaveProperty('checkpoint')
   expect(http.requests).toHaveLength(3)
 }, 20000)
+
+test('the runtime distinguishes an upstream context limit from connection errors without exposing server text', async () => {
+  const { directory } = await setup()
+  const http = await server((_request, response) => {
+    response.writeHead(400, { 'content-type': 'application/json' })
+    response.end(JSON.stringify({ error: { code: 'context_length_exceeded', message: 'Your input exceeds the context window of this model. PRIVATE_FIXTURE' } }))
+  })
+  const model: AiModel = { id: 'example', label: '容量测试', model: 'fixture', version: 1, baseUrl: http.base + '/v1', enabled: true, hasCredential: false, contextWindow: 32000, maxTokens: 1000 }
+  await expect(new PiRuntime(directory).run({ key: 'overflow', model, prompt: '虚构', systemPrompt: '测试' }, { signal: AbortSignal.timeout(10000), onText() {} }))
+    .rejects.toMatchObject({ code: 'MODEL_CONTEXT_LIMIT', action: expect.not.stringContaining('PRIVATE_FIXTURE') })
+  expect(http.requests).toHaveLength(1)
+})
 
 test('repeated native page cursors fail without returning a partial catalog or changing configuration', async () => {
   const http = await server((_request, response) => { response.setHeader('content-type', 'application/json'); response.end(JSON.stringify({ models: [{ name: 'models/first' }], nextPageToken: 'same' })) })

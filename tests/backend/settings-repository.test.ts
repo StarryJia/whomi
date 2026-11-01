@@ -3,7 +3,7 @@ import { openStore } from '../../electron/data/db/open'
 import { createAiRepository } from '../../electron/data/ai/repository'
 import { createSettingsRepository } from '../../electron/data/settings/repository'
 import { temporaryStore } from './helpers'
-import { defaultProcessing } from '../../src/shared/settings-contract'
+import { defaultProcessing, presetAccountId } from '../../src/shared/settings-contract'
 import { purgeConversation } from '../../electron/data/db/purge'
 
 const cleanup: (() => void)[] = []
@@ -19,6 +19,69 @@ async function setup() {
 }
 const providerInput = { name: '示例服务', baseUrl: 'http://127.0.0.1:1234/v1', enabled: true }
 const modelInput = { label: '示例模型', model: 'example-model', contextWindow: 4096, maxTokens: 512, enabled: true }
+
+test('custom provider retains each endpoint and built-in logo, rerouting only when its default changes', async () => {
+  const { settings, ai } = await setup()
+  const original = await settings.saveProvider(providerInput, 'encrypted-original')
+  const model = await settings.saveModel({ ...modelInput, providerId: original.id })
+  const add = { ...providerInput, id: original.id, avatarId: 'deepseek', endpointUrls: {
+    'openai-completions': providerInput.baseUrl, 'anthropic-messages': 'https://anthropic.example'
+  } }
+  const updated = await settings.saveProvider(add)
+  expect(updated).toMatchObject({ avatarId: 'deepseek', endpointUrls: add.endpointUrls, hasCredential: true })
+  expect(settings.get().models[0].version).toBe(model.version)
+  await settings.saveProvider({ ...add, baseUrl: add.endpointUrls['anthropic-messages'], protocol: 'anthropic-messages' })
+  expect(ai.modelSecret(model.id).model).toMatchObject({ protocol: 'anthropic-messages', baseUrl: 'https://anthropic.example' })
+  expect(ai.modelSecret(model.id, model.version).model).toMatchObject({ baseUrl: providerInput.baseUrl })
+  await expect(settings.saveProvider({ ...add, endpointUrls: { ...add.endpointUrls, 'google-generative-ai': 'file:///invalid' } })).rejects.toMatchObject({ code: 'INVALID_PROVIDER' })
+  await expect(settings.saveProvider({ ...add, avatarId: '../invalid' })).rejects.toMatchObject({ code: 'INVALID_PROVIDER' })
+  expect(settings.providerSecret(original.id).encryptedKey).toBe('encrypted-original')
+})
+
+test('configuring a preset preserves same-name accounts and model choices across restart', async () => {
+  const { settings, store, temp, write } = await setup()
+  const custom = await settings.saveProvider(providerInput, 'custom-secret')
+  const model = await settings.saveModel({ ...modelInput, providerId: custom.id })
+  await settings.selectModel('conversation', model.id)
+
+  const preset = await settings.saveProvider({ ...providerInput, presetId: 'openai' }, 'preset-secret')
+  expect(preset.id).toBe(presetAccountId('openai'))
+  expect(preset.id).not.toBe(custom.id)
+  store.close()
+  const reopened = openStore(temp.path)
+  cleanup.push(() => reopened.close())
+  const fresh = createSettingsRepository(reopened, write)
+  await fresh.initialize()
+  expect(fresh.get().providers).toHaveLength(2)
+  expect(fresh.get().selectedModels.conversation).toBe(model.id)
+  expect(fresh.get().models.map(item => item.id)).toEqual([model.id])
+  expect(JSON.stringify(fresh.get())).not.toContain('-secret')
+
+  await fresh.saveProvider({ ...providerInput, id: preset.id, name: '改名后' })
+  expect(fresh.providerSecret(preset.id).encryptedKey).toBe('preset-secret')
+  await fresh.removeProvider(preset.id)
+  expect(fresh.get().providers.map(item => item.id)).toEqual([custom.id])
+  expect(fresh.providerSecret(custom.id).encryptedKey).toBe('custom-secret')
+  const recreated = await fresh.saveProvider({ ...providerInput, presetId: 'openai' })
+  expect(recreated).toMatchObject({ id: preset.id, hasCredential: false })
+})
+
+test('duplicate preset activation cannot overwrite a saved endpoint or key', async () => {
+  const { settings } = await setup()
+  const input = { ...providerInput, presetId: 'openai' }
+  const [first, stale] = await Promise.allSettled([
+    settings.saveProvider(input, 'first-key'),
+    settings.saveProvider({ ...input, baseUrl: 'https://other.example/v1' }, 'stale-key'),
+  ])
+  expect(first.status).toBe('fulfilled')
+  expect(stale).toMatchObject({ status: 'rejected', reason: { code: 'DUPLICATE_PROVIDER' } })
+  const id = presetAccountId(input.presetId)
+  await expect(settings.saveProvider({ ...input, id })).rejects.toMatchObject({ code: 'INVALID_PROVIDER' })
+  await expect(settings.saveProvider({ ...input, presetId: 'not-a-cherry-preset' })).rejects.toMatchObject({ code: 'INVALID_PROVIDER' })
+  await expect(settings.saveProvider({ ...input, presetId: 'comfyui', protocol: 'openai-completions' })).rejects.toMatchObject({ code: 'INVALID_PROVIDER' })
+  expect(settings.get().providers).toHaveLength(1)
+  expect(settings.providerSecret(id)).toMatchObject({ provider: { baseUrl: input.baseUrl }, encryptedKey: 'first-key' })
+})
 
 test('independent maximum input and output metadata remains valid within the context ceiling', async () => {
   const { settings, ai } = await setup(), provider = await settings.saveProvider(providerInput)
@@ -127,7 +190,7 @@ test('analysis processing is pinned per task and removed with its conversation',
   await settings.claimProcessing(task.id, 'first-processing')
   await expect(settings.claimProcessing(task.id, 'different-processing')).rejects.toMatchObject({ code: 'PROCESSING_CHANGED' })
   await expect(settings.claimProcessing('999', 'first-processing')).rejects.toMatchObject({ code: 'INVALID_TASK' })
-  await ai.commitBatch(task.id, { index: 0, messageIds: ['1'], report: { summary: '示例结果', observations: [{ text: '示例观察', evidenceMessageIds: ['1'], limitations: '示例范围' }], limitations: '示例范围' }, usage: {} })
+  await ai.commitBatch(task.id, { index: 0, messageIds: ['1'], report: { events: [{ key: '示例', text: '示例观察', evidenceMessageIds: ['1'], signals: [] }] }, usage: {} })
   store.writer.prepare('DELETE FROM settings_analysis_processing WHERE task_id=?').run(BigInt(task.id))
   await expect(settings.claimProcessing(task.id, 'new-version')).rejects.toMatchObject({ code: 'PROCESSING_CHANGED' })
   purgeConversation(store, '1')
@@ -160,4 +223,88 @@ test('provider images accept only bounded local raster data and cannot discard s
     expect(await settings.saveProvider({ ...providerInput, id: provider.id, image }).then(() => 'saved', error => error.code)).toBe('INVALID_PROVIDER')
   }
   expect(settings.get()).toEqual(before)
+})
+
+
+test('subscription models keep their account and version on refresh, and reject editing the authorization endpoint', async () => {
+  const { settings, ai } = await setup()
+  const providerId = 'cherry:openai-codex'
+  await expect(settings.saveProvider({ ...providerInput, presetId: 'openai-codex' })).rejects.toMatchObject({ code: 'INVALID_PROVIDER' })
+  await settings.setAccountConnection('openai-codex', 'account-one', true)
+  const model = await settings.saveModel({ ...modelInput, providerId })
+  expect(ai.modelSecret(model.id).model).toMatchObject({ baseUrl: 'https://api.openai.com/v1', planAccount: 'account-one' })
+  expect(ai.modelSecret(model.id).encryptedKey).toBeNull()
+  await settings.setAccountConnection('openai-codex', 'account-one')
+  expect(ai.modelSecret(model.id).model.version).toBe(model.version)
+  await expect(settings.saveProvider({ ...providerInput, id: providerId })).rejects.toMatchObject({ code: 'INVALID_PROVIDER' })
+  await settings.setAccountConnection('openai-codex', null)
+  expect(ai.modelSecret(model.id).model.enabled).toBe(false)
+  await settings.setAccountConnection('openai-codex', 'account-two', true)
+  expect(ai.modelSecret(model.id).model).toMatchObject({ enabled: true, planAccount: 'account-two' })
+  expect(ai.modelSecret(model.id, model.version).model.planAccount).toBe('account-one')
+})
+
+
+test('other subscription accounts retain independent bindings and never accept custom hosts', async () => {
+  const { settings, ai } = await setup()
+  for (const [id, host] of [['grok-cli', 'https://cli-chat-proxy.grok.com/v1'], ['copilot', 'https://api.githubcopilot.com']] as const) {
+    await settings.setAccountConnection(id, 'bound-' + id, true)
+    const m = await settings.saveModel({ ...modelInput, providerId: 'cherry:' + id })
+    expect(ai.modelSecret(m.id).model).toMatchObject({ baseUrl: host, planProvider: id, planAccount: 'bound-' + id })
+    await expect(settings.saveProvider({ ...providerInput, id: 'cherry:' + id })).rejects.toMatchObject({ code: 'INVALID_PROVIDER' })
+  }
+  await settings.setAccountConnection('grok-cli', null)
+  expect(settings.get().providers.find(p => p.id === 'cherry:copilot')?.enabled).toBe(true)
+})
+
+test('reauthorizing the original account resumes its saved task; a replacement account cannot', async () => {
+  const { settings, ai, store } = await setup()
+  store.writer.exec(`INSERT INTO conversations(id,title,kind,created_at_ms) VALUES(1,'读书','direct',0);
+    INSERT INTO source_conversations(id,conversation_id,platform,namespace) VALUES(1,1,'test','test');
+    INSERT INTO memberships(id,conversation_id,source_conversation_id,source_key,display_name) VALUES(1,1,1,'me','本人');
+    INSERT INTO self_confirmations(conversation_id,member_id,status,source) VALUES(1,1,'confirmed','user');
+    INSERT INTO messages(id,conversation_id,member_id,sender_kind,sender_name,kind,text,ordinal) VALUES(1,1,1,'member','本人','text','翻到下一页',0)`)
+  await settings.setAccountConnection('openai-codex', 'account-one', true)
+  const model = await settings.saveModel({ ...modelInput, providerId: 'cherry:openai-codex' })
+  const prep = await ai.prepareAnalysis({ conversationId: '1', modelId: model.id })
+  const task = await ai.confirmAnalysis({ token: prep.token, requestId: 'resume-reauth' })
+  await ai.saveAnalysis(task.id, { state: 'stopped' })
+  await settings.setAccountConnection('openai-codex', null)
+  await settings.setAccountConnection('openai-codex', 'account-two', true)
+  await expect(ai.resumeAnalysis(task.id)).rejects.toMatchObject({ code: 'MODEL_CHANGED' })
+  await settings.setAccountConnection('openai-codex', null)
+  await settings.setAccountConnection('openai-codex', 'account-one', true)
+  expect((await ai.resumeAnalysis(task.id)).id).toBe(task.id)
+})
+
+test('local subscription usage follows the original account/model version and never fills missing counters', async () => {
+  const { store, settings, ai } = await setup()
+  store.writer.exec(`INSERT INTO conversations(id,title,kind,created_at_ms) VALUES(1,'用量测试','direct',0);
+    INSERT INTO source_conversations(id,conversation_id,platform,namespace) VALUES(1,1,'example','usage');
+    INSERT INTO memberships(id,conversation_id,source_conversation_id,source_key,display_name) VALUES(1,1,1,'me','本人');
+    INSERT INTO self_confirmations(conversation_id,member_id,status,source) VALUES(1,1,'confirmed','user');
+    INSERT INTO messages(id,conversation_id,member_id,sender_kind,sender_name,kind,text,ordinal) VALUES(1,1,1,'member','本人','text','虚构',0)`)
+  const provider = 'openai-codex'
+  await settings.setAccountConnection(provider, 'account-a', true)
+  const model = await settings.saveModel({ ...modelInput, providerId: presetAccountId(provider) })
+  const thread = await ai.createThread('1')
+  const turn = await ai.createTurn({ threadId: thread.id, requestId: 'a', prompt: '虚构', referenceIds: [], modelId: model.id })
+  await ai.recordUsage({ ownerKind: 'turn', ownerId: turn.id, requestId: 'first', usage: { incomplete: true } })
+  await ai.recordUsage({ ownerKind: 'turn', ownerId: turn.id, requestId: 'first', usage: { totalInputTokens: 20, inputTokens: 15, cacheReadTokens: 5, outputTokens: 0 } })
+  await ai.saveTurn(turn.id, { state: 'completed', text: '虚构' })
+  const prep = await ai.prepareAnalysis({ conversationId:'1', modelId:model.id })
+  const task = await ai.confirmAnalysis({token:prep.token,requestId:'analysis-a'})
+  await ai.recordUsage({ ownerKind:'analysis', ownerId:task.id, requestId:'second', usage:{ outputTokens:3, incomplete:true } })
+  await ai.saveAnalysis(task.id, { state:'stopped' })
+  await settings.setAccountConnection(provider, 'account-b', true)
+  const later = await ai.createTurn({ threadId:thread.id, requestId:'b', prompt:'虚构', referenceIds:[], modelId:model.id })
+  await ai.recordUsage({ownerKind:'turn', ownerId:later.id, requestId:'b1', usage:{totalInputTokens:0,outputTokens:0}})
+  expect(settings.accountUsage(provider,'account-a')).toEqual({requests:2, inputTokens:20, outputTokens:3, partial:true})
+  expect(settings.accountUsage(provider,'account-b')).toEqual({requests:1, inputTokens:0, outputTokens:0, partial:false})
+  expect(settings.accountUsage('grok-cli','account-a')).toEqual({requests:0,inputTokens:null,outputTokens:null,partial:false})
+  await ai.recordUsage({ownerKind:'turn', ownerId:later.id, requestId:'b1', usage:{incomplete:true}})
+  expect(settings.accountUsage(provider,'account-b')).toEqual({requests:1,inputTokens:null,outputTokens:null,partial:true})
+  store.writer.prepare("UPDATE ai_model_versions SET data=json_remove(data,'$.planProvider') WHERE model_id=? AND version=1").run(model.id)
+  expect(settings.accountUsage(provider,'account-a')).toEqual({requests:0,inputTokens:null,outputTokens:null,partial:false})
+
 })

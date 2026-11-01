@@ -77,9 +77,9 @@ test('desktop shell opens at a readable size, preserves bounds, and shows the re
     await page.screenshot({ path: join(evidence, 'model-menu.png') })
     await page.keyboard.press('Escape')
     await page.getByRole('button', { name: '关闭 AI 对话' }).click()
-    await page.getByRole('button', { name: '会话分析', exact: true }).click()
-    await expect(page.getByRole('button', { name: '确认分析' })).toBeEnabled()
-    await expect(page.getByText('根据当前会话的全部聊天内容，生成一份分析报告。')).toBeVisible()
+    await page.getByRole('button', { name: '整理成记忆', exact: true }).click()
+    await expect(page.getByRole('button', { name: '生成记忆' })).toBeEnabled()
+    await expect(page.locator('.analysis-description').filter({ hasText: '界面验证 · 虚构会话' })).toBeVisible()
     await page.screenshot({ path: join(evidence, 'analysis-confirmation.png') })
   } finally {
     await application?.close()

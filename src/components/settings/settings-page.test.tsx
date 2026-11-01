@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { defaultProcessing, type SettingsApi, type SettingsSnapshot } from '../../shared/settings-contract'
@@ -7,6 +7,8 @@ import { SettingsPage } from './settings-page'
 function setup(withProvider = true, withModel = false) {
   let state: SettingsSnapshot = { providers: withProvider ? [{ id: 'p1', name: '本地服务', baseUrl: 'http://127.0.0.1:1234/v1', enabled: true, hasCredential: true }] : [], models: withModel ? [{ id: 'm1', providerId: 'p1', label: '测试模型', model: 'alpha', baseUrl: 'http://127.0.0.1:1234/v1', enabled: true, hasCredential: true, contextWindow: 8192, maxTokens: 1024, version: 1 }] : [], processing: structuredClone(defaultProcessing), selectedModels: {}, debug: false }
   const api: SettingsApi = {
+    getAccountUsage: async () => ({ requests:0, inputTokens:null, outputTokens:null, partial:false }),
+    getAccountStatus: async () => ({ state: 'disconnected' }), signInAccount: async () => ({ state: 'disconnected' }), cancelAccountSignIn: async () => {}, signOutAccount: async () => {}, setAccountEnabled: async () => {},
     get: vi.fn(async () => structuredClone(state)),
     saveProvider: vi.fn(async input => { const saved = { ...input, id: input.id ?? 'p2', hasCredential: input.apiKey === null ? false : true }; state.providers = [...state.providers.filter(p => p.id !== saved.id), saved]; return saved }),
     removeProvider: vi.fn(async id => { state.providers = state.providers.filter(p => p.id !== id) }),
@@ -30,14 +32,35 @@ beforeEach(() => {
 })
 
 describe('正式设置', () => {
+  it('自定义服务商可选择并重置头像，配置两个地址后用指定默认地址保存', async () => {
+    const { api, user } = setup(false)
+    await user.click(await screen.findByRole('button', { name: '添加服务商' }))
+    const form = within(screen.getByRole('dialog'))
+    await user.click(form.getByRole('button', { name: '内置头像' }))
+    await user.click(screen.getByRole('button', { name: '使用 OpenAI 头像' }))
+    await user.click(form.getByRole('button', { name: '重置头像' }))
+    expect(form.getByRole('button', { name: '重置头像' })).toBeDisabled()
+    await user.type(form.getByLabelText('服务商名称'), '实验网关')
+    fireEvent.change(form.getByLabelText('OpenAI'), { target: { value: 'https://first.example/v1' } })
+    await user.type(form.getByLabelText('Anthropic'), 'bad')
+    await user.click(form.getByRole('button', { name: '保存' }))
+    expect(form.getByRole('alert')).toBeVisible()
+    fireEvent.change(form.getByLabelText('Anthropic'), { target: { value: 'https://second.example' } })
+    expect(form.getByText('https://second.example/v1/messages')).toBeVisible()
+    await user.click(form.getByRole('button', { name: '将 Anthropic 设为默认' }))
+    await user.click(form.getByRole('button', { name: '保存' }))
+    await waitFor(() => expect(api.saveProvider).toHaveBeenCalledWith(expect.objectContaining({
+      baseUrl: 'https://second.example', protocol: 'anthropic-messages',
+      endpointUrls: { 'openai-completions': 'https://first.example/v1', 'anthropic-messages': 'https://second.example' }
+    })))
+  }, 15000)
   it('服务商编辑选择文本协议并随名称保存', async () => {
     const { user, api } = setup()
     await user.click(await screen.findByRole('button', { name: '本地服务更多操作' }))
     await user.click(screen.getByRole('menuitem', { name: '编辑' }))
     const editor = screen.getByRole('dialog', { name: '编辑服务商' })
-    await user.click(within(editor).getByRole('combobox', { name: '连接协议' }))
-    expect(screen.getAllByRole('option')).toHaveLength(4)
-    await user.click(screen.getByRole('option', { name: 'Anthropic Messages' }))
+    await user.type(within(editor).getByLabelText('Anthropic'), 'https://messages.example')
+    await user.click(within(editor).getByRole('button', { name: '将 Anthropic 设为默认' }))
     await user.type(within(editor).getByLabelText('服务商名称'), ' 更新')
     await user.click(within(editor).getByRole('button', { name: '保存' }))
     await waitFor(() => expect(api.saveProvider).toHaveBeenCalledWith(expect.objectContaining({ name: '本地服务 更新', protocol: 'anthropic-messages' })))
@@ -276,7 +299,8 @@ describe('正式设置', () => {
   it('调试默认关闭，开启后读取真实诊断并复制，声明来自项目文件', async () => {
     const { api, user } = setup(false)
     await screen.findByRole('button', { name: '添加服务商' })
-    await user.click(screen.getByRole('button', { name: '关于whomi' }))
+    await user.click(screen.getByRole('button', { name: '关于 Whomi' }))
+    expect(await screen.findByText('从对话中，慢慢了解自己。')).toBeVisible()
     expect(api.getDiagnostics).not.toHaveBeenCalled()
     await user.click(screen.getByRole('switch', { name: '调试模式' }))
     await screen.findByText('win32')

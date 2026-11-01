@@ -3,7 +3,9 @@ import type { ImportSnapshot, JobId, StartImportRequest } from './import-contrac
 import type { AiApi } from './ai-contract'
 
 export type Page<T> = { items: T[]; nextCursor: string | null }
+export type ListArrangement = { id: LocalId; pinned: boolean } | { id: LocalId; targetId: LocalId; placement: 'before' | 'after' }
 export type ConversationSummary = {
+  pinned?: boolean
   id: LocalId
   title: string
   kind: 'direct' | 'group' | 'unknown'
@@ -85,6 +87,7 @@ export type DesktopMethods = ConversationQueries & {
   listMembers(conversationId: LocalId): Promise<MemberView[]>
   confirmSelf(conversationId: LocalId, memberId: LocalId | null): Promise<void>
   deleteConversation(conversationId: LocalId): Promise<void>
+  arrangeConversation(change: ListArrangement): Promise<void>
   retrySummary(conversationId: LocalId): Promise<void>
 }
 export type DesktopApi = DesktopMethods & {

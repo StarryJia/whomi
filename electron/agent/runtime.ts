@@ -4,7 +4,7 @@ import { dirname, join, resolve } from 'node:path'
 import { performance } from 'node:perf_hooks'
 import type { AgentRunInput, AgentRunResult } from './protocol'
 import type { AiUsage } from '../../src/shared/ai-contract'
-import { resolveModelLimits } from '../../src/shared/model-limits'
+import { modelContextLimit, resolveModelLimits } from '../../src/shared/model-limits'
 import { defaultModelProtocol, isModelProtocol, modelProtocolBaseUrl } from '../../src/shared/model-protocol'
 import { protocolUsage } from './protocol-usage'
 import type { ResourceLoader } from '@earendil-works/pi-coding-agent'
@@ -22,6 +22,7 @@ export class PiRuntime {
     const api = input.model.protocol ?? defaultModelProtocol
     if (!isModelProtocol(api)) throw failure('INVALID_MODEL', '请选择连接协议后重试。')
     const { createAgentSession, createExtensionRuntime, ModelRuntime, SettingsManager, SessionManager } = await import('@earendil-works/pi-coding-agent')
+    const { isContextOverflow } = await import('@earendil-works/pi-ai')
     options.signal.throwIfAborted()
     const agentDir = join(this.directory, 'ai-runtime')
     const key = createHash('sha256').update(input.key).digest('hex')
@@ -85,6 +86,7 @@ export class PiRuntime {
     let reported: AiUsage = {}
     let final: { input: number; output: number; cacheRead: number; cacheWrite: number } | undefined
     let stopReason: string | undefined
+    let contextExceeded = false
     const started = performance.now()
     const startedAt = Date.now()
     const previousObserver = session.agent.onProviderStreamEvent
@@ -103,6 +105,7 @@ export class PiRuntime {
       if (event.type === 'message_end' && event.message.role === 'assistant') {
         final = event.message.usage
         stopReason = event.message.stopReason
+        contextExceeded = stopReason === 'error' && isContextOverflow(event.message)
       }
     })
     const abort = () => { void session.abort() }
@@ -119,6 +122,7 @@ export class PiRuntime {
       if (options.signal.aborted) throw abortError()
       await session.prompt(input.prompt, { expandPromptTemplates: false })
       if (options.signal.aborted || stopReason === 'aborted') throw abortError()
+      if (contextExceeded) throw modelContextLimit()
       if (!final || stopReason === 'error' || stopReason === 'pending') throw failure('MODEL_REQUEST_FAILED', '请检查模型服务后重试。')
       const usage = usageSnapshot()
       const sessionFile = manager.getSessionFile()

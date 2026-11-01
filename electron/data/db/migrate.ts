@@ -16,6 +16,13 @@ export function migrateStore(store: Pick<Store, 'writer'>): void {
       if (version < 3n) db.exec(importStateSchema)
       if (version < 4n) db.exec(aiSchema)
       if (version < 5n) migrateAiThreads(db)
+      if (version < 6n) {
+        for (const table of ['conversations', 'ai_threads']) {
+          db.exec(`ALTER TABLE ${table} ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0 CHECK(pinned IN (0,1));
+            ALTER TABLE ${table} ADD COLUMN list_rank INTEGER NOT NULL DEFAULT 0;`)
+        }
+        db.exec('CREATE INDEX conversations_list_order ON conversations(pinned DESC,list_rank,id DESC); CREATE INDEX threads_list_order ON ai_threads(conversation_id,pinned DESC,list_rank,updated_at_ms DESC,id DESC)')
+      }
       if ((db.pragma('foreign_key_check') as unknown[]).length) throw new Error('资料库迁移失败，请从备份恢复后重试。')
       db.pragma(`user_version = ${schemaVersion}`)
     }).immediate()

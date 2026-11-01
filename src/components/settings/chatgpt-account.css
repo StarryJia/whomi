@@ -1,0 +1,27 @@
+.account-login-card { display: flex; align-items: flex-start; gap: 12px; margin: 18px 0; padding: 14px; border: 1px solid #bad5fa; border-radius: 8px; background: #eff6ff; color: #18457a; font-size: 13px; }
+.account-login-card > svg { width: 18px; height: 18px; flex: none; }
+.account-login-card strong { font-weight: 600; }
+.account-login-card p { margin: 5px 0 12px; overflow-wrap: anywhere; }
+.account-login-card button { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; border: 0; border-radius: 6px; padding: 7px 12px; color: white; background: #181818; font: inherit; }
+.account-login-card button:disabled { opacity: .55; }
+.account-login-card.is-connected { color: #245a36; background: #eff9f1; border-color: #bbd9c3; }
+.account-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+
+.account-login-card .account-alternative { color: inherit; background: transparent; padding-inline: 2px; text-decoration: underline; text-underline-offset: 3px; }
+.account-device-code { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 0 13px; }
+.account-device-code code { font-size: 16px; font-weight: 650; letter-spacing: .06em; }
+.account-device-code a { color: inherit; }
+.account-empty-models { display: grid; justify-items: center; gap: 4px; padding: 38px 8px 24px; color: var(--text-muted); text-align: center; font-size: 12px; line-height: 1.5; }
+.account-empty-models svg { margin-bottom: 7px; color: #bac0c7; }
+.account-empty-models p { margin: 0; }
+
+.account-usage-card { border: 1px solid var(--line); padding: 16px 18px; border-radius: 10px; background: var(--surface); }
+.account-usage-card header, .account-usage-plan { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px; }
+.account-usage-card h3 { margin: 0; font-size: 16px; }
+.account-usage-card p { margin: 6px 0 0; font-size: 13px; color: var(--text-muted); }
+.account-usage-card .ms-error { color: var(--danger, #b42318); }
+.account-usage-card dl { display: flex; flex-wrap: wrap; gap: 16px 40px; margin: 14px 0 0; font-variant-numeric: tabular-nums; }
+.account-usage-card dt, .account-usage-plan { font-size: 13px; color: var(--text-muted); }
+.account-usage-card dd { margin: 2px 0 0; font-size: 18px; font-weight: 600; }
+.account-usage-plan { border-top: 1px solid var(--line); margin-top: 14px; padding-top: 12px; }
+.account-usage-plan a { color: var(--focus); }

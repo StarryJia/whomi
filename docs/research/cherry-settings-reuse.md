@@ -1,5 +1,9 @@
 # Cherry 服务商与模型设置复用记录
 
+Whomi 已接入同一固定提交的 67 项公开预置服务商，按上游顺序及中文名称离线展示。设置列表优先显示已配置账号，再显示未配置的模板。例如搜索 DeepSeek 可以打开「深度求索」，查看官网和密钥入口、用预填的连接信息创建自己的账号。首次保存按预设编号创建，同名自定义账号保留独立地址和密钥。删除已配置的预设账号后，目录入口重新出现。预设目录不创建或选择模型，仍从已配置服务商同步或手动添加。
+
+四种现有文本协议可承接其中的标准连接。需要专用登录、云凭据、图像等的平台仍提供资料和对应提示。协议映射、原始地址、图标与覆盖范围见[预置目录来源](../../src/vendor/cherry-providers/UPSTREAM.md)。下文“没有迁入完整服务商预设注册表”描述此前的实现。
+
 2026-10-31。本记录覆盖本轮已迁入的设置流程及必要适配。来源是实际源码阅读与改编，不是根据截图仿画；不宣称已经迁入 Cherry Studio 的全部服务商运行平台。
 
 ## 固定来源和许可证
@@ -60,3 +64,11 @@
 | 960 × 720 桌面模型列表 | [06-models-minimum-desktop.png](../../release/cherry-settings-20261031/06-models-minimum-desktop.png) |
 
 截图核对的是所迁入源码的布局、窗口尺寸和真实操作，不代表已与 Cherry 所有上游功能逐项相同。未调用付费云模型、未注入真实磁盘故障；保存失败和部分保存用可控客户端及隔离数据库回归验证。全仓最终测试由主执行者在各问题域合并后统一记录。
+
+## 0.1.7 的账号连接与自定义端点
+
+自定义服务商按上方头像、名称、密钥、端点与更多设置排布。四种文本协议各自保存根地址，切换默认协议后同步和推理使用对应地址。旧单端点直接沿用。账号预置保留 Cherry 的登录、等待、取消、退出和模型目录操作。
+
+Grok 的浏览器授权和公开模型清单、Copilot 的设备码与临时凭据交换参考同一固定版本。Whomi 各自读取公开应用标识 `WHOMI_GROK_CLIENT_ID`、`WHOMI_COPILOT_CLIENT_ID`。缺少标识时提示配置，已有标识还须获上游准入。两种服务只用本机模拟服务验收。[Grok 授权](https://github.com/CherryHQ/cherry-studio/blob/f19aa72f969b782ed72f81be80976b237ae26605/src/main/services/oauth/runtime/providers/grok.ts) · [Copilot 授权](https://github.com/CherryHQ/cherry-studio/blob/f19aa72f969b782ed72f81be80976b237ae26605/src/main/services/CopilotService.ts)
+
+OpenAI Codex 使用 OpenAI 面向开源本地应用的授权流程。浏览器显示 Whomi，请求纳入用户套餐，系统凭据保护用于本机令牌。模型同步只显示当前授权账户可见的模型。[官方接入说明](https://developers.openai.com/siwc/token-sharing-open-source) · [用量提示指南](https://developers.openai.com/siwc/ui-ux-guidelines)

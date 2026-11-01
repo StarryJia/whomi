@@ -5,6 +5,12 @@ function tableExists(db: Database, name: string): boolean {
   return !!db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?").get(name)
 }
 
+export function purgeThread(db: Database, threadId: bigint) {
+  db.prepare("DELETE FROM ai_request_usage WHERE owner_kind='turn' AND owner_id IN (SELECT id FROM ai_turns WHERE thread_id=?)").run(threadId)
+  db.prepare('DELETE FROM ai_turns WHERE thread_id=?').run(threadId)
+  db.prepare('DELETE FROM ai_threads WHERE id=?').run(threadId)
+}
+
 /**
  * 物理级联删除会话及其全部关联数据。
  */
@@ -18,18 +24,8 @@ export function purgeConversation(store: Store, conversationId: string): void {
     // 1. 清理 AI 线程与轮次用量（若表存在）
     if (tableExists(db, 'ai_threads')) {
       const threads = db.prepare('SELECT id FROM ai_threads WHERE conversation_id=?').all(id) as { id: bigint }[]
-      for (const thread of threads) {
-        if (tableExists(db, 'ai_turns')) {
-          const turns = db.prepare('SELECT id FROM ai_turns WHERE thread_id=?').all(thread.id) as { id: bigint }[]
-          for (const turn of turns) {
-            if (tableExists(db, 'ai_request_usage')) {
-              db.prepare("DELETE FROM ai_request_usage WHERE owner_kind='turn' AND owner_id=?").run(turn.id)
-            }
-          }
-          db.prepare('DELETE FROM ai_turns WHERE thread_id=?').run(thread.id)
-        }
-        db.prepare('DELETE FROM ai_threads WHERE id=?').run(thread.id)
-      }
+      for (const thread of threads) purgeThread(db, thread.id)
+
     }
 
     // 2. 清理 AI 分析任务及报告、用量（若表存在）

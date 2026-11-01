@@ -1,0 +1,10 @@
+.pane-divider { position: absolute; top: var(--desktop-titlebar-height, 0px); right: 0; bottom: 0; z-index: 3; width: 7px; cursor: col-resize; touch-action: none; user-select: none; -webkit-app-region: no-drag; }
+.pane-divider::after { content: ''; position: absolute; inset: 0 0 0 auto; width: 2px; }
+.pane-divider:hover::after, .pane-divider:focus-visible::after { background: var(--focus); }
+.pane-divider-assistant { left: 0; right: auto; }
+.pane-divider-assistant::after { inset: 0 auto 0 0; }
+.pane-divider-providers { top: 0; }
+.pane-resizing, .pane-resizing * { user-select: none; cursor: col-resize; }
+.pane-resizing > .sidebar, .pane-resizing > .conversation-ai-panel { transition: none; }
+@media(max-width:720px) { .pane-divider-providers { display: none; } }
+@media(max-width:1000px) { .pane-divider-assistant { display: none; } }

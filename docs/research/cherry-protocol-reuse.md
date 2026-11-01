@@ -28,7 +28,9 @@
 - Anthropic、Google 的分页受总响应字节、总条目数、页数和重复游标限制；拒绝重定向。目录中途失败不会返回一份伪装完整的部分结果，也不改动已保存模型。例：远端反复返回同一 `nextPageToken` 时同步报错，用户可重试或手动添加。
 - 用量按各协议实际字段计算：Responses、Chat Completions 和 Google 的输入总量包含缓存，Anthropic 的普通输入、缓存读取、缓存写入分别报告；未报告字段保持未知。例：合成响应报告输入总量 12、缓存读取 2、输出 3 时显示普通输入 10、总输入 12、输出 3；未报告用量时不显示虚构的零。
 
-Whomi 目前仍是一条服务商记录对应一个文本协议和一个接口地址。Cherry 原入口允许同一服务商配置多个端点并选择默认端点；该多端点编辑能力没有迁入。当前选择控件复用已有 Radix 选择基础并映射 Whomi 主题，不宣称是上游多端点编辑表单原样迁入。
+0.1.7 已接入自定义服务商的多端点编辑。新建使用居中弹窗，顶部圆形头像支持本地图片、内置品牌图和重置。常用的 OpenAI 与 Anthropic 根地址同时可见，展开「更多设置」可填写 OpenAI Responses 与 Google Gemini。每个字段预览该文本协议的请求路径。若填多个地址，可指定默认端点。旧的单地址配置在编辑时按原协议回填，历史模型版本仍使用先前保存的地址。
+
+例如同一虚构网关填两个地址，选择 Anthropic 为默认后，同步目录读取该地址的 `/v1/models`，连接检测按 `/v1/messages` 发起；只修改头像或另一未选端点时，当前模型版本保持不变。实测截图见[宽窗新建](../../release/provider-account-validation/custom-provider/01-wide-empty.png)和[窄窗校验](../../release/provider-account-validation/custom-provider/02-narrow-validation.png)。
 
 ## 验证证据与限制
 

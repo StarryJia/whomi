@@ -40,9 +40,9 @@ function Harness({ overview = data, saveFeedback, onImport = () => {}, onOpenSou
 describe('个人总览', () => {
   it('没有总览数据时保留诚实空状态，并提供明确的返回 Hello 操作', () => {
     render(<Harness overview={null} />)
-    expect(screen.getByText('还没有可查看的总览。')).toBeInTheDocument()
+    expect(screen.getByText('导入一段聊天，回看自己在不同关系里的习惯。')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '返回 Hello' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '选择记录' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '导入聊天记录' })).toBeInTheDocument()
     expect(screen.queryByLabelText('当前推测类型')).not.toBeInTheDocument()
   })
 
@@ -60,12 +60,12 @@ describe('个人总览', () => {
     render(<Harness />)
     expect(screen.getByLabelText('当前推测类型')).toHaveTextContent('E?F?')
     const unknown = screen.getByRole('group', { name: '实感 S / 直觉 N' })
-    expect(within(unknown).getByText('?')).toBeInTheDocument()
+    expect(within(unknown).getByText('尚待了解')).toBeVisible()
     expect(within(unknown).queryByRole('img')).not.toBeInTheDocument()
-    expect(screen.getByText('互动或独处中恢复精力。')).toBeInTheDocument()
-    expect(screen.getByText('具体经验与关联可能。')).toBeInTheDocument()
-    expect(screen.getByText('逻辑与感受在决策中的侧重。')).toBeInTheDocument()
-    expect(screen.getByText('提前安排与保留弹性。')).toBeInTheDocument()
+    expect(screen.getByRole('heading', {name:'精力来源'})).toBeInTheDocument()
+    expect(screen.getByRole('heading', {name:'理解信息'})).toBeInTheDocument()
+    expect(screen.getByRole('heading', {name:'做决定'})).toBeInTheDocument()
+    expect(screen.getByRole('heading', {name:'安排方式'})).toBeInTheDocument()
   })
 
   it('均衡偏好保留中点，汇总对应位仍为问号并解释含义', () => {
@@ -126,10 +126,10 @@ describe('个人总览', () => {
     let importCount = 0
     const { rerender } = render(<Harness overview={{ materialStatus: 'none', discoveries: [] }} onImport={() => { importCount++ }} />)
     expect(screen.queryByLabelText('当前推测类型')).not.toBeInTheDocument()
-    await userEvent.setup().click(screen.getByRole('button', { name: '选择记录' }))
+    await userEvent.setup().click(screen.getByRole('button', { name: '导入聊天记录' }))
     expect(importCount).toBe(1)
     rerender(<Harness overview={{ materialStatus: 'unanalysed', discoveries: [] }} />)
-    expect(screen.getByText('已有记录，尚未形成分析结果。')).toBeInTheDocument()
+    expect(screen.getByText('选择一段聊天，整理你们的第一份记忆。')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '开始分析' })).not.toBeInTheDocument()
   })
 })

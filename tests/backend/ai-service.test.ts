@@ -241,7 +241,7 @@ async function runBoundedAnalysis(maxInputTokens: number, text: string, senderNa
 test('analysis with a tiny declared input limit fails actionably before any model request', async () => {
   const { task, requests } = await runBoundedAnalysis(128, '示例消息')
   expect(requests).toHaveLength(0)
-  expect(task).toMatchObject({ state: 'failed', error: '模型最大输入长度不足，请增加最大输入长度或选择更大上下文的模型。' })
+  expect(task).toMatchObject({ state: 'failed', error: expect.stringContaining('原文分片超出本机最大输入长度') })
 })
 
 test('analysis does not send a message whose metadata cannot fit the declared input budget', async () => {

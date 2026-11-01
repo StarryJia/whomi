@@ -3,6 +3,7 @@ import { createServer } from 'node:http'
 import { mkdtemp, mkdir, writeFile, readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
+import { memoryModelReply } from './fixtures/memory-model.mjs'
 
 test('existing data and encrypted models survive the packaged upgrade and subsequent restart', async () => {
   test.skip(!process.env.WHOMI_OLD_EXECUTABLE || !process.env.WHOMI_PACKAGED_EXECUTABLE, '需要提供旧版与新版安装包中的可执行程序。')
@@ -12,6 +13,8 @@ test('existing data and encrypted models survive the packaged upgrade and subseq
   const evidence = resolve(`release/validation-${version}`)
   await mkdir(evidence, { recursive: true })
   const authorizations = []
+  let pauseLegacy = false
+  let legacyRequests = 0
   const server = createServer((request, response) => {
     let body = ''
     request.on('data', chunk => { body += chunk })
@@ -19,7 +22,9 @@ test('existing data and encrypted models survive the packaged upgrade and subseq
       const input = JSON.parse(body)
       authorizations.push(request.headers.authorization)
       const analysis = JSON.stringify(input.messages[0]).includes('你负责对某段会话')
-      const text = analysis ? JSON.stringify({ summary: '升级前的合成报告', observations: [{ text: '示例观察', evidenceMessageIds: ['1'], limitations: '虚构材料' }], limitations: '仅用于升级验收' }) : '升级验收合成回答'
+      const manuscript = memoryModelReply(input.messages, { title: '升级前的经历', text: '升级前保存的示例文稿。' })
+      if (pauseLegacy && (analysis || manuscript) && ++legacyRequests === 2) return
+      const text = manuscript ?? (analysis ? JSON.stringify({ summary: '升级前的合成报告', observations: [{ text: '示例观察', evidenceMessageIds: ['1'], limitations: '虚构材料' }], limitations: '仅用于升级验收' }) : '升级验收合成回答')
       response.writeHead(200, { 'Content-Type': 'text/event-stream' })
       response.write(`data: ${JSON.stringify({ id: 'upgrade', choices: [{ index: 0, delta: { content: text }, finish_reason: null }] })}\n\n`)
       response.end(`data: ${JSON.stringify({ id: 'upgrade', choices: [{ index: 0, delta: {}, finish_reason: 'stop' }], usage: { prompt_tokens: 20, completion_tokens: 10, total_tokens: 30 } })}\n\ndata: [DONE]\n\n`)
@@ -36,7 +41,7 @@ test('existing data and encrypted models survive the packaged upgrade and subseq
     }
     if(method==='probe.snapshot'){
       const hash=value=>require('node:crypto').createHash('sha256').update(JSON.stringify(value,(_key,item)=>typeof item==='bigint'?item.toString():item)).digest('hex');
-      return Object.fromEntries(['conversations','source_conversations','memberships','self_confirmations','messages','ai_models','ai_model_versions','ai_reports','ai_turns'].map(table=>[table,hash(reader.prepare('SELECT * FROM '+table+' ORDER BY 1').all())]));
+      return Object.fromEntries(['conversations','source_conversations','memberships','self_confirmations','messages','ai_models','ai_model_versions','ai_reports','ai_turns'].map(table=>[table,hash(reader.prepare('SELECT '+(table==='conversations'?'id,title,kind,created_at_ms':'*')+' FROM '+table+' ORDER BY 1').all())]));
     }
     throw Error('Unsupported');
   }`)
@@ -47,7 +52,9 @@ test('existing data and encrypted models survive the packaged upgrade and subseq
     let page = await app.firstWindow()
     await expect(page.locator('main')).toBeVisible()
     const oldInfo = await app.evaluate(({ app }) => ({ version: app.getVersion(), name: app.getName() }))
-    expect(['0.1.2', '0.1.3', '0.1.4']).toContain(oldInfo.version)
+    expect(['0.1.2', '0.1.3', '0.1.4', '0.1.5', '0.1.6', '0.1.7']).toContain(oldInfo.version)
+    const oldMemory = ['0.1.6', '0.1.7'].includes(oldInfo.version)
+    const originalReport = oldMemory ? { format: oldInfo.version === '0.1.6' ? 'memory-v2' : 'memory-v3', events: [{ title: '升级前的经历' }] } : { summary: '升级前的合成报告' }
     await app.evaluate(async () => globalThis.__whomiRuntimeProbe.request('probe.seed', null))
     const model = await page.evaluate(async baseUrl => {
       if (window.whomi.settings) {
@@ -62,6 +69,19 @@ test('existing data and encrypted models survive the packaged upgrade and subseq
     const thread = await page.evaluate(() => window.whomi.ai.openThread('1'))
     const turn = await page.evaluate(input => window.whomi.ai.sendTurn(input), { threadId: thread.id, requestId: 'upgrade-question', prompt: '升级前的问题', referenceIds: ['1'], modelId: model.id })
     await expect.poll(() => page.evaluate(id => window.whomi.ai.getThread(id), thread.id), { timeout: 30000 }).toMatchObject({ turns: [{ id: turn.id, state: 'completed' }] })
+    let pausedTaskId
+    if (oldInfo.version === '0.1.5' || oldMemory) {
+      pauseLegacy = true
+      const second = await page.evaluate(async modelId => {
+        const prepared = await window.whomi.ai.prepareAnalysis({ conversationId: '1', modelId })
+        return window.whomi.ai.confirmAnalysis({ token: prepared.token, requestId: 'upgrade-paused' })
+      }, model.id)
+      await expect.poll(() => legacyRequests).toBe(2)
+      await page.evaluate(id => window.whomi.ai.stopAnalysis(id), second.id)
+      await expect.poll(() => page.evaluate(id => window.whomi.ai.getAnalysis(id), second.id)).toMatchObject({ state: 'stopped', analyzedMessages: 1 })
+      pauseLegacy = false
+      pausedTaskId = second.id
+    }
     const before = await app.evaluate(async () => globalThis.__whomiRuntimeProbe.request('probe.snapshot', null))
     await app.close()
     app = await launch(process.env.WHOMI_PACKAGED_EXECUTABLE)
@@ -69,6 +89,22 @@ test('existing data and encrypted models survive the packaged upgrade and subseq
     await expect(page.locator('main')).toBeVisible()
     expect(await app.evaluate(({ app }) => ({ version: app.getVersion(), name: app.getName() }))).toEqual({ version, name: oldInfo.name })
     expect(await app.evaluate(async () => globalThis.__whomiRuntimeProbe.request('probe.snapshot', null))).toEqual(before)
+    await page.getByRole('button', { name: '记忆仓库', exact: true }).click()
+    await page.locator('.memory-row').first().click()
+    const oldReport = page.getByRole('dialog', { name: oldMemory ? '我们的记忆' : '分析报告' })
+    await expect(oldReport.getByText(oldMemory ? '升级前保存的示例文稿。' : '升级前的合成报告', { exact: true })).toBeVisible()
+    await expect(oldReport.getByRole('heading', { name: 'MBTI 预测' })).toHaveCount(oldMemory ? 1 : 0)
+    await page.screenshot({ path: join(evidence, 'legacy-report.png') })
+    await page.keyboard.press('Escape')
+    if (pausedTaskId) {
+      const requestsAtUpgrade = authorizations.length
+      await page.evaluate(id => window.whomi.ai.continueAnalysis(id), pausedTaskId)
+      await expect.poll(() => page.evaluate(id => window.whomi.ai.getAnalysis(id), pausedTaskId), { timeout: 30000 })
+        .toMatchObject({ id: pausedTaskId, state: 'completed', report: originalReport })
+      expect(authorizations.length - requestsAtUpgrade).toBe(1)
+      await expect(page.locator('.memory-row')).toHaveCount(2)
+    }
+    const afterResume = await app.evaluate(() => globalThis.__whomiRuntimeProbe.request('probe.snapshot', null))
     const migrated = await page.evaluate(() => window.whomi.settings.get())
     expect(migrated.providers).toHaveLength(1)
     expect(migrated.models[0]).toMatchObject({ id: model.id, label: '升级前的模型', hasCredential: true })
@@ -79,7 +115,7 @@ test('existing data and encrypted models survive the packaged upgrade and subseq
     expect(denied).toMatchObject({ code: 'INVALID_STORAGE_PATH', action: '请选择安装目录之外的空文件夹。' })
     await page.evaluate(id => window.whomi.settings.testModel(id), model.id)
     expect(authorizations.every(value => value === 'Bearer upgrade-test-secret')).toBe(true)
-    expect(await page.evaluate(id => window.whomi.ai.getReport(id), task.id)).toMatchObject({ summary: '升级前的合成报告' })
+    expect(await page.evaluate(id => window.whomi.ai.getReport(id), task.id)).toMatchObject(originalReport)
     await page.getByRole('button', { name: '展开会话列表' }).click()
     await page.getByRole('button', { name: '升级验收 · 虚构会话', exact: true }).click()
     await expect(page.locator('.message-text')).toContainText('升级前保存的消息，保留原文。')
@@ -93,11 +129,11 @@ test('existing data and encrypted models survive the packaged upgrade and subseq
     page = await app.firstWindow()
     await expect(page.locator('main')).toBeVisible()
     expect(await page.evaluate(() => window.whomi.settings.get())).toEqual(configured)
-    expect(await app.evaluate(async () => globalThis.__whomiRuntimeProbe.request('probe.snapshot', null))).toEqual(before)
+    expect(await app.evaluate(async () => globalThis.__whomiRuntimeProbe.request('probe.snapshot', null))).toEqual(afterResume)
     await page.getByRole('button', { name: '设置', exact: true }).click()
     await expect(page.getByLabel('替换密钥', { exact: true })).toHaveValue('')
     await page.screenshot({ path: join(evidence, 'upgrade-settings-preserved.png') })
-    await writeFile(join(evidence, 'upgrade-result.json'), JSON.stringify({ oldVersion: oldInfo.version, version, preservedTables: Object.keys(before), encryptedCredentialUsable: true, configurationRestartPreserved: true }, null, 2))
+    await writeFile(join(evidence, 'upgrade-result.json'), JSON.stringify({ oldVersion: oldInfo.version, version, preservedTables: Object.keys(before), encryptedCredentialUsable: true, configurationRestartPreserved: true, ...(pausedTaskId ? { legacyResumedTask: pausedTaskId, remainingModelRequests: 1 } : {}) }, null, 2))
   } finally {
     await app?.close()
     server.closeAllConnections(); await new Promise(resolve => server.close(resolve))

@@ -1,11 +1,11 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
-import { createPortal } from 'react-dom'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { actionError, DeleteListItem, ManagedRow, ReaderDialog } from './ui/managed-row'
 import { ArrowLeft, ChevronRight, Ellipsis, MousePointer2, Plus } from 'lucide-react'
 import clsx from 'clsx'
 import { Tooltip } from './ui/tooltip'
 import type { SourceReference } from './overview/types'
-import type { MessagePosition, MessageView, DesktopApi, MemberView } from '../shared/desktop-api'
-import { useMessageSelection, type ReferenceRange } from './conversation-ai/selection'
+import type { MessagePosition, MessageView, DesktopApi, MemberView, ListArrangement } from '../shared/desktop-api'
+import { useMessageSelection } from './conversation-ai/selection'
 import { ConversationWorkspace } from './conversation-ai/workspace'
 import type { ConversationAiAdapter } from './conversation-ai/types'
 
@@ -39,33 +39,11 @@ function Initial({ name }: { name: string }) {
   return <span className="conversation-avatar" aria-hidden="true">{[...name.trim()][0] || '·'}</span>
 }
 
-function ReaderDialog({ children, busy, onDismiss, returnFocus, labelledBy }: {
-  children: ReactNode
-  busy: boolean
-  onDismiss: () => void
-  returnFocus: RefObject<HTMLButtonElement | null>
-  labelledBy: string
-}) {
-  const dialog = useRef<HTMLDialogElement>(null)
-  useLayoutEffect(() => {
-    const element = dialog.current
-    if (!element) return
-    if (typeof element.showModal === 'function') element.showModal()
-    else element.setAttribute('open', '')
-    return () => {
-      if (typeof element.close === 'function') element.close()
-      returnFocus.current?.focus({ preventScroll: true })
-    }
-  }, [returnFocus])
-  // 原生模态层隔离侧栏和窗口拖拽区域，并提供浏览器焦点约束。
-  return createPortal(<dialog ref={dialog} className="reader-modal-root" aria-modal="true" aria-labelledby={labelledBy}
-    onKeyDown={event => { if (event.key === 'Escape') event.stopPropagation() }}
-    onCancel={event => { event.preventDefault(); if (!busy) onDismiss() }}>{children}</dialog>, document.body)
-}
-
-export function ConversationNavigation({ wide, conversations, activeId, onSelect, onImport, hasMore, loading, error, onLoadMore, onRefresh }: {
+export function ConversationNavigation({ wide, conversations, activeId, onSelect, onImport, hasMore, loading, error, onLoadMore, onRefresh, arrange, remove }: {
   wide: boolean
-  conversations: readonly { id: string; title: string }[]
+  conversations: readonly { id: string; title: string; pinned?: boolean }[]
+  arrange?: (change: ListArrangement) => Promise<void>
+  remove?: (id: string) => Promise<void>
   activeId?: string
   onSelect: (id: string) => void
   onImport: () => void
@@ -88,9 +66,6 @@ export function ConversationNavigation({ wide, conversations, activeId, onSelect
           </button>
         </Tooltip>
         {wide && <>
-          <Tooltip content="管理会话 · 未开放">
-            <button className="conversation-tool" type="button" aria-label="管理会话" aria-disabled="true"><Ellipsis aria-hidden="true" /></button>
-          </Tooltip>
           <Tooltip content="导入会话">
             <button className="conversation-tool" type="button" aria-label="导入会话" onClick={onImport}><Plus aria-hidden="true" /></button>
           </Tooltip>
@@ -101,13 +76,11 @@ export function ConversationNavigation({ wide, conversations, activeId, onSelect
         <div className="conversation-drawer-inner">
           {conversations.length > 0 && <ul className="conversation-list">
             {conversations.map(conversation => <li key={conversation.id}>
-              <Tooltip content={conversation.title}>
-                <button className="conversation-item" type="button" aria-label={conversation.title}
-                  aria-current={activeId === conversation.id ? 'true' : undefined} onClick={() => onSelect(conversation.id)}>
-                  <Initial name={conversation.title} />
-                  {wide && <span className="conversation-name">{conversation.title}</span>}
-                </button>
-              </Tooltip>
+              <ManagedRow item={conversation} scope="conversations" className="conversation-item" active={activeId === conversation.id}
+                onSelect={() => onSelect(conversation.id)} arrange={arrange} remove={remove && (() => remove(conversation.id))}>
+                <Initial name={conversation.title} />
+                {wide && <span className="conversation-name">{conversation.title}</span>}
+              </ManagedRow>
             </li>)}
           </ul>}
           {hasMore && <button className="conversation-load" type="button" disabled={loading} onClick={onLoadMore}>加载更多会话</button>}
@@ -136,9 +109,13 @@ const messageKinds: Record<MessageView['kind'], string> = {
   location: '位置', reply: '引用', forward: '转发', system: '系统', unknown: '未知类型',
 }
 
-export function ConversationReader({ conversation, range, sourceStatus, onReturn, returnLabel = '返回个人总览',
-  beforeCursor, afterCursor, onBefore, onAfter, loading, error, onRetry, messageCount, aiAdapter, onLocateMessage,
-  onLocateMessageId, api, onDeleteConversation, onSelfChanged }: {
+type QuoteJump = { targetId: string; originId?: string; referenceIds?: readonly string[] }
+
+export function ConversationReader({ conversation, initialAnalysisTaskId, openAnalysisOnEntry, range, sourceStatus, onReturn, returnLabel = '返回个人总览',
+  beforeCursor, afterCursor, onBefore, onAfter, loading, error, onRetry, messageCount, aiAdapter,
+  onLocateMessageId, api, onDeleteConversation, onSelfChanged, onConfigureModels, onOpenMemory }: {
+  initialAnalysisTaskId?: string
+  openAnalysisOnEntry?: boolean
   conversation: { id: string; title: string; messages: readonly MessageView[] }
   range?: { start: MessagePosition; end: MessagePosition }
   sourceStatus?: 'loading' | 'available' | 'unavailable'
@@ -154,10 +131,11 @@ export function ConversationReader({ conversation, range, sourceStatus, onReturn
   preview?: boolean
   messageCount?: number
   aiAdapter?: ConversationAiAdapter
-  onLocateMessage?: (message: MessageView) => Promise<void>
   onLocateMessageId?: (messageId: string) => Promise<boolean>
   api?: Pick<DesktopApi, 'listMembers' | 'confirmSelf' | 'deleteConversation'>
   onDeleteConversation?: (conversationId: string) => Promise<void> | void
+  onConfigureModels?: (onReturn: () => void) => void
+  onOpenMemory?: (taskId: string) => void
   onSelfChanged?: () => Promise<void> | void
 }) {
   const heading = useRef<HTMLHeadingElement>(null)
@@ -169,10 +147,11 @@ export function ConversationReader({ conversation, range, sourceStatus, onReturn
   const [selectionMode, setSelectionMode] = useState(false)
   const selectionButton = useRef<HTMLButtonElement>(null)
   const selection = useMessageSelection(conversation.messages, selectionMode)
-  const [jumpId, setJumpId] = useState<string>()
+  const [jump, setJump] = useState<QuoteJump>()
+  const [highlightedReferences, setHighlightedReferences] = useState<ReadonlySet<string>>()
   const [quoteReturnId, setQuoteReturnId] = useState<string>()
   const [quoteBusy, setQuoteBusy] = useState(false)
-  const [quoteFailure, setQuoteFailure] = useState<{ targetId: string; originId?: string }>()
+  const [quoteFailure, setQuoteFailure] = useState<QuoteJump>()
   const quoteGeneration = useRef(0)
   const [focusedMessageId, setFocusedMessageId] = useState<string>()
   const tabStopId = conversation.messages.some(item => item.id === focusedMessageId) ? focusedMessageId : firstMessage
@@ -186,11 +165,16 @@ export function ConversationReader({ conversation, range, sourceStatus, onReturn
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
   const [selfLoading, setSelfLoading] = useState(false)
   const [selfSaving, setSelfSaving] = useState(false)
+  const [identityRevision, setIdentityRevision] = useState(0)
   const [selfError, setSelfError] = useState<string>()
 
+  const [selfReadFailed, setSelfReadFailed] = useState(false)
+  const [showSelfHint, setShowSelfHint] = useState(false)
+  const selfRequest = useRef(0)
+  const selfCard = useRef<HTMLDivElement>(null)
+  const selfFlight = useRef<Animation | null>(null)
+
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
-  const [deleteSaving, setDeleteSaving] = useState(false)
-  const [deleteError, setDeleteError] = useState<string>()
 
   useEffect(() => {
     if (!moreOpen) return
@@ -213,36 +197,69 @@ export function ConversationReader({ conversation, range, sourceStatus, onReturn
     }
   }, [moreOpen])
 
-  useEffect(() => {
-    if (!selfModalOpen) return
+  async function readMembers(onEntry: boolean) {
+    const sequence = ++selfRequest.current
     setSelfError(undefined)
+    setSelfReadFailed(false)
     setSelfLoading(true)
-    if (api?.listMembers) {
-      void api.listMembers(conversation.id).then(list => {
-        setMembers(list)
-        const confirmed = list.find(item => item.confirmedSelf)
-        setSelectedMemberId(confirmed ? confirmed.id : null)
-      }).catch(err => {
-        setSelfError(err instanceof Error ? err.message : '获取成员失败')
-      }).finally(() => {
-        setSelfLoading(false)
-      })
-    } else {
-      const senders = Array.from(new Set(conversation.messages.map(m => m.senderName)))
-      const mockList: MemberView[] = senders.map((name, index) => ({
-        id: String(index + 1),
-        displayName: name,
-        selfHint: null,
+    setMembers([])
+    setSelectedMemberId(null)
+    if (!onEntry) setSelfModalOpen(true)
+    try {
+      const list = api?.listMembers ? await api.listMembers(conversation.id) : [...new Set(conversation.messages.map(m => m.senderName))].map((name, index) => ({
+        id: String(index + 1), displayName: name, selfHint: null,
         confirmedSelf: conversation.messages.some(m => m.senderName === name && m.isSelf),
       }))
-      setMembers(mockList)
-      const confirmed = mockList.find(item => item.confirmedSelf)
-      setSelectedMemberId(confirmed ? confirmed.id : null)
-      setSelfLoading(false)
+      if (sequence !== selfRequest.current) return
+      const confirmed = list.find(member => member.confirmedSelf)
+      setMembers(list)
+      setSelectedMemberId(confirmed?.id ?? null)
+      if (onEntry && !confirmed) setSelfModalOpen(true)
+    } catch (err) {
+      if (sequence !== selfRequest.current) return
+      setSelfError(actionError(err))
+      setSelfReadFailed(true)
+      setSelfModalOpen(true)
+    } finally {
+      if (sequence === selfRequest.current) setSelfLoading(false)
     }
-  }, [selfModalOpen, api, conversation.id, conversation.messages])
+  }
+
+  useEffect(() => {
+    setSelfModalOpen(false)
+    setShowSelfHint(false)
+    if (api?.listMembers) void readMembers(true)
+    return () => {
+      selfRequest.current++
+      selfFlight.current?.cancel()
+      selfFlight.current = null
+    }
+  }, [conversation.id, api?.listMembers])
+
+  useEffect(() => {
+    if (!showSelfHint) return
+    const timer = setTimeout(() => setShowSelfHint(false), 6000)
+    return () => clearTimeout(timer)
+  }, [showSelfHint])
+
+  function dismissIdentity() {
+    if (selfSaving || selfFlight.current) return
+    ++selfRequest.current
+    const guide = !members.some(member => member.confirmedSelf)
+    const finish = () => { setSelfModalOpen(false); setShowSelfHint(guide) }
+    const card = selfCard.current, target = moreButton.current?.getBoundingClientRect()
+    if (!guide || !card?.animate || !target || window.matchMedia('(prefers-reduced-motion: reduce)').matches) { finish(); return }
+    const start = card.getBoundingClientRect()
+    const dx = target.left + target.width / 2 - start.left - start.width / 2
+    const dy = target.top + target.height / 2 - start.top - start.height / 2
+    const animation = card.animate([{ transform: 'none', opacity: 1 }, { transform: `translate(${dx}px, ${dy}px) scale(.08)`, opacity: 0 }],
+      { duration: 230, easing: 'cubic-bezier(.4,0,.25,1)', fill: 'forwards' })
+    selfFlight.current = animation
+    animation.onfinish = () => { selfFlight.current = null; finish() }
+  }
 
   async function handleConfirmSelf(memberId: string | null) {
+    if (selfFlight.current || selfSaving) return
     setSelfSaving(true)
     setSelfError(undefined)
     try {
@@ -250,28 +267,12 @@ export function ConversationReader({ conversation, range, sourceStatus, onReturn
         await api.confirmSelf(conversation.id, memberId)
       }
       setSelfModalOpen(false)
+      setIdentityRevision(revision => revision + 1)
       await onSelfChanged?.()
     } catch (err) {
-      setSelfError(err instanceof Error ? err.message : '保存本人设置失败')
+      setSelfError(actionError(err))
     } finally {
       setSelfSaving(false)
-    }
-  }
-
-  async function handleDelete() {
-    setDeleteSaving(true)
-    setDeleteError(undefined)
-    try {
-      if (onDeleteConversation) {
-        await onDeleteConversation(conversation.id)
-      } else if (api?.deleteConversation) {
-        await api.deleteConversation(conversation.id)
-      }
-      setDeleteModalOpen(false)
-    } catch (err) {
-      console.error('Handle delete error:', (err as { action?: string })?.action ?? err)
-      setDeleteError(err instanceof Error ? err.message : '删除会话失败')
-      setDeleteSaving(false)
     }
   }
 
@@ -282,32 +283,17 @@ export function ConversationReader({ conversation, range, sourceStatus, onReturn
 
   useEffect(() => () => { quoteGeneration.current++ }, [conversation.id])
 
-  function focusMessage(id: string) {
-    const element = Array.from(scroll.current?.querySelectorAll<HTMLElement>('[data-message-id]') ?? [])
-      .find(item => item.dataset.messageId === id)
-    if (!element) return false
-    element.focus({ preventScroll: true })
-    element.scrollIntoView?.({ block: 'center', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
-    return true
-  }
-
-  async function jumpToReference(reference: ReferenceRange) {
-    const message = reference.messages[0]
-    if (!message) return
-    setJumpId(message.id)
-    if (!focusMessage(message.id)) await onLocateMessage?.(message)
-  }
-
-  async function navigateQuote(request: { targetId: string; originId?: string }) {
+  async function navigateQuote(request: QuoteJump) {
     const generation = ++quoteGeneration.current
     setQuoteBusy(true)
     setQuoteFailure(undefined)
     try {
-      if (!focusMessage(request.targetId)) {
+      if (quoteBusy || !conversation.messages.some(message => message.id === request.targetId)) {
         if (!onLocateMessageId || !await onLocateMessageId(request.targetId)) throw new Error('unavailable')
       }
       if (generation !== quoteGeneration.current) return
-      setJumpId(request.targetId)
+      setJump({ ...request })
+      setHighlightedReferences(request.referenceIds ? new Set(request.referenceIds) : undefined)
       setQuoteReturnId(request.originId)
     } catch {
       if (generation === quoteGeneration.current) setQuoteFailure(request)
@@ -317,14 +303,18 @@ export function ConversationReader({ conversation, range, sourceStatus, onReturn
   }
 
   useLayoutEffect(() => {
-    if (jumpId) focusMessage(jumpId)
-  }, [jumpId, conversation.messages])
+    if (!jump) return
+    const element = Array.from(scroll.current?.querySelectorAll<HTMLElement>('[data-message-id]') ?? [])
+      .find(item => item.dataset.messageId === jump.targetId)
+    element?.focus({ preventScroll: true })
+    element?.scrollIntoView?.({ block: 'center', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
+  }, [jump])
 
   useEffect(() => {
-    if (!jumpId) return
-    const timer = window.setTimeout(() => setJumpId(undefined), 1800)
+    if (!jump) return
+    const timer = window.setTimeout(() => setJump(undefined), 1800)
     return () => window.clearTimeout(timer)
-  }, [jumpId])
+  }, [jump])
 
   function rememberPosition() {
     const container = scroll.current
@@ -367,7 +357,7 @@ export function ConversationReader({ conversation, range, sourceStatus, onReturn
   }, [])
 
   useLayoutEffect(() => {
-    if (quoteBusy || jumpId) return
+    if (quoteBusy || jump) return
     if (firstSource.current) {
       firstSource.current.focus({ preventScroll: true })
       firstSource.current.scrollIntoView?.({ block: 'center', behavior: 'auto' })
@@ -379,8 +369,9 @@ export function ConversationReader({ conversation, range, sourceStatus, onReturn
     await (direction === 'before' ? onBefore?.() : onAfter?.())
   }
 
-  return <ConversationWorkspace conversationId={conversation.id} title={conversation.title} messageCount={messageCount}
-    references={selection.references} onClearReferences={selection.clear} onRestoreReferences={selection.restore} onJumpReference={reference => { void jumpToReference(reference) }} adapter={aiAdapter}>
+  return <ConversationWorkspace initialAnalysisTaskId={initialAnalysisTaskId} openAnalysisOnEntry={openAnalysisOnEntry} onConfigureModels={onConfigureModels} onOpenAnalysisResult={onOpenMemory} conversationId={conversation.id} identityRevision={identityRevision} title={conversation.title} messageCount={messageCount}
+    references={selection.references} onClearReferences={selection.clear} onRestoreReferences={selection.restore}
+    onJumpReference={(ids, targetId = ids[0]) => { if (targetId) void navigateQuote({ targetId, referenceIds: ids }) }} adapter={aiAdapter}>
     {({ analysisControl, chatControl, composer }) => <section className="conversation-reader" aria-labelledby="conversation-title" onKeyDown={event => {
       if (event.key !== 'Escape' || event.defaultPrevented || !selectionMode) return
       if ((event.target as HTMLElement).closest('input, textarea, select, [contenteditable="true"]')) return
@@ -402,11 +393,12 @@ export function ConversationReader({ conversation, range, sourceStatus, onReturn
           {chatControl}
           <div className="reader-more-wrapper" ref={moreRef}>
             <button ref={moreButton} className="reader-more-toggle" type="button" aria-label="更多操作"
-              title="更多操作" aria-haspopup="menu" aria-expanded={moreOpen} onClick={() => setMoreOpen(open => !open)}>
+              title="更多操作" aria-haspopup="menu" aria-expanded={moreOpen} onClick={() => { setShowSelfHint(false); setMoreOpen(open => !open) }}>
               <Ellipsis aria-hidden="true" />
             </button>
+            {showSelfHint && <span role="status" className="reader-identity-hint">可在这里选择本人</span>}
             {moreOpen && <div className="reader-more-menu" role="menu" aria-label="会话管理">
-              <button role="menuitem" type="button" className="reader-more-item" onClick={() => { setMoreOpen(false); setSelfModalOpen(true) }}>选择本人</button>
+              <button role="menuitem" type="button" className="reader-more-item" onClick={() => { setMoreOpen(false); void readMembers(false) }}>选择本人</button>
               <button role="menuitem" type="button" className="reader-more-item reader-more-item-danger" onClick={() => { setMoreOpen(false); setDeleteModalOpen(true) }}>删除会话</button>
             </div>}
           </div>
@@ -437,7 +429,8 @@ export function ConversationReader({ conversation, range, sourceStatus, onReturn
           role={selectionMode ? 'option' : undefined} aria-selected={selectionMode ? selected : undefined} aria-label={`${message.senderName}：${message.text || messageKinds[message.kind]}`}
           tabIndex={selectionMode && tabStopId === message.id ? 0 : -1} {...(selectionMode ? selection.bindings(message) : {})} onFocus={() => setFocusedMessageId(message.id)}
           className={clsx('message', message.isSelf && 'message-self', highlighted && 'message-source', selected && 'message-selected',
-            joinedBefore && 'selection-joined-before', joinedAfter && 'selection-joined-after', jumpId === message.id && 'message-reference-target')}>
+            joinedBefore && 'selection-joined-before', joinedAfter && 'selection-joined-after',
+            (highlightedReferences?.has(message.id) || jump?.targetId === message.id) && 'message-reference-target')}>
           <Initial name={message.senderName} />
           <div className="message-content">
             {message.timeBucket === 1 && (index === 0 || conversation.messages[index - 1].timeBucket !== 1) && <p className="message-time-unknown">时间未知</p>}
@@ -464,14 +457,14 @@ export function ConversationReader({ conversation, range, sourceStatus, onReturn
     </div>
     {composer}
     {selfModalOpen && (
-      <ReaderDialog busy={selfSaving} onDismiss={() => setSelfModalOpen(false)} returnFocus={moreButton} labelledBy="self-modal-title">
-      <div className="reader-modal-overlay" role="presentation" onClick={e => { if (e.target === e.currentTarget && !selfSaving) setSelfModalOpen(false) }}>
-        <div className="reader-modal-card">
+      <ReaderDialog busy={selfSaving} onDismiss={dismissIdentity} returnFocus={moreButton} labelledBy="self-modal-title">
+      <div className="reader-modal-overlay" role="presentation" onClick={e => { if (e.target === e.currentTarget) dismissIdentity() }}>
+        <div className="reader-modal-card" ref={selfCard}>
           <h2 id="self-modal-title">选择本人</h2>
-          <p className="reader-modal-description">选择该会话中代表本人的发言成员。设置后，该成员的消息将作为本人发言靠右展示。</p>
-          {selfError && <p className="import-error" role="alert">{selfError}</p>}
+          <p className="reader-modal-description">这段聊天里，哪位是你？</p>
+          {selfError && <p className="import-error" role="alert">{selfError} {selfReadFailed && <button type="button" className="reader-modal-btn" onClick={() => void readMembers(false)}>重新读取成员</button>}</p>}
           <div className="reader-modal-body" role="radiogroup" aria-label="成员列表">
-            {selfLoading ? <p className="reader-modal-empty">正在读取成员…</p> : !members.length ? <p className="reader-modal-empty">该会话暂无成员。</p> : (
+            {selfLoading ? <p className="reader-modal-empty">正在读取成员…</p> : selfReadFailed ? null : !members.length ? <p className="reader-modal-empty">该会话暂无成员。</p> : (
               members.map(member => {
                 const isSelected = selectedMemberId === member.id
                 return (
@@ -510,14 +503,14 @@ export function ConversationReader({ conversation, range, sourceStatus, onReturn
               type="button"
               className="reader-modal-btn"
               disabled={selfSaving}
-              onClick={() => setSelfModalOpen(false)}
+              onClick={dismissIdentity}
             >
               取消
             </button>
             <button
               type="button"
               className="reader-modal-btn reader-modal-btn-primary"
-              disabled={selfSaving || !selectedMemberId || selectedMemberId === members.find(m => m.confirmedSelf)?.id}
+              disabled={selfLoading || selfReadFailed || selfSaving || !selectedMemberId || selectedMemberId === members.find(m => m.confirmedSelf)?.id}
               onClick={() => { void handleConfirmSelf(selectedMemberId) }}
             >
               {selfSaving ? '正在保存…' : '设为本人'}
@@ -527,35 +520,8 @@ export function ConversationReader({ conversation, range, sourceStatus, onReturn
       </div>
       </ReaderDialog>
     )}
-    {deleteModalOpen && (
-      <ReaderDialog busy={deleteSaving} onDismiss={() => setDeleteModalOpen(false)} returnFocus={moreButton} labelledBy="delete-modal-title">
-      <div className="reader-modal-overlay" role="presentation" onClick={e => { if (e.target === e.currentTarget && !deleteSaving) setDeleteModalOpen(false) }}>
-        <div className="reader-modal-card">
-          <h2 id="delete-modal-title">删除会话</h2>
-          <p className="reader-modal-description">将彻底删除该会话及其全部聊天记录、成员、本人设置、对话记录与分析报告。此操作无法撤销。</p>
-          {deleteError && <p className="import-error" role="alert">{deleteError}</p>}
-          <div className="reader-modal-footer">
-            <button
-              type="button"
-              className="reader-modal-btn"
-              disabled={deleteSaving}
-              onClick={() => setDeleteModalOpen(false)}
-            >
-              取消
-            </button>
-            <button
-              type="button"
-              className="reader-modal-btn reader-modal-btn-danger"
-              disabled={deleteSaving}
-              onClick={() => { void handleDelete() }}
-            >
-              {deleteSaving ? '正在删除…' : '确认删除'}
-            </button>
-          </div>
-        </div>
-      </div>
-      </ReaderDialog>
-    )}
+    {deleteModalOpen && <DeleteListItem title={conversation.title} returnFocus={moreButton} onDismiss={() => setDeleteModalOpen(false)}
+      onDelete={() => onDeleteConversation ? onDeleteConversation(conversation.id) : api?.deleteConversation(conversation.id)} />}
   </section>}
   </ConversationWorkspace>
 }

@@ -1,6 +1,9 @@
 import type { AiModel } from './ai-contract'
 import { BoundaryError } from './desktop-validation'
 
+export function isContextLimitCode(code: unknown) { return code === 'context_length_exceeded' }
+export const modelContextLimit = () => new BoundaryError('MODEL_CONTEXT_LIMIT', '服务商拒绝了过长的输入，请核对模型的最大输入长度。')
+
 // Cherry Studio f19aa72: agentContextWindow.ts and pi/modelInjection.ts (AGPL-3.0).
 const DEFAULT_CONTEXT_WINDOW = 256_000
 const DEFAULT_MAX_TOKENS = 8192

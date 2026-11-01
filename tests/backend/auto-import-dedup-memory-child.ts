@@ -9,7 +9,7 @@ async function main() {
   const store=openStore(process.argv[2]),c=candidate('bounded-dedup'),count=250000
   c.members=[{sourceKey:'sender',stableAccountKey:'account',displayName:'Synthetic',selfHint:null}]
   try {
-    store.writer.exec("INSERT INTO conversations VALUES(1,'Synthetic','direct',0);INSERT INTO source_conversations VALUES(1,1,'p','owner','chat','test');INSERT INTO accounts VALUES(1,'p','account');INSERT INTO memberships VALUES(1,1,1,'sender','Synthetic',1,NULL)")
+    store.writer.exec("INSERT INTO conversations(id,title,kind,created_at_ms) VALUES(1,'Synthetic','direct',0);INSERT INTO source_conversations VALUES(1,1,'p','owner','chat','test');INSERT INTO accounts VALUES(1,'p','account');INSERT INTO memberships VALUES(1,1,1,'sender','Synthetic',1,NULL)")
     const content=(ordinal:number)=>`Synthetic ${ordinal} ${'x'.repeat(512)}`
     const insert=store.writer.prepare("INSERT INTO messages(conversation_id,member_id,sender_kind,sender_name,sent_at_ms,time_precision,timezone,kind,text,ordinal) VALUES(1,1,'member','Synthetic',1000,'millisecond','UTC','text',?,?)")
     store.writer.transaction(()=>{for(let i=0;i<count;i++)insert.run(content(i),i)})()

@@ -10,7 +10,11 @@ function fixture(runtime: RuntimeRunner, beforeResponse?: (method: string) => Pr
   const lateWrites: string[] = []
   const service = createAiService({ runtime, secrets: { encrypt: text => text, decrypt: text => text }, storage: async (method, args) => {
     if (deleted && ['saveTurn', 'saveAnalysis', 'recordUsage', 'commitBatch', 'completeAnalysis'].includes(method)) lateWrites.push(method)
-    if (method === 'getThread') return { id: args[0], conversationId: args[0], turns: [...turns.values()].filter(turn => turn.threadId === args[0]) }
+    if (method === 'getThread') return { id: args[0], conversationId: args[0] === '3' ? '1' : args[0], turns: [...turns.values()].filter(turn => turn.threadId === args[0]) }
+    if (method === 'deleteThread') {
+      for (const [id, turn] of turns) if (turn.threadId === args[1]) turns.delete(id)
+      return
+    }
     if (method === 'createTurn') {
       const input = args[0] as { threadId: string; requestId: string; prompt: string }
       const turn: AiTurn = { id: input.requestId, threadId: input.threadId, requestId: input.requestId, prompt: input.prompt, referenceIds: [], modelId: 'm', text: '', state: 'queued', attempt: 1, usage: {}, eventSequence: 1 }
@@ -36,6 +40,26 @@ function fixture(runtime: RuntimeRunner, beforeResponse?: (method: string) => Pr
   return { service, lateWrites, turns, analysis, markDeleted() { deleted = true } }
 }
 const send = (threadId: string, requestId = threadId) => ({ threadId, requestId, prompt: '测试问题', referenceIds: [], modelId: 'm' })
+
+test('删除同一会话中排队的历史对话时保留另一条正在生成的回答', async () => {
+  let release!: () => void
+  const signals: AbortSignal[] = []
+  const state = fixture({ run: async (_input, { signal }) => {
+    signals.push(signal)
+    await new Promise<void>(resolve => { release = resolve })
+    return { text: '保留这条回答', usage: {}, checkpoint: '' }
+  } })
+  await state.service.sendTurn(send('1'))
+  await vi.waitFor(() => expect(signals).toHaveLength(1))
+  await state.service.sendTurn(send('3'))
+  await state.service.deleteThread('1', '3')
+  expect(state.turns.has('3')).toBe(false)
+  expect(signals[0].aborted).toBe(false)
+  release()
+  await state.service.idle()
+  expect(state.turns.get('1')?.text).toBe('保留这条回答')
+  expect(signals).toHaveLength(1)
+})
 
 test.each(['turn', 'analysis'])('delete stops a running %s before removing its data', async kind => {
   let signal: AbortSignal | undefined

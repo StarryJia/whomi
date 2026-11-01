@@ -16,12 +16,12 @@ function Overview({ data }: { data: OverviewData }) {
     onOpenSource={() => {}} isSourceAvailable={() => true} feedback={feedback} />
 }
 
-test.each(['partial', 'ready'] as const)('%s with no usable observations has one compact empty state', status => {
+test.each(['partial', 'ready'] as const)('%s with no usable observations retains all four unknown dimensions and an empty Spark section', status => {
   render(<Overview data={{ materialStatus: status, discoveries: [], preferences: { energy: { status: 'unknown' } } }} />)
-  expect(screen.queryByRole('heading', { name: '人格偏好' })).not.toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: '人格偏好' })).toBeVisible()
   expect(screen.queryByText('材料不足的维度保留问号。')).not.toBeInTheDocument()
-  expect(screen.queryByRole('heading', { name: /Spark/ })).not.toBeInTheDocument()
-  expect(screen.getByText('暂时还没有形成可展示的观察。')).toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: /Spark/ })).toBeVisible()
+  expect(screen.getAllByText('尚待了解')).toHaveLength(4)
 })
 
 test.each(['awaiting_commit', 'committing', 'partially_completed', 'failed'] as const)('import plus preserves a %s task and its recovery entry', async status => {

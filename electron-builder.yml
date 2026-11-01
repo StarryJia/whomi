@@ -7,6 +7,16 @@ files:
   - out/**
   - package.json
 extraResources:
+  - from: LICENSE
+    to: licenses/whomi/LICENSE
+  - from: node_modules/jose/LICENSE.md
+    to: licenses/jose/LICENSE.md
+  - from: node_modules/openai/LICENSE
+    to: licenses/openai/LICENSE
+  - from: src/vendor/cherry-providers/LICENSE
+    to: licenses/cherry-providers/LICENSE
+  - from: src/vendor/cherry-providers/UPSTREAM.md
+    to: licenses/cherry-providers/UPSTREAM.md
   - from: src/vendor/cherry-markdown/LICENSE
     to: licenses/cherry-markdown/LICENSE
   - from: src/vendor/cherry-markdown/UPSTREAM.md

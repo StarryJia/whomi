@@ -1,6 +1,7 @@
 import { afterEach, expect, test } from 'vitest'
 import { openStore, type Store } from '../../electron/data/db/open'
 import { createQueries } from '../../electron/data/db/queries'
+import { arrangeList } from '../../electron/data/db/list-order'
 import { rebuildSummary } from '../../electron/data/import/summary'
 import { temporaryStore } from './helpers'
 
@@ -115,6 +116,20 @@ test('lists summaries by descending exact id with stable bounded pages', async (
   expect(second.items).toEqual([expect.objectContaining({ id: '1', title: '示例会话', messageCount: 3, memberCount: 0, firstSentAtMs: -1, lastSentAtMs: 0, summaryStatus: 'ready' })]); expect(second.nextCursor).toBeNull()
   await expect(queries.listConversations({ cursor: changed(first.nextCursor!, { id: '01' }) })).rejects.toThrow()
   await expect(queries.listConversations({ limit: 201 })).rejects.toThrow()
+})
+
+test('置顶与手动顺序跨分页读取，失败操作不改变顺序', async () => {
+  const { store, queries } = fixture()
+  store.writer.exec("INSERT INTO conversations(id,title,kind,created_at_ms) VALUES (3,'三','group',0),(4,'四','group',0),(5,'五','group',0)")
+  arrangeList(store.writer, { id: '2', targetId: '5', placement: 'before' })
+  arrangeList(store.writer, { id: '1', pinned: true })
+  expect(() => arrangeList(store.writer, { id: '2', targetId: '1', placement: 'before' })).toThrow()
+  const first = await queries.listConversations({ limit: 2 })
+  const second = await queries.listConversations({ cursor: first.nextCursor! })
+  const third = await queries.listConversations({ cursor: second.nextCursor! })
+  expect(first.items[0]).toMatchObject({ id: '1', pinned: true })
+  expect([...first.items, ...second.items, ...third.items].map(row => row.id)).toEqual(['1', '2', '5', '4', '3'])
+  expect(third.nextCursor).toBeNull()
 })
 
 test('reads sending-time names, confirmed self, replies and inert attachment descriptions', async () => {

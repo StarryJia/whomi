@@ -47,6 +47,7 @@ button { color: inherit; }
   background: var(--canvas);
 }
 .app-shell.sidebar-open { --sidebar-width: var(--sidebar-expanded); }
+@media (min-width: 641px) { .app-shell.sidebar-open { --sidebar-width: clamp(196px, var(--pane-navigation, var(--sidebar-expanded)), min(380px, calc(100vw - 460px))); } }
 .desktop-shell { --desktop-caption-width: 140px; }
 :root:has(.desktop-shell) { --desktop-titlebar-height: 36px; }
 body:has(.desktop-shell) .cherry-panel-header { padding-top: calc(var(--desktop-titlebar-height) + 12px); }

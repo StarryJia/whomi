@@ -72,3 +72,11 @@ React、Vite、Radix、Lucide 等运行和开发依赖的实际版本见 `packag
 ## Cherry MarkdownCore
 
 会话回答排版复用 Cherry Studio 界面包 packages/ui 的 MarkdownCore 及内部转换插件，固定提交 f19aa72f969b782ed72f81be80976b237ae26605。该包声明 MIT，作者 Cherry Studio；源文件、许可和本地适配记录位于 src/vendor/cherry-markdown。Streamdown 2.5.0、remend 1.3.0 与其依赖由包管理器固定。模型署名和复制反馈沿用既有 Cherry 业务模块的 AGPL-3.0 来源约定。
+
+## Cherry 服务商预置目录
+
+服务商资料取自 [Cherry Studio 的 provider-registry](https://github.com/CherryHQ/cherry-studio/tree/f19aa72f969b782ed72f81be80976b237ae26605/packages/provider-registry)。数据包声明 MIT。中文名称与品牌图标的来源、许可说明及本地格式适配见[来源记录](src/vendor/cherry-providers/UPSTREAM.md)。随桌面程序分发数据包许可和对应的第三方声明。
+
+## 账号授权与模型调用
+
+Grok CLI 和 GitHub Copilot 的授权与模型连接参考上述 Cherry 固定提交，逐模块链接和 Whomi 的适配范围见[设置来源记录](docs/research/cherry-settings-reuse.md#017-的账号连接与自定义端点)。OpenAI Codex 按 OpenAI 的公开授权协议实现。签名验证使用 jose 6.2.14（MIT），模型请求使用 OpenAI JavaScript 7.19.0（Apache License 2.0）。两份依赖许可均随安装包提供。

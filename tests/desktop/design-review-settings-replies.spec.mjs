@@ -1,3 +1,4 @@
+import { dismissIdentity } from './fixtures/identity.mjs'
 import { test, expect, _electron as electron } from '@playwright/test'
 import { createServer } from 'node:http'
 import { copyFile, mkdir, mkdtemp, writeFile } from 'node:fs/promises'
@@ -32,15 +33,16 @@ test('settings use the provider model drawer and a neutral grouped number focus'
     await page.getByRole('button', { name: '设置', exact: true }).click()
     await page.getByRole('button', { name: '添加服务商', exact: true }).click()
     await page.getByLabel('服务商名称', { exact: true }).fill('示例服务商')
-    await page.getByLabel('接口地址', { exact: true }).fill(`http://127.0.0.1:${server.address().port}/v1`)
-    const protocol = page.getByRole('combobox', { name: '连接协议' })
-    await protocol.click()
-    await expect(page.getByRole('option')).toHaveText(['OpenAI Chat Completions', 'OpenAI Responses', 'Anthropic Messages', 'Google Generate Content'])
+    await page.getByLabel('OpenAI', { exact: true }).fill(`http://127.0.0.1:${server.address().port}/v1`)
+    const more = page.getByRole('button', { name: '更多设置' })
+    await more.click()
+    await expect(page.getByLabel('OpenAI Responses', { exact: true })).toBeVisible()
+    await expect(page.getByLabel('Google Gemini', { exact: true })).toBeVisible()
     await page.screenshot({ path: join(evidence, '04-protocol-options.png') })
-    await page.getByRole('option', { name: 'OpenAI Chat Completions', exact: true }).click()
+    await more.click()
     await expect(page.getByText('有未保存的修改', { exact: true })).toHaveCount(0)
     await page.screenshot({ path: join(evidence, '05-provider-after.png') })
-    await page.getByRole('dialog', { name: '添加服务商', exact: true }).getByRole('button', { name: '保存', exact: true }).click()
+    await page.getByRole('dialog', { name: '添加自定义服务商', exact: true }).getByRole('button', { name: '保存', exact: true }).click()
     await page.getByRole('button', { name: '同步模型', exact: true }).click()
     const catalog = page.getByRole('region', { name: '同步模型列表' })
     await expect(page.getByRole('dialog', { name: '示例服务商 模型' })).toBeVisible()
@@ -113,12 +115,14 @@ test('SIWX reimport repairs an old quote and jumps across unloaded pages without
       await expect(page.getByText('导入完成。', { exact: true })).toBeVisible()
       await expect(page.getByLabel('导入目标', { exact: true })).toHaveCount(0)
       await page.getByRole('button', { name: '打开会话', exact: true }).click()
+      await dismissIdentity(page)
     }
     await importSource()
     await app.evaluate(async () => globalThis.__whomiRuntimeProbe.request('probe.oldQuote', null))
     await page.reload()
     await page.getByRole('button', { name: '展开会话列表' }).click()
     await page.getByRole('button', { name: 'SIWX 引用 · 虚构验收', exact: true }).click()
+    await dismissIdentity(page)
     for (let index = 0; index < 6; index++) await page.getByRole('button', { name: '加载后文', exact: true }).click()
     await expect(page.locator('blockquote.message-quote')).toHaveCount(1)
     await page.locator('.message-quote').scrollIntoViewIfNeeded()

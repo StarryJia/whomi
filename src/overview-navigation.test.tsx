@@ -72,7 +72,7 @@ describe('总览导航与原文范围', () => {
     expect(within(screen.getByRole('main')).queryByRole('button', { name: '问一问' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '问一问' }))
     await waitFor(() => expect(screen.getByRole('heading', { name: '问一问' })).toHaveFocus())
-    expect(screen.getByText('疑问今天请假了。')).toBeInTheDocument()
+    expect(screen.getByText('目前没有需要你澄清的问题')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '问一问' })).toHaveAttribute('aria-current', 'page')
   })
 
@@ -130,7 +130,7 @@ describe('总览导航与原文范围', () => {
     const user = userEvent.setup()
     render(<App saveFeedback={save} />)
     await user.click(screen.getByRole('button', { name: /进入个人总览/ }))
-    expect(screen.getByText('还没有可查看的总览。')).toBeInTheDocument()
+    expect(screen.getByText('导入一段聊天，回看自己在不同关系里的习惯。')).toBeInTheDocument()
     expect(screen.queryByText('E?F?')).not.toBeInTheDocument()
     expect(save).not.toHaveBeenCalled()
     expect(fetch).not.toHaveBeenCalled()

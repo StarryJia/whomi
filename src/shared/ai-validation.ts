@@ -1,5 +1,6 @@
+import { isSubscriptionId } from './chatgpt-plan'
 import type { AiEvent, AiMethods } from './ai-contract'
-import { BoundaryError, localId } from './desktop-validation'
+import { BoundaryError, listArrangement, localId } from './desktop-validation'
 import { isModelProtocol } from './model-protocol'
 
 type Check = (value: unknown) => boolean
@@ -16,26 +17,32 @@ const ids: Check = value => array(localId, 2000)(value) && new Set(value as stri
 const object = (fields: Record<string, Check>): Check => value => !!value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).every(key => Object.hasOwn(fields, key)) && Object.entries(fields).every(([key, check]) => check((value as Record<string, unknown>)[key]))
 const url: Check = value => { try { if (typeof value !== 'string' || value.length > 2048) return false; const parsed = new URL(value); return ['https:', 'http:'].includes(parsed.protocol) && !parsed.username && !parsed.password && !parsed.hash && !parsed.search } catch { return false } }
 const modelFields = { id: key, label: text(256, true), model: key, baseUrl: url, protocol: optional(isModelProtocol), contextWindow: nullable(positive), maxTokens: nullable(positive), maxInputTokens: optional(nullable(positive)), enabled: bool }
-const model = object({ ...modelFields, version: positive, hasCredential: bool })
+const model = object({ ...modelFields, planProvider: optional(isSubscriptionId), planAccount: optional(text(512, true)), version: positive, hasCredential: bool })
 const usage = object({ inputTokens: optional(count), totalInputTokens: optional(count), outputTokens: optional(count), cacheReadTokens: optional(count), cacheWriteTokens: optional(count), outputTokensPerSecond: optional(metric), firstTokenMs: optional(metric), durationMs: optional(metric), startedAt: optional(count), completedAt: optional(count), incomplete: optional(bool) })
 const state: Check = value => ['queued', 'running', 'summarizing', 'completed', 'stopped', 'failed', 'interrupted'].includes(value as string)
-const report = object({ summary: text(100000, true), observations: array(object({ text: text(20000, true), evidenceMessageIds: ids, limitations: text(20000) }), 200), limitations: text(20000) })
-const analysis = object({ id: localId, conversationId: localId, modelId: key, state, analyzedMessages: count, totalMessages: count, skippedMessages: count, usage, error: optional(text(2000)), report: optional(report), valid: bool, eventSequence: count })
+const legacyReport = object({ summary: text(100000, true), observations: array(object({ text: text(20000, true), evidenceMessageIds: ids, limitations: text(20000) }), 200), limitations: text(20000) })
+const direction = (pair: string): Check => nullable(value => typeof value === 'string' && value.length === 1 && pair.includes(value))
+const memoryFields = { dimensions: object({ EI: direction('EI'), SN: direction('SN'), TF: direction('TF'), JP: direction('JP') }), events: array(object({ title: text(256, true), text: text(20000, true) }), 200), relationship: text(20000, true) }
+const memoryReport = object({ ...memoryFields, format: value => value === 'memory-v2' })
+const votePair: Check = value => Array.isArray(value) && value.length === 2 && value.every(count)
+const scoredReport = object({ ...memoryFields, format: value => value === 'memory-v3', eventVotes: object({ EI: votePair, SN: votePair, TF: votePair, JP: votePair }) })
+const report: Check = value => legacyReport(value) || memoryReport(value) || scoredReport(value)
+const analysis = object({ id: localId, conversationId: localId, conversationTitle: optional(text(100000)), modelId: key, state, analyzedMessages: count, totalMessages: count, skippedMessages: count, usage, error: optional(text(2000)), report: optional(report), valid: bool, eventSequence: count })
 const modelIdentity = object({ id: key, version: positive, label: text(256, true), model: key })
 const turn = object({ id: localId, threadId: localId, requestId: key, prompt: text(100000, true), referenceIds: ids, modelId: key, modelIdentity: optional(modelIdentity), skillId: optional(key), text: text(2 * 1024 ** 2), state, attempt: positive, usage, error: optional(text(2000)), eventSequence: count })
-const threadFields = { id: localId, conversationId: localId, title: text(200, true), createdAtMs: count, updatedAtMs: count }
+const threadFields = { pinned: optional(bool), id: localId, conversationId: localId, title: text(200, true), createdAtMs: count, updatedAtMs: count }
 const thread = object({ ...threadFields, turns: array(turn, 10000) })
 const preparation = object({ token: key, conversationId: localId, title: text(2000), selfName: text(2000), totalMessages: count, analyzableMessages: count, snapshotMaxId: localId, expiresAt: count, model })
 const input: Record<keyof AiMethods, Check[]> = {
   listModels: [], saveModel: [object({ ...modelFields, apiKey: optional(text(16384)) })], testModel: [key], listSkills: [],
   prepareAnalysis: [object({ conversationId: localId, modelId: key })], confirmAnalysis: [object({ token: key, requestId: key })],
   getAnalysis: [localId], listAnalyses: [optional(localId)], stopAnalysis: [localId], continueAnalysis: [localId], getReport: [localId],
-  openThread: [localId], listThreads: [localId], createThread: [localId], getThread: [localId], sendTurn: [object({ threadId: localId, requestId: key, prompt: text(100000, true), referenceIds: ids, modelId: key, skillId: optional(key) })], retryTurn: [localId], stopTurn: [localId],
+  openThread: [localId], listThreads: [localId], createThread: [localId], getThread: [localId], arrangeThread: [localId, listArrangement], deleteThread: [localId, localId], sendTurn: [object({ threadId: localId, requestId: key, prompt: text(100000, true), referenceIds: ids, modelId: key, skillId: optional(key) })], retryTurn: [localId], stopTurn: [localId],
 }
 const output: Record<keyof AiMethods, Check> = {
   listModels: array(model, 1000), saveModel: model, testModel: value => value === undefined, listSkills: array(object({ id: key, label: text(256, true), version: key }), 1000),
   prepareAnalysis: preparation, confirmAnalysis: analysis, getAnalysis: analysis, listAnalyses: array(analysis), stopAnalysis: analysis, continueAnalysis: analysis, getReport: report,
-  openThread: thread, listThreads: array(object(threadFields)), createThread: thread, getThread: thread, sendTurn: turn, retryTurn: turn, stopTurn: turn,
+  openThread: thread, listThreads: array(object(threadFields)), createThread: thread, getThread: thread, arrangeThread: value => value === undefined, deleteThread: value => value === undefined, sendTurn: turn, retryTurn: turn, stopTurn: turn,
 }
 export function validateAiCall(method: unknown, args: unknown): asserts method is keyof AiMethods {
   if (typeof method !== 'string' || !Object.hasOwn(input, method)) throw new BoundaryError('INVALID_METHOD')

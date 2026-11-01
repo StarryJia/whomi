@@ -1,3 +1,4 @@
+import { dismissIdentity } from './fixtures/identity.mjs'
 import { test, expect, _electron as electron } from '@playwright/test'
 import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -29,6 +30,7 @@ test('conversation menu accepts pointer selection outside its draggable header',
     await expect(page.locator('.startup-intro')).toHaveCount(0, { timeout: 15000 })
     await page.getByRole('button', { name: '展开会话列表' }).click()
     await page.getByRole('button', { name: '菜单命中 · 虚构会话', exact: true }).click()
+    await dismissIdentity(page)
     await page.getByRole('button', { name: '更多操作', exact: true }).click()
     const self = page.getByRole('menuitem', { name: '选择本人', exact: true })
     await self.waitFor()

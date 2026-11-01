@@ -26,9 +26,12 @@ beforeEach(() => setViewport())
 describe('文件选择与会话前端', () => {
   it('已选消息移出分页窗口后引用仍能跳回，草稿与选择保持', async () => {
     const user = userEvent.setup()
-    const client = createPreviewClient([{ id: 'long', title: '长会话引用', messages: Array.from({ length: 650 }, (_, index) => ({
+    const client = createPreviewClient([{ id: 'long', title: '长会话引用', messages: Array.from({ length: 24 }, (_, index) => ({
       id: String(index + 1), sender: '成员', text: `引用原文 ${index + 1}`,
     })) }])
+    // 六页即可驱逐第一页；桌面验收另用正式分页大小。
+    const readPage = client.readMessages
+    client.readMessages = input => readPage({ ...input, limit: 4 })
     const locate = vi.spyOn(client, 'locateSource')
     render(<App client={client} />)
     await user.click(screen.getByRole('button', { name: '展开会话列表' }))
@@ -137,18 +140,19 @@ describe('文件选择与会话前端', () => {
     expect(screen.getByText('<script>原文不是网页</script>').closest('li')).toHaveClass('message-self')
     expect(screen.queryByText(/1970/)).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '个人总览' }))
-    expect(screen.getByText('已有记录，尚未形成分析结果。')).toBeInTheDocument()
+    expect(screen.queryByText(/完成会话分析后/)).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '打开会话整理' }))
+    expect(await screen.findByRole('heading', { name: '项目讨论' })).toBeVisible()
   })
 
-  it('加号进入导入页，不改变抽屉状态；管理图标不可执行', async () => {
+  it('加号进入导入页，不改变抽屉状态；保留行内管理空间', async () => {
     const user = userEvent.setup()
     render(<App />)
     await user.click(screen.getByRole('button', { name: '导入会话' }))
     expect(screen.getByRole('button', { name: '展开会话列表' })).toHaveAttribute('aria-expanded', 'false')
     expect(screen.queryByRole('button', { name: '数据导入' })).not.toBeInTheDocument()
     await waitFor(() => expect(screen.getByRole('button', { name: '选择文件' })).toHaveFocus())
-    await user.click(screen.getByRole('button', { name: '管理会话' }))
-    expect(screen.getByRole('button', { name: '管理会话' })).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.queryByRole('button', { name: '管理会话' })).not.toBeInTheDocument()
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
     expect(screen.getByRole('region', { name: '文件导入' })).toBeInTheDocument()
   })

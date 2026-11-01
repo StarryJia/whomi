@@ -13,6 +13,10 @@ import { createAiService } from './ai-service'
 import { createAiRouter } from './ai-router'
 import { createCredentialVault } from './ai-credentials'
 import { aiChannels, type AiMethods } from '../../src/shared/ai-contract'
+import { createCherryAccount } from './cherry-accounts'
+import type { SubscriptionProviderId } from '../../src/shared/chatgpt-plan'
+import { createChatgptAuth } from './chatgpt-auth'
+import { createChatgptRunner } from './chatgpt-responses'
 import { createSettingsService } from './settings-service'
 import { createStorageLocationService, resolveStorageLocation } from './storage-location'
 import { settingsChannel, type SettingsApi, type SettingsSnapshot } from '../../src/shared/settings-contract'
@@ -46,13 +50,24 @@ else {
     let publishImport: Parameters<DataHost['onEvent']>[0] = () => {}
     let publishAi: Parameters<NonNullable<typeof aiService>['subscribe']>[0] = () => {}
     const secrets = createCredentialVault(safeStorage)
+    const accountOptions = { directory: userDataPath, vault: secrets, openBrowser: (url: string) => shell.openExternal(url) }
+    const chatgpt = createChatgptAuth(accountOptions)
+    const grok = createCherryAccount('grok-cli', { ...accountOptions, clientId: process.env.WHOMI_GROK_CLIENT_ID })
+    const copilot = createCherryAccount('copilot', { ...accountOptions, clientId: process.env.WHOMI_COPILOT_CLIENT_ID })
+    const accounts = { 'openai-codex': chatgpt, 'grok-cli': grok, copilot }
+    const accountRunners = { 'openai-codex': createChatgptRunner((id, signal) => chatgpt.accessToken(id, signal)), 'grok-cli': grok.runner, copilot: copilot.runner }
+    app.once('before-quit', () => { for (const account of Object.values(accounts)) account.close() })
     async function startServices(directory: string) {
       dataHost = startDataHost(directory)
       if (probeEnabled) (globalThis as typeof globalThis & { __whomiRuntimeProbe?: DataHost }).__whomiRuntimeProbe = dataHost
       await dataHost.request('health', null)
       dataHost.onEvent(snapshot => publishImport(snapshot))
       agentHost = startAgentHost(directory)
-      aiService = createAiService({ storage: (method, args) => dataHost!.request('aiStorage', [method, args]), runtime: agentHost, secrets,
+      aiService = createAiService({ storage: (method, args) => dataHost!.request('aiStorage', [method, args]), runtime: { run: (input, options) => {
+          if (!input.model.planAccount) return agentHost!.run(input, options)
+          const provider: SubscriptionProviderId = input.model.planProvider ?? 'openai-codex'
+          return accountRunners[provider].run(input, options)
+        } }, secrets,
         changed: event => publishAi(event),
         processing: async conversationId => {
           const [settings, members] = await Promise.all([dataHost!.request<SettingsSnapshot>('settingsStorage', ['get', []]), dataHost!.request<ProcessingMember[]>('listMembers', [conversationId])])
@@ -74,7 +89,7 @@ else {
         if (servicesClosed) await startServices(directory)
         suspended = false
       } })
-    const settingsService = createSettingsService({ storage: (method, args) => dataHost!.request('settingsStorage', [method, args]), secrets,
+    const settingsService = createSettingsService({ accounts, storage: (method, args) => dataHost!.request('settingsStorage', [method, args]), secrets,
       testModel: id => aiService!.testModel(id), beforeModelChange: async ids => { if (aiService!.hasModelWork(ids)) throw new BoundaryError('MODEL_BUSY', '请先停止使用此模型的任务后重试。') } })
     const diagnostics: { code: string; action: string }[] = []
     const credential = randomUUID()

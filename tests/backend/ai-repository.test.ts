@@ -4,7 +4,7 @@ import { openStore, type Store } from '../../electron/data/db/open'
 import { schema, selfOptOutSchema, importStateSchema } from '../../electron/data/db/schema'
 import { createAiRepository } from '../../electron/data/ai/repository'
 import { temporaryStore } from './helpers'
-import type { AiReport } from '../../src/shared/ai-contract'
+import { currentMemoryContributions, type MemoryReport } from '../../src/shared/memory'
 import { createDataService } from '../../electron/data/service'
 import { createDataDispatcher } from '../../electron/data/dispatch'
 import { validateAiCall, validateAiResult } from '../../src/shared/ai-validation'
@@ -27,7 +27,27 @@ async function setup() {
   const model = await repository.saveModel({ id: 'example', label: '示例服务', model: 'example-model', baseUrl: 'http://127.0.0.1:1234/v1', contextWindow: 4096, maxTokens: 512, enabled: true }, 'encrypted-example')
   return { store, repository, model, path: temp.path }
 }
-const report: AiReport = { summary: '示例观察', observations: [{ text: '尝试了解对方', evidenceMessageIds: ['1'], limitations: '仅限本段记录' }], limitations: '材料有限' }
+const notes = { events: [{ key: '约定', text: '试着听听对方的想法', evidenceMessageIds: ['1'], signals: [{ direction: 'J', messageId: '1' }] }] }
+const report: MemoryReport = { format: 'memory-v3', eventVotes: { EI: [0,0], SN: [0,0], TF: [0,0], JP: [0,0] }, dimensions: { EI: null, SN: null, TF: null, JP: null }, events: [{ title: '约定', text: '试着听听对方的想法。' }], relationship: '你们似乎给彼此留有时间。' }
+
+test('线程排序和置顶按原会话隔离，删除只撤回该线程的回答及用量', async () => {
+  const { repository, store } = await setup()
+  const first = await repository.createThread('1'), second = await repository.createThread('1'), other = await repository.createThread('2')
+  const turn = await repository.createTurn({ threadId: second.id, requestId: '管理', prompt: '虚构提问', referenceIds: [], modelId: 'example' })
+  await repository.recordUsage({ ownerKind: 'turn', ownerId: turn.id, requestId: '管理', usage: { outputTokens: 2 } })
+  await repository.arrangeThread('1', { id: first.id, targetId: second.id, placement: 'before' })
+  await repository.arrangeThread('1', { id: first.id, targetId: second.id, placement: 'before' })
+  expect(repository.listThreads('1').map(item => item.id)).toEqual([first.id, second.id])
+  await repository.arrangeThread('1', { id: second.id, pinned: true })
+  expect(repository.listThreads('1')[0]).toMatchObject({ id: second.id, pinned: true })
+  await expect(repository.arrangeThread('2', { id: second.id, targetId: other.id, placement: 'after' })).rejects.toThrow()
+  await expect(repository.deleteThread('2', second.id)).rejects.toThrow()
+  await repository.deleteThread('1', second.id)
+  expect(repository.listThreads('1').map(item => item.id)).toEqual([first.id])
+  expect(repository.listThreads('2').map(item => item.id)).toEqual([other.id])
+  expect(store.reader.prepare('SELECT * FROM ai_request_usage').all()).toEqual([])
+  expect(store.reader.prepare('SELECT id FROM messages').all()).toHaveLength(3)
+})
 
 test('turn identity preserves its generating version after rename, disable and restart without exposing credentials', async () => {
   const { repository, store, model, path } = await setup()
@@ -180,18 +200,19 @@ test('batch commits count unique source coverage and replace cumulative request 
   const { repository } = await setup(), analysis = await task(repository)
   await repository.recordUsage({ ownerKind: 'analysis', ownerId: analysis.id, requestId: 'failed-request', usage: { outputTokens: 10 } })
   await repository.recordUsage({ ownerKind: 'analysis', ownerId: analysis.id, requestId: 'failed-request', usage: { outputTokens: 20 } })
-  await repository.commitBatch(analysis.id, { index: 0, messageIds: ['1'], report, usage: { outputTokens: 30 }, requestId: 'retry-request' })
-  await repository.commitBatch(analysis.id, { index: 0, messageIds: ['1'], report, usage: { outputTokens: 30 }, requestId: 'retry-request' })
+  await repository.commitBatch(analysis.id, { index: 0, messageIds: ['1'], report: notes, usage: { outputTokens: 30 }, requestId: 'retry-request' })
+  await repository.commitBatch(analysis.id, { index: 0, messageIds: ['1'], report: notes, usage: { outputTokens: 30 }, requestId: 'retry-request' })
   expect(repository.getAnalysis(analysis.id)).toMatchObject({ analyzedMessages: 1, usage: { outputTokens: 50 } })
-  await repository.commitBatch(analysis.id, { index: 1, messageIds: ['1', '2'], report, usage: {} })
+  await repository.commitBatch(analysis.id, { index: 1, messageIds: ['1', '2'], report: notes, usage: {} })
   expect(repository.getAnalysis(analysis.id).analyzedMessages).toBe(2)
   expect(repository.getAnalysis(analysis.id).usage.incomplete).toBe(true)
 })
 test('invalid reports never publish completion or overwrite the previous valid result', async () => {
   const { repository } = await setup(), analysis = await task(repository)
   await expect(repository.completeAnalysis(analysis.id, report)).rejects.toHaveProperty('code')
-  await repository.commitBatch(analysis.id, { index: 0, messageIds: ['1', '2'], report, usage: {} })
-  await expect(repository.completeAnalysis(analysis.id, { ...report, observations: [{ ...report.observations[0], evidenceMessageIds: ['3'] }] })).rejects.toHaveProperty('code')
+  await repository.commitBatch(analysis.id, { index: 0, messageIds: ['1', '2'], report: notes, usage: {} })
+  await expect(repository.commitBatch(analysis.id, { index: 1, messageIds: [], report: { events: [{ ...notes.events[0], evidenceMessageIds: ['3'] }] }, usage: {} })).rejects.toHaveProperty('code')
+  await expect(repository.completeAnalysis(analysis.id, { ...report, relationship: '' })).rejects.toHaveProperty('code')
   expect(repository.getAnalysis(analysis.id).state).not.toBe('completed')
   await repository.completeAnalysis(analysis.id, report)
   expect(repository.getReport(analysis.id)).toEqual(report)
@@ -201,18 +222,54 @@ test('invalid reports never publish completion or overwrite the previous valid r
 })
 test('identity changes invalidate results and prevent old source history from entering the next context', async () => {
   const { store, repository } = await setup(), analysis = await task(repository)
-  await repository.commitBatch(analysis.id, { index: 0, messageIds: ['1', '2'], report, usage: {} })
+  await repository.commitBatch(analysis.id, { index: 0, messageIds: ['1', '2'], report: notes, usage: {} })
   await repository.completeAnalysis(analysis.id, report)
   const thread = await repository.openThread('1'), first = await repository.createTurn({ threadId: thread.id, requestId: 'one', prompt: '看看这段', referenceIds: ['1'], modelId: 'example' })
   await repository.saveTurn(first.id, { state: 'completed', text: '曾引用旧身份原文', checkpoint: 'native-old' })
   changeSelf(store)
   expect(repository.getAnalysis(analysis.id).valid).toBe(false)
+  expect(repository.getReport(analysis.id)).toEqual(report)
+  expect(currentMemoryContributions(repository.listAnalyses())).toEqual([])
   const next = await repository.createTurn({ threadId: thread.id, requestId: 'two', prompt: '重新讨论', referenceIds: [], modelId: 'example' })
   expect(repository.turnContext(next.id)).toMatchObject({ history: [], profile: null, checkpoint: null })
 })
+
+test('only completed generations replace their own relation, and removing a relation retracts its local contribution', async () => {
+  const { store, repository } = await setup()
+  const first = await task(repository)
+  await repository.commitBatch(first.id, { index: 0, messageIds: ['1','2'], report: notes, usage: {} })
+  await repository.completeAnalysis(first.id, report)
+  store.writer.exec(`INSERT INTO self_confirmations(conversation_id,member_id,status,source) VALUES(2,3,'confirmed','user');
+    INSERT INTO messages(id,conversation_id,member_id,sender_kind,sender_name,kind,text,ordinal) VALUES
+    (4,2,3,'member','另一人','text','旅行回来我更想独处休息',1),(5,2,3,'member','另一人','text','聚餐后我想自己走回去歇一歇',2)`)
+  const prep = await repository.prepareAnalysis({ conversationId: '2', modelId: 'example' })
+  const other = await repository.confirmAnalysis({ token: prep.token, requestId: 'other' })
+  const otherNotes = { events: ['3','4','5'].map((id, i) => ({ key: ['周末','旅行','聚餐'][i], text: '本人选择独处休息。', evidenceMessageIds: [id], signals: [{ direction: 'I', messageId: id }] })) }
+  await repository.commitBatch(other.id, { index: 0, messageIds: ['3','4','5'], report: otherNotes, usage: {} })
+  await repository.completeAnalysis(other.id, { ...report, eventVotes: { ...report.eventVotes, EI: [0,3] }, dimensions: { ...report.dimensions, JP: null, EI: 'I' } })
+  const before = currentMemoryContributions(repository.listAnalyses())
+  expect(before).toHaveLength(2)
+  const next = await task(repository, 'next')
+  await repository.saveAnalysis(next.id, { state: 'stopped' })
+  expect(currentMemoryContributions(repository.listAnalyses())).toEqual(before)
+  await repository.resumeAnalysis(next.id)
+  await repository.saveAnalysis(next.id, { state: 'failed' })
+  expect(currentMemoryContributions(repository.listAnalyses())).toEqual(before)
+  await repository.resumeAnalysis(next.id)
+  await repository.commitBatch(next.id, { index: 0, messageIds: ['1','2'], report: { events: [] }, usage: {} })
+  await repository.completeAnalysis(next.id, { ...report, dimensions: { ...report.dimensions, JP: null } })
+  expect(currentMemoryContributions(repository.listAnalyses())).toEqual([
+    { conversationId: '1', taskId: next.id, dimensions: { EI: null, SN: null, TF: null, JP: null } },
+    { conversationId: '2', taskId: other.id, dimensions: { EI: 'I', SN: null, TF: null, JP: null } },
+  ])
+  expect(repository.getReport(first.id)).toEqual(report)
+  purgeConversation(store, '1')
+  expect(repository.listAnalyses().map(task => task.id)).toEqual([other.id])
+  expect(currentMemoryContributions(repository.listAnalyses())[0].dimensions.EI).toBe('I')
+})
 test('restart preserves committed batches, interrupts active work and ignores late terminal callbacks', async () => {
   const { store, repository } = await setup(), analysis = await task(repository)
-  await repository.commitBatch(analysis.id, { index: 0, messageIds: ['1'], report, usage: {} })
+  await repository.commitBatch(analysis.id, { index: 0, messageIds: ['1'], report: notes, usage: {} })
   const thread = await repository.openThread('1'), turn = await repository.createTurn({ threadId: thread.id, requestId: 'one', prompt: '继续', referenceIds: [], modelId: 'example' })
   await repository.saveTurn(turn.id, { state: 'running', text: '部分文字' })
   const fresh = createAiRepository(store, async operation => operation())
@@ -275,7 +332,7 @@ test('confirmations and interrupted analysis cannot mix results from different p
   await expect(repository.confirmAnalysis({ token: preparation.token, requestId: 'stale-confirmation' }, 1001)).rejects.toMatchObject({ code: 'PROMPT_CHANGED' })
   expect(repository.listAnalyses()).toEqual([])
   const analysis = await task(repository)
-  await repository.commitBatch(analysis.id, { index: 0, messageIds: ['1'], report, usage: {} })
+  await repository.commitBatch(analysis.id, { index: 0, messageIds: ['1'], report: notes, usage: {} })
   await repository.saveAnalysis(analysis.id, { state: 'interrupted' })
   store.writer.prepare('UPDATE ai_analysis_tasks SET prompt_version=? WHERE id=?').run('previous-instructions', BigInt(analysis.id))
   expect(() => repository.analysisContext(analysis.id)).toThrowError(expect.objectContaining({ code: 'PROMPT_CHANGED' }))

@@ -1,6 +1,6 @@
 import type { ProcessingSettings } from '../../src/shared/settings-contract'
 
-export type ProcessingMessage = { id: string; senderName: string; text: string; kind: string; memberId?: string | null; sentAtMs?: number | null; sourceIds?: string[] }
+export type ProcessingMessage = { id: string; senderName: string; text: string; kind: string; memberId?: string | null; sentAtMs?: number | null; sourceIds?: string[]; isSelf?: boolean }
 export type ProcessingMember = { id: string; displayName: string }
 function luhn(value: string) {
   let sum = 0
@@ -42,26 +42,39 @@ export function createMessageProcessor(settings: ProcessingSettings, members: re
     return value
   }
   function data<T>(input: T, key = ''): T {
-    if (['id', 'sourceIds', 'evidenceMessageIds', 'referenceIds', 'memberId', 'modelId'].includes(key)) return input
+    if (['id', 'sourceIds', 'evidenceMessageIds', 'referenceIds', 'messageId', 'memberId', 'modelId'].includes(key)) return input
     if (typeof input === 'string') return (key === 'senderName' && settings.anonymize ? nicknames.get(input) ?? '成员' : text(input)) as T
     if (Array.isArray(input)) return input.map(value => data(value, key)) as T
     if (input && typeof input === 'object') return Object.fromEntries(Object.entries(input).map(([name, value]) => [name, data(value, name)])) as T
     return input
   }
-  function messages<T extends ProcessingMessage>(input: readonly T[]): (T & { sourceIds: string[] })[] {
+  function prepare<T extends ProcessingMessage>(input: readonly T[]) {
     const result: (T & { sourceIds: string[] })[] = []
     for (const original of input) {
       if (settings.denoise && (!original.text.trim() || (original.kind === 'system' && /^\[(系统消息|系统占位|空消息)\]$/.test(original.text.trim())))) continue
       const item = { ...original, sourceIds: original.sourceIds ?? [original.id], text: text(settings.clean ? cleanCard(original.text) : original.text),
         senderName: settings.anonymize ? original.memberId ? `U${original.memberId}` : nicknames.get(original.senderName) ?? '成员' : text(original.senderName) }
-      const previous = result.at(-1)
-      if (settings.merge && previous && original.kind === 'text' && previous.kind === 'text' &&
-        (original.memberId ? previous.memberId === original.memberId : previous.senderName === item.senderName && !settings.anonymize) &&
-        original.sentAtMs != null && previous.sentAtMs != null && original.sentAtMs >= previous.sentAtMs && original.sentAtMs - previous.sentAtMs <= settings.mergeSeconds * 1000) {
-        previous.text += `\n${item.text}`; previous.sourceIds.push(...item.sourceIds); previous.sentAtMs = item.sentAtMs
-      } else result.push(item)
+      result.push(item)
     }
     return result
   }
-  return { text, data, messages }
+  function merge<T extends ProcessingMessage & { sourceIds: string[] }>(input: readonly T[], maxBytes = Infinity, legacy = false): T[] {
+    if (!settings.merge) return [...input]
+    const result: T[] = []
+    let bytes = 0
+    for (const item of input) {
+      const previous = result.at(-1)
+      const cost = Number.isFinite(maxBytes) ? Buffer.byteLength(JSON.stringify(item)) : 0
+      const sameSender = legacy ? (item.memberId ? previous?.memberId === item.memberId : previous?.senderName === item.senderName && !settings.anonymize)
+        : !!item.memberId && previous?.memberId === item.memberId && previous?.isSelf === item.isSelf
+      if (previous && sameSender && item.kind === 'text' && previous.kind === 'text' && bytes + cost <= maxBytes &&
+        item.sentAtMs != null && previous.sentAtMs != null && item.sentAtMs >= previous.sentAtMs && item.sentAtMs - previous.sentAtMs <= settings.mergeSeconds * 1000) {
+        previous.text += `\n${item.text}`; previous.sourceIds.push(...item.sourceIds); previous.sentAtMs = item.sentAtMs
+        bytes += cost
+      } else { result.push({ ...item, sourceIds: [...item.sourceIds] }); bytes = cost }
+    }
+    return result
+  }
+  function messages<T extends ProcessingMessage>(input: readonly T[]) { return merge(prepare(input)) }
+  return { text, data, messages, prepare, merge }
 }

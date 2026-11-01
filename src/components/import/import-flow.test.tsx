@@ -14,7 +14,7 @@ it('单入口自动解析保存，无需目标、别名或预览，完成可打�
   expect(screen.queryByLabelText('导入目标')).not.toBeInTheDocument()
   expect(screen.queryByText('确认账号别名')).not.toBeInTheDocument()
   expect(screen.queryByRole('button', { name: '预览消息' })).not.toBeInTheDocument()
-  expect(onSaved).toHaveBeenCalledWith(['7'])
+  await waitFor(() => expect(onSaved).toHaveBeenCalledWith(['7']))
   await userEvent.click(screen.getByRole('button', { name: '打开会话' }))
   expect(onOpen).toHaveBeenCalledWith('7')
   await userEvent.click(screen.getByRole('button', { name: '继续导入' }))

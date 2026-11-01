@@ -1,5 +1,6 @@
 // Adapted from Cherry Studio ModelSelector / ModelSelectorRow, f19aa72 (AGPL-3.0).
 // Whomi supplies local models and selection persistence in place of Cherry data hooks.
+import { chatgptProviderId, chatgptUsageUrl } from '../../shared/chatgpt-plan'
 import * as Popover from '@radix-ui/react-popover'
 import { Box, Check, ChevronDown, Search } from 'lucide-react'
 import { createContext, useContext, useId, useMemo, useRef, useState } from 'react'
@@ -35,7 +36,7 @@ export function ModelSelector({ models, value, onSelect, label, disabled, descri
   const ordered = groups.flatMap(([, items]) => items)
   const choose = (id: string) => { onSelect(id); setOpen(false) }
   const selectedTitle = selected ? [selected.label, selected.providerName].filter(Boolean).join(' | ') : '选择模型'
-  return <Popover.Root open={open} onOpenChange={next => { setOpen(next); if (next) { setSearchText(''); setActiveIndex(0) } }}>
+  return <><Popover.Root open={open} onOpenChange={next => { setOpen(next); if (next) { setSearchText(''); setActiveIndex(0) } }}>
     <Popover.Trigger asChild><button type="button" role="combobox" aria-label={label} aria-expanded={open}
       aria-controls={open ? listId : undefined} aria-haspopup="listbox" aria-describedby={describedBy}
       className="cherry-model-trigger" disabled={disabled} title={selectedTitle}>
@@ -71,5 +72,5 @@ export function ModelSelector({ models, value, onSelect, label, disabled, descri
         {!ordered.length && <p className="cherry-model-empty">{models.length ? '未找到模型' : '请在设置中添加模型'}</p>}
       </div>
     </Popover.Content></Popover.Portal>
-  </Popover.Root>
+  </Popover.Root>{selected?.providerId === chatgptProviderId && <a className="chatgpt-usage-link" href={chatgptUsageUrl} target="_blank" rel="noreferrer" title="管理 ChatGPT 用量">使用 ChatGPT 套餐</a>}</>
 }

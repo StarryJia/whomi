@@ -3,8 +3,9 @@ import type { Store } from '../db/open'
 import type { WriterQueue } from '../import/runner'
 import { saveAiModelVersion } from '../ai/repository'
 import type { AiModel } from '../../../src/shared/ai-contract'
-import { defaultProcessing, type ModelFeature, type ProcessingSettings, type Provider, type ProviderInput, type SettingsModel, type SettingsModelInput, type SettingsSnapshot } from '../../../src/shared/settings-contract'
+import { defaultProcessing, presetAccountId, type AccountUsage, type ModelFeature, type ProcessingSettings, type Provider, type ProviderInput, type SettingsModel, type SettingsModelInput, type SettingsSnapshot } from '../../../src/shared/settings-contract'
 import { failSettings, settingsId, validateProcessing, validateProvider, validateSettingsModel } from './validation'
+import { getSubscriptionId, isSubscriptionId, subscriptionProviders, type SubscriptionProviderId } from '../../../src/shared/chatgpt-plan'
 import { localId } from '../../../src/shared/desktop-validation'
 import { defaultModelProtocol } from '../../../src/shared/model-protocol'
 
@@ -59,7 +60,46 @@ export function createSettingsRepository(store: Store, write: WriterQueue) {
       const rows = reader.prepare('SELECT data,encrypted_key FROM settings_providers ORDER BY id').all() as ProviderRow[]
       return { providers: rows.map(row => ({ protocol: defaultModelProtocol, ...JSON.parse(row.data) as StoredProvider, hasCredential: row.encrypted_key !== null })), models: models(), processing: setting('processing', defaultProcessing), selectedModels: setting('selectedModels', {}), debug: setting('debug', false) }
     },
+    accountUsage(service: SubscriptionProviderId, accountId: string): AccountUsage {
+      if (!isSubscriptionId(service) || typeof accountId !== 'string' || !accountId.trim() || accountId.length > 512) failSettings('INVALID_PROVIDER')
+      // 请求所属账户随模型版本固定，重新授权后当前服务商记录可能已指向另一人。
+      const row = reader.prepare(`WITH owners(kind, id, model_id, model_version) AS (
+        SELECT 'turn', id, model_id, model_version FROM ai_turns
+        UNION ALL SELECT 'analysis', id, model_id, model_version FROM ai_analysis_tasks
+      ), counters AS (
+        SELECT json_extract(u.data,'$.totalInputTokens') input, json_extract(u.data,'$.outputTokens') output,
+               json_extract(u.data,'$.incomplete') incomplete
+        FROM ai_request_usage u JOIN owners o ON o.kind=u.owner_kind AND o.id=u.owner_id
+        JOIN ai_model_versions v ON v.model_id=o.model_id AND v.version=o.model_version
+        WHERE json_extract(v.data,'$.planProvider')=? AND json_extract(v.data,'$.planAccount')=?
+          AND u.request_id!='snapshot' AND u.request_id NOT LIKE 'snapshot:%'
+      ) SELECT count(*) requests, sum(input) input, sum(output) output,
+               count(*) FILTER (WHERE input IS NULL OR output IS NULL OR incomplete=1) partial FROM counters`)
+        .get(service, accountId) as {requests:bigint; input:bigint|null; output:bigint|null; partial:bigint}
+      return { requests:Number(row.requests), inputTokens:row.input === null ? null : Number(row.input),
+        outputTokens:row.output === null ? null : Number(row.output), partial: row.partial > 0n }
+    },
     providerSecret,
+    async setAccountConnection(service: SubscriptionProviderId, accountId: string | null, enabled?: boolean): Promise<void> {
+      if (!isSubscriptionId(service) || (enabled !== undefined && typeof enabled !== 'boolean')) failSettings('INVALID_PROVIDER')
+      const providerId = presetAccountId(service)
+      const config = subscriptionProviders[service]
+      if (accountId !== null && (typeof accountId !== 'string' || !accountId.trim() || accountId.length > 512)) failSettings('INVALID_PROVIDER')
+      await write(() => db.transaction(() => {
+        const row = db.prepare('SELECT data FROM settings_providers WHERE id=?').get(providerId) as { data: string } | undefined
+        if (!row && !accountId) return
+        const previous = row ? JSON.parse(row.data) as StoredProvider : undefined
+        const active = !!accountId && (enabled ?? (previous?.planAccount === accountId ? previous.enabled : true))
+        if (previous && previous.planAccount === (accountId ?? undefined) && previous.enabled === active) return
+        const linked = models(providerId)
+        idle(linked.map(item => item.id))
+        const provider: StoredProvider = { ...config, id: providerId, enabled: active, ...(accountId ? { planAccount: accountId } : {}) }
+        db.prepare('INSERT INTO settings_providers(id,data,encrypted_key) VALUES(?,?,NULL) ON CONFLICT(id) DO UPDATE SET data=excluded.data,encrypted_key=NULL')
+          .run(providerId, JSON.stringify(provider))
+        for (const item of linked) saveAiModelVersion(db, { ...item, enabled: active && item.enabled,
+          planAccount: accountId ?? item.planAccount, baseUrl: config.baseUrl, protocol: config.protocol, planProvider: service }, null)
+      })())
+    },
     async claimProcessing(taskId: string, signature: string): Promise<void> {
       if (!localId(taskId)) failSettings('INVALID_TASK')
       settingsId(signature)
@@ -72,20 +112,35 @@ export function createSettingsRepository(store: Store, write: WriterQueue) {
       })())
     },
     async saveProvider(input: ProviderInput, encryptedKey?: string | null): Promise<Provider> {
-      validateProvider(input); secret(encryptedKey)
+      if (getSubscriptionId(input.id ?? '') || isSubscriptionId(input.presetId)) failSettings('INVALID_PROVIDER', '请在账户登录面板中管理此连接。')
+      const protocol = validateProvider(input)
+      secret(encryptedKey)
       if (Object.hasOwn(input, 'apiKey')) failSettings('INVALID_PROVIDER')
       return write(() => db.transaction(() => {
-        const previous = input.id ? providerSecret(input.id) : null, providerId = input.id ?? randomUUID()
+        const previous = input.id ? providerSecret(input.id) : null
+        const providerId = input.id ?? (input.presetId ? presetAccountId(input.presetId) : randomUUID())
         const key = encryptedKey === undefined ? previous?.encryptedKey ?? null : encryptedKey
-        const provider: StoredProvider = { id: providerId, name: input.name.trim(), baseUrl: input.baseUrl.trim().replace(/\/+$/, ''), protocol: input.protocol ?? previous?.provider.protocol ?? defaultModelProtocol, enabled: input.enabled, ...(input.image === undefined ? {} : { image: input.image }), ...(input.notes === undefined ? {} : { notes: input.notes }) }
+        const provider: StoredProvider = { id: providerId, name: input.name.trim(), baseUrl: input.baseUrl.trim().replace(/\/+$/, ''), protocol: protocol ?? previous?.provider.protocol ?? defaultModelProtocol, enabled: input.enabled, ...(input.image === undefined ? {} : { image: input.image }), ...(input.notes === undefined ? {} : { notes: input.notes }) }
+        const urls = input.endpointUrls ?? previous?.provider.endpointUrls
+        if (urls) {
+          provider.endpointUrls = {
+            ...Object.fromEntries(Object.entries(urls).map(([type, url]) => [type, url.trim().replace(/\/+$/, '')])),
+            [provider.protocol ?? defaultModelProtocol]: provider.baseUrl,
+          }
+        }
+        if (input.avatarId) provider.avatarId = input.avatarId
         const linked = models(providerId), changesModels = previous && (previous.provider.baseUrl !== provider.baseUrl || previous.provider.protocol !== provider.protocol || previous.provider.enabled !== provider.enabled || previous.encryptedKey !== key)
         if (changesModels) idle(linked.map(value => value.id))
-        db.prepare('INSERT INTO settings_providers(id,data,encrypted_key) VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data,encrypted_key=excluded.encrypted_key').run(providerId, JSON.stringify(provider), key)
+        // 另一窗口先完成预设配置时，迟到的首次保存不能覆盖其地址或密钥。
+        const saved = db.prepare(`INSERT INTO settings_providers(id,data,encrypted_key) VALUES(?,?,?)
+          ON CONFLICT(id) DO UPDATE SET data=excluded.data,encrypted_key=excluded.encrypted_key WHERE ?`).run(providerId, JSON.stringify(provider), key, previous ? 1 : 0)
+        if (!saved.changes) failSettings('DUPLICATE_PROVIDER', '该服务商已配置，请重新打开设置后编辑。')
         if (changesModels) for (const value of linked) saveAiModelVersion(db, { ...value, baseUrl: provider.baseUrl, protocol: provider.protocol, enabled: provider.enabled && value.enabled }, key)
         return { ...provider, hasCredential: key !== null }
       })())
     },
     async removeProvider(id: string): Promise<void> {
+      if (getSubscriptionId(id)) failSettings('INVALID_PROVIDER', '请退出该服务商的账户。')
       settingsId(id)
       await write(() => db.transaction(() => {
         providerSecret(id); const linked = models(id); idle(linked.map(value => value.id))
@@ -101,7 +156,8 @@ export function createSettingsRepository(store: Store, write: WriterQueue) {
         if (previous && previous.providerId !== provider.id) failSettings('INVALID_MODEL')
         if (models(provider.id).some(value => value.id !== input.id && value.model === input.model.trim())) failSettings('DUPLICATE_MODEL', '该模型已添加，请修改已有模型。')
         if (previous) idle([previous.id])
-        const saved = saveAiModelVersion(db, { id: input.id ?? randomUUID(), label: input.label.trim(), model: input.model.trim(), baseUrl: provider.baseUrl, protocol: provider.protocol, contextWindow: input.contextWindow, maxTokens: input.maxTokens, ...(input.maxInputTokens === undefined ? {} : { maxInputTokens: input.maxInputTokens }), enabled: provider.enabled && input.enabled }, encryptedKey)
+        if (getSubscriptionId(provider.id) && !provider.planAccount) failSettings('ACCOUNT_LOGIN', '请先登录服务商账户。')
+        const saved = saveAiModelVersion(db, { ...(provider.planAccount ? { planAccount: provider.planAccount, planProvider: getSubscriptionId(provider.id) } : {}), id: input.id ?? randomUUID(), label: input.label.trim(), model: input.model.trim(), baseUrl: provider.baseUrl, protocol: provider.protocol, contextWindow: input.contextWindow, maxTokens: input.maxTokens, ...(input.maxInputTokens === undefined ? {} : { maxInputTokens: input.maxInputTokens }), enabled: provider.enabled && input.enabled }, encryptedKey)
         db.prepare('INSERT INTO settings_models(model_id,provider_id,enabled) VALUES(?,?,?) ON CONFLICT(model_id) DO UPDATE SET enabled=excluded.enabled').run(saved.id, provider.id, input.enabled ? 1 : 0)
         const metadata = setting<Record<string, Pick<SettingsModel, 'group' | 'maxInputTokens'>>>('modelMetadata', {})
         metadata[saved.id] = { ...(input.group === undefined ? {} : { group: input.group }), ...(input.maxInputTokens === undefined ? {} : { maxInputTokens: input.maxInputTokens }) }

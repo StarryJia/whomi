@@ -1,3 +1,4 @@
+import { dismissIdentity } from './fixtures/identity.mjs'
 import { test, expect, _electron as electron } from '@playwright/test'
 import { mkdtemp, writeFile, readFile, rm, mkdir, copyFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -127,6 +128,7 @@ test('capture comprehensive evidence for import flow, unified top bar, conversat
 
     // 8. 打开会话，检查顶栏对齐与短消息气泡（F10、F13）
     await page.getByRole('button', { name: '打开会话', exact: true }).click()
+    await dismissIdentity(page)
     await expect(page.locator('#conversation-title')).toBeVisible()
 
     // 检查短消息“是滴”的气泡宽度（按内容收缩，不被姓名/时间撑宽）
@@ -182,7 +184,7 @@ test('capture comprehensive evidence for import flow, unified top bar, conversat
     await page.getByRole('menuitem', { name: '删除会话' }).click()
     const deleteModal = page.getByRole('dialog', { name: '删除会话' })
     await expect(deleteModal).toBeVisible()
-    await expect(deleteModal.getByText('将彻底删除该会话及其全部聊天记录、成员、本人设置、对话记录与分析报告。此操作无法撤销。')).toBeVisible()
+    await expect(deleteModal.getByText(/原文、成员、本人设置、关联 AI 对话和记忆成稿。此操作无法撤销。/)).toBeVisible()
     await page.screenshot({ path: join(evidence, '14-conversation-delete-confirm-modal.png') })
 
     // 点击确认删除

@@ -1,0 +1,128 @@
+{
+  "old": [
+    {
+      "id": "1",
+      "conversation": "1",
+      "state": "failed",
+      "error": "当前内容超出最大输入长度，请减少内容或选择更大上下文的模型。",
+      "modelVersion": 1,
+      "promptVersion": "conversation-memory-v3",
+      "total": 14639,
+      "covered": 0,
+      "reports": 0
+    },
+    {
+      "id": "2",
+      "conversation": "2",
+      "state": "stopped",
+      "error": null,
+      "modelVersion": 1,
+      "promptVersion": "conversation-memory-v3",
+      "total": 46,
+      "covered": 9,
+      "reports": 0
+    }
+  ],
+  "upgraded": [
+    {
+      "task": {
+        "id": "1",
+        "conversation": "1",
+        "state": "completed",
+        "error": null,
+        "modelVersion": 1,
+        "promptVersion": "conversation-memory-v3",
+        "total": 14639,
+        "covered": 14639,
+        "reports": 1
+      },
+      "requests": [
+        {
+          "first": 1,
+          "last": 1557,
+          "count": 1557
+        },
+        {
+          "first": 1558,
+          "last": 3100,
+          "count": 1543
+        },
+        {
+          "first": 3101,
+          "last": 4643,
+          "count": 1543
+        },
+        {
+          "first": 4644,
+          "last": 6186,
+          "count": 1543
+        },
+        {
+          "first": 6187,
+          "last": 7729,
+          "count": 1543
+        },
+        {
+          "first": 7730,
+          "last": 9272,
+          "count": 1543
+        },
+        {
+          "first": 9273,
+          "last": 10806,
+          "count": 1534
+        },
+        {
+          "first": 10807,
+          "last": 12331,
+          "count": 1525
+        },
+        {
+          "first": 12332,
+          "last": 13856,
+          "count": 1525
+        },
+        {
+          "first": 13857,
+          "last": 14639,
+          "count": 783
+        }
+      ]
+    },
+    {
+      "task": {
+        "id": "2",
+        "conversation": "2",
+        "state": "completed",
+        "error": null,
+        "modelVersion": 1,
+        "promptVersion": "conversation-memory-v3",
+        "total": 46,
+        "covered": 46,
+        "reports": 1
+      },
+      "requests": [
+        {
+          "first": 20010,
+          "last": 20020,
+          "count": 11
+        },
+        {
+          "first": 20021,
+          "last": 20031,
+          "count": 11
+        },
+        {
+          "first": 20032,
+          "last": 20042,
+          "count": 11
+        },
+        {
+          "first": 20043,
+          "last": 20046,
+          "count": 4
+        }
+      ]
+    }
+  ]
+}

@@ -35,6 +35,7 @@ export function useConversations(client?: ConversationClient) {
   const [error, setError] = useState<string>()
   const windowRef = useRef<ReaderWindow>(undefined)
   const cursorRef = useRef<string | null>(null)
+  const loadedCount = useRef(0)
   const listBusy = useRef(false)
   const readerBusy = useRef(false)
   const listGeneration = useRef(0)
@@ -46,19 +47,26 @@ export function useConversations(client?: ConversationClient) {
     setCurrent(value)
   }, [])
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (options?: { preserveReader?: boolean }) => {
     const generation = ++listGeneration.current
-    ++readerGeneration.current
-    readerBusy.current = false
-    setLoading(false)
-    if (windowRef.current?.sourceStatus === 'loading') updateWindow({ ...windowRef.current, sourceStatus: 'unavailable' })
+    if (!options?.preserveReader) {
+      ++readerGeneration.current
+      readerBusy.current = false
+      setLoading(false)
+      if (windowRef.current?.sourceStatus === 'loading') updateWindow({ ...windowRef.current, sourceStatus: 'unavailable' })
+    }
     listBusy.current = true
     setListLoading(!!client)
     setListError(undefined)
     if (!client) { setConversations([]); setListCursor(null); cursorRef.current = null; listBusy.current = false; return }
     try {
-      const page = await client.listConversations({ limit: 100 })
+      let page = await client.listConversations({ limit: 100 })
+      while (options?.preserveReader && page.nextCursor && page.items.length < loadedCount.current && generation === listGeneration.current) {
+        const next = await client.listConversations({ cursor: page.nextCursor, limit: 100 })
+        page = { items: [...page.items, ...next.items], nextCursor: next.nextCursor }
+      }
       if (!mounted.current || generation !== listGeneration.current) return
+      loadedCount.current = page.items.length
       setConversations(page.items)
       setListCursor(page.nextCursor)
       cursorRef.current = page.nextCursor
@@ -75,6 +83,7 @@ export function useConversations(client?: ConversationClient) {
     setConversations([])
     setListCursor(null)
     cursorRef.current = null
+    loadedCount.current = 0
     void refresh()
     return () => { mounted.current = false; ++listGeneration.current; ++readerGeneration.current }
   }, [refresh, updateWindow])
@@ -88,6 +97,7 @@ export function useConversations(client?: ConversationClient) {
     try {
       const page = await client.listConversations({ cursor: cursorRef.current, limit: 100 })
       if (!mounted.current || generation !== listGeneration.current) return
+      loadedCount.current += page.items.length
       setConversations(previous => [...previous, ...page.items.filter(item => !previous.some(old => old.id === item.id))])
       setListCursor(page.nextCursor)
       cursorRef.current = page.nextCursor
@@ -122,10 +132,12 @@ export function useConversations(client?: ConversationClient) {
     readerBusy.current = true
     const window = { ...emptyWindow(request.conversationId), sourceStatus: 'loading' as const }
     const previous = options.preserveOnFailure && windowRef.current?.conversationId === request.conversationId ? windowRef.current : undefined
-    updateWindow(previous ? { ...previous, sourceStatus: 'loading' } : window)
+    // 引用定位等待期间保留原页，后一次跳转失败时也能恢复该页的来源状态。
+    updateWindow(previous ?? window)
     setLoading(!!client)
     setError(undefined)
     try {
+      if (previous && !request.endMessageId && previous.messages.some(message => message.id === request.messageId)) return true
       const located = await client?.locateSource(request)
       if (!mounted.current || generation !== readerGeneration.current) return false
       if (!located || located.status === 'unavailable') {

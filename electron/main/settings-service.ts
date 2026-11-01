@@ -1,6 +1,7 @@
-import type { SettingsApi, Provider, ProviderInput, SettingsSnapshot } from '../../src/shared/settings-contract'
+import type { AccountUsage, SettingsApi, Provider, ProviderInput, SettingsSnapshot } from '../../src/shared/settings-contract'
 import { failSettings, settingsId, validateProcessing, validateProvider, validateSettingsModel } from '../data/settings/validation'
 import { defaultModelProtocol } from '../../src/shared/model-protocol'
+import { getSubscriptionId, isSubscriptionId, type SubscriptionProviderId, type ChatgptStatus } from '../../src/shared/chatgpt-plan'
 import { fetchModelCatalog } from './model-catalog'
 
 export type SettingsServiceOptions = {
@@ -8,9 +9,16 @@ export type SettingsServiceOptions = {
   secrets: { encrypt(value: string): string; decrypt(value: string): string }
   testModel(id: string): Promise<void>
   beforeModelChange(ids: string[]): Promise<void>
+  accounts?: Partial<Record<SubscriptionProviderId, {
+    getStatus(): Promise<ChatgptStatus>
+    signIn(newAccount?: boolean): Promise<ChatgptStatus>
+    cancel(): void
+    signOut(): Promise<void>
+    listModels(accountId: string): Promise<{ id: string; name: string }[]>
+  }>>
   fetch?: typeof globalThis.fetch
 }
-export type SettingsService = Pick<SettingsApi, 'get' | 'saveProvider' | 'removeProvider' | 'saveModel' | 'removeModel' | 'syncModels' | 'testModel' | 'saveProcessing' | 'selectModel' | 'setDebug'>
+export type SettingsService = Pick<SettingsApi, 'getAccountUsage' | 'getAccountStatus' | 'signInAccount' | 'cancelAccountSignIn' | 'signOutAccount' | 'setAccountEnabled' | 'get' | 'saveProvider' | 'removeProvider' | 'saveModel' | 'removeModel' | 'syncModels' | 'testModel' | 'saveProcessing' | 'selectModel' | 'setDebug'>
 
 export function createSettingsService(options: SettingsServiceOptions): SettingsService {
   const storage = <T>(method: string, ...args: unknown[]) => options.storage(method, args) as Promise<T>
@@ -18,8 +26,52 @@ export function createSettingsService(options: SettingsServiceOptions): Settings
   const affected = async (id: string) => (await get()).models.filter(model => model.providerId === id).map(model => model.id)
   let mutations: Promise<unknown> = Promise.resolve()
   function mutate<T>(operation: () => Promise<T>): Promise<T> { const result = mutations.then(operation); mutations = result.catch(() => {}); return result }
+  function account(id: SubscriptionProviderId) {
+    if (!isSubscriptionId(id)) failSettings('INVALID_PROVIDER')
+    const service = options.accounts?.[id]
+    if (!service) failSettings('ACCOUNT_UNAVAILABLE', '请重新打开此服务商的账户设置。')
+    return service
+  }
+  async function reconcile(id: SubscriptionProviderId, enabled?: boolean) {
+    const status = await account(id).getStatus()
+    if (status.state !== 'pending') await storage('setAccountConnection', id, status.state === 'connected' ? status.accountId : null, enabled)
+    return status
+  }
   return {
     get,
+    getAccountStatus: id => mutate(() => reconcile(id)),
+    getAccountUsage: id => mutate(async () => {
+      const service = account(id)
+      const status = await service.getStatus()
+      if (status.state !== 'connected' || !status.accountId) failSettings('ACCOUNT_LOGIN', '请先登录此账户。')
+      const usage = await storage<AccountUsage>('accountUsage', id, status.accountId)
+      const current = await service.getStatus()
+      if (current.state !== 'connected' || current.accountId !== status.accountId) failSettings('ACCOUNT_CHANGED', '账户已变化，请重新读取用量。')
+      return usage
+    }),
+    async signInAccount(id, newAccount) {
+      if (typeof newAccount !== 'boolean') failSettings('INVALID_ARGUMENT')
+      const status = await account(id).signIn(newAccount)
+      if (status.state !== 'connected') return status
+      return mutate(() => reconcile(id, true))
+    },
+    async cancelAccountSignIn(id) { account(id).cancel() },
+    setAccountEnabled(id, enabled) {
+      if (typeof enabled !== 'boolean') failSettings('INVALID_ARGUMENT')
+      return mutate(async () => {
+        const status = await account(id).getStatus()
+        if (status.state !== 'connected' || !status.accountId) failSettings('CHATGPT_LOGIN', '请登录此服务商的账户。')
+        await options.beforeModelChange(await affected('cherry:' + id))
+        await storage('setAccountConnection', id, status.accountId, enabled)
+      })
+    },
+    signOutAccount(id) {
+      return mutate(async () => {
+        await options.beforeModelChange(await affected('cherry:' + id))
+        await storage('setAccountConnection', id, null)
+        await account(id).signOut()
+      })
+    },
     async saveProvider(input: ProviderInput) {
       validateProvider(input)
       const { apiKey, ...provider } = input
@@ -39,6 +91,11 @@ export function createSettingsService(options: SettingsServiceOptions): Settings
       settingsId(providerId)
       const { provider, encryptedKey } = await storage<{ provider: Provider; encryptedKey: string | null }>('providerSecret', providerId)
       validateProvider({ name: provider.name, baseUrl: provider.baseUrl, protocol: provider.protocol, enabled: provider.enabled })
+      const serviceId = getSubscriptionId(providerId)
+      if (serviceId) {
+        if (!provider.planAccount || !provider.enabled) failSettings('CHATGPT_LOGIN', '请登录并启用此服务商。')
+        return (await account(serviceId).listModels(provider.planAccount)).map(item => ({ id: item.id, label: item.name }))
+      }
       const key = encryptedKey === null ? null : options.secrets.decrypt(encryptedKey)
       const controller = new AbortController(), timeout = setTimeout(() => controller.abort(), 10000)
       try {

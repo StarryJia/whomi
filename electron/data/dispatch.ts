@@ -1,9 +1,10 @@
 import { isAbsolute } from 'node:path'
 import type { Store } from './db/open'
 import { createQueries } from './db/queries'
+import { arrangeList } from './db/list-order'
 import { confirmedSelfSql } from './db/self'
 import type { createDataService } from './service'
-import type { MemberView, PreviewOptions, ReadMessagesInput, ListConversationsInput, LocateSourceInput } from '../../src/shared/desktop-api'
+import type { ListArrangement, MemberView, PreviewOptions, ReadMessagesInput, ListConversationsInput, LocateSourceInput } from '../../src/shared/desktop-api'
 import type { StartImportRequest } from '../../src/shared/import-contract'
 import { BoundaryError, validateArguments, validateResult } from '../../src/shared/desktop-validation'
 import type { GrantedSource } from './import/discovery'
@@ -14,11 +15,11 @@ const aiStorageArity = {
   listModels: [0, 0], saveModel: [1, 2], modelSecret: [1, 2], listSkills: [0, 0], registerSkill: [1, 1],
   prepareAnalysis: [1, 2], confirmAnalysis: [1, 2], getAnalysis: [1, 1], listAnalyses: [0, 1], getReport: [1, 1],
   analysisContext: [1, 1], saveAnalysis: [2, 2], commitBatch: [2, 2], completeAnalysis: [2, 2], resumeAnalysis: [1, 1],
-  openThread: [1, 1], listThreads: [1, 1], createThread: [1, 1], getThread: [1, 1], createTurn: [1, 1], turnContext: [1, 1], saveTurn: [2, 2], beginRetryTurn: [1, 1],
+  openThread: [1, 1], listThreads: [1, 1], createThread: [1, 1], getThread: [1, 1], arrangeThread: [2, 2], deleteThread: [2, 2], createTurn: [1, 1], turnContext: [1, 1], saveTurn: [2, 2], beginRetryTurn: [1, 1],
   recordUsage: [1, 1], recover: [0, 0],
 } as const satisfies Record<keyof AiRepository, readonly [number, number]>
 
-const settingsStorageArity = { get: [0, 0], providerSecret: [1, 1], saveProvider: [1, 2], removeProvider: [1, 1], saveModel: [1, 1], removeModel: [1, 1], saveProcessing: [1, 1], selectModel: [2, 2], setDebug: [1, 1], claimProcessing: [2, 2] } as const
+const settingsStorageArity = { accountUsage: [2, 2], setAccountConnection: [2, 3], get: [0, 0], providerSecret: [1, 1], saveProvider: [1, 2], removeProvider: [1, 1], saveModel: [1, 1], removeModel: [1, 1], saveProcessing: [1, 1], selectModel: [2, 2], setDebug: [1, 1], claimProcessing: [2, 2] } as const
 
 export function createDataDispatcher(store: Store, service: ReturnType<typeof createDataService>, ai?: AiRepository, settings?: SettingsRepository) {
   const queries = createQueries(store), db = store.reader
@@ -69,6 +70,7 @@ export function createDataDispatcher(store: Store, service: ReturnType<typeof cr
         if (member !== null && !db.prepare('SELECT 1 FROM memberships WHERE id=? AND conversation_id=?').get(BigInt(member), BigInt(id))) throw new BoundaryError('INVALID_MEMBER', '请选择该会话中的成员。')
         await service.confirmSelf(id, member); break
       }
+      case 'arrangeConversation': await service.write(() => arrangeList(store.writer, args[0] as ListArrangement)); break
       case 'deleteConversation': {
         const id = args[0] as string; conversation(id)
         await service.deleteConversation(id); break

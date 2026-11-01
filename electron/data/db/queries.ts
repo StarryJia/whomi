@@ -107,11 +107,13 @@ export function createQueries(store: Store): ConversationQueries {
     async listConversations(input) {
       const cursor = input.cursor === undefined ? undefined : decode(input.cursor, 'conversations'), count = pageSize(input.limit, cursor)
       return db.transaction(() => {
-        const rows = db.prepare(`SELECT c.id,c.title,c.kind,coalesce(s.message_count,0) AS message_count,coalesce(s.member_count,0) AS member_count,
+        const boundary = cursor ? db.prepare('SELECT pinned,list_rank FROM conversations WHERE id=?').get(id(cursor.id)) as { pinned: bigint; list_rank: bigint } | undefined : undefined
+        if (cursor && !boundary) invalid()
+        const rows = db.prepare(`SELECT c.id,c.title,c.kind,c.pinned,coalesce(s.message_count,0) AS message_count,coalesce(s.member_count,0) AS member_count,
           s.first_sent_at_ms,s.last_sent_at_ms,coalesce(s.status,'pending') AS summary_status
-          FROM conversations c LEFT JOIN conversation_summaries s ON s.conversation_id=c.id ${cursor ? 'WHERE c.id<?' : ''} ORDER BY c.id DESC LIMIT ?`).all(...(cursor ? [id(cursor.id)] : []), count + 1) as { id: bigint; title: string; kind: ConversationSummary['kind']; message_count: bigint; member_count: bigint; first_sent_at_ms: bigint | null; last_sent_at_ms: bigint | null; summary_status: ConversationSummary['summaryStatus'] }[]
+          FROM conversations c LEFT JOIN conversation_summaries s ON s.conversation_id=c.id ${boundary ? 'WHERE (c.pinned,-c.list_rank,c.id)<(?,?,?)' : ''} ORDER BY c.pinned DESC,c.list_rank ASC,c.id DESC LIMIT ?`).all(...(cursor && boundary ? [boundary.pinned, -boundary.list_rank, id(cursor.id)] : []), count + 1) as { pinned: bigint; id: bigint; title: string; kind: ConversationSummary['kind']; message_count: bigint; member_count: bigint; first_sent_at_ms: bigint | null; last_sent_at_ms: bigint | null; summary_status: ConversationSummary['summaryStatus'] }[]
         const more = rows.length > count
-        const items = rows.slice(0, count).map(row => ({ id: String(row.id), title: row.title, kind: row.kind, messageCount: integer(row.message_count), memberCount: integer(row.member_count), firstSentAtMs: timestamp(row.first_sent_at_ms), lastSentAtMs: timestamp(row.last_sent_at_ms), summaryStatus: row.summary_status }))
+        const items = rows.slice(0, count).map(row => ({ id: String(row.id), title: row.title, pinned: !!row.pinned, kind: row.kind, messageCount: integer(row.message_count), memberCount: integer(row.member_count), firstSentAtMs: timestamp(row.first_sent_at_ms), lastSentAtMs: timestamp(row.last_sent_at_ms), summaryStatus: row.summary_status }))
         return { items, nextCursor: more ? encode({ version: 1, kind: 'conversations', id: items[items.length - 1].id, size: count }) : null }
       })()
     },

@@ -1,5 +1,5 @@
 // Adapted from Cherry Studio ModelListSyncDrawer / ModelListSyncContent (AGPL-3.0).
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Minus, RefreshCw, Search, X } from 'lucide-react'
 import type { CatalogModel, Provider, SettingsApi, SettingsModel } from '../../shared/settings-contract'
 import { errorText, isModelBusy } from './common'
@@ -7,6 +7,7 @@ import { ProviderSettingsDrawer } from './cherry-primitives'
 import { getDefaultGroupName } from './cherry-model-naming'
 
 export function ModelPicker({ api, provider, models, onClose, onAdded, onRemoved, onBusy }: { api: SettingsApi; provider: Provider; models: SettingsModel[]; onClose: () => void; onAdded: (models: SettingsModel[]) => void; onRemoved: (ids: string[]) => void; onBusy: (busy: boolean) => void }) {
+  const search = useRef<HTMLInputElement>(null)
   const [catalog, setCatalog] = useState<CatalogModel[]>([]), [query, setQuery] = useState(''), [filter, setFilter] = useState<'all' | 'added' | 'stale'>('all')
   const [loading, setLoading] = useState(true), [busy, setBusy] = useState(false), [error, setError] = useState(''), [attempt, setAttempt] = useState(0), [loaded, setLoaded] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
@@ -55,11 +56,15 @@ export function ModelPicker({ api, provider, models, onClose, onAdded, onRemoved
     } finally { setBusy(false) }
   }
   return <ProviderSettingsDrawer title={`${provider.name} 模型`} onClose={onClose} busy={busy} wide footer={<><button className="ms-button" disabled={busy} onClick={onClose}>取消</button><button className="ms-button ms-primary" disabled={busy || loading || !selected.length} onClick={() => void apply(selected, false)}>{busy ? '处理中…' : selected.length ? `添加 ${selected.length} 项` : '添加'}</button></>}>
-    <section className="cherry-model-sync" aria-label="同步模型列表"><div className="cherry-sync-toolbar"><div className="ms-search"><Search size={14} /><input aria-label="搜索模型" placeholder="搜索模型" disabled={busy || loading} value={query} onChange={event => setQuery(event.target.value)} />{query && <button className="ms-icon" aria-label="清空模型搜索" disabled={busy || loading} onClick={() => setQuery('')}><X size={14} /></button>}</div><button className="ms-icon" aria-label="刷新模型列表" disabled={busy || loading} onClick={() => { setRetry(null); setAttempt(value => value + 1) }}><RefreshCw size={14} /></button></div>
+    <section className="cherry-model-sync" aria-label="同步模型列表"><div className="cherry-sync-toolbar"><div className="ms-search"><Search size={14} /><input ref={search} aria-label="搜索模型" placeholder="搜索模型" disabled={busy || loading} value={query} onChange={event => setQuery(event.target.value)} />{query && <button className="ms-icon" aria-label="清空模型搜索" disabled={busy || loading} onClick={() => { setQuery(''); search.current?.focus() }}><X size={14} /></button>}</div><button className="ms-icon" aria-label="刷新模型列表" disabled={busy || loading} onClick={() => { setRetry(null); setAttempt(value => value + 1) }}><RefreshCw size={14} /></button></div>
       <div className="cherry-sync-filters" aria-label="模型筛选">{([{ id: 'all', label: '全部', count: all.length }, { id: 'added', label: '已添加', count: local.length }, { id: 'stale', label: '已失效', count: stale.length }] as const).filter(item => item.id !== 'stale' || item.count > 0).map(item => <button type="button" key={item.id} className="ms-text-button" disabled={busy} aria-pressed={filter === item.id} onClick={() => setFilter(item.id)}>{item.label} <span>{item.count}</span></button>)}<button className="ms-text-button" disabled={busy || loading || !selectable.length} onClick={() => select(selectable, !allSelected)}>{allSelected ? '取消全选' : '全选'}</button></div>
       {loading && <p role="status" className="ms-hint">正在读取模型…</p>}
       {error && <div role="alert"><p className="ms-error">{error}</p><button className="ms-button" disabled={busy || loading || !!retry && !retry.remove && !selected.length} onClick={() => { if (retry) void apply(retry.remove ? retry.entries : selected, retry.remove, retry.stop); else setAttempt(value => value + 1) }}>{retry?.stop ? '停止任务并重试' : retry ? '重试剩余模型' : '重试同步'}</button></div>}
-      {!loading && !error && !filtered.length && <p className="ms-hint">{query ? '未找到匹配的模型' : '服务商未返回模型，请手动添加。'}</p>}
+      {!loading && !error && !filtered.length && <div className="ms-filter-empty"><Search size={22} aria-hidden="true" />
+        {query ? <><p>未找到匹配的模型</p><button type="button" className="ms-text-button" onClick={() => { setQuery(''); search.current?.focus() }}>清除搜索条件</button></>
+          : filter !== 'all' ? <><p>{filter === 'added' ? '还没有已添加的模型' : '没有已失效的模型'}</p><button type="button" className="ms-text-button" onClick={() => { setFilter('all'); search.current?.focus() }}>查看全部模型</button></>
+          : <p>服务商未返回模型，可返回详情手动添加。</p>}
+      </div>}
       {!loading && groups.map(group => <div key={group} className="cherry-model-group"><h4>{group}</h4>{filtered.filter(model => groupOf(model) === group).map(model => {
         const added = localIds.has(model.id), label = model.label || model.id
         const identity = <><div className="ms-model-description"><strong title={label}>{label}</strong>{label !== model.id && <span title={model.id}>{model.id}</span>}</div>{!catalogIds.has(model.id) && <span className="ms-hint">已失效</span>}{model.contextWindow && <span className="cherry-catalog-capacity">{model.contextWindow.toLocaleString()}</span>}</>

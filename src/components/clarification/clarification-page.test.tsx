@@ -42,10 +42,10 @@ function Harness({ item = question, availableModels = models, adapter, available
 }
 
 describe('问一问页面', () => {
-  it('无问题时只显示轻松提示，不提供作答或独立返回操作', () => {
+  it('无问题时保留页面主题和用途说明，不提供虚构作答', () => {
     render(<Harness item={null} />)
     expect(screen.getByRole('heading', { level: 1, name: '问一问' })).toBeInTheDocument()
-    expect(screen.getByText('疑问今天请假了。')).toBeInTheDocument()
+    expect(screen.getByText('目前没有需要你澄清的问题')).toBeInTheDocument()
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })

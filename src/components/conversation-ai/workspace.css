@@ -12,7 +12,7 @@
 }
 .conversation-source { min-width: 0; flex: 1 1 0; height: 100%; container-type: inline-size; }
 .conversation-ai-panel { display: flex; flex-direction: column; flex: 0 0 0; width: 0; min-width: 0; height: 100%; overflow: hidden; visibility: hidden; border-left: 0 solid var(--line); background: var(--canvas); transition: flex-basis 280ms var(--ease-sidebar), visibility 280ms; }
-.has-ai-panel .conversation-ai-panel { flex-basis: 62%; visibility: visible; border-left-width: 1px; position: relative; z-index: 25; }
+.has-ai-panel .conversation-ai-panel { flex-basis: clamp(304px,var(--pane-assistant,62%),calc(100% - 268px)); visibility: visible; border-left-width: 1px; position: relative; z-index: 25; }
 .conversation-ai-header { display: flex; flex: 0 0 auto; align-items: center; gap: 4px; padding: calc(var(--desktop-titlebar-height, 0px) + 10px) 12px 10px; border-bottom: 1px solid var(--line); -webkit-app-region: no-drag; }
 .conversation-ai-header h2 { flex: 1; }
 .conversation-ai-body { display: flex; flex: 1; min-height: 0; position: relative; }
@@ -38,6 +38,7 @@
 .conversation-user-turn { display: flex; flex-direction: column; align-items: flex-end; margin-bottom: 16px; }
 .conversation-user-turn > p { margin: 0 0 4px; max-width: 90%; padding: 12px 16px; border-radius: 14px 0 14px 14px; background: var(--conversation-soft-accent); font-size: 15px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
 .conversation-answer-label { display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 13px; margin-bottom: 12px; }
+.conversation-waiting { margin: 0 0 10px; color: var(--text-muted); font-size: 13px; text-align: start; }
 .conversation-answer-label strong { font-weight: 550; color: var(--text); }
 .conversation-answer-label > span { margin-left: auto; }
 .conversation-answer-text { margin: 0; font-size: 15px; line-height: 1.85; white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -117,19 +118,6 @@
 .conversation-analysis-trigger { display: inline-flex; flex-shrink: 0; align-items: center; gap: 8px; min-height: 44px; padding: 8px 14px; border: 1px solid var(--line); border-radius: 12px; color: var(--text); background: var(--surface); white-space: nowrap; cursor: pointer; font-size: 14px; }
 .conversation-analysis-trigger:hover { background: var(--hover); }
 .conversation-analysis-trigger:active { background: var(--pressed); }
-.conversation-ring-icon { display: inline-block; width: 17px; height: 17px; border: 2px solid var(--line); border-top-color: var(--text-muted); border-radius: 50%; }
-.conversation-analysis-summary { display: flex; align-items: center; gap: 16px; font-variant-numeric: tabular-nums; }
-.conversation-analysis-summary p { margin: 0; }
-.conversation-analysis-summary .conversation-state-copy { margin-top: 4px; }
-.conversation-analysis-title { margin: 0; font-weight: 550; overflow-wrap: anywhere; }
-.conversation-analysis-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.conversation-analysis-usage { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
-.conversation-primary-button:not(:disabled) { background: var(--focus); color: var(--surface); }
-.conversation-primary-button:hover:not(:disabled) { background: #8c3113; }
-.conversation-progress { position: relative; flex-shrink: 0; width: 60px; height: 60px; display: grid; place-items: center; font-size: 13px; }
-.conversation-progress > svg { position: absolute; inset: 0; width: 60px; height: 60px; transform: rotate(-90deg); fill: none; }
-.conversation-progress circle { stroke: var(--line); stroke-width: 4; }
-.conversation-progress circle + circle { stroke: var(--focus); stroke-linecap: round; transition: stroke-dasharray 220ms ease-out; }
 .conversation-state-copy { color: var(--text-muted); font-size: 13px; line-height: 1.7; }
 .conversation-text-button { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 6px 10px; margin-top: 10px; border: 0; border-radius: 8px; background: var(--hover); color: var(--text); cursor: pointer; font-size: 13px; }
 .conversation-text-button:hover { background: var(--pressed); }
@@ -177,7 +165,7 @@
 @keyframes conversation-working { to { transform: rotate(360deg); } }
 @keyframes conversation-popover-in { from { opacity: .5; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 @media (max-width: 1200px) and (min-width: 1001px) {
-  .has-ai-panel .conversation-ai-panel { flex-basis: 60%; }
+  .has-ai-panel .conversation-ai-panel { flex-basis: clamp(304px,var(--pane-assistant,60%),calc(100% - 268px)); }
   .conversation-ai-timeline { padding: 20px; }
   .conversation-panel-composer { padding-inline: 12px; }
 }
@@ -204,7 +192,7 @@
   .cherry-usage-primary dd { margin: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .conversation-ai-panel, .conversation-popover, .conversation-progress circle, .conversation-send { transition: none; animation: none; }
+  .conversation-ai-panel, .conversation-popover, .conversation-send { transition: none; animation: none; }
   .conversation-working { animation: none; }
 }
 @container (max-width: 500px) {
@@ -214,6 +202,18 @@
 }
 @media (forced-colors: active) {
   .conversation-popover { border: 1px solid CanvasText; }
-  .conversation-progress circle + circle { stroke: Highlight; }
   .conversation-send:disabled { color: GrayText; }
 }
+
+.chatgpt-usage-link { color: var(--text-muted); font-size: 12px; text-underline-offset: 2px; }
+
+.conversation-analysis-trigger .memory-coverage-ring { width: 18px; height: 18px; flex: none; fill: none; stroke-width: 2.6; }
+.memory-ring-track { stroke: var(--line); }
+.memory-ring-value { stroke: var(--focus); transition: stroke-dasharray 180ms ease-out; }
+.conversation-thread-list > .first-conversation { display: flex; align-items: center; justify-content: center; gap: 9px; margin: 0; min-height: 44px; width: 100%; padding: 8px 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); color: var(--focus); font: inherit; font-weight: 600; cursor: pointer; }
+.conversation-thread-list > .first-conversation:hover { background: var(--hover); }
+.first-conversation svg { width: 17px; height: 17px; }
+.first-conversation:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.conversation-chat-empty { padding: 24px; text-align: center; }
+.conversation-chat-empty strong { color: var(--text); font-size: 16px; }
+@media (prefers-reduced-motion: reduce) { .memory-ring-value { transition: none; } }

@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, type KeyboardEvent, type Ref } from 'react'
-import { ArrowUp, Check, ChevronDown, ChevronRight, History, Undo2 } from 'lucide-react'
+import { ArrowLeft, ArrowUp, MessagesSquare, Check, ChevronDown, ChevronRight, History, Undo2 } from 'lucide-react'
 import clsx from 'clsx'
 import type { SourceReference } from '../overview/types'
 import type { ClarificationController, ClarificationModel, ClarificationQuestion } from './types'
@@ -14,15 +14,20 @@ interface ClarificationPageProps {
   headingRef: Ref<HTMLHeadingElement>
   onOpenSource: (source: SourceReference) => void
   isSourceAvailable: (source: SourceReference) => boolean
+  onReturn?: () => void
+  returnLabel?: string
   preview?: boolean
 }
 
 export function ClarificationPage({ question, models, controller, headingRef,
-  onOpenSource, isSourceAvailable, preview = false }: ClarificationPageProps) {
+  onOpenSource, isSourceAvailable, onReturn, returnLabel, preview = false }: ClarificationPageProps) {
   return <section className={clsx('clarification-page', !question && 'is-empty')} aria-labelledby="clarification-title">
     <h1 id="clarification-title" ref={headingRef} tabIndex={-1}>问一问</h1>
     {!question ? <div className="clarification-empty">
-      <p>疑问今天请假了。</p>
+      <MessagesSquare aria-hidden="true" className="clarification-empty-symbol" />
+      <h2>目前没有需要你澄清的问题</h2>
+      <p>有些事，只有当时的你知道。这里用来补充聊天里没说清的来龙去脉。</p>
+      {onReturn && <button className="page-secondary" type="button" onClick={onReturn}><ArrowLeft aria-hidden="true" />{returnLabel ?? '返回个人总览'}</button>}
     </div> : <ClarificationQuestionView key={question.id} question={question} models={models}
       controller={controller} onOpenSource={onOpenSource} isSourceAvailable={isSourceAvailable} preview={preview} />}
   </section>

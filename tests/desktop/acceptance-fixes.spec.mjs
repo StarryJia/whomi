@@ -1,3 +1,4 @@
+import { dismissIdentity } from './fixtures/identity.mjs'
 import { test, expect, _electron as electron } from '@playwright/test'
 import { copyFile, mkdir, mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -45,6 +46,7 @@ test('active import remains recoverable and compact reply navigation preserves t
     await expect(page.getByText('导入完成。', { exact: true })).toBeVisible()
     await expect(page.getByLabel('导入目标', { exact: true })).toHaveCount(0)
     await page.getByRole('button', { name: '打开会话', exact: true }).click()
+    await dismissIdentity(page)
     await expect(page.locator('.message-text')).toHaveCount(100)
     await expect(page.getByText('[动画表情]', { exact: true })).toBeVisible()
     expect(await page.getByText(/消息类型：|文件缺失|文件未导入/).count()).toBe(0)

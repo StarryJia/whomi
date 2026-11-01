@@ -29,7 +29,7 @@ export function createDesktopClient(transport: DesktopTransport): DesktopApi {
     previewImport: (jobId, candidateId, options) => call('previewImport', [jobId, candidateId, options]),
     listConversations: input => call('listConversations', [input]), readMessages: input => call('readMessages', [input]), locateSource: input => call('locateSource', [input]),
     listMembers: id => call('listMembers', [id]), confirmSelf: (id, member) => call('confirmSelf', [id, member]),
-    deleteConversation: id => call('deleteConversation', [id]), retrySummary: id => call('retrySummary', [id]),
+    deleteConversation: id => call('deleteConversation', [id]), arrangeConversation: change => call('arrangeConversation', [change]), retrySummary: id => call('retrySummary', [id]),
     async acceptDroppedFiles(files: File[]) {
       if (!transport.acceptDroppedFiles) throw new BoundaryError('INVALID_SOURCE', '请在桌面应用中选择文件。')
       return await unwrap('chooseSources', await transport.acceptDroppedFiles(files)) as Awaited<ReturnType<DesktopApi['acceptDroppedFiles']>>

@@ -1,6 +1,6 @@
 /* Cherry Studio f19aa72 ProviderSettings classNames and PageSidePanel, mapped to Whomi tokens. */
-.settings-page .cherry-settings { grid-template-columns: 248px minmax(0,1fr); }
-.cherry-settings .ms-provider-list { padding: 12px 8px; background: var(--surface); }
+.settings-page .cherry-settings { grid-template-columns: clamp(164px,var(--pane-providers,248px),min(420px,calc(100% - 364px))) minmax(0,1fr); }
+.cherry-settings .ms-provider-list { position: relative; padding: 12px 8px; background: var(--surface); }
 .cherry-settings .ms-list-heading { padding-inline:8px; margin-bottom:8px; }
 .cherry-settings .ms-icon,.cherry-panel .ms-icon { width:32px; height:32px; flex-basis:32px; border-radius:8px; }
 .cherry-settings .ms-search,.cherry-panel .ms-search { min-height:36px; border-radius:8px; }
@@ -11,6 +11,11 @@
 .cherry-settings .ms-provider-copy strong { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:400; font-size:14px; }
 .cherry-provider-avatar { display:inline-flex; width:26px; height:26px; flex:0 0 26px; align-items:center; justify-content:center; border-radius:6px; background:var(--hover); color:var(--text-muted); font-size:12px; }
 .cherry-settings .ms-provider-image { width:26px; height:26px; }
+.ms-preset-connection { display:grid; gap:4px; margin:20px 0; }
+.ms-preset-connection dt { color:var(--text-muted); font-size:12px; }
+.ms-preset-connection dd { margin:0 0 12px; font-size:14px; overflow-wrap:anywhere; }
+.ms-preset-links { display:flex; flex-wrap:wrap; gap:8px 16px; margin:12px 0; }
+.ms-preset-links a { color:var(--focus); font-size:13px; text-underline-offset:3px; }
 .cherry-enabled-dot { width:6px; height:6px; border-radius:50%; flex:0 0 6px; background:#38834d; }
 .cherry-settings .cherry-provider-more { width:20px; height:20px; position:absolute; right:6px; top:6px; opacity:0; }
 .cherry-settings .ms-provider:hover .cherry-provider-more,.cherry-settings .ms-provider:focus-within .cherry-provider-more { opacity:1; }
@@ -84,3 +89,7 @@
 @keyframes cherry-panel-enter { from { transform:translateX(100%); } to { transform:translateX(0); } }
 @media(max-width:720px) { .cherry-settings .ms-detail { padding:16px; } .cherry-settings .ms-model-row { flex-wrap:nowrap; } .cherry-settings .settings-model-actions { flex-wrap:nowrap; } .cherry-health { max-width:56px; overflow:hidden; text-overflow:ellipsis; } }
 @media(prefers-reduced-motion:reduce) { .cherry-panel { animation:none; } }
+
+.ms-detail-body { inline-size: min(100%, 768px); margin-inline: auto; }
+.ms-filter-empty { display: grid; justify-items: center; gap: 8px; padding: 28px 16px; color: var(--text-muted); text-align: center; }
+.ms-filter-empty p { margin: 0; }

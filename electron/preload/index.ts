@@ -50,5 +50,5 @@ contextBridge.exposeInMainWorld('whomi', Object.freeze({
   chooseSources: expose('chooseSources'), acceptDroppedFiles: expose('acceptDroppedFiles'), prepareImport: expose('prepareImport'),
   startImport: expose('startImport'), getImport: expose('getImport'), cancelImport: expose('cancelImport'), previewImport: expose('previewImport'),
   listConversations: expose('listConversations'), readMessages: expose('readMessages'), locateSource: expose('locateSource'),
-  listMembers: expose('listMembers'), confirmSelf: expose('confirmSelf'), deleteConversation: expose('deleteConversation'), retrySummary: expose('retrySummary'), onImport: api.onImport,
+  listMembers: expose('listMembers'), confirmSelf: expose('confirmSelf'), deleteConversation: expose('deleteConversation'), arrangeConversation: expose('arrangeConversation'), retrySummary: expose('retrySummary'), onImport: api.onImport,
 } satisfies DesktopApi))

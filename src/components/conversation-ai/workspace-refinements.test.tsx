@@ -1,4 +1,4 @@
-import { act, render, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { ConversationWorkspace } from './workspace'
@@ -19,6 +19,24 @@ function client(): ConversationAiAdapter {
 }
 
 describe('会话工作区的明确入口和独立对话', () => {
+  it('删除最后一个仍在恢复的历史对话后可以输入并发送新提问', async () => {
+    const adapter = client(), user = userEvent.setup()
+    const only = { id: '1', conversationId: 'c', title: '恢复中的记录', createdAtMs: 0, updatedAtMs: 0 }
+    adapter.listThreads = async () => [only]
+    adapter.watchThread = async (_id, _receive, signal) => new Promise<void>(resolve => signal.addEventListener('abort', () => resolve(), { once: true }))
+    adapter.deleteThread = vi.fn(async () => {})
+    render(<Fixture adapter={adapter} />)
+    await user.click(screen.getByRole('button', { name: 'AI 对话' }))
+    expect(await screen.findByText('正在恢复对话…')).toBeVisible()
+    await user.click(screen.getByRole('button', { name: '显示对话列表' }))
+    fireEvent.contextMenu(screen.getByRole('button', { name: only.title }), { button: 2, clientX: 40, clientY: 80 })
+    await user.click(screen.getByRole('menuitem', { name: '删除' }))
+    await user.click(screen.getByRole('button', { name: '确认删除' }))
+    await user.click(screen.getByRole('button', { name: '收起对话列表' }))
+    await user.type(screen.getByRole('textbox'), '新的问题')
+    await user.click(screen.getByRole('button', { name: '发送给 AI' }))
+    expect(adapter.respond).toHaveBeenCalledOnce()
+  })
   it('切换历史时待发送引用跟随各自草稿，返回后用于原对话请求', async () => {
     const adapter = client(), user = userEvent.setup()
     adapter.listThreads = async () => ['first', 'second'].map(id => ({ id, conversationId: 'c', title: id, createdAtMs: 1, updatedAtMs: 1 }))
@@ -182,4 +200,34 @@ describe('会话工作区的明确入口和独立对话', () => {
     expect(screen.getByRole('textbox')).toHaveValue('原对话草稿')
     expect(within(screen.getByRole('log')).queryByText('第二个问题')).not.toBeInTheDocument()
   })
+})
+
+it('在历史栏创建第一条对话并聚焦输入，不发送消息', async () => {
+  const user = userEvent.setup(), adapter = client()
+  adapter.listThreads = async () => []
+  adapter.createThread = vi.fn(async () => ({id:'1',conversationId:'c',title:'新对话',createdAtMs:1,updatedAtMs:1,turns:[]}))
+  render(<Fixture adapter={adapter}/>)
+  await user.click(screen.getByRole('button', { name:'AI 对话' }))
+  await user.click(screen.getByRole('button', { name:'显示对话列表' }))
+  await user.click(await within(screen.getByRole('navigation', {name:'AI 对话列表'})).findByRole('button', {name:'开始新对话'}))
+  expect(adapter.createThread).toHaveBeenCalledTimes(1)
+  await vi.waitFor(() => expect(screen.getByRole('textbox', {name:'向 AI 提问'})).toHaveFocus())
+  expect(adapter.respond).not.toHaveBeenCalled()
+})
+
+it('没有模型时从记忆确认进入设置，返回确认原会话且不自动生成', async () => {
+  const user=userEvent.setup(), adapter={ ...client(), models:[], analyze:vi.fn() }
+  let back = () => {}
+  const configure = vi.fn((restore: () => void) => {back=restore})
+  render(<ConversationWorkspace conversationId="42" title="虚构会话" messageCount={24} adapter={adapter}
+    onConfigureModels={configure} references={[]} onClearReferences={() => {}} onJumpReference={() => {}}>
+    {({analysisControl})=>analysisControl}
+  </ConversationWorkspace>)
+  await user.click(screen.getByRole('button',{name:'整理成记忆'}))
+  await user.click(screen.getByRole('button',{name:'配置模型'}))
+  expect(configure).toHaveBeenCalledTimes(1)
+  expect(screen.queryByText('虚构会话 · 24 条消息')).not.toBeInTheDocument()
+  act(()=>back())
+  expect(await screen.findByText('虚构会话 · 24 条消息')).toBeVisible()
+  expect(adapter.analyze).not.toHaveBeenCalled()
 })

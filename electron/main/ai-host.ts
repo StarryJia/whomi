@@ -5,10 +5,11 @@ import type { RuntimeInput, RuntimeResult, RuntimeRunner } from './ai-service'
 
 export type AgentHost = RuntimeRunner & { close(): Promise<void> }
 export function startAgentHost(directory: string): AgentHost {
+  const unavailable = () => new BoundaryError('AGENT_UNAVAILABLE', '智能助手已停止，请重新打开应用。')
   const child = utilityProcess.fork(join(__dirname, 'agent/entry.cjs'), [directory], { serviceName: 'Whomi Agent' })
   let sequence = 0, closed = false
   const pending = new Map<number, { resolve(value: RuntimeResult): void; reject(error: Error): void; onText(text: string): void; release(): void }>()
-  const exited = new Promise<void>(resolve => child.once('exit', () => { closed = true; for (const value of pending.values()) { value.release(); value.reject(new BoundaryError('AGENT_UNAVAILABLE', '智能助手已停止，请重新打开应用。')) }; pending.clear(); resolve() }))
+  const exited = new Promise<void>(resolve => child.once('exit', () => { closed = true; for (const value of pending.values()) { value.release(); value.reject(unavailable()) }; pending.clear(); resolve() }))
   child.on('message', (message: { id: number; event?: string; text?: string; result?: RuntimeResult; error?: { code: string; action: string; usage?: RuntimeResult['usage'] } }) => {
     const current = pending.get(message?.id)
     if (!current) return
@@ -20,7 +21,7 @@ export function startAgentHost(directory: string): AgentHost {
   })
   return {
     run(input: RuntimeInput, options) {
-      if (closed) return Promise.reject(new BoundaryError('AGENT_UNAVAILABLE'))
+      if (closed) return Promise.reject(unavailable())
       if (options.signal.aborted) return Promise.reject(new DOMException('已停止', 'AbortError'))
       return new Promise<RuntimeResult>((resolve, reject) => {
         const id = ++sequence
@@ -32,7 +33,7 @@ export function startAgentHost(directory: string): AgentHost {
         }
         pending.set(id, { resolve, reject, onText: text => { if (!options.signal.aborted) options.onText(text) }, release: () => { if (cancelTimer) clearTimeout(cancelTimer); options.signal.removeEventListener('abort', cancel) } })
         options.signal.addEventListener('abort', cancel, { once: true })
-        try { child.postMessage({ id, method: 'run', payload: input }) } catch { pending.delete(id); options.signal.removeEventListener('abort', cancel); reject(new BoundaryError('AGENT_UNAVAILABLE')) }
+        try { child.postMessage({ id, method: 'run', payload: input }) } catch { pending.delete(id); options.signal.removeEventListener('abort', cancel); reject(unavailable()) }
       })
     },
     async close() { if (!closed) { closed = true; child.kill() }; await exited },

@@ -1,6 +1,7 @@
 export type PreferenceId = 'energy' | 'information' | 'decisions' | 'approach'
 
 export type PreferenceEstimate =
+  | { status: 'split'; contexts: string[] }
   | { status: 'unknown'; reason?: string }
   | { status: 'known'; leaning: 'left' | 'right' | 'balanced'; strength?: 'slight' | 'clear'; context?: string }
 

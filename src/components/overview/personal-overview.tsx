@@ -1,5 +1,5 @@
-import { useEffect, useId, useRef, type CSSProperties, type RefObject } from 'react'
-import { ArrowLeft, ChevronRight, MessageSquare, ThumbsDown, ThumbsUp } from 'lucide-react'
+import { useEffect, useId, useRef, type CSSProperties, type RefObject, type ReactNode } from 'react'
+import { ArrowLeft, ArrowRight, ChevronRight, FileInput, MessageSquare, Sparkles, ThumbsDown, ThumbsUp } from 'lucide-react'
 import type { OverviewData, PreferenceEstimate, PreferenceId, SourceReference, SparkDiscovery, SparkScene } from './types'
 import type { useOverviewFeedback } from './use-overview-feedback'
 import './personal-overview.css'
@@ -8,6 +8,11 @@ interface PersonalOverviewProps {
   data?: OverviewData
   headingRef: RefObject<HTMLHeadingElement | null>
   onReturnToCover: () => void
+  children?: ReactNode
+  hasRelationshipObservations?: boolean
+  conversationTitle?: string
+  onOpenConversation?: () => void
+  onOpenMemory?: () => void
   onImport: () => void
   onOpenSource: (source: SourceReference) => void
   isSourceAvailable: (source: SourceReference) => boolean
@@ -28,33 +33,42 @@ const preferences: readonly {
     leftContext: '更习惯提前安排和确定计划。', rightContext: '更习惯保留弹性和临场调整。' },
 ]
 
+const axisNames: Record<PreferenceId, string> = {energy: '精力来源', information: '理解信息', decisions: '做决定', approach: '安排方式'}
 const unknownEstimate: PreferenceEstimate = { status: 'unknown' }
 const noDiscoveries: readonly SparkDiscovery[] = []
 
 function PreferenceRow({ preference, estimate }: { preference: typeof preferences[number]; estimate: PreferenceEstimate }) {
   const { left, right, leftLetter, rightLetter } = preference
   const name = `${left} ${leftLetter} / ${right} ${rightLetter}`
-  const balanced = estimate.status === 'known' && estimate.leaning === 'balanced'
-  const leaningLeft = estimate.status === 'known' && estimate.leaning === 'left'
-  const strength = estimate.status === 'known' && estimate.strength === 'clear' ? '偏向' : '略偏'
-  const result = estimate.status === 'unknown' ? '尚待了解' : balanced ? '较均衡' : `${strength}${leaningLeft ? left : right}`
-  const marker = balanced ? '50%' : leaningLeft ? (estimate.status === 'known' && estimate.strength === 'clear' ? '17%' : '34%')
-    : (estimate.status === 'known' && estimate.strength === 'clear' ? '83%' : '66%')
-  const description = estimate.status === 'unknown' ? estimate.reason || '材料还不足以判断。'
-    : estimate.context || (balanced ? `在${left}与${right}之间，没有明显偏向。` : leaningLeft ? preference.leftContext : preference.rightContext)
+  const title = <div className="overview-preference-name"><h3>{axisNames[preference.id]}</h3><p title={preference.description}>{name}</p></div>
+  if (estimate.status === 'unknown') return <div className="overview-preference-row is-unknown" role="group" aria-label={name}>
+    {title}
+    <div className="overview-preference-result"><strong>尚待了解</strong>{estimate.reason && <p>{estimate.reason}</p>}</div>
+  </div>
+  if (estimate.status === 'split') {
+    return <div className="overview-preference-row" role="group" aria-label={name}>
+      <div className="overview-preference-name"><h3>{axisNames[preference.id]}</h3><p>关系票数持平</p></div>
+      {estimate.contexts.map(context => <p key={context}>{context}</p>)}
+    </div>
+  }
+  const balanced = estimate.leaning === 'balanced'
+  const leaningLeft = estimate.leaning === 'left'
+  const strength = estimate.strength === 'slight' ? '略偏' : '偏向'
+  const result = balanced ? '较均衡' : `${strength}${leaningLeft ? left : right}`
+  const marker = balanced ? '50%' : leaningLeft ? (estimate.strength === 'clear' ? '17%' : '34%')
+    : (estimate.strength === 'clear' ? '83%' : '66%')
+  const description = estimate.context || (balanced ? `在${left}与${right}之间，没有明显偏向。` : leaningLeft ? preference.leftContext : preference.rightContext)
 
   return <div className="overview-preference-row" role="group" aria-label={name}>
-    <div className="overview-preference-name"><h3>{name}</h3><p>{preference.description}</p></div>
-    {estimate.status === 'unknown'
-      ? <div className="overview-preference-unknown" aria-label="倾向未知">?</div>
-      : <div className="overview-preference-gauge" role="img"
+    {title}
+    <div className="overview-preference-gauge" role="img"
         aria-label={balanced ? `${left}与${right}较均衡，标记位于中点` : `${result}，仅表示定性倾向`}>
         <span aria-hidden="true">{leftLetter}</span>
         <div className="overview-preference-track" style={{ '--preference-marker': marker } as CSSProperties} aria-hidden="true">
           <i /><i /><i /><i /><i /><b />
         </div>
         <span aria-hidden="true">{rightLetter}</span>
-      </div>}
+      </div>
     <div className="overview-preference-result"><strong>{result}</strong><p>{description}</p></div>
   </div>
 }
@@ -141,7 +155,7 @@ function SparkArticle({ discovery, scenes, feedback, onOpenSource, isSourceAvail
   </article>
 }
 
-export function PersonalOverview({ data, headingRef, onReturnToCover, onImport, onOpenSource, isSourceAvailable, feedback }: PersonalOverviewProps) {
+export function PersonalOverview({ data, headingRef, onReturnToCover, onImport, onOpenConversation, conversationTitle, hasRelationshipObservations, children, onOpenMemory, onOpenSource, isSourceAvailable, feedback }: PersonalOverviewProps) {
   const discoveries = data?.discoveries ?? noDiscoveries
   const initialize = feedback.initialize
   useEffect(() => { initialize(discoveries) }, [discoveries, initialize])
@@ -156,48 +170,39 @@ export function PersonalOverview({ data, headingRef, onReturnToCover, onImport, 
   })
   const visibleDiscoveries = discoveries.map((discovery) => ({ discovery, scenes: contextualScenes(discovery) }))
     .filter(({ discovery, scenes }) => discovery.observation.trim() && scenes.length)
-  const hasKnownPreferences = preferences.some((preference) => data?.preferences?.[preference.id]?.status === 'known')
-  const hasContent = hasKnownPreferences || visibleDiscoveries.length > 0
-  const isNoData = !data || data.materialStatus === 'none'
-  const isUnanalysedEmpty = data?.materialStatus === 'unanalysed' && !hasContent
-  const isAnalysedEmpty = !isNoData && !isUnanalysedEmpty && !hasContent
-
+  const hasKnownPreferences = preferences.some(preference => {
+    const estimate = data?.preferences?.[preference.id]
+    return estimate && estimate.status !== 'unknown'
+  })
+  const noRecords = !data || data.materialStatus === 'none'
+  const noAnalysis = data?.materialStatus === 'unanalysed'
   return <div className="personal-overview">
     <button type="button" className="overview-return" aria-label="返回 Hello" onClick={onReturnToCover}><ArrowLeft aria-hidden="true" />返回</button>
     <h1 ref={headingRef} tabIndex={-1}>个人总览</h1>
-    {isNoData && <div className="overview-material-state">
-      <h2>还没有可查看的总览。</h2>
-      <p>完成会话导入与分析后，可在这里查看自己的概览。</p>
-      <button type="button" onClick={onImport}>选择记录</button>
-    </div>}
-    {isUnanalysedEmpty && <div className="overview-material-state">
-      <h2>已有记录，尚未形成分析结果。</h2>
-      <p>完成会话分析后，可在这里查看自己的概览。</p>
-    </div>}
-    {isAnalysedEmpty && <p className="overview-material-note">暂时还没有形成可展示的观察。</p>}
-    {!isNoData && hasContent && <>
-      {data?.materialStatus === 'unanalysed' && <p className="overview-material-note">已有记录，尚未形成分析结果。</p>}
-      {data?.materialStatus === 'partial' && <p className="overview-material-note">当前观察仅来自已分析的部分记录。</p>}
-      {hasKnownPreferences && <section className="overview-personality" aria-labelledby="overview-personality-title">
-        <div className="overview-personality-header">
-          <h2 id="overview-personality-title">人格偏好</h2>
-          <span className="overview-estimate-label">当前推测</span>
-          <strong className="overview-type" aria-label="当前推测类型">{summary}</strong>
-        </div>
-        <div className="overview-preferences">
-          {preferences.map((preference) => <PreferenceRow key={preference.id} preference={preference}
-            estimate={data?.preferences?.[preference.id] ?? unknownEstimate} />)}
-        </div>
-        <p className="overview-type-explanation">材料不足的维度保留问号。
+    <section className="overview-personality" aria-labelledby="overview-personality-title">
+      <div className="overview-personality-header"><h2 id="overview-personality-title">人格偏好</h2>
+        {hasKnownPreferences && <><span className="overview-estimate-label">当前推测</span>
+          <strong className="overview-type" aria-label="当前推测类型">{summary}</strong></>}
+      </div>
+      {noRecords || noAnalysis ? <div className="overview-start">
+        <p>{noRecords ? '导入一段聊天，回看自己在不同关系里的习惯。' : conversationTitle ? <>从「{conversationTitle}」开始，整理你们的第一份记忆。</> : '选择一段聊天，整理你们的第一份记忆。'}</p>
+        {(noRecords || onOpenConversation) && <button type="button" className="page-primary" onClick={noRecords ? onImport : onOpenConversation}>
+          {noRecords ? <FileInput aria-hidden="true" /> : <ArrowRight aria-hidden="true" />}{noRecords ? '导入聊天记录' : '打开会话整理'}</button>}
+      </div> : data?.materialStatus === 'partial' && <p className="overview-material-note">当前观察仅来自已分析的部分记录。</p>}
+      <div className="overview-preferences">
+        {preferences.map(preference => <PreferenceRow key={preference.id} preference={preference} estimate={data?.preferences?.[preference.id] ?? unknownEstimate} />)}
+      </div>
+      {hasKnownPreferences && <p className="overview-type-explanation">材料不足的维度保留问号。
           {balancedPreferences.map((preference) => <span key={preference.id}>{preference.left}与{preference.right}这一位较均衡，因此保留问号。</span>)}
-        </p>
-      </section>}
+        </p>}
+      {!noRecords && onOpenMemory && !hasRelationshipObservations && <button className="overview-return" type="button" onClick={onOpenMemory}>查看记忆<ChevronRight aria-hidden="true" /></button>}
+      {children}
+      </section>
       <section className="overview-sparks" aria-labelledby="overview-sparks-title">
         <div className="overview-sparks-header"><h2 id="overview-sparks-title"><span>Spark</span> · 不一样的自己</h2><div aria-hidden="true" /></div>
         {visibleDiscoveries.length ? visibleDiscoveries.map(({ discovery, scenes }) => <SparkArticle key={discovery.id}
           discovery={discovery} scenes={scenes} feedback={feedback} onOpenSource={onOpenSource} isSourceAvailable={isSourceAvailable} />)
-          : <p className="overview-spark-empty">还没有可查看的发现。</p>}
+          : <div className="overview-spark-empty"><Sparkles className="spark-mark" aria-hidden="true" /><p>还没有可查看的发现。<small>这里收藏有聊天片段作为依据的观察。</small></p></div>}
       </section>
-    </>}
   </div>
 }

@@ -1,3 +1,4 @@
+import { dismissIdentity } from './fixtures/identity.mjs'
 import { test, expect, _electron as electron } from '@playwright/test'
 import { mkdtemp, copyFile, writeFile, appendFile, mkdir, readdir, readFile, rm, realpath } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -65,8 +66,7 @@ test('actual import UI preserves old messages, self identity, source bytes and s
     await expect(page.locator('.message-text').first()).toHaveText(malicious)
     expect(await page.evaluate(() => window.importExecuted)).toBeUndefined()
     expect(await page.locator('.message-text script, .message-text img').count()).toBe(0)
-    await page.getByRole('button', { name: '更多操作', exact: true }).click()
-    await page.getByRole('menuitem', { name: '选择本人', exact: true }).click()
+    await expect(page.getByRole('dialog', { name: '选择本人' })).toBeVisible()
     await page.locator('.reader-member-item input[type="radio"]').first().check()
     await page.getByRole('button', { name: '设为本人', exact: true }).click()
     await expect(page.locator('.message-self')).toHaveCount(3)
@@ -109,6 +109,7 @@ test('actual reader bounds six pages and preserves a visible anchor in both dire
     const source = join(directory, 'pages.json'); await writeFile(source, JSON.stringify(documentFor(Array.from({ length: 750 }, (_, i) => i + 1), 'Pagination synthetic')))
     application = await electron.launch({ ...(process.env.WHOMI_PACKAGED_EXECUTABLE ? { executablePath: resolve(process.env.WHOMI_PACKAGED_EXECUTABLE), args: ['--whomi-runtime-test'] } : { args: [resolve('out/main/index.cjs'), '--whomi-runtime-test'] }), env: { ...process.env, WHOMI_RUNTIME_TEST: directory } })
     const page = await application.firstWindow(); await save(page, source); await page.getByRole('button', { name: '打开会话', exact: true }).click()
+    await dismissIdentity(page)
     for (let i = 0; i < 4; i++) { await page.getByRole('button', { name: '加载后文', exact: true }).click(); await expect(page.locator('[data-message-id]')).toHaveCount((i + 2) * 100) }
     const geometry = () => page.locator('.reader-scroll').evaluate(container => {
       const bounds = container.getBoundingClientRect(), elements = [...container.querySelectorAll('[data-message-id]')]

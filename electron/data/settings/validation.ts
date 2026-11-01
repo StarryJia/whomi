@@ -1,5 +1,6 @@
 import { BoundaryError } from '../../../src/shared/desktop-validation'
-import { isModelProtocol } from '../../../src/shared/model-protocol'
+import { getCherryProviderPreset } from '../../../src/vendor/cherry-providers'
+import { isModelProtocol, isValidModelBaseUrl, type ModelProtocol } from '../../../src/shared/model-protocol'
 import { redactionRules, type ProcessingSettings, type ProviderInput, type SettingsModelInput } from '../../../src/shared/settings-contract'
 
 export function failSettings(code: string, action = '请检查设置后重试。'): never { throw new BoundaryError(code, action) }
@@ -8,15 +9,30 @@ function text(value: unknown, limit: number): value is string { return typeof va
 function fields(value: unknown, allowed: string[], code: string): asserts value is Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).some(key => !allowed.includes(key))) failSettings(code)
 }
-export function validateProvider(value: ProviderInput): void {
-  fields(value, ['id', 'name', 'baseUrl', 'protocol', 'enabled', 'image', 'apiKey', 'notes'], 'INVALID_PROVIDER')
+export function validateProvider(value: ProviderInput): ModelProtocol | undefined {
+  fields(value, ['id', 'presetId', 'name', 'baseUrl', 'protocol', 'endpointUrls', 'enabled', 'image', 'avatarId', 'apiKey', 'notes'], 'INVALID_PROVIDER')
+  let protocol = value.protocol
+  if (value.presetId !== undefined) {
+    const preset = typeof value.presetId === 'string' ? getCherryProviderPreset(value.presetId) : undefined
+    if (value.id !== undefined || !preset) failSettings('INVALID_PROVIDER', '请重新选择预置服务商。')
+    if (!preset.protocol) failSettings('INVALID_PROVIDER', '请选择支持文本连接的服务商。')
+    protocol ??= preset.protocol
+  }
   if (value.protocol !== undefined && !isModelProtocol(value.protocol)) failSettings('INVALID_PROVIDER', '请选择连接协议。')
   if (value.id !== undefined) settingsId(value.id)
   if (!text(value.name, 256) || !text(value.baseUrl, 2048) || typeof value.enabled !== 'boolean') failSettings('INVALID_PROVIDER')
   if (value.notes !== undefined && (typeof value.notes !== 'string' || value.notes.length > 10000)) failSettings('INVALID_PROVIDER')
-  try { const url = new URL(value.baseUrl); if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.hash || url.search) failSettings('INVALID_PROVIDER') } catch { failSettings('INVALID_PROVIDER', '请输入有效的服务地址。') }
+  if (!isValidModelBaseUrl(value.baseUrl)) failSettings('INVALID_PROVIDER', '请输入有效的服务地址。')
+  if (value.endpointUrls !== undefined) {
+    if (!value.endpointUrls || typeof value.endpointUrls !== 'object' || Array.isArray(value.endpointUrls)) failSettings('INVALID_PROVIDER')
+    for (const [key, url] of Object.entries(value.endpointUrls)) {
+      if (!isModelProtocol(key) || !isValidModelBaseUrl(url)) failSettings('INVALID_PROVIDER', '请检查各端点的接口地址。')
+    }
+  }
+  if (value.avatarId !== undefined && (typeof value.avatarId !== 'string' || !getCherryProviderPreset(value.avatarId) || value.image)) failSettings('INVALID_PROVIDER', '请重新选择头像。')
   if (value.apiKey !== undefined && value.apiKey !== null && (typeof value.apiKey !== 'string' || value.apiKey.length > 16384)) failSettings('INVALID_PROVIDER')
   if (value.image !== undefined && (typeof value.image !== 'string' || value.image.length > 2 * 1024 * 1024 || !/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(value.image) || Buffer.from(value.image.slice(value.image.indexOf(',') + 1), 'base64').length > 1024 * 1024)) failSettings('INVALID_PROVIDER', '请选择不超过 1 MB 的 PNG、JPEG 或 WebP 图片。')
+  return protocol
 }
 export function validateSettingsModel(value: SettingsModelInput): void {
   fields(value, ['id', 'providerId', 'label', 'model', 'contextWindow', 'maxTokens', 'enabled', 'group', 'maxInputTokens'], 'INVALID_MODEL')

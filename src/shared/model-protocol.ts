@@ -16,3 +16,22 @@ export function modelProtocolBaseUrl(baseUrl: string, protocol: ModelProtocol): 
   if (protocol === 'anthropic-messages') return base.replace(/\/v1$/, '')
   return base
 }
+
+export function isValidModelBaseUrl(value: unknown): value is string {
+  if (typeof value !== 'string' || !value.trim() || value.length > 2048) return false
+  try {
+    const url = new URL(value)
+    return ['http:', 'https:'].includes(url.protocol) && !url.username && !url.password && !url.search && !url.hash
+  } catch { return false }
+}
+
+const textRequestPaths: Record<ModelProtocol, string> = {
+  'openai-completions': '/chat/completions',
+  'openai-responses': '/responses',
+  'anthropic-messages': '/v1/messages',
+  'google-generative-ai': '/models/{model}:streamGenerateContent',
+}
+
+export function modelRequestPreview(baseUrl: string, protocol: ModelProtocol) {
+  return isValidModelBaseUrl(baseUrl) ? modelProtocolBaseUrl(baseUrl, protocol) + textRequestPaths[protocol] : ''
+}

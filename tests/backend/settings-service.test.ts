@@ -91,3 +91,16 @@ test('real catalog fetch honors a saved custom path and refuses to forward crede
     expect(leaked).toBe(false)
   } finally { server.closeAllConnections(); await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve())) }
 })
+
+test('subscription usage is read only for a connected account and a switch invalidates an in-flight result', async () => {
+  const storage = vi.fn(async () => ({ requests:1, inputTokens:12, outputTokens:3, partial:false }))
+  const getStatus = vi.fn()
+  const service = createSettingsService({ storage, secrets:{encrypt:String, decrypt:String}, testModel:async()=>{}, beforeModelChange:async()=>{},
+    accounts:{'openai-codex':{getStatus, signIn:vi.fn(), cancel:vi.fn(), signOut:vi.fn(), listModels:vi.fn()}} })
+  getStatus.mockResolvedValueOnce({state:'disconnected'})
+  await expect(service.getAccountUsage('openai-codex')).rejects.toMatchObject({code:'ACCOUNT_LOGIN'})
+  expect(storage).not.toHaveBeenCalled()
+  getStatus.mockResolvedValueOnce({state:'connected',accountId:'a'}).mockResolvedValueOnce({state:'connected',accountId:'b'})
+  await expect(service.getAccountUsage('openai-codex')).rejects.toMatchObject({code:'ACCOUNT_CHANGED'})
+  expect(storage).toHaveBeenCalledWith('accountUsage',['openai-codex','a'])
+})

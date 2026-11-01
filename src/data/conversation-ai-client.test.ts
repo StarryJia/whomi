@@ -13,7 +13,8 @@ function api() {
     onEvent: (listener: (event: AiEvent) => void) => { listeners.add(listener); return () => { listeners.delete(listener) } },
     prepareAnalysis: vi.fn(async () => ({ token: 'prepared', conversationId: 'c', title: '会话', selfName: '我', totalMessages: 8, analyzableMessages: 7, snapshotMaxId: '8', expiresAt: Date.now() + 10000, model })),
     confirmAnalysis: vi.fn(async (): Promise<AnalysisTask> => ({ id: 'task', conversationId: 'c', modelId: 'm', state: 'completed', analyzedMessages: 7, totalMessages: 7, skippedMessages: 1, usage: {}, valid: true, eventSequence: 1 })),
-    getAnalysis: vi.fn(), stopAnalysis: vi.fn(), getReport: vi.fn(),
+    getAnalysis: vi.fn<AiApi['getAnalysis']>(), stopAnalysis: vi.fn<AiApi['stopAnalysis']>(), getReport: vi.fn(),
+    continueAnalysis: vi.fn<AiApi['continueAnalysis']>(), listAnalyses: vi.fn<AiApi['listAnalyses']>(),
   }
   return { methods, client: methods as unknown as AiApi, emit: (event: AiEvent) => listeners.forEach(listener => listener(event)), listeners }
 }
@@ -141,5 +142,112 @@ describe('正式会话 AI 适配器', () => {
     expect(methods.confirmAnalysis).toHaveBeenCalledWith(expect.objectContaining({ token: 'prepared' }))
     expect(result).toMatchObject({ taskId: 'task' })
     expect(options.onProgress).toHaveBeenCalledWith(expect.objectContaining({ analyzedMessages: 7, totalMessages: 7 }))
+  })
+  it('恢复旧任务后用同一编号继续，在首个进度保留已分析数量，忽略上一次停止回执', async () => {
+    const { methods, client, emit } = api()
+    const paused: AnalysisTask = { id: 'saved', conversationId: 'c', modelId: 'm', state: 'stopped',
+      analyzedMessages: 3, totalMessages: 7, skippedMessages: 1, usage: { outputTokens: 25 }, valid: true, eventSequence: 4 }
+    const resumed = { ...paused, state: 'queued' as const, eventSequence: 5 }
+    methods.listAnalyses.mockResolvedValue([{ ...paused, id: 'newer', state: 'completed' }, paused])
+    methods.continueAnalysis.mockResolvedValue(resumed)
+    methods.getAnalysis.mockResolvedValue(paused)
+    const adapter = await createConversationAiClient(client), signal = new AbortController().signal
+    const restored = vi.fn(), progress = vi.fn()
+    await adapter.watchAnalysis!('c', restored, signal, paused.id)
+    expect(restored).toHaveBeenCalledWith(paused)
+    const pending = adapter.continueAnalysis!(restored.mock.lastCall![0].id, signal, progress)
+    await vi.waitFor(() => expect(progress).toHaveBeenCalledTimes(1))
+    expect(progress).toHaveBeenCalledWith(expect.objectContaining({ task: resumed, analyzedMessages: 3, totalMessages: 7 }))
+    emit({ kind: 'analysis', snapshot: paused })
+    emit({ kind: 'analysis', snapshot: { ...resumed, id: 'unrelated', eventSequence: 9 } })
+    expect(progress).toHaveBeenCalledTimes(1)
+    const complete = { ...resumed, state: 'completed' as const, analyzedMessages: 7, eventSequence: 8 }
+    emit({ kind: 'analysis', snapshot: complete })
+    expect(await pending).toMatchObject({ taskId: 'saved', task: complete })
+    expect(methods.continueAnalysis).toHaveBeenCalledWith('saved')
+    expect(methods.confirmAnalysis).not.toHaveBeenCalled()
+    expect(methods.prepareAnalysis).not.toHaveBeenCalled()
+  })
+  it('首次分析在完成前即交付可暂停的任务编号，暂停的最终回执保留最新检查点', async () => {
+    const { methods, client, emit } = api()
+    const running: AnalysisTask = { id: 'new', conversationId: 'c', modelId: 'm', state: 'running',
+      analyzedMessages: 0, totalMessages: 7, skippedMessages: 0, usage: {}, valid: true, eventSequence: 1 }
+    const paused = { ...running, state: 'stopped' as const, analyzedMessages: 3, eventSequence: 3 }
+    methods.confirmAnalysis.mockResolvedValue(running)
+    methods.getAnalysis.mockResolvedValue(running)
+    methods.stopAnalysis.mockImplementation(async () => { emit({ kind: 'analysis', snapshot: paused }); return paused })
+    const adapter = await createConversationAiClient(client), onProgress = vi.fn()
+    const pending = adapter.analyze({ conversationId: 'c', modelId: 'm', preparationToken: 'prepared' },
+      { signal: new AbortController().signal, onProgress })
+    await vi.waitFor(() => expect(onProgress).toHaveBeenCalled())
+    expect(await adapter.stopAnalysis!(onProgress.mock.lastCall![0].task.id)).toEqual(paused)
+    expect(await pending).toMatchObject({ task: paused })
+    expect(methods.stopAnalysis).toHaveBeenCalledExactlyOnceWith('new')
+  })
+  it('续跑提交中离页只解除观察，配置变化的拒绝保留后台错误且不新建分析', async () => {
+    const { methods, client } = api()
+    let acknowledge!: (value: AnalysisTask) => void
+    methods.continueAnalysis.mockReturnValueOnce(new Promise(resolve => { acknowledge = resolve }))
+    const adapter = await createConversationAiClient(client), controller = new AbortController(), progress = vi.fn()
+    const pending = adapter.continueAnalysis!('saved', controller.signal, progress)
+    controller.abort('detach')
+    acknowledge({ id: 'saved', conversationId: 'c', modelId: 'm', state: 'running', analyzedMessages: 3,
+      totalMessages: 7, skippedMessages: 0, usage: {}, valid: true, eventSequence: 3 })
+    await expect(pending).rejects.toMatchObject({ name: 'AbortError' })
+    expect(progress).not.toHaveBeenCalled()
+    expect(methods.stopAnalysis).not.toHaveBeenCalled()
+    const changed = Object.assign(new Error('消息处理设置已更新，请重新发起分析。'), { code: 'PROCESSING_CHANGED' })
+    methods.continueAnalysis.mockRejectedValueOnce(changed)
+    await expect(adapter.continueAnalysis!('saved', new AbortController().signal, progress)).rejects.toBe(changed)
+    expect(methods.prepareAnalysis).not.toHaveBeenCalled()
+    expect(methods.confirmAnalysis).not.toHaveBeenCalled()
+  })
+  it('续跑已启动时一次进度读取失败会重读快照，不重新提交模型工作', async () => {
+    const { methods, client } = api()
+    const active: AnalysisTask = { id: 'saved', conversationId: 'c', modelId: 'm', state: 'running',
+      analyzedMessages: 3, totalMessages: 7, skippedMessages: 0, usage: {}, valid: true, eventSequence: 3 }
+    const complete = { ...active, state: 'completed' as const, analyzedMessages: 7, eventSequence: 5 }
+    methods.continueAnalysis.mockResolvedValue(active)
+    methods.getAnalysis.mockRejectedValueOnce({ code: 'OPERATION_FAILED' }).mockResolvedValue(complete)
+    const adapter = await createConversationAiClient(client)
+    const result = await adapter.continueAnalysis!('saved', new AbortController().signal, vi.fn())
+    expect(result.task).toEqual(complete)
+    expect(methods.continueAnalysis).toHaveBeenCalledTimes(1)
+    expect(methods.getAnalysis).toHaveBeenCalledTimes(2)
+  })
+  it('连续读取失败后保留事件订阅而不无限轮询，已删除任务的确定性错误立即停止观察', async () => {
+    const { methods, client, emit, listeners } = api()
+    const active: AnalysisTask = { id: 'saved', conversationId: 'c', modelId: 'm', state: 'running',
+      analyzedMessages: 3, totalMessages: 7, skippedMessages: 0, usage: {}, valid: true, eventSequence: 3 }
+    methods.continueAnalysis.mockResolvedValue(active)
+    methods.getAnalysis.mockRejectedValue({ code: 'SERVICE_UNAVAILABLE' })
+    const adapter = await createConversationAiClient(client), progress = vi.fn()
+    vi.useFakeTimers()
+    try {
+      const pending = adapter.continueAnalysis!('saved', new AbortController().signal, progress)
+      await vi.advanceTimersByTimeAsync(60000)
+      expect(methods.getAnalysis).toHaveBeenCalledTimes(4)
+      expect(listeners.size).toBe(1)
+      emit({ kind: 'analysis', snapshot: { ...active, state: 'completed', analyzedMessages: 7, eventSequence: 5 } })
+      expect(await pending).toMatchObject({ task: { state: 'completed' } })
+      expect(listeners.size).toBe(0)
+      methods.getAnalysis.mockRejectedValue({ code: 'INVALID_TASK' })
+      await expect(adapter.continueAnalysis!('saved', new AbortController().signal, progress)).rejects.toMatchObject({ code: 'INVALID_TASK' })
+      expect(methods.getAnalysis).toHaveBeenCalledTimes(5)
+      expect(listeners.size).toBe(0)
+    } finally { vi.useRealTimers() }
+  })
+  it('继续时后台已经运行则改为观察该任务，展示已有或最终的报告', async () => {
+    const { methods, client } = api()
+    const active: AnalysisTask = { id: 'saved', conversationId: 'c', modelId: 'm', state: 'summarizing',
+      analyzedMessages: 7, totalMessages: 7, skippedMessages: 0, usage: {}, valid: true, eventSequence: 5 }
+    methods.continueAnalysis.mockRejectedValue({ code: 'INVALID_STATE' })
+    methods.getAnalysis.mockResolvedValueOnce(active).mockResolvedValue({ ...active, state: 'completed', eventSequence: 6 })
+    const adapter = await createConversationAiClient(client), progress = vi.fn()
+    const result = await adapter.continueAnalysis!('saved', new AbortController().signal, progress)
+    expect(progress.mock.calls.map(([value]) => value.task.state)).toEqual(['summarizing', 'completed'])
+    expect(result.task?.state).toBe('completed')
+    expect(methods.continueAnalysis).toHaveBeenCalledTimes(1)
+    expect(methods.confirmAnalysis).not.toHaveBeenCalled()
   })
 })

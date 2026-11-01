@@ -52,8 +52,8 @@ export function AboutWhomi({ api, debug, onDebug, onBusy }: { api: SettingsApi; 
     try { await navigator.clipboard.writeText(JSON.stringify(diagnostics, null, 2)); setCopied(true); setError('') }
     catch { setError('复制失败，请选中诊断信息后手动复制。') }
   }
-  return <div className="aw-page"><header className="aw-page-heading"><h1 tabIndex={-1}>关于whomi</h1></header>
-    <section className="aw-identity" aria-label="Whomi 项目信息"><img className="aw-symbol" src={symbol} alt="Whomi 图形标识" /><span className="aw-wordmark"><img src={wordmark} alt="Whomi" /></span><p className="aw-version">版本 {packageMetadata.version}</p><p className="aw-introduction">一个了解你的程序</p></section>
+  return <div className="aw-page"><header className="aw-page-heading"><h1 tabIndex={-1}>关于 Whomi</h1></header>
+    <section className="aw-identity" aria-label="Whomi 项目信息"><img className="aw-symbol" src={symbol} alt="Whomi 图形标识" /><span className="aw-wordmark"><img src={wordmark} alt="Whomi" /></span><p className="aw-version">版本 {packageMetadata.version}</p><p className="aw-introduction">从对话中，慢慢了解自己。</p></section>
     <section className="aw-information" aria-label="项目与许可"><a className="aw-information-row" href="https://github.com/StarryJia/whomi" target="_blank" rel="noopener noreferrer"><span>项目仓库</span><span className="aw-link-value">StarryJia/whomi <ArrowUpRight size={16} /></span></a><button className="aw-information-row" onClick={() => setNotices(true)}><span>第三方声明</span><ChevronRight size={17} /></button></section>
     <section className="aw-debug" aria-labelledby="settings-debug-title"><h2 id="settings-debug-title">调试面板</h2><div className="aw-debug-control"><span>调试模式</span><Switch label="调试模式" checked={debug} disabled={busy} onChange={() => void changeDebug(!debug)} /></div>
       {debugError && <div role="alert"><p className="ms-error">{debugError}</p>{failedDebug !== null && <button className="ms-button" disabled={busy} onClick={() => void changeDebug(failedDebug)}>重试保存</button>}</div>}

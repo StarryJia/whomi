@@ -18,7 +18,7 @@
 
 历史列表标题取自第一条提问，不额外调用模型。列表按更新时间读取，草稿保存在当前工作区内存；重启恢复的是已保存的对话，不承诺未发送草稿跨重启保存。新建等待期间暂时禁用历史切换，原对话仍可编辑；回执读取最新草稿，不用旧闭包覆盖后续输入。
 
-四种文本协议是 OpenAI Chat Completions、OpenAI Responses、Anthropic Messages、Google Generate Content。Cherry 的图片端点、云账号认证和同服务商多端点编辑未接入，不能把此轮描述为整个 Cherry 产品的全部协议能力。用户显式保存的根地址保持原义，不自动追加版本路径。
+四种文本协议是 OpenAI Chat Completions、OpenAI Responses、Anthropic Messages、Google Generate Content。该轮验证覆盖单地址文本连接。0.1.7 的自定义服务商能同时保存四种文本端点并选择默认项，参见[后续表单实现](../research/cherry-protocol-reuse.md)。用户显式保存的根地址保持原义，不自动追加版本路径。
 
 ## 实现与来源
 

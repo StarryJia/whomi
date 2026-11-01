@@ -1,5 +1,6 @@
+import { cherryProviderIcon } from '../vendor/cherry-providers/icons'
 import type { AiApi, AiEvent, AiTurn, AnalysisTask } from '../shared/ai-contract'
-import type { ConversationAiAdapter, ConversationRequest, RestoredConversationTurn } from '../components/conversation-ai/types'
+import type { AnalysisProgress, AnalysisResult, ConversationAiAdapter, ConversationRequest, RestoredConversationTurn } from '../components/conversation-ai/types'
 import type { ModelFeature, SettingsApi } from '../shared/settings-contract'
 
 const settled = (state: string) => !['queued', 'running', 'summarizing'].includes(state)
@@ -7,6 +8,8 @@ const cancelled = () => new DOMException('已停止。', 'AbortError')
 const check = (signal: AbortSignal) => { if (signal.aborted) throw cancelled() }
 const requestId = () => crypto.randomUUID()
 const restore = (turn: AiTurn): RestoredConversationTurn => ({ ...turn })
+const errorCode = (error: unknown) => error && typeof error === 'object' && 'code' in error ? error.code : undefined
+const analysisReadBackoff = [500, 1000, 2000]
 
 /** 正式请求只传稳定编号，原文与历史由后台重新读取。 */
 export async function createConversationAiClient(api: AiApi, settings?: SettingsApi): Promise<ConversationAiAdapter> {
@@ -30,7 +33,7 @@ export async function createConversationAiClient(api: AiApi, settings?: Settings
   }
 
   function observe<T extends AiTurn | AnalysisTask>(initial: T, signal: AbortSignal, kind: AiEvent['kind'],
-    read: () => Promise<T>, stop: () => Promise<unknown>, update: (snapshot: T) => void): Promise<T> {
+    read: () => Promise<T>, stop: (() => Promise<unknown>) | undefined, update: (snapshot: T) => void): Promise<T> {
     return new Promise<T>((resolve, reject) => {
       let current = initial, delivered = -1, closed = false, timer: ReturnType<typeof setTimeout> | undefined
       let unsubscribe: () => void = () => {}
@@ -51,12 +54,26 @@ export async function createConversationAiClient(api: AiApi, settings?: Settings
         if (settled(value.state)) finish()
       }
       const abort = () => {
-        if (signal.reason !== 'detach') void stop().catch(() => {})
+        if (signal.reason !== 'detach') void stop?.().catch(() => {})
         finish(cancelled())
       }
+      let readFailures = 0
       const poll = async () => {
-        try { accept(await read()) } catch (error) { finish(error) }
-        if (!closed) timer = setTimeout(() => { void poll() }, 500)
+        let delay = 500
+        try {
+          accept(await read())
+          readFailures = 0
+        } catch (error) {
+          const code = errorCode(error)
+          if (kind !== 'analysis' || (code && code !== 'OPERATION_FAILED' && code !== 'SERVICE_UNAVAILABLE')) {
+            finish(error)
+            return
+          }
+          // 快照读取失败不代表模型任务失败。连续重读耗尽后仍接收任务事件。
+          if (readFailures >= analysisReadBackoff.length) return
+          delay = analysisReadBackoff[readFailures++]
+        }
+        if (!closed) timer = setTimeout(() => { void poll() }, delay)
       }
       unsubscribe = api.onEvent(event => { if (event.kind === kind) accept(event.snapshot as T) })
       signal.addEventListener('abort', abort, { once: true })
@@ -64,8 +81,15 @@ export async function createConversationAiClient(api: AiApi, settings?: Settings
       // 先订阅再读快照，覆盖提交已完成或事件先于提交回执的情况。
       accept(initial)
       if (!closed) void poll()
-      else unsubscribe()
     })
+  }
+
+  async function followAnalysis(initial: AnalysisTask, signal: AbortSignal, onProgress: (progress: AnalysisProgress) => void): Promise<AnalysisResult> {
+    const result = await observe(initial, signal, 'analysis', () => api.getAnalysis(initial.id), () => api.stopAnalysis(initial.id), task => {
+      onProgress({ task, analyzedMessages: task.analyzedMessages, totalMessages: task.totalMessages,
+        usage: task.usage, outputTokensPerSecond: task.usage.outputTokensPerSecond })
+    })
+    return { taskId: result.id, usage: result.usage, task: result }
   }
   return {
     ...(selectedModels && settings ? { selectedModels, async selectModel(feature: ModelFeature, id: string | null) {
@@ -79,12 +103,26 @@ export async function createConversationAiClient(api: AiApi, settings?: Settings
       if (provider && !provider.enabled) return []
       return [{ id: model.id, label: model.label, model: model.model, version: model.version,
         ...(configured?.group ? { group: configured.group } : {}),
-        ...(provider ? { providerId: provider.id, providerName: provider.name, ...(provider.image ? { providerImage: provider.image } : {}) } : {}) }]
+        ...(provider ? { providerId: provider.id, providerName: provider.name, providerImage: provider.image || (provider.avatarId && cherryProviderIcon(provider.avatarId)) } : {}) }]
     }),
     skills: skills.map(({ id, label }) => ({ id, label })),
     async stopTurn(id) { await api.stopTurn(id) },
-    async stopAnalysis(id) { await api.stopAnalysis(id) },
+    stopAnalysis: id => api.stopAnalysis(id),
+    async continueAnalysis(id, signal, onProgress) {
+      check(signal)
+      let initial: AnalysisTask
+      try { initial = await api.continueAnalysis(id) }
+      catch (error) {
+        if (errorCode(error) !== 'INVALID_STATE') throw error
+        check(signal)
+        initial = await api.getAnalysis(id)
+        if (settled(initial.state) && initial.state !== 'completed') throw error
+      }
+      return followAnalysis(initial, signal, onProgress)
+    },
     prepareAnalysis: request => api.prepareAnalysis(request),
+    arrangeThread: (conversationId, change) => api.arrangeThread(conversationId, change),
+    async deleteThread(conversationId, threadId) { await api.deleteThread(conversationId, threadId); threads.delete(conversationId) },
     listThreads: conversationId => api.listThreads(conversationId),
     createThread: conversationId => api.createThread(conversationId),
     async restoreThread(conversationId, threadId) {
@@ -136,13 +174,14 @@ export async function createConversationAiClient(api: AiApi, settings?: Settings
         else void poll()
       })
     },
-    async watchAnalysis(conversationId, onChange, signal) {
+    async watchAnalysis(conversationId, onChange, signal, taskId) {
       check(signal)
       const tasks = await api.listAnalyses(conversationId)
       check(signal)
-      const latest = tasks[0]
+      const latest = taskId ? tasks.find(task => task.id === taskId) : tasks[0]
+      if (!latest && taskId) throw new Error('这项记忆任务已移除，请返回仓库。')
       if (!latest) return
-      await observe(latest, signal, 'analysis', () => api.getAnalysis(latest.id), () => api.stopAnalysis(latest.id), onChange)
+      await observe(latest, signal, 'analysis', () => api.getAnalysis(latest.id), undefined, onChange)
     },
     async respond(request, { signal, onText }) {
       check(signal)
@@ -169,12 +208,7 @@ export async function createConversationAiClient(api: AiApi, settings?: Settings
       check(signal)
       if (!request.preparationToken) throw new Error('请重新确认分析范围。')
       const initial = await api.confirmAnalysis({ token: request.preparationToken, requestId: request.requestId ?? requestId() })
-      const result = await observe(initial, signal, 'analysis', () => api.getAnalysis(initial.id), () => api.stopAnalysis(initial.id), value => {
-        onProgress({ analyzedMessages: value.analyzedMessages, totalMessages: value.totalMessages, usage: value.usage,
-          outputTokensPerSecond: value.usage.outputTokensPerSecond })
-      })
-      if (result.state !== 'completed') throw new Error(result.error ?? (result.state === 'stopped' ? '已停止分析。' : '分析中断，请重试。'))
-      return { taskId: result.id, usage: result.usage }
+      return followAnalysis(initial, signal, onProgress)
     },
   }
 }
