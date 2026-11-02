@@ -5,36 +5,57 @@
 <p align="center"><strong>从会话中发现自己</strong></p>
 
 <p align="center">
-  我们在交谈中表达想法，也会流露出自己尚未察觉的感受。<br>
-  Whomi 陪你重读这些对话，看看自己在意什么，又习惯怎样回应别人。
+  <a href="package.json"><img src="docs/readme/badges/version.svg" alt="项目版本 v0.1.9"></a>
+  <a href="docs/getting-started.md#从源码启动"><img src="docs/readme/badges/windows.svg" alt="64 位 Windows 桌面版"></a>
+  <a href="#开源许可"><img src="docs/readme/badges/license.svg" alt="GNU Affero 通用公共许可证第 3 版（AGPL-3.0）"></a>
 </p>
 
-## 个人总览
+<p align="center">
+  选几句聊天原文，向人工智能（AI）提问。<br>
+  把你们一起经历的事整理成《我们的记忆》。
+</p>
 
-![个人总览并排展示两段虚构关系中不同的安排习惯](docs/readme/overview.png)
+## 支持的 8 个会话平台
 
-和阿禾出门，你习惯提前安排。和小舟散步，你却愿意走到哪儿算哪儿。个人总览把两段关系里的表现放在一起，让你看见自己的不同侧面。
+<p align="center">
+  <a href="docs/getting-started.md#微信"><img src="docs/readme/platforms/wechat.svg" alt="微信"></a>
+  <a href="docs/getting-started.md#qq"><img src="docs/readme/platforms/tencentqq.svg" alt="QQ"></a>
+  <a href="docs/getting-started.md#telegram"><img src="docs/readme/platforms/telegram.svg" alt="Telegram"></a>
+  <a href="docs/getting-started.md#whatsapp"><img src="docs/readme/platforms/whatsapp.svg" alt="WhatsApp"></a>
+  <a href="docs/getting-started.md#discord"><img src="docs/readme/platforms/discord.svg" alt="Discord"></a>
+  <a href="docs/getting-started.md#google-chat"><img src="docs/readme/platforms/googlechat.svg" alt="Google Chat"></a>
+  <a href="docs/getting-started.md#instagram"><img src="docs/readme/platforms/instagram.svg" alt="Instagram"></a>
+  <a href="docs/getting-started.md#line"><img src="docs/readme/platforms/line.svg" alt="LINE"></a>
+</p>
 
-## 记忆仓库
+<p align="center"><a href="docs/getting-started.md#按平台准备聊天文件">查看各平台的导出与导入步骤 →</a></p>
 
-![记忆仓库按会话收好文稿，可以分别打开和阿禾、和小舟的记忆](docs/readme/library.png)
+## 界面截图
 
-每段关系的记忆文稿都收在一起。比如这份搬家记忆，写下了阿禾特意把书房留给猫的经过。[读一份《我们的记忆》](docs/readme/memory.png)
+截图来自 Whomi 0.1.9 桌面版。聊天记录和模型回复均为虚构示例。
 
-## 问一问 · 界面预览
+### 个人总览
 
-![问一问的虚构答辩场景，问题下方有三张回答卡和自由输入框](docs/readme/clarification.png)
+![个人总览](docs/readme/screenshots/personal-overview.png)
 
-朋友准备答辩，你答应听他试讲。那时你是想帮他赶进度，还是想先听他说完？示例题可以选卡，也可以用自己的话回答。正式版暂不自动出题或保存回答。
+### 引用原文提问
 
-## AI 对话
+![引用原文提问](docs/readme/screenshots/conversation-question.png)
 
-![小满和阿远临时改约。左侧三条聊天原话连续高亮，右侧是关于失落感的模拟回答和小满准备追问的问题。](docs/readme/conversation.png)
+### 记忆仓库
 
-明明说了「没事，你忙吧」，为什么听到「那我就放心了」反而更难过？右侧是人工智能（AI）对话的模拟回答：小满也许是在等阿远主动约下一次，阿远却以为小满想静一静。左侧高亮的三条原话，是小满为追问选的。
+![记忆仓库](docs/readme/screenshots/memory-library.png)
 
----
+### 我们的记忆
 
-以上画面均使用虚构测试数据。聊天记录保存在本机，提问或整理记忆时，相关材料会发送给你选择的模型服务。
+![我们的记忆](docs/readme/screenshots/memory-manuscript.png)
 
-[使用指南](docs/getting-started.md) · [开源许可证](LICENSE)
+## 使用指南
+
+按[使用指南](docs/getting-started.md)启动 Whomi 后，点侧栏「会话」旁的 **＋**，选择[周六搬家示例](docs/readme/weekend.telegram.json)。点「打开会话」，选择「小满」为本人，就能读到这段虚构聊天的 8 条原文。
+
+聊天记录保存在本机，阅读原文无需连接模型。提问或整理记忆时，相关材料会发送给你选择的模型服务。详见[模型设置与引用提问](docs/getting-started.md#试一次引用提问)。
+
+## 开源许可
+
+Whomi 采用 [GNU Affero 通用公共许可证第 3 版（AGPL-3.0）](LICENSE)。第三方组件和素材的来源与许可见[第三方声明](THIRD_PARTY_NOTICES.md)。

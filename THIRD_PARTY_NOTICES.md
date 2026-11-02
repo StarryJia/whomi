@@ -32,6 +32,8 @@ SOFTWARE.
 
 首页与启动动画使用的品牌图像资产（`assets/branding/`）归项目所有，派生素材仅用于界面渲染与动效展示。
 
+README 的八枚会话平台图标取自 [Simple Icons 13.0.0](https://github.com/simple-icons/simple-icons/tree/13.0.0/icons)，在 [平台标签](docs/readme/platforms/) 中配上名称以标识导入来源。图标集的 [CC0 1.0 声明](https://github.com/simple-icons/simple-icons/blob/13.0.0/LICENSE.md)与[各品牌图标的许可和商标说明](https://github.com/simple-icons/simple-icons/blob/13.0.0/DISCLAIMER.md)分别适用。
+
 ## 其他依赖
 
 ### Cherry Studio 对话与设置模块
