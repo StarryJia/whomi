@@ -35,6 +35,33 @@ async function cleanup(directory) {
   if (dirname(actual) !== await realpath(tmpdir()) || !basename(actual).startsWith('whomi-runtime-')) throw new Error('Unexpected test directory')
   await rm(actual, { recursive: true, force: true })
 }
+test('import guide opens externally and its sample imports from the same picker', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'whomi-runtime-'))
+  let app
+  try {
+    await copyFile('tests/desktop/probe.cjs', join(directory, 'probe.cjs'))
+    const executablePath = process.env.WHOMI_PACKAGED_EXECUTABLE
+    app = await electron.launch({
+      executablePath: executablePath ? resolve(executablePath) : undefined,
+      args: executablePath ? ['--whomi-runtime-test'] : [resolve('out/main/index.cjs'), '--whomi-runtime-test'],
+      env: { ...process.env, WHOMI_RUNTIME_TEST: directory },
+    })
+    const page = await app.firstWindow()
+    await page.getByRole('button', { name: '导入会话', exact: true }).click()
+    const guide = page.getByRole('link', { name: '如何导出聊天记录？' })
+    await app.evaluate(({ shell }) => { shell.openExternal = async url => { globalThis.__guideUrl = url } })
+    await guide.click()
+    await expect.poll(() => app.evaluate(() => globalThis.__guideUrl)).toBe('https://whomi.fun/guide/import/')
+    await expect(page.getByRole('button', { name: '选择文件', exact: true })).toBeVisible()
+    await page.setViewportSize({ width: 960, height: 720 })
+    await expect(guide).toBeInViewport()
+    await page.screenshot({ path: resolve('release/import-guide/desktop-picker.png') })
+    await drop(page, resolve('docs/readme/weekend.telegram.json'))
+    await expect(page.getByText('已保存 8 条消息。', { exact: true })).toBeVisible()
+    await expect(guide).toHaveCount(0)
+  } finally { await app?.close(); await cleanup(directory) }
+})
+
 test('actual import UI preserves old messages, self identity, source bytes and stable locations after restart', async () => {
   test.setTimeout(90000)
   const directory = await mkdtemp(join(tmpdir(), 'whomi-runtime-'))

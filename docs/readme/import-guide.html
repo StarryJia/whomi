@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="按聊天来源导出记录，在 Whomi 桌面端打开第一段会话。">
+  <title>如何导出聊天记录？ · Whomi 使用指南</title>
+  <style>
+    :root { color-scheme: light; --ink: #242e38; --muted: #56616c; --line: #d8dfe3; --accent: #9e431d; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #f6f8f9; color: var(--ink); font: 16px/1.7 system-ui, "Microsoft YaHei", sans-serif; }
+    a { color: var(--accent); text-underline-offset: .2em; }
+    a:focus-visible, summary:focus-visible { outline: 3px solid #ac502a; outline-offset: 3px; }
+    .wrap { width: min(1040px, calc(100% - 64px)); margin-inline: auto; }
+    header { background: white; border-bottom: 1px solid var(--line); }
+    header .wrap { display: flex; align-items: center; gap: 17px; min-height: 68px; }
+    .brand { display: inline-flex; align-items: center; gap: 8px; font-size: 23px; font-weight: 750; letter-spacing: -.055em; }
+    .brand img { width: 36px; height: 36px; }
+    .section-name { border-left: 1px solid var(--line); padding-left: 17px; color: var(--muted); font-size: 14px; }
+    .intro { display: flex; align-items: center; justify-content: space-between; gap: 28px; padding: 48px 0 36px; border-bottom: 1px solid var(--line); }
+    .intro-art { width: 155px; height: auto; flex: none; margin-right: 32px; }
+    h1, h2, h3, p { margin: 0; }
+    h1 { font-size: clamp(30px, 4.4vw, 48px); letter-spacing: -.045em; line-height: 1.24; }
+    .intro p { color: var(--muted); margin-top: 12px; }
+    .columns { display: grid; grid-template-columns: minmax(0, 1fr) minmax(245px, .53fr); gap: clamp(28px, 5vw, 68px); padding: 32px 0 56px; align-items: start; }
+    h2 { font-size: 21px; line-height: 1.45; letter-spacing: -.035em; }
+    .platforms { margin-top: 15px; background: white; border: 1px solid var(--line); border-radius: 16px; }
+    details + details { border-top: 1px solid var(--line); }
+    summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 17px 21px; font-size: 17px; font-weight: 650; }
+    summary::-webkit-details-marker { display: none; }
+    summary::after { content: ""; width: 7px; height: 7px; border: solid #68727a; border-width: 0 1.5px 1.5px 0; transform: rotate(45deg); margin-left: auto; flex: none; }
+    details[open] summary::after { transform: rotate(225deg); }
+    summary:hover, details[open] summary { color: var(--accent); }
+    .num { font: 13px/1.5 ui-monospace, monospace; color: #68727a; }
+    .tag { margin-left: auto; color: var(--muted); font-size: 12px; font-weight: 500; }
+    summary:has(.tag)::after { margin-left: 4px; }
+    .steps { margin: 0 20px 18px 52px; color: var(--muted); font-size: 14px; }
+    .steps ol { margin: 0; padding-left: 1.45em; }
+    .steps li + li { margin-top: .5em; }
+    .steps p { margin-top: 12px; }
+    code { font-size: .94em; overflow-wrap: anywhere; }
+    aside { margin-top: 45px; padding: 24px; background: #fbf2e8; border: 1px solid #e7d7c6; border-radius: 16px; }
+    aside > p { color: #635647; font-size: 14px; margin-top: 10px; }
+    .sample { margin: 20px 0; padding: 16px; border-radius: 9px; border: 1px solid #e6dacd; background: #fffdf9; }
+    .sample h3 { font-size: 15px; }
+    .sample small { display: block; color: #776554; margin: 2px 0 12px; }
+    .sample blockquote { margin: 0; font-size: 14px; padding-left: 11px; border-left: 2px solid #d88953; }
+    .download { display: inline-flex; align-items: center; gap: 9px; background: var(--accent); color: white; border-radius: 8px; padding: 9px 15px; text-decoration: none; font-size: 14px; font-weight: 600; }
+    .download:hover { background: #7b3519; }
+    .hint { margin: 16px 2px 0; color: var(--muted); font-size: 14px; }
+    @media (max-width: 760px) {
+      .wrap { width: min(580px, calc(100% - 36px)); }
+      .columns { grid-template-columns: 1fr; gap: 24px; padding-top: 24px; }
+      .intro { padding: 32px 0 24px; }
+      .intro-art { display: none; }
+      aside { margin-top: 0; }
+      .steps { margin-left: 23px; }
+      summary { padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <header><div class="wrap">
+    <span class="brand"><img src="./whomi.png" alt="" width="36" height="36">Whomi</span>
+    <span class="section-name">使用指南</span>
+  </div></header>
+  <main class="wrap">
+    <div class="intro">
+      <div><h1>如何导出聊天记录？</h1><p>找到聊天所在的平台，按步骤导出文件，再拖到 Whomi 桌面端。</p></div>
+      <svg class="intro-art" viewBox="0 0 160 108" fill="none" aria-hidden="true">
+        <g stroke="#ac5832" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round">
+          <path d="M24 80V36a5 5 0 0 1 5-5h27l8 8h62a5 5 0 0 1 5 5v40" fill="#f2c59e"/>
+          <g transform="rotate(-7 77 45)"><rect x="44" y="12" width="60" height="67" rx="5" fill="#fffdfa"/>
+            <path d="M54 26h25m-25 9h38m-38 9h19" stroke="#dba782"/></g>
+          <path d="M15 55a4 4 0 0 1 4-5h40l7 7h63a4 4 0 0 1 4 5l-8 29H30a6 6 0 0 1-6-4Z" fill="#f9dfc6"/>
+          <path d="M39 78h18" stroke="#cf8153"/>
+          <circle cx="127" cy="33" r="17" fill="#a34b28" stroke="#f6f8f9" stroke-width="4"/>
+          <path d="M127 26v13m-5-5 5 5 5-5" stroke="white"/>
+        </g>
+      </svg>
+    </div>
+    <div class="columns">
+      <section aria-labelledby="sources"><h2 id="sources">选择聊天来源</h2>
+        <div class="platforms">
+          <details name="platform">
+            <summary><span class="num" aria-hidden="true">01</span>微信<span class="tag">SIWX 导出</span></summary>
+            <div class="steps"><ol>
+              <li>在存有微信 4.x 聊天记录的电脑上启动微信导出工具 <strong>SIWX</strong>（Stories in WeChat）。首次使用时，在它的本机控制台选择自己的微信账号，按引导完成解密。</li>
+              <li>在「聊天查看」找到想保存的好友或群，核对能看到原文。进入「导出」，勾选这段会话和消息内容，格式选 <strong>JSON</strong>（结构化数据文件），开始导出。</li>
+              <li>打开导出目录。若得到压缩包，先解压。找到对应会话的 <code>.json</code> 聊天文件，把它拖进 Whomi 的「选择文件」区域。若同目录有 <code>manifest.json</code>，那是导出清单，请选择会话文件。</li>
+            </ol><p><a href="https://github.com/ImUpXuu/SIWX">获取和设置 SIWX</a></p></div>
+          </details>
+          <details name="platform">
+            <summary><span class="num" aria-hidden="true">02</span>QQ<span class="tag">聊天导出工具</span></summary>
+            <div class="steps"><ol>
+              <li>在 Windows 上启动第三方工具 QQ Chat Exporter，按提示登录自己的 QQ。在工具打开的本机网页里点「会话」。</li>
+              <li>找到想导入的好友或群，在对应行点「导出」。设好日期范围，格式选 <strong>JSON</strong>（结构化数据文件），再点「创建任务」。</li>
+              <li>在「任务」里找到这次导出，完成后下载文件。如果拿到压缩包，先解压，再把这段会话的 <code>.json</code> 文件拖进 Whomi。</li>
+            </ol><p>手上已有旧版 QQ 消息管理器导出的聊天文本？可以直接在 Whomi 选择那份 <code>.txt</code> 文件。</p>
+            <p><a href="https://shuakami.github.io/qq-chat-exporter/docs/guide.html">获取和设置 QQ Chat Exporter</a></p></div>
+          </details>
+          <details name="platform">
+            <summary><span class="num" aria-hidden="true">03</span>Telegram<span class="tag">桌面端</span></summary>
+            <div class="steps"><ol>
+              <li>在电脑上打开 Telegram Desktop，进入想在 Whomi 里重读的那段聊天。点会话右上角的「⋮」，选择 <strong>Export chat history</strong>（导出聊天记录）。</li>
+              <li>在导出窗口把保存格式设为 <strong>Machine-readable JSON</strong>（机器可读的数据文件）。选好保存位置后开始导出。</li>
+              <li>导出完成后打开保存目录，把后缀为 <code>.json</code> 的聊天文件拖到 Whomi 的「选择文件」区域。如果目录里只有网页文件，请重新导出并选择 JSON。</li>
+            </ol></div>
+          </details>
+          <details name="platform">
+            <summary><span class="num" aria-hidden="true">04</span>WhatsApp<span class="tag">手机端</span></summary>
+            <div class="steps"><ol>
+              <li>打开想保存的好友或群聊。<strong>安卓手机</strong>点右上角「⋮」→「更多」→「导出聊天」。<strong>iPhone</strong> 点顶部的联系人或群名称，再点「导出聊天」。</li>
+              <li>如果手机询问是否附加媒体，选择「不附加媒体」。用系统分享菜单把导出文件保存到自己能取回的位置，再传到装有 Whomi 的电脑。</li>
+              <li>在电脑上查看文件后缀：收到 <code>.zip</code> 就先解压，收到 <code>.txt</code> 就直接使用。在 Whomi 点「选择文件」，打开这份聊天文本。</li>
+            </ol></div>
+          </details>
+          <details name="platform">
+            <summary><span class="num" aria-hidden="true">05</span>Discord<span class="tag">频道记录</span></summary>
+            <div class="steps"><ol>
+              <li>打开第三方工具 DiscordChatExporter，按工具提示连接自己的账号，在频道列表中选中想保存的聊天。</li>
+              <li>打开导出选项，将文件格式设为 <strong>JSON</strong>（结构化数据文件），选择保存位置并导出。</li>
+              <li>在 Whomi 点「选择文件」，打开刚保存的频道 <code>.json</code> 文件。</li>
+            </ol><p><a href="https://github.com/Tyrrrz/DiscordChatExporter">获取和设置 DiscordChatExporter</a></p></div>
+          </details>
+          <details name="platform">
+            <summary><span class="num" aria-hidden="true">06</span>Google Chat<span class="tag">Google Takeout</span></summary>
+            <div class="steps"><ol>
+              <li>用聊天所在的 Google 账号打开 Google Takeout（数据导出工具）。取消预选的产品，只勾选 Google Chat，创建一次导出。</li>
+              <li>下载压缩包并完整解压，保留 <code>Takeout/Google Chat</code> 下的 <code>Groups</code> 和 <code>Users</code> 两个目录。</li>
+              <li>在 Whomi 点「选择文件夹」，选中解压后的 <code>Google Chat</code> 文件夹。如果发现多段会话，勾选想导入的会话。</li>
+            </ol><p><a href="https://takeout.google.com/">打开 Google Takeout</a></p></div>
+          </details>
+          <details name="platform">
+            <summary><span class="num" aria-hidden="true">07</span>Instagram<span class="tag">账户中心</span></summary>
+            <div class="steps"><ol>
+              <li>进入账户中心，在「你的信息和权限」中创建一次信息导出。选择存有私信的 Instagram 账号，导出到设备。</li>
+              <li>将信息范围设为消息或私信，选择需要的日期，格式选 <strong>JSON</strong>（结构化数据文件）。文件准备好后下载并解压。</li>
+              <li>在解压目录中找到目标聊天的消息文件，例如 <code>message_1.json</code>。在 Whomi 点「选择文件」选中它；同一聊天有多个消息文件时可多选。</li>
+            </ol></div>
+          </details>
+          <details name="platform">
+            <summary><span class="num" aria-hidden="true">08</span>LINE<span class="tag">聊天文本</span></summary>
+            <div class="steps"><ol>
+              <li>在手机上进入一段 LINE 聊天，打开会话菜单，在「设置」中选择「导出聊天记录」。</li>
+              <li>通过手机的分享菜单保存文本文件，再把这份 <code>.txt</code> 传到运行 Whomi 的电脑上。</li>
+              <li>将文件拖入 Whomi。如果从电脑版 LINE 导出，可在会话菜单选择「Save chat」（保存聊天），文件只包含当时已加载的消息。</li>
+            </ol></div>
+          </details>
+        </div>
+        <p class="hint">拿到导出文件后，在 Whomi 侧栏点「会话」旁的加号，选择文件或文件夹。聊天记录在本机导入。</p>
+      </section>
+      <aside aria-labelledby="try"><h2 id="try">先用示例试一试</h2>
+        <p>下载后将文件拖入 Whomi。首次导入会保存 8 条消息，打开会话就能读到原文。</p>
+        <div class="sample"><h3>周六搬家</h3><small>Telegram 单会话示例 · 虚构对话</small><blockquote>那猫怎么办？上回一开胶带，它就钻床底了。</blockquote></div>
+        <a class="download" href="./weekend.telegram.json" download="weekend.telegram.json"><span aria-hidden="true">↓</span> 下载示例文件</a>
+      </aside>
+    </div>
+  </main>
+</body>
+</html>

@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type DragEvent } from 'react'
-import { FolderOpen } from 'lucide-react'
+import { ExternalLink, FolderOpen } from 'lucide-react'
 import clsx from 'clsx'
 import type { DesktopApi } from '../shared/desktop-api'
 import { isPersistedResult, useImport } from '../data/use-import'
@@ -111,6 +111,9 @@ export function FileImport({ api, onSaved, onOpenConversation }: {
         {api && <button className="import-folder" type="button" disabled={busy} onClick={() => { void controller.choose('directory') }}>
           <FolderOpen size={17} aria-hidden="true" />选择文件夹
         </button>}
+        <a className="import-guide" href="https://whomi.fun/guide/import/" target="_blank" rel="noopener noreferrer">
+          如何导出聊天记录？<ExternalLink size={14} aria-hidden="true" />
+        </a>
         <div className="import-picker-feedback">
           {busy && <p className="import-muted" role="status">正在处理…</p>}
           {!api && <p className="import-muted">请在桌面应用中导入；此处仅预览文件选择。</p>}
