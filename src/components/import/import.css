@@ -29,8 +29,7 @@
   cursor: pointer;
   transition: background-color 180ms, border-color 180ms, box-shadow 180ms;
 }
-.import-art { width: 88px; height: 77px; margin-bottom: 6px; }
-.import-art-sheet, .import-art-arrow { transition: transform 220ms cubic-bezier(.2,.7,.25,1); }
+.import-art { margin-bottom: var(--space-2); color: var(--focus); }
 .import-picker-title { font-size: clamp(19px, 2.2vw, 23px); font-weight: 600; line-height: 1.4; }
 .import-picker-hint { color: var(--text-muted); font-size: 14px; line-height: 1.65; text-wrap: balance; }
 @media (hover: hover) {
@@ -38,23 +37,19 @@
     border-color: var(--import-edge);
     box-shadow: 0 4px 8px -5px #64331c20, 0 14px 34px -15px #88411f30;
   }
-  .import-dropzone:enabled:hover .import-art-sheet { transform: translateY(-3px); }
-  .import-dropzone:enabled:hover .import-art-arrow { transform: translateY(-2px); }
 }
 .import-workspace.is-dragging > .import-dropzone {
   border-color: var(--focus);
   background: var(--import-tint);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 13%, transparent);
 }
-.import-workspace.is-dragging .import-dropzone .import-art-sheet { transform: translateY(4px); }
-.import-workspace.is-dragging .import-dropzone .import-art-arrow { transform: translateY(5px); }
 .import-workspace > .import-folder {
   margin-top: 8px;
   justify-self: center;
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  min-height: 42px;
+  min-height: 44px;
   padding: 0 13px;
   border: 0;
   border-radius: 10px;
@@ -70,15 +65,21 @@
   justify-self: center;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  min-height: 36px;
-  margin-top: 12px;
-  color: var(--text-muted);
+  gap: var(--space-2);
+  min-height: 44px;
+  margin-top: var(--space-2);
+  padding-inline: var(--space-3);
+  border: 0;
+  border-radius: var(--radius-control);
+  color: var(--focus);
+  background: transparent;
+  font: inherit;
   font-size: 14px;
-  text-underline-offset: 3px;
+  font-weight: 600;
+  cursor: pointer;
 }
-.import-guide:hover { color: var(--text); }
-.import-guide:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+.import-guide:enabled:hover { background: var(--import-tint); }
+.import-guide:enabled:active { background: var(--pressed); }
 .import-picker-feedback { text-align: center; font-size: 14px; line-height: 1.6; }
 .import-picker-feedback p { margin: 12px 0 0; }
 .import-meter { display: block; width: 100%; height: 6px; margin: 16px auto; accent-color: var(--focus); }
@@ -144,7 +145,6 @@
   .import-candidate { padding: 12px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .import-workspace .import-dropzone :is(.import-art-sheet, .import-art-arrow) { transform: none !important; }
   .import-meter:indeterminate { appearance: none; border: 0; border-radius: 4px; background: var(--line); }
   .import-meter:indeterminate::-webkit-progress-bar { background: var(--line); border-radius: inherit; }
 }

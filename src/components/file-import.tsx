@@ -1,11 +1,13 @@
 import { useEffect, useLayoutEffect, useRef, useState, type DragEvent } from 'react'
-import { ExternalLink, FolderOpen } from 'lucide-react'
+import { BookOpen, Download, FolderOpen } from 'lucide-react'
 import clsx from 'clsx'
 import type { DesktopApi } from '../shared/desktop-api'
 import { isPersistedResult, useImport } from '../data/use-import'
 import { DiscoveryChoices } from './import/import-candidates'
 import { ImportProgress } from './import/import-progress'
-import { ChatImportArt, ImportStateMark } from './import/import-artwork'
+import { ImportStateMark } from './import/import-artwork'
+import { ImportGuide } from './import/import-guide'
+import type { GuidePlatform } from './import/platform-guides'
 import './import/import.css'
 
 export function FileImport({ api, onSaved, onOpenConversation }: {
@@ -17,6 +19,10 @@ export function FileImport({ api, onSaved, onOpenConversation }: {
   const started = useRef(new Set<string>())
   const input = useRef<HTMLInputElement>(null)
   const choose = useRef<HTMLButtonElement>(null)
+  const guideButton = useRef<HTMLButtonElement>(null)
+  const restoreGuideFocus = useRef(false)
+  const [readingGuide, setReadingGuide] = useState(false)
+  const [platform, setPlatform] = useState<GuidePlatform>('telegram')
   const dragDepth = useRef(0)
   const [dragging, setDragging] = useState(false)
   const [filename, setFilename] = useState('')
@@ -36,6 +42,12 @@ export function FileImport({ api, onSaved, onOpenConversation }: {
   }, [api, snapshot, busy, controller])
 
   useLayoutEffect(() => { choose.current?.focus() }, [])
+  useLayoutEffect(() => {
+    if (!readingGuide && restoreGuideFocus.current) {
+      restoreGuideFocus.current = false
+      guideButton.current?.focus()
+    }
+  }, [readingGuide])
   useEffect(() => {
     if (!snapshot || !onSaved) return
     const ids = [...new Set(snapshot.results.filter(isPersistedResult).map(result => result.conversationId!))]
@@ -77,6 +89,11 @@ export function FileImport({ api, onSaved, onOpenConversation }: {
   const isCancelledBeforeSave = snapshot?.status === 'cancelled' && !snapshot.results.some(isPersistedResult)
   const showInitial = !snapshot || isCancelledBeforeSave
 
+  if (showInitial && readingGuide) return <ImportGuide platform={platform} onSelect={setPlatform} onBack={() => {
+    restoreGuideFocus.current = true
+    setReadingGuide(false)
+  }} />
+
   return <section className={clsx('file-import import-workspace', dragging && 'is-dragging')} aria-label="文件导入"
     onDragEnter={event => {
       if (!event.dataTransfer.types.includes('Files')) return
@@ -100,7 +117,7 @@ export function FileImport({ api, onSaved, onOpenConversation }: {
       <>
         <button ref={choose} className="import-dropzone" type="button" aria-labelledby="import-picker-title" aria-describedby="import-picker-hint"
           disabled={busy} onClick={() => { if (api) void controller.choose('files'); else input.current?.click() }}>
-          <ChatImportArt />
+          <Download className="import-art" size={44} strokeWidth={1.6} aria-hidden="true" />
           <span className="import-picker-title" id="import-picker-title">
             {dragging ? (api ? '松开以导入聊天记录' : '松开以选择文件') : filename ? '重新选择文件' : '选择文件'}
           </span>
@@ -111,9 +128,9 @@ export function FileImport({ api, onSaved, onOpenConversation }: {
         {api && <button className="import-folder" type="button" disabled={busy} onClick={() => { void controller.choose('directory') }}>
           <FolderOpen size={17} aria-hidden="true" />选择文件夹
         </button>}
-        <a className="import-guide" href="https://whomi.fun/guide/import/" target="_blank" rel="noopener noreferrer">
-          如何导出聊天记录？<ExternalLink size={14} aria-hidden="true" />
-        </a>
+        <button ref={guideButton} className="import-guide" type="button" disabled={busy} onClick={() => setReadingGuide(true)}>
+          <BookOpen size={19} strokeWidth={1.7} aria-hidden="true" />操作指引
+        </button>
         <div className="import-picker-feedback">
           {busy && <p className="import-muted" role="status">正在处理…</p>}
           {!api && <p className="import-muted">请在桌面应用中导入；此处仅预览文件选择。</p>}

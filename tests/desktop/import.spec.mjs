@@ -35,7 +35,7 @@ async function cleanup(directory) {
   if (dirname(actual) !== await realpath(tmpdir()) || !basename(actual).startsWith('whomi-runtime-')) throw new Error('Unexpected test directory')
   await rm(actual, { recursive: true, force: true })
 }
-test('import guide opens externally and its sample imports from the same picker', async () => {
+test('import guide stays in the app, adapts to the panel and returns to the same picker', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'whomi-runtime-'))
   let app
   try {
@@ -48,14 +48,29 @@ test('import guide opens externally and its sample imports from the same picker'
     })
     const page = await app.firstWindow()
     await page.getByRole('button', { name: '导入会话', exact: true }).click()
-    const guide = page.getByRole('link', { name: '如何导出聊天记录？' })
-    await app.evaluate(({ shell }) => { shell.openExternal = async url => { globalThis.__guideUrl = url } })
-    await guide.click()
-    await expect.poll(() => app.evaluate(() => globalThis.__guideUrl)).toBe('https://whomi.fun/guide/import/')
-    await expect(page.getByRole('button', { name: '选择文件', exact: true })).toBeVisible()
-    await page.setViewportSize({ width: 960, height: 720 })
-    await expect(guide).toBeInViewport()
-    await page.screenshot({ path: resolve('release/import-guide/desktop-picker.png') })
+    const guide = page.getByRole('button', { name: '操作指引', exact: true })
+    const picker = page.getByRole('button', { name: '选择文件', exact: true })
+    const back = page.getByRole('button', { name: '返回导入', exact: true })
+    await app.evaluate(({ shell }) => { globalThis.__guideExternal = []; shell.openExternal = async url => { globalThis.__guideExternal.push(url) } })
+    await guide.focus()
+    await page.keyboard.press('Enter')
+    await expect(page.getByRole('heading', { name: '操作指引' })).toBeFocused()
+    await expect(picker).toHaveCount(0)
+    await expect(guide).toHaveCount(0)
+    const platforms = page.getByRole('navigation', { name: '聊天平台' })
+    for (const name of ['微信', 'QQ', 'Telegram', 'WhatsApp', 'Discord', 'Google Chat', 'Instagram', 'LINE']) {
+      await platforms.getByRole('button', { name, exact: true }).click()
+      await expect(page.getByRole('region', { name, exact: true }).getByRole('listitem')).toHaveCount(3)
+    }
+    await page.setViewportSize({ width: 360, height: 760 })
+    const select = page.getByRole('combobox', { name: '聊天平台' })
+    await expect(select).toHaveValue('line')
+    await select.selectOption('googlechat')
+    await expect(page.getByRole('region', { name: 'Google Chat' })).toContainText('选择文件夹')
+    await back.click()
+    await expect(guide).toBeFocused()
+    await expect(picker).toBeVisible()
+    expect(await app.evaluate(() => globalThis.__guideExternal)).toEqual([])
     await drop(page, resolve('docs/readme/weekend.telegram.json'))
     await expect(page.getByText('已保存 8 条消息。', { exact: true })).toBeVisible()
     await expect(guide).toHaveCount(0)
