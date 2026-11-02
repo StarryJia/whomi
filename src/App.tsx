@@ -17,6 +17,7 @@ import { HelloCover } from './components/hello-cover'
 import { ConversationNavigation, ConversationReader, type Conversation } from './components/conversations'
 import { FileImport } from './components/file-import'
 import { SettingsPage } from './components/settings/settings-page'
+import type { LeaveGuard } from './components/settings/common'
 import { getDesktopClient } from './data/desktop-client'
 import { createPreviewClient } from './data/preview-client'
 import { createConversationAiClient } from './data/conversation-ai-client'
@@ -78,6 +79,8 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [settingsRevision, setSettingsRevision] = useState(0)
   const settingsEntry = useRef<HTMLButtonElement>(null)
+  const settingsLeave = useRef<LeaveGuard>(null)
+  const [settingsLocked, setSettingsLocked] = useState(false)
   const settingsReturn = useRef<(() => void) | null>(null)
   const settingsChanged = useRef(false)
   useEffect(() => {
@@ -215,11 +218,33 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
     }
   }
 
+  function closeSettings(destination?: () => void) {
+    setSettingsOpen(false)
+    setSettingsLocked(false)
+    if (settingsChanged.current) {
+      setSettingsRevision(value => value + 1)
+      settingsChanged.current = false
+    }
+    const restore = settingsReturn.current
+    settingsReturn.current = null
+    if (destination) destination()
+    else requestAnimationFrame(restore ?? (() => settingsEntry.current?.focus()))
+  }
+
+  function navigateFromSidebar(destination: () => void) {
+    if (!settingsOpen) { destination(); return }
+    closeMobile()
+    settingsLeave.current?.(() => closeSettings(destination))
+  }
+
   function goHome(event: MouseEvent<HTMLAnchorElement>) {
+    if (settingsOpen) event.preventDefault()
     const link = event.currentTarget
-    setCoverKey(key => key + 1)
-    setView('cover')
-    requestAnimationFrame(() => (mobileDialog ? link : greetingRef.current)?.focus())
+    navigateFromSidebar(() => {
+      setCoverKey(key => key + 1)
+      setView('cover')
+      requestAnimationFrame(() => (mobileDialog && !settingsOpen ? link : greetingRef.current)?.focus())
+    })
   }
 
   function enterOverview() {
@@ -270,6 +295,7 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
     refreshMemories()
     await reader.refresh({ preserveReader: true })
     if (activeId === id && view === 'conversation') {
+      settingsReturn.current = null
       setActiveId(undefined)
       enterOverview()
     }
@@ -329,8 +355,8 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
   </>
 
   return (
-    <><div style={{ ...navPane.style, display: settingsOpen ? 'none' : undefined }} className={clsx('app-shell', navPane.dragging && 'pane-resizing', open && 'sidebar-open', introActive && 'startup-running', window.whomi && !preview && 'desktop-shell')}>
-      {window.whomi && !preview && view !== 'conversation' && <div className="desktop-drag-strip" aria-hidden="true" />}
+    <div style={navPane.style} className={clsx('app-shell', navPane.dragging && 'pane-resizing', open && 'sidebar-open', introActive && 'startup-running', window.whomi && !preview && 'desktop-shell')}>
+      {window.whomi && !preview && (settingsOpen || view !== 'conversation') && <div className="desktop-drag-strip" aria-hidden="true" />}
       <a className="skip-link" href="#main-content" inert={mobileDialog || introActive}>跳到主要内容</a>
       {mobileDialog && (
         <button
@@ -354,7 +380,7 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
         <header className="sidebar-header">
           {open ? <>
             <Tooltip content="返回首页" side="bottom">
-            <a className="brand-link" href="#main-content" aria-label="Whomi 首页" onClick={goHome}>
+            <a className="brand-link" href="#main-content" aria-label="Whomi 首页" aria-disabled={settingsLocked || undefined} onClick={goHome}>
               <span className="brand-symbol" aria-hidden="true"><img ref={brandImageRef} src={symbol} alt="" width="1254" height="1254" /></span>
               <span className="brand-wordmark" aria-hidden="true"><img src={wordmark} alt="" width="1774" height="887" /></span>
             </a>
@@ -389,37 +415,38 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
             </Tooltip>
           )}
         </header>
-        <nav className="sidebar-navigation" aria-label="主导航">
+        <nav className="sidebar-navigation" aria-label="主导航" inert={settingsLocked}>
           <Tooltip content="个人总览">
-            <button className="nav-control" type="button" aria-label="个人总览" aria-current={view === 'overview' ? 'page' : undefined} onClick={enterOverview}>
+            <button className="nav-control" type="button" aria-label="个人总览" aria-current={!settingsOpen && view === 'overview' ? 'page' : undefined} onClick={() => navigateFromSidebar(enterOverview)}>
               <span className="control-icon"><ContactRound aria-hidden="true" /></span>
               <span className="control-label" aria-hidden="true">个人总览</span>
             </button>
           </Tooltip>
           <Tooltip content="记忆仓库">
-            <button className="nav-control" type="button" aria-label="记忆仓库" aria-current={view === 'library' ? 'page' : undefined} onClick={() => openLibrary()}>
+            <button className="nav-control" type="button" aria-label="记忆仓库" aria-current={!settingsOpen && view === 'library' ? 'page' : undefined} onClick={() => navigateFromSidebar(() => openLibrary())}>
               <span className="control-icon"><Archive aria-hidden="true" /></span><span className="control-label" aria-hidden="true">记忆仓库</span>
             </button>
           </Tooltip>
           <Tooltip content="问一问">
-            <button className="nav-control" type="button" aria-label="问一问" aria-current={view === 'clarification' ? 'page' : undefined} onClick={openClarification}>
+            <button className="nav-control" type="button" aria-label="问一问" aria-current={!settingsOpen && view === 'clarification' ? 'page' : undefined} onClick={() => navigateFromSidebar(openClarification)}>
               <span className="control-icon"><MessageCircleQuestion aria-hidden="true" /></span>
               <span className="control-label" aria-hidden="true">问一问</span>
             </button>
           </Tooltip>
-          <ConversationNavigation wide={open} conversations={reader.conversations} activeId={view === 'conversation' ? activeId : undefined}
+          <ConversationNavigation wide={open} conversations={reader.conversations} activeId={!settingsOpen && view === 'conversation' ? activeId : undefined}
             arrange={api?.arrangeConversation && (async change => { await api.arrangeConversation(change); await reader.refresh({ preserveReader: true }) })}
             remove={api?.deleteConversation && handleDeleteConversation}
-            onImport={startNewImport} onSelect={openConversation} hasMore={!!reader.listCursor} loading={reader.listLoading}
+            onImport={() => navigateFromSidebar(startNewImport)} onSelect={id => navigateFromSidebar(() => openConversation(id))} hasMore={!!reader.listCursor} loading={reader.listLoading}
             error={reader.listError} onLoadMore={() => { void reader.loadMore() }} onRefresh={() => { void reader.refresh() }} />
         </nav>
         <footer className="sidebar-footer">
-          {api?.settings ? <button ref={settingsEntry} className="nav-control" type="button" aria-label="设置" onClick={() => { closeMobile(); setSettingsOpen(true) }}>
+          {api?.settings ? <button ref={settingsEntry} className="nav-control" type="button" aria-label="设置" aria-current={settingsOpen ? 'page' : undefined} onClick={() => { closeMobile(); setSettingsOpen(true) }}>
             <span className="control-icon"><Settings aria-hidden="true" /></span><span className="control-label" aria-hidden="true">设置</span>
           </button> : <UnavailableDestination label="设置" icon={Settings} />}
         </footer>
       </aside>
-      <main id="main-content" ref={mainRef} className={clsx('home', view === 'cover' && 'cover-home', (view === 'overview' || view === 'clarification' || view === 'library') && 'overview-home', view === 'conversation' && 'reading-home')} tabIndex={-1} inert={mobileDialog || introActive}>
+      {/* 设置返回时复用原阅读器的草稿、引用和滚动位置。 */}
+      <main id={settingsOpen ? undefined : 'main-content'} hidden={settingsOpen} ref={mainRef} className={clsx('home', view === 'cover' && 'cover-home', (view === 'overview' || view === 'clarification' || view === 'library') && 'overview-home', view === 'conversation' && 'reading-home')} tabIndex={-1} inert={settingsOpen || mobileDialog || introActive}>
         {view === 'cover' ? <HelloCover key={coverKey} name={name} buttonRef={greetingRef} onEnter={enterOverview}>{revealing => overviewContent(!revealing)}</HelloCover>
           : view === 'library' ? <MemoryLibrary entries={memories} selectedId={selectedMemory} onSelect={setSelectedMemory}
             unfinished={unfinished} conversations={reader.conversations} onStart={(id, taskId) => openConversation(id, { origin:'library', taskId })}
@@ -452,14 +479,12 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
             isSourceAvailable={sourceAvailable} />
         ) : overviewContent()}
       </main>
+      {settingsOpen && api?.settings && <main id="main-content" className="settings-home" tabIndex={-1} inert={mobileDialog}>
+        <SettingsPage api={api.settings} leaveRef={settingsLeave} onLockChange={setSettingsLocked}
+          onChanged={() => { settingsChanged.current = true }} onClose={() => closeSettings()} />
+      </main>}
       {introActive && <StartupIntro targetRef={brandImageRef} onComplete={finishIntro} />}
-    </div>{settingsOpen && api?.settings && <><div className="desktop-drag-strip settings-drag-strip" aria-hidden="true" /><SettingsPage api={api.settings} onChanged={() => { settingsChanged.current = true }} onClose={() => {
-      setSettingsOpen(false)
-      if (settingsChanged.current) { setSettingsRevision(value => value + 1); settingsChanged.current = false }
-      const restore = settingsReturn.current
-      settingsReturn.current = null
-      requestAnimationFrame(restore ?? (() => settingsEntry.current?.focus()))
-    }} /></>}</>
+    </div>
   )
 }
 

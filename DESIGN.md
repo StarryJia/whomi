@@ -1,5 +1,7 @@
 # Whomi 设计原则
 
+设置复用应用侧栏和窗口拖动区，分类导航放在主内容区顶部。例如将侧栏调宽后，从会话打开设置，Logo 与主导航仍在原位置，底部「设置」显示为当前页。布局及返回规则见[设置界面设计](docs/designs/whomi-settings-design.md)。
+
 2026-11-01：记忆仓库采用按会话收展的 B 方案，详情与示例见[记忆仓库](docs/designs/whomi-memory-library.md)。Hello 在启动时预读本地数据，点击直接进入[个人总览](docs/designs/whomi-overview-entry.md)；[问一问](docs/designs/whomi-clarification-implementation.md)共用问题栏、卡片和对话输入框。模型选择按能力提供思考强度；套餐使用与管理留在账号设置。
 
 ## 0.1.8 的空状态与任务反馈
