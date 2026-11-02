@@ -264,20 +264,27 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
       else onClearReferences()
     }
   }
+  function focusThreadEditor() {
+    setThreadListOpen(false)
+    requestAnimationFrame(() => textarea.current?.focus({ preventScroll: true }))
+  }
   async function newThread(keepDraft = false) {
-    if (!adapter?.createThread || creatingThread.current) return
+    if (!adapter?.createThread || creatingThread.current || restoring || threadListLoading) return
+    const origin = activeThread.current
+    if (origin && latestTurns.current.length === 0 && !restoreError) {
+      focusThreadEditor()
+      return origin
+    }
     creatingThread.current = true
     setThreadCreating(true)
     setThreadListError('')
-    const origin = activeThread.current
     try {
       const created = await adapter.createThread(conversationId)
       if (!alive.current) return
       setThreads(items => [...items.filter(item => item.pinned), created, ...items.filter(item => !item.pinned && item.id !== created.id)])
       if (activeThread.current !== origin) return
-      activateThread(created.id, keepDraft)
-      setThreadListOpen(false)
-      requestAnimationFrame(() => textarea.current?.focus())
+      activateThread(created.id, keepDraft || (!origin && latestTurns.current.length === 0))
+      focusThreadEditor()
       return created.id
     } catch (error) { if (keepDraft) throw error; if (alive.current) setThreadListError(errorText(error)) }
     finally { creatingThread.current = false; if (alive.current) setThreadCreating(false) }
@@ -593,7 +600,7 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
       }}>
       {panelOpen && !narrow && chatPane.divider}
       <header className="conversation-ai-header"><button ref={historyAnchor} type="button" className="conversation-icon-button" aria-label={threadListOpen ? '收起对话列表' : '显示对话列表'} aria-expanded={threadListOpen} onClick={() => setThreadListOpen(value => !value)}><PanelLeft aria-hidden="true" /></button>
-        <h2>AI 对话</h2><button type="button" className="conversation-icon-button" aria-label="新建 AI 对话" title="新建 AI 对话" disabled={!adapter?.createThread || threadCreating || threadListLoading} onClick={() => { void newThread() }}><SquarePen aria-hidden="true" /></button>
+        <h2>AI 对话</h2><button type="button" className="conversation-icon-button" aria-label="新建 AI 对话" title="新建 AI 对话" disabled={!adapter?.createThread || threadCreating || threadListLoading || restoring} onClick={() => { void newThread() }}><SquarePen aria-hidden="true" /></button>
         <button type="button" className="conversation-icon-button" aria-label="关闭 AI 对话" onClick={closePanel}><X aria-hidden="true" /></button></header>
       <div className="conversation-ai-body">
       {threadListOpen && <button type="button" className="conversation-thread-scrim" aria-label="关闭对话列表" tabIndex={-1} onClick={() => { setThreadListOpen(false); historyAnchor.current?.focus() }} />}

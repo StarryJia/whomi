@@ -115,7 +115,9 @@ describe('会话工作区的明确入口和独立对话', () => {
     const user = userEvent.setup(), adapter = client()
     let finish!: (value: Awaited<ReturnType<NonNullable<ConversationAiAdapter['createThread']>>>) => void
     adapter.listThreads = async () => [{ id: 'first', conversationId: 'c', title: '原对话', createdAtMs: 1, updatedAtMs: 1 }]
-    adapter.restoreThread = async () => []
+    adapter.restoreThread = async (_conversation, id) => id === 'first'
+      ? [{ id: 'turn', requestId: 'r', modelId: 'm', prompt: '原问题', text: '原回答', referenceIds: [], state: 'completed' }]
+      : []
     adapter.createThread = vi.fn(() => new Promise<AiThread>(resolve => { finish = resolve }))
     render(<Fixture adapter={adapter} />)
     await user.click(screen.getByRole('button', { name: 'AI 对话' }))
