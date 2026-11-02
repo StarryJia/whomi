@@ -13,16 +13,22 @@ const memory: AnalysisTask = { id: '1', conversationId: '1', conversationTitle: 
 it('两段关系在安排方式上平票时并列列出关系，其他维度保持未知', async () => {
   const report = memory.report!
   if (!('format' in report) || report.format !== 'memory-v3') throw Error('fixture')
-  const opposite = { ...memory, id: '2', conversationId: '2', conversationTitle: '旅行', report: { ...report, eventVotes: { ...report.eventVotes, JP: [0,13] }, dimensions: { ...report.dimensions, JP: 'P' } } }
-  const api = { ai: { listAnalyses: async () => [memory, opposite], onEvent: () => () => {} } } as unknown as DesktopApi
-  render(<App conversations={[]} preview importApi={api} />)
+  const opposite = { ...memory, id: '2', conversationId: '2', conversationTitle: '我和小林', report: { ...report, eventVotes: { ...report.eventVotes, JP: [0,13] }, dimensions: { ...report.dimensions, JP: 'P' } } }
+  const group = { ...memory, conversationTitle: '我和同学们' }
+  const api = {
+    listConversations: async () => ({ items: [
+      { id: '1', title: group.conversationTitle, kind: 'group' }, { id: '2', title: opposite.conversationTitle, kind: 'direct' },
+    ], nextCursor: null }),
+    ai: { listAnalyses: async () => [group, opposite], onEvent: () => () => {} },
+  } as unknown as DesktopApi
+  render(<App preview importApi={api} />)
   await userEvent.click(screen.getByRole('button', { name: '个人总览' }))
   const row = await screen.findByRole('group', { name: '判断 J / 感知 P' })
   expect(row).toHaveTextContent('关系票数持平')
   expect(row.querySelector('[role=img]')).toBeNull()
   expect(row).not.toHaveTextContent('较均衡')
-  expect(row).toHaveTextContent('周末偏向提前安排')
-  expect(row).toHaveTextContent('旅行偏向保留弹性')
+  expect(row).toHaveTextContent('在「我和同学们」这段聊天中，你更习惯提前安排')
+  expect(row).toHaveTextContent('与小林相处时，你更习惯保留弹性')
   expect(screen.getByRole('group', { name: '外向 E / 内向 I' })).toHaveTextContent('尚待了解')
 })
 
@@ -80,15 +86,15 @@ it('更正本人后只撤回该会话的贡献并重读暂停任务，保留对�
   expect(screen.queryByRole('button', { name: '继续生成' })).toBeNull()
   expect(screen.getByRole('textbox', { name: '向 AI 提问' })).toHaveValue('等一等再发')
   await user.click(screen.getByRole('button', { name: '个人总览' }))
-  expect(screen.getByLabelText('各段关系中的表现')).toHaveTextContent('另一段关系')
-  expect(screen.getByLabelText('各段关系中的表现')).not.toHaveTextContent('周末')
+  expect(screen.getByLabelText('你在不同关系中的表现')).toHaveTextContent('另一段关系')
+  expect(screen.getByLabelText('你在不同关系中的表现')).not.toHaveTextContent('周末')
 })
 
 it('空库保留四维和 Spark，仓库有文稿预览与导入入口，问一问通过侧栏切回仓库', async () => {
   const user = userEvent.setup()
   render(<App conversations={[]} />)
   await user.click(screen.getByRole('button', { name: '个人总览' }))
-  expect(screen.getByRole('heading', { name: '人格偏好' })).toBeVisible()
+  expect(screen.getByRole('heading', { name: '你的人格倾向' })).toBeVisible()
   expect(screen.getAllByText('尚待了解')).toHaveLength(4)
   expect(screen.getByRole('heading', { name: /Spark/ })).toBeVisible()
   expect(screen.queryByRole('img', { name: /倾向/ })).toBeNull()
@@ -124,7 +130,7 @@ it('一段关系已可判断时显示对应维度的关系数并能阅读来源'
   const approach = await screen.findByRole('group', { name:'判断 J / 感知 P' })
   await waitFor(() => expect(approach).toHaveTextContent('再有一段关系'))
   expect(approach.querySelector('[role=img]')).toBeNull()
-  await user.click(screen.getByRole('button', {name:'周末'}))
+  await user.click(screen.getByRole('button', {name:/在「周末」这段聊天中.*你的倾向.*\?\?\?J/}))
   expect(await screen.findByRole('dialog')).toHaveTextContent('你们会一起商量。')
 })
 
@@ -136,7 +142,7 @@ it('Hello 悬停预览不挂载私人的会话标题或发现内容', async () =
   await user.hover(screen.getByRole('button', {name:/进入个人总览/}))
   expect(document.querySelector('.hello-cover-preview')).not.toHaveTextContent(privateName)
   await user.click(screen.getByRole('button', {name:'个人总览'}))
-  expect(await screen.findByRole('button', {name:privateName})).toBeVisible()
+  expect(await screen.findByRole('button', {name:new RegExp(privateName)})).toBeVisible()
 })
 
 it('启动时预读一次，读取中进入总览不会误报空库或重新请求', async () => {
@@ -149,7 +155,7 @@ it('启动时预读一次，读取中进入总览不会误报空库或重新请�
   expect(screen.getByText('正在读取个人总览…')).toBeVisible()
   expect(screen.queryByRole('button', { name: '导入聊天记录' })).toBeNull()
   await act(async () => loaded([memory]))
-  expect(await screen.findByRole('button', { name: '周末' })).toBeVisible()
+  expect(await screen.findByRole('button', { name: /在「周末」这段聊天中.*你的倾向/ })).toBeVisible()
   await userEvent.click(screen.getByRole('button', { name: '记忆仓库' }))
   expect(listAnalyses).toHaveBeenCalledTimes(1)
 })

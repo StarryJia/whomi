@@ -18,7 +18,7 @@ function Overview({ data }: { data: OverviewData }) {
 
 test.each(['partial', 'ready'] as const)('%s with no usable observations retains all four unknown dimensions and an empty Spark section', status => {
   render(<Overview data={{ materialStatus: status, discoveries: [], preferences: { energy: { status: 'unknown' } } }} />)
-  expect(screen.getByRole('heading', { name: '人格偏好' })).toBeVisible()
+  expect(screen.getByRole('heading', { name: '你的人格倾向' })).toBeVisible()
   expect(screen.queryByText('材料不足的维度保留问号。')).not.toBeInTheDocument()
   expect(screen.getByRole('heading', { name: /Spark/ })).toBeVisible()
   expect(screen.getAllByText('尚待了解')).toHaveLength(4)

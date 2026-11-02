@@ -11,6 +11,7 @@ it.each([
 ] as const)('同一篇文稿按有效维度呈现预测，保留其余两节', (dimensions, expected) => {
   render(<MemoryArticle report={{ format: 'memory-v2', dimensions, events: [{ title: '拿到钥匙', text: '你们约在东门碰面。' }], relationship: '你们似乎乐意互相搭把手。' }} />)
   expect(screen.getByText(expected)).toBeVisible()
+  expect(screen.getByText('你在这段关系中的人格倾向')).toBeVisible()
   const article = within(screen.getByRole('article'))
   expect(article.getAllByRole('heading', { level: 3 }).map(node => node.textContent)).toEqual(['MBTI 预测', '我们的记忆', '我们的关系'])
   expect(article.getAllByText(/娱乐解读/)).toHaveLength(1)
@@ -23,9 +24,23 @@ it('新文稿先展示四位类型，再读取已保存的情境解释，未知�
       TF: { text: '朋友犹豫时，你先问对方希望怎样被帮忙。', evidenceMessageIds: ['2'] }, JP: null },
     events: [], relationship: '你们愿意互相倾听。' }} />)
   expect(screen.getByText('E?F?')).toBeVisible()
-  expect(screen.getByText('几次准备汇报时，你都主动找朋友一起试讲。')).toBeVisible()
+  const energy = screen.getByText('精力来源').parentElement!
+  expect(within(energy).getByText('偏向外向 E')).toBeVisible()
+  expect(within(energy).getByText('几次准备汇报时，你都主动找朋友一起试讲。')).toBeVisible()
+  const decisions = screen.getByText('做决定').parentElement!
+  expect(within(decisions).getByText('偏向情感 F')).toBeVisible()
+  expect(within(decisions).getByText('朋友犹豫时，你先问对方希望怎样被帮忙。')).toBeVisible()
   expect(screen.getAllByText('暂难判断')).toHaveLength(2)
   expect(screen.queryByText(/从互动中恢复精力|侧重感受/)).toBeNull()
+})
+
+it('旧版计分稿按保存的维度展开，不重算或补写理由', () => {
+  render(<MemoryArticle report={{ format: 'memory-v3', dimensions: { ...unknown, SN: 'N' },
+    eventVotes: { EI: [0, 0], SN: [3, 0], TF: [0, 0], JP: [0, 0] }, events: [], relationship: '保存的关系解读。' }} />)
+  expect(screen.getByText('?N??')).toBeVisible()
+  expect(screen.getByText('偏向直觉 N')).toBeVisible()
+  expect(screen.getAllByText('暂难判断')).toHaveLength(3)
+  expect(screen.queryByText(/事物间的关联|具体经验/)).not.toBeInTheDocument()
 })
 
 it('历史报告保留原摘要、观察与解读范围', () => {
