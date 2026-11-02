@@ -22,8 +22,8 @@ const valid = (value: unknown): value is number => typeof value === 'number' && 
 function seconds(ms: number | undefined) { return valid(ms) ? `${number(ms / 1000)} 秒` : '未提供' }
 function errorText(error: unknown) { return error instanceof Error ? error.message : error && typeof error === 'object' && 'action' in error && typeof error.action === 'string' ? error.action : '操作失败，请重试。' }
 
-function Popover({ anchor, label, children, onClose, above = false, onMouseEnter, onMouseLeave, id, focusOnOpen }: {
-  anchor: RefObject<HTMLElement | null>; label: string; children: ReactNode; onClose: () => void; above?: boolean
+function Popover({ anchor, label, children, onClose, above = false, alignStart = false, onMouseEnter, onMouseLeave, id, focusOnOpen }: {
+  anchor: RefObject<HTMLElement | null>; label: string; children: ReactNode; onClose: () => void; above?: boolean; alignStart?: boolean
   onMouseEnter?: () => void; onMouseLeave?: () => void
   id?: string; focusOnOpen?: boolean
 }) {
@@ -42,7 +42,7 @@ function Popover({ anchor, label, children, onClose, above = false, onMouseEnter
       const top = (above && fitsAbove) || target.bottom + rect.height + 8 > window.innerHeight
         ? target.top - rect.height - 8 : target.bottom + 8
       setPosition({ top: Math.max(8, Math.min(top, window.innerHeight - rect.height - 8)),
-        left: Math.max(8, Math.min(target.right - rect.width, window.innerWidth - rect.width - 8)) })
+        left: Math.max(8, Math.min(alignStart ? target.left : target.right - rect.width, window.innerWidth - rect.width - 8)) })
     }
     place()
     window.addEventListener('resize', place)
@@ -70,21 +70,23 @@ function Popover({ anchor, label, children, onClose, above = false, onMouseEnter
       document.removeEventListener('pointerdown', outside)
       document.removeEventListener('keydown', escape, true)
     }
-  }, [anchor, above, ownerId])
+  }, [anchor, above, alignStart, ownerId])
   return createPortal(<ConversationPopoverOwner.Provider value={ownerId}><div id={id} ref={body} tabIndex={focusOnOpen ? -1 : undefined} className="conversation-popover" role="region" aria-label={label}
     style={position} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>{children}</div></ConversationPopoverOwner.Provider>, document.body)
 }
 
-function References({ references, savedIds, onJump, onClear }: {
+function References({ references, savedIds, onJump, onClear, onRemove }: {
   references: readonly ReferenceRange[]; savedIds?: readonly string[]
-  onJump: (ids: readonly string[], targetId?: string) => void; onClear?: () => void
+  onJump: (ids: readonly string[], targetId?: string) => void; onClear?: () => void; onRemove?: (id: string) => void
 }) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState<'hover' | 'pinned' | false>(false)
   const anchor = useRef<HTMLButtonElement>(null)
+  const clearButton = useRef<HTMLButtonElement>(null)
+  const list = useRef<HTMLDivElement>(null)
   const popoverId = useId()
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
-  const keep = () => { clearTimeout(timer.current); setOpen(true) }
-  const leave = () => { timer.current = setTimeout(() => setOpen(false), 180) }
+  const keep = () => { clearTimeout(timer.current); setOpen(current => current || 'hover') }
+  const leave = () => { timer.current = setTimeout(() => setOpen(current => current === 'hover' ? false : current), 180) }
   useEffect(() => () => clearTimeout(timer.current), [])
   const ids = savedIds?.length ? savedIds : references.flatMap(range => range.messages.map(message => message.id))
   const count = onClear ? references.length : ids.length
@@ -92,27 +94,45 @@ function References({ references, savedIds, onJump, onClear }: {
   if (!references.length) return <button type="button" className="conversation-reference-chip" onClick={() => onJump(ids)}>
     <FileText aria-hidden="true" />{count} 条引用</button>
   return <div className="conversation-references" onMouseEnter={keep} onMouseLeave={leave}>
-    <button ref={anchor} type="button" className="conversation-reference-chip" aria-expanded={open}
-      aria-label={`${count} 条引用`} aria-controls={open ? popoverId : undefined} onKeyDown={event => {
+    <button ref={anchor} type="button" className="conversation-reference-chip" aria-expanded={!!open}
+      aria-controls={open ? popoverId : undefined} onKeyDown={event => {
         if (event.key === 'ArrowDown' || (event.key === 'Tab' && !event.shiftKey && open)) {
           event.preventDefault()
-          setOpen(true)
-          requestAnimationFrame(() => document.getElementById(popoverId)?.querySelector<HTMLButtonElement>('button')?.focus())
+          setOpen('pinned')
+          requestAnimationFrame(() => list.current?.querySelector('button')?.focus())
         }
       }} onClick={() => {
-        if (!onClear || references.length === 1) { setOpen(false); onJump(ids) }
-        else setOpen(true)
+        if (onClear) setOpen(current => current === 'pinned' ? false : 'pinned')
+        else { setOpen(false); onJump(ids) }
       }}>
-      <FileText aria-hidden="true" />{count} 条引用<ChevronDown aria-hidden="true" />
+      <FileText aria-hidden="true" />{count} {onClear ? '组引用' : '条引用'}<ChevronDown aria-hidden="true" />
     </button>
-    {onClear && <button type="button" className="conversation-icon-button" aria-label="清除引用" onClick={onClear}><X aria-hidden="true" /></button>}
-    {open && <Popover id={popoverId} anchor={anchor} above label="引用预览" onClose={() => setOpen(false)} onMouseEnter={keep} onMouseLeave={leave}>
-      <div className="conversation-reference-list">{references.map((reference, index) => {
+    {onClear && <button ref={clearButton} type="button" className="conversation-icon-button" aria-label="清空全部引用" title="清空全部引用" onClick={onClear}><X aria-hidden="true" /></button>}
+    {open && <Popover id={popoverId} anchor={anchor} above alignStart={!!onClear} label="引用预览" onClose={() => setOpen(false)} onMouseEnter={keep} onMouseLeave={leave}>
+      <div ref={list} className="conversation-reference-list" onKeyDown={event => {
+        if (event.key !== 'Tab') return
+        const buttons = event.currentTarget.querySelectorAll('button')
+        if (event.target !== (event.shiftKey ? buttons[0] : buttons[buttons.length - 1])) return
+        event.preventDefault()
+        setOpen(false)
+        const next = event.shiftKey ? anchor.current : clearButton.current ?? anchor.current
+        next?.focus()
+      }}>{references.map((reference, index) => {
         const first = reference.messages[0]
-        return <button type="button" key={reference.id} onClick={() => { setOpen(false); onJump(ids, first?.id) }}>
-          <FileText aria-hidden="true" /><span><strong>引用 {index + 1} · {first?.senderName ?? '消息'}</strong>
-          <span>{first?.text || '查看原文'}{reference.messages.length > 1 && ` · 共 ${reference.messages.length} 条消息`}</span></span>
-        </button>
+        const removeLabel = `移除第 ${index + 1} 组引用`
+        return <div key={reference.id} className="conversation-reference-row">
+          <button type="button" className="conversation-reference-jump" onClick={() => { setOpen(false); onJump(ids, first?.id) }}>
+            <FileText aria-hidden="true" /><span><strong>引用 {index + 1} · {first?.senderName ?? '消息'}</strong>
+            <span className="conversation-reference-summary"><span>{first?.text || '查看原文'}</span><small>· 共 {reference.messages.length} 条消息</small></span></span>
+          </button>
+          {onRemove && <button type="button" className="conversation-icon-button conversation-reference-remove" aria-label={removeLabel} title={removeLabel} onClick={() => {
+            const buttons = list.current?.querySelectorAll<HTMLButtonElement>('.conversation-reference-remove')
+            const neighbor = buttons?.[index + 1] ?? buttons?.[index - 1]
+            neighbor?.focus({ preventScroll: true })
+            setOpen(neighbor ? 'pinned' : false)
+            onRemove(reference.id)
+          }}><X aria-hidden="true" /></button>}
+        </div>
       })}</div>
     </Popover>}
   </div>
@@ -158,7 +178,7 @@ const turnModel = (turn: Turn): ModelOption => turn.modelIdentity ?? { id: turn.
 type Slots = { analysisControl: ReactNode; chatControl: ReactNode; composer: ReactNode; panelOpen: boolean }
 export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, openAnalysisOnEntry = false, identityRevision = 0, title, messageCount, references, onClearReferences, onRestoreReferences, onJumpReference, onOpenAnalysisResult, onConfigureModels, adapter, children }: {
   conversationId: string; identityRevision?: number; title: string; messageCount?: number; references: readonly ReferenceRange[]
-  onClearReferences: () => void; onJumpReference: (ids: readonly string[], targetId?: string) => void
+  onClearReferences: () => void; onJumpReference: (ids: readonly string[], targetId?: string, pending?: boolean) => void
   onRestoreReferences?: (references: readonly ReferenceRange[]) => void
   onConfigureModels?: (onReturn: () => void) => void
   openAnalysisOnEntry?: boolean; initialAnalysisTaskId?: string
@@ -390,9 +410,9 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
       chatAnchor.current?.focus()
     })
   }
-  function jump(ids: readonly string[], targetId?: string) {
+  function jump(ids: readonly string[], targetId?: string, pending = false) {
     if (narrow) setPanelOpen(false)
-    onJumpReference(ids, targetId)
+    onJumpReference(ids, targetId, pending)
   }
   function stopChat() {
     chatRun.current?.abort()
@@ -561,10 +581,19 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
       </section>
     </Popover>}
   </>
-  const referenceControl = <References references={references} onJump={jump} onClear={onClearReferences} />
+  function clearDraftReferences() {
+    onClearReferences()
+    textarea.current?.focus({ preventScroll: true })
+  }
+  const referenceControl = references.length > 0 && <References references={references}
+    onJump={(ids, targetId) => jump(ids, targetId, true)} onClear={clearDraftReferences}
+    onRemove={onRestoreReferences && (id => {
+      const remaining = references.filter(range => range.id !== id)
+      if (remaining.length) onRestoreReferences(remaining)
+      else clearDraftReferences()
+    })} />
   const editor = <form className="conversation-composer" onSubmit={event => { event.preventDefault(); void send() }}>
     <label htmlFor={draftId} className="visually-hidden">向 AI 提问</label>
-    {references.length > 0 && <div className="conversation-composer-top">{referenceControl}</div>}
     <textarea id={draftId} ref={textarea} rows={2} value={draft} placeholder="输入消息…"
       onChange={event => setDraft(event.target.value)} onKeyDown={event => {
         if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); if (canSend) void send() }
@@ -654,7 +683,7 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
         </div>)}
         </div>
       </div>
-      {panelOpen && <div className="conversation-panel-composer">{editor}</div>}
+      {panelOpen && <div className="conversation-panel-composer">{referenceControl}{editor}</div>}
       </div></div>
     </aside>
   </div>

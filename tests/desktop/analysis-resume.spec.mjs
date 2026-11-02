@@ -194,7 +194,7 @@ test('resume a paused analysis after restart, retaining committed work and repor
     await page.keyboard.press('Escape')
     await expect(rows.last()).toBeFocused()
     await page.getByRole('button', { name: '个人总览', exact: true }).click()
-    const observations = page.getByRole('region', { name: '各段关系中的表现' })
+    const observations = page.getByRole('region', { name: '你在不同关系中的表现' })
     await expect(observations).toHaveCount(0)
     await screenshot('10-overview')
     await page.getByRole('button', { name: '查看记忆', exact: true }).click()

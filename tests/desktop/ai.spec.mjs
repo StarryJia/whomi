@@ -69,7 +69,7 @@ test('real Pi process persists analysis reports and dialogue through the isolate
     await page.getByRole('button', { name: '选择消息', exact: true }).click()
     await page.getByRole('option', { name: '本人：明晚九点我听你讲' }).click()
     await page.screenshot({ path: join(evidence, '00-selection-cancel.png') })
-    await page.getByRole('button', { name: '取消选择', exact: true }).click()
+    await page.getByRole('button', { name: '清空已选', exact: true }).click()
     await expect(page.locator('.message[aria-selected="true"]')).toHaveCount(0)
     await page.getByRole('option', { name: '本人：明晚九点我听你讲' }).click()
     await page.getByRole('button', { name: 'AI 对话', exact: true }).click()
