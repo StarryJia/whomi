@@ -213,6 +213,7 @@
 }
 .overview-memory-link:last-child { border-bottom: 1px solid var(--line); }
 .overview-memory-link:hover { background: var(--hover); }
+.overview-memory-source small { display: block; margin-top: 2px; color: var(--text-muted); }
 .overview-memory-type { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 8px; color: var(--text-muted); font-size: 14px; }
 .overview-memory-type b { color: var(--focus); font-size: 18px; letter-spacing: .06em; }
 .overview-memory-link svg { width: 18px; }

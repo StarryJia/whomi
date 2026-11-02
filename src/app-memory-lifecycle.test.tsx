@@ -13,7 +13,7 @@ const memory: AnalysisTask = { id: '1', conversationId: '1', conversationTitle: 
 it('两段关系在安排方式上平票时并列列出关系，其他维度保持未知', async () => {
   const report = memory.report!
   if (!('format' in report) || report.format !== 'memory-v3') throw Error('fixture')
-  const opposite = { ...memory, id: '2', conversationId: '2', conversationTitle: '我和小林', report: { ...report, eventVotes: { ...report.eventVotes, JP: [0,13] }, dimensions: { ...report.dimensions, JP: 'P' } } }
+  const opposite = { ...memory, id: '2', conversationId: '2', conversationTitle: '我和装修进度', counterpartName: '貂蝉', report: { ...report, eventVotes: { ...report.eventVotes, JP: [0,13] }, dimensions: { ...report.dimensions, JP: 'P' } } }
   const group = { ...memory, conversationTitle: '我和同学们' }
   const api = {
     listConversations: async () => ({ items: [
@@ -28,7 +28,8 @@ it('两段关系在安排方式上平票时并列列出关系，其他维度保�
   expect(row.querySelector('[role=img]')).toBeNull()
   expect(row).not.toHaveTextContent('较均衡')
   expect(row).toHaveTextContent('在「我和同学们」这段聊天中，你更习惯提前安排')
-  expect(row).toHaveTextContent('与小林相处时，你更习惯保留弹性')
+  expect(row).toHaveTextContent('与貂蝉相处时，你更习惯保留弹性')
+  expect(screen.getByRole('button', { name: /与貂蝉相处时.*我和装修进度.*你的倾向/ })).toBeVisible()
   expect(screen.getByRole('group', { name: '外向 E / 内向 I' })).toHaveTextContent('尚待了解')
 })
 

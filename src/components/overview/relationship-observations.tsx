@@ -3,13 +3,15 @@ import { aggregateRelationships, dimensionKeys, type MemoryDimensions } from '..
 import { personalityDimensions, predictionText } from '../personality-dimensions'
 import type { OverviewData } from './types'
 
-export type RelationshipObservation = { taskId: string; title: string; isDirect: boolean; dimensions: MemoryDimensions }
+export type RelationshipObservation = { taskId: string; title: string; counterpartName?: string; dimensions: MemoryDimensions }
 
 function relationshipContext(relations: RelationshipObservation[]) {
-  const contacts = relations.map(item => item.isDirect && /^我和([^\s·，。；：、（）「」]+)$/u.exec(item.title)?.[1])
-  if (contacts.every(Boolean)) return `与${contacts.join('、')}相处时`
-  const sources = relations.map(item => `「${item.title}」`).join('、')
-  return `在${sources}${relations.length === 1 ? '这段' : '这些'}聊天中`
+  const contacts = [...new Set(relations.flatMap(item => item.counterpartName ? [item.counterpartName] : []))]
+  const sources = relations.filter(item => !item.counterpartName).map(item => `「${item.title}」`)
+  return [
+    contacts.length && `与${contacts.join('、')}相处时`,
+    sources.length && `在${sources.join('、')}${sources.length === 1 ? '这段' : '这些'}聊天中`,
+  ].filter(Boolean).join('，以及')
 }
 
 export function relationshipPreferences(observations: RelationshipObservation[]) {
@@ -42,7 +44,10 @@ export function RelationshipObservations({ observations, onRead }: {
     <h2 id="relationship-heading">你在不同关系中的表现</h2>
     {Object.values(aggregateRelationships(observations)).every(value => value === null) && <p>各维度暂难汇总，至少需要两段关系提供同一维度的观察。</p>}
     {observations.map(item => <button className="overview-memory-link" type="button" key={item.taskId} onClick={() => onRead(item.taskId)}>
-      <strong>{relationshipContext([item])}</strong>
+      <span className="overview-memory-source"><strong>{relationshipContext([item])}</strong>
+        {item.counterpartName && item.title !== item.counterpartName && item.title !== '我和' + item.counterpartName &&
+          <small>{item.title}</small>}
+      </span>
       <span className="overview-memory-type">你的倾向 <b>{predictionText(item.dimensions)}</b></span>
       <ChevronRight aria-hidden="true" />
     </button>)}

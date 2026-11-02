@@ -73,6 +73,29 @@ async function task(repository: Awaited<ReturnType<typeof setup>>['repository'],
 }
 function changeSelf(store: Store) { store.writer.exec("UPDATE self_confirmations SET status='revoked'; INSERT INTO self_confirmations(conversation_id,member_id,status,source) VALUES(1,2,'confirmed','user')") }
 
+test('关系来源仅采用已确认本人以外的唯一单聊成员', async () => {
+  const { repository, store } = await setup()
+  store.writer.exec(`UPDATE conversations SET title='我和装修进度' WHERE id=1;
+    INSERT INTO accounts(id,platform,stable_account_key) VALUES(1,'example','me'),(2,'example','friend');
+    UPDATE memberships SET account_id=1 WHERE id=1;
+    UPDATE memberships SET account_id=2,display_name='貂蝉' WHERE id=2;
+    INSERT INTO memberships(id,conversation_id,source_conversation_id,source_key,display_name,account_id) VALUES
+      (4,1,1,'alias-me','本人旧称',1),(5,1,1,'alias-friend','貂蝉',2)`)
+  const analysis = await task(repository)
+  await repository.commitBatch(analysis.id, { index: 0, messageIds: ['1','2'], report: notes, usage: {} })
+  await repository.completeAnalysis(analysis.id, report)
+  expect(repository.listAnalyses()[0]).toMatchObject({ counterpartName: '貂蝉', conversationTitle: '我和装修进度' })
+  expect(() => validateAiResult('listAnalyses', repository.listAnalyses())).not.toThrow()
+
+  store.writer.exec("UPDATE conversations SET kind='group' WHERE id=1")
+  expect(repository.getAnalysis(analysis.id)).not.toHaveProperty('counterpartName')
+  store.writer.exec(`UPDATE conversations SET kind='direct' WHERE id=1;
+    INSERT INTO memberships(id,conversation_id,source_conversation_id,source_key,display_name) VALUES(6,1,1,'another','貂蝉')`)
+  expect(repository.getAnalysis(analysis.id)).not.toHaveProperty('counterpartName')
+  store.writer.exec("DELETE FROM memberships WHERE id=6; UPDATE self_confirmations SET status='revoked' WHERE conversation_id=1")
+  expect(repository.getAnalysis(analysis.id)).not.toHaveProperty('counterpartName')
+})
+
 test('记忆任务保存真实日期和生成时模型，置顶重启仍在，删除只清理指定记忆', async () => {
   const { repository, store, model, path } = await setup()
   store.writer.exec('UPDATE messages SET sent_at_ms=1735603200000 WHERE id=1; UPDATE messages SET sent_at_ms=1767196800000 WHERE id=2')

@@ -71,16 +71,16 @@ export function saveAiModelVersion(db: Store['writer'], input: ModelInput, encry
 export function createAiRepository(store: Store, write: WriterQueue) {
   const db = store.writer, reader = store.reader
   function conversation(conversationId: string) {
-    const row = reader.prepare('SELECT title FROM conversations WHERE id=?').get(id(conversationId)) as { title: string } | undefined
+    const row = reader.prepare('SELECT title,kind FROM conversations WHERE id=?').get(id(conversationId)) as { title: string; kind: string } | undefined
     if (!row) fail('INVALID_ID', '请刷新会话列表后重试。')
     return row
   }
   function identity(conversationId: string) {
-    const { title } = conversation(conversationId)
+    const { title, kind } = conversation(conversationId)
     const confirmation = reader.prepare(`SELECT s.id,s.member_id,m.display_name FROM self_confirmations s JOIN memberships m ON m.id=s.member_id AND m.conversation_id=s.conversation_id WHERE s.conversation_id=? AND s.status='confirmed' AND s.source='user' AND NOT EXISTS(SELECT 1 FROM self_opt_outs o WHERE o.conversation_id=s.conversation_id)`).get(id(conversationId)) as { id: bigint; member_id: bigint; display_name: string } | undefined
     const members = reader.prepare(`SELECT m.id,m.account_id FROM memberships m WHERE m.conversation_id=? AND ${confirmedSelfSql} ORDER BY m.id`).all(id(conversationId)) as { id: bigint; account_id: bigint | null }[]
     const fingerprint = createHash('sha256').update(JSON.stringify({ confirmation: confirmation ? String(confirmation.id) : null, members: members.map(member => [String(member.id), member.account_id === null ? null : String(member.account_id)]) })).digest('hex')
-    return { fingerprint, selfName: confirmation?.display_name ?? null, title }
+    return { fingerprint, selfName: confirmation?.display_name ?? null, title, kind }
   }
   function modelSecret(modelId: string, version?: number): { model: AiModel; encryptedKey: string | null } {
     if (!key(modelId) || (version !== undefined && (!Number.isSafeInteger(version) || version < 1))) fail('INVALID_MODEL')
@@ -147,10 +147,20 @@ export function createAiRepository(store: Store, write: WriterQueue) {
     if (ends.length) result.completedAt = Math.max(...ends)
     return result
   }
+  function readCounterpartName(conversationId: bigint) {
+    // 同名成员不一定是同一人；只有关联到同一账号的来源才能共用称呼。
+    const candidates = reader.prepare(`SELECT DISTINCT m.account_id, CASE WHEN m.account_id IS NULL THEN m.id END,
+      trim(m.display_name) AS name FROM memberships m
+      WHERE m.conversation_id=? AND NOT (${confirmedSelfSql}) LIMIT 2`).all(conversationId) as { name: string }[]
+    return candidates.length === 1 ? candidates[0].name.trim() || undefined : undefined
+  }
   function taskView(row: AnalysisRow): AnalysisTask {
     const coverage = reader.prepare('SELECT count(*) AS n FROM ai_analysis_coverage WHERE task_id=?').get(row.id) as { n: bigint }
     const report = reader.prepare('SELECT data FROM ai_reports WHERE task_id=?').get(row.id) as { data: string } | undefined
     const current = identity(String(row.conversation_id))
+    const valid = row.self_fingerprint === current.fingerprint
+    const counterpartName = row.state === 'completed' && valid && current.kind === 'direct' && current.selfName !== null
+      ? readCounterpartName(row.conversation_id) : undefined
     const range = reader.prepare('SELECT min(sent_at_ms) AS start,max(sent_at_ms) AS end FROM messages WHERE conversation_id=? AND id<=?').get(row.conversation_id, row.snapshot_max_id) as { start: bigint | null; end: bigint | null }
     const snapshot = reader.prepare('SELECT data FROM ai_model_versions WHERE model_id=? AND version=?').get(row.model_id, row.model_version) as { data: string } | undefined
     let modelIdentity: AnalysisTask['modelIdentity']
@@ -160,7 +170,7 @@ export function createAiRepository(store: Store, write: WriterQueue) {
         if (typeof model.label === 'string' && model.label.trim() && typeof model.model === 'string' && model.model.trim()) modelIdentity = { id: row.model_id, version: Number(row.model_version), label: model.label, model: model.model }
       } catch { /* 旧模型资料缺失时仍保留文稿。 */ }
     }
-    return { ...(row.thinking_level ? { thinkingLevel: row.thinking_level } : {}), id: String(row.id), conversationId: String(row.conversation_id), conversationTitle: current.title, modelId: row.model_id, ...(modelIdentity ? { modelIdentity } : {}), createdAtMs: row.created_at_ms === null ? null : Number(row.created_at_ms), completedAtMs: row.completed_at_ms === null ? null : Number(row.completed_at_ms), sourceStartTimeMs: range.start === null ? null : Number(range.start), sourceEndTimeMs: range.end === null ? null : Number(range.end), pinned: !!row.pinned, state: row.state, analyzedMessages: Number(coverage.n), totalMessages: Number(row.total_messages), skippedMessages: Number(row.skipped_messages), usage: aggregate('analysis', String(row.id)), valid: row.self_fingerprint === current.fingerprint, eventSequence: Number(row.event_sequence), ...(row.error ? { error: row.error } : {}), ...(report ? { report: parse<SavedReport>(report.data) } : {}) }
+    return { ...(row.thinking_level ? { thinkingLevel: row.thinking_level } : {}), id: String(row.id), conversationId: String(row.conversation_id), conversationTitle: current.title, ...(counterpartName && { counterpartName }), modelId: row.model_id, ...(modelIdentity ? { modelIdentity } : {}), createdAtMs: row.created_at_ms === null ? null : Number(row.created_at_ms), completedAtMs: row.completed_at_ms === null ? null : Number(row.completed_at_ms), sourceStartTimeMs: range.start === null ? null : Number(range.start), sourceEndTimeMs: range.end === null ? null : Number(range.end), pinned: !!row.pinned, state: row.state, analyzedMessages: Number(coverage.n), totalMessages: Number(row.total_messages), skippedMessages: Number(row.skipped_messages), usage: aggregate('analysis', String(row.id)), valid, eventSequence: Number(row.event_sequence), ...(row.error ? { error: row.error } : {}), ...(report ? { report: parse<SavedReport>(report.data) } : {}) }
   }
   function turnView(row: TurnRow): AiTurn {
     const skill = row.skill ? parse<RegisteredSkill>(row.skill) : null

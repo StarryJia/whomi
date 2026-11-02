@@ -152,11 +152,13 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
     return () => { active = false; unsubscribe() }
   }, [api?.ai, memoryRevision, refreshMemories])
   const contributions = useMemo(() => {
-    const titles = new Map(memories.map(task => [task.id, task.conversationTitle]))
-    const direct = new Set(reader.conversations.filter(conversation => conversation.kind === 'direct').map(conversation => conversation.id))
+    const sources = new Map(memories.map(task => [task.id, task]))
     return currentMemoryContributions(memories).filter(item => dimensionKeys.some(key => item.dimensions[key]))
-      .map(item => ({ ...item, isDirect: direct.has(item.conversationId), title: titles.get(item.taskId) ?? '会话 ' + item.conversationId }))
-  }, [memories, reader.conversations])
+      .map(item => {
+        const source = sources.get(item.taskId)
+        return { ...item, title: source?.conversationTitle ?? '会话 ' + item.conversationId, counterpartName: source?.counterpartName }
+      })
+  }, [memories])
   const preferences = useMemo(() => relationshipPreferences(contributions), [contributions])
   const [coverKey, setCoverKey] = useState(0)
   const [importKey, setImportKey] = useState(0)
