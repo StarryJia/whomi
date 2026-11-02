@@ -5,20 +5,20 @@
 <p align="center"><strong>从会话中发现自己</strong></p>
 
 <p align="center">
-  <a href="package.json"><img src="docs/readme/badges/version.svg" alt="项目版本 v0.1.9"></a>
-  <a href="docs/getting-started.md#从源码启动"><img src="docs/readme/badges/windows.svg" alt="64 位 Windows 桌面版"></a>
-  <a href="#开源许可"><img src="docs/readme/badges/license.svg" alt="GNU Affero 通用公共许可证第 3 版（AGPL-3.0）"></a>
+  <a href="package.json"><img src="docs/readme/badges/version.svg" alt="Version v0.1.10"></a>
+  <a href="docs/getting-started.md#从安装包启动"><img src="docs/readme/badges/windows.svg" alt="Windows x64"></a>
+  <a href="#开源许可"><img src="docs/readme/badges/license.svg" alt="License AGPL-3.0"></a>
 </p>
 
 <p align="center">
-  选几句聊天原文，向人工智能（AI）提问。<br>
-  把你们一起经历的事整理成《我们的记忆》。
+  我们在交谈中表达想法，也会流露出自己尚未察觉的感受，选几句聊天原文，与AI一起进行讨论。<br>
+  Whomi 陪你重读这些对话，看看自己在意什么，又习惯怎样回应别人。
 </p>
 
-## 支持的 8 个会话平台
+## 支持的会话平台
 
 <p align="center">
-  <a href="docs/getting-started.md#微信"><img src="docs/readme/platforms/wechat.svg" alt="微信"></a>
+  <a href="docs/getting-started.md#微信"><img src="docs/readme/platforms/wechat.svg" alt="WeChat（微信）"></a>
   <a href="docs/getting-started.md#qq"><img src="docs/readme/platforms/tencentqq.svg" alt="QQ"></a>
   <a href="docs/getting-started.md#telegram"><img src="docs/readme/platforms/telegram.svg" alt="Telegram"></a>
   <a href="docs/getting-started.md#whatsapp"><img src="docs/readme/platforms/whatsapp.svg" alt="WhatsApp"></a>
@@ -32,15 +32,15 @@
 
 ## 界面截图
 
-截图来自 Whomi 0.1.9 桌面版。聊天记录和模型回复均为虚构示例。
+截图来自 [Whomi 0.1.10 桌面版](docs/releases/0.1.10-windows-validation.md)。聊天记录和模型回复均为虚构示例。
 
 ### 个人总览
 
 ![个人总览](docs/readme/screenshots/personal-overview.png)
 
-### 引用原文提问
+### 选择原文提问
 
-![引用原文提问](docs/readme/screenshots/conversation-question.png)
+![选择原文提问](docs/readme/screenshots/conversation-question.png)
 
 ### 记忆仓库
 

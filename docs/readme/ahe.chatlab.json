@@ -1,0 +1,168 @@
+{
+  "chatlab": {
+    "version": "0.0.2"
+  },
+  "meta": {
+    "name": "阿禾",
+    "platform": "discord",
+    "type": "private",
+    "groupId": "whomi-readme-ahe",
+    "ownerId": "whomi-readme-ahe-man"
+  },
+  "members": [
+    {
+      "platformId": "whomi-readme-ahe-man",
+      "accountName": "小满"
+    },
+    {
+      "platformId": "whomi-readme-ahe-friend",
+      "accountName": "阿禾"
+    }
+  ],
+  "messages": [
+    {
+      "sender": "whomi-readme-ahe-friend",
+      "accountName": "阿禾",
+      "timestamp": 1780668000,
+      "type": 0,
+      "content": "你家门口怎么一溜纸箱哈哈",
+      "platformMessageId": "whomi-readme-ahe-0-0"
+    },
+    {
+      "sender": "whomi-readme-ahe-man",
+      "accountName": "小满",
+      "timestamp": 1780668075,
+      "type": 0,
+      "content": "我给箱子都编号了。1号是猫粮，到那儿先拆它",
+      "platformMessageId": "whomi-readme-ahe-0-1"
+    },
+    {
+      "sender": "whomi-readme-ahe-man",
+      "accountName": "小满",
+      "timestamp": 1780705800,
+      "type": 0,
+      "content": "货车到楼下了",
+      "platformMessageId": "whomi-readme-ahe-0-2"
+    },
+    {
+      "sender": "whomi-readme-ahe-friend",
+      "accountName": "阿禾",
+      "timestamp": 1780705860,
+      "type": 0,
+      "content": "猫呢？我过去接？",
+      "platformMessageId": "whomi-readme-ahe-0-3"
+    },
+    {
+      "sender": "whomi-readme-ahe-man",
+      "accountName": "小满",
+      "timestamp": 1780705980,
+      "type": 0,
+      "content": "刚撕个胶带它就钻床底了",
+      "platformMessageId": "whomi-readme-ahe-0-4"
+    },
+    {
+      "sender": "whomi-readme-ahe-friend",
+      "accountName": "阿禾",
+      "timestamp": 1780706040,
+      "type": 0,
+      "content": "我拿猫包来，你找找它那条蓝毯子",
+      "platformMessageId": "whomi-readme-ahe-0-5"
+    },
+    {
+      "sender": "whomi-readme-ahe-man",
+      "accountName": "小满",
+      "timestamp": 1780706160,
+      "type": 0,
+      "content": "在沙发上。到楼下喊我一声",
+      "platformMessageId": "whomi-readme-ahe-0-6"
+    },
+    {
+      "sender": "whomi-readme-ahe-friend",
+      "accountName": "阿禾",
+      "timestamp": 1780732800,
+      "type": 0,
+      "content": "睡着了，你慢慢搬",
+      "platformMessageId": "whomi-readme-ahe-0-7"
+    },
+    {
+      "sender": "whomi-readme-ahe-man",
+      "accountName": "小满",
+      "timestamp": 1780732920,
+      "type": 0,
+      "content": "哈哈 到你那儿倒是不认床了",
+      "platformMessageId": "whomi-readme-ahe-0-8"
+    },
+    {
+      "sender": "whomi-readme-ahe-friend",
+      "accountName": "阿禾",
+      "timestamp": 1780733040,
+      "type": 0,
+      "content": "认毯子吧，连个角都不肯分给我",
+      "platformMessageId": "whomi-readme-ahe-0-9"
+    },
+    {
+      "sender": "whomi-readme-ahe-friend",
+      "accountName": "阿禾",
+      "timestamp": 1781310600,
+      "type": 0,
+      "content": "你骑到哪了？我眼镜上全是雨",
+      "platformMessageId": "whomi-readme-ahe-1-0"
+    },
+    {
+      "sender": "whomi-readme-ahe-man",
+      "accountName": "小满",
+      "timestamp": 1781310700,
+      "type": 0,
+      "content": "桥头那家面馆能躲。我昨晚怕下雨，特意在图上标了两家店",
+      "platformMessageId": "whomi-readme-ahe-1-1"
+    },
+    {
+      "sender": "whomi-readme-ahe-friend",
+      "accountName": "阿禾",
+      "timestamp": 1781310800,
+      "type": 0,
+      "content": "看见招牌了，我进去等你",
+      "platformMessageId": "whomi-readme-ahe-1-2"
+    },
+    {
+      "sender": "whomi-readme-ahe-man",
+      "accountName": "小满",
+      "timestamp": 1781310900,
+      "type": 0,
+      "content": "那先帮我点碗小面，不要葱",
+      "platformMessageId": "whomi-readme-ahe-1-3"
+    },
+    {
+      "sender": "whomi-readme-ahe-friend",
+      "accountName": "阿禾",
+      "timestamp": 1781915400,
+      "type": 0,
+      "content": "明早带零钱不",
+      "platformMessageId": "whomi-readme-ahe-2-0"
+    },
+    {
+      "sender": "whomi-readme-ahe-man",
+      "accountName": "小满",
+      "timestamp": 1781915500,
+      "type": 0,
+      "content": "带。书我按价分了三箱，明天开盖就能摆",
+      "platformMessageId": "whomi-readme-ahe-2-1"
+    },
+    {
+      "sender": "whomi-readme-ahe-friend",
+      "accountName": "阿禾",
+      "timestamp": 1781915600,
+      "type": 0,
+      "content": "怪不得你又在找纸箱",
+      "platformMessageId": "whomi-readme-ahe-2-2"
+    },
+    {
+      "sender": "whomi-readme-ahe-man",
+      "accountName": "小满",
+      "timestamp": 1781915700,
+      "type": 0,
+      "content": "上回一本一本贴价签，手都酸了",
+      "platformMessageId": "whomi-readme-ahe-2-3"
+    }
+  ]
+}

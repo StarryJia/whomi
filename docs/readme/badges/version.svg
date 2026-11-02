@@ -1,9 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="98" height="22" viewBox="0 0 98 22" role="img" aria-labelledby="title">
-  <title id="title">项目版本 v0.1.9</title>
-  <path fill="#454c54" d="M0 0h42v22H0z"/>
-  <path fill="#af401c" d="M42 0h56v22h-56z"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="108" height="22" viewBox="0 0 108 22" role="img" aria-labelledby="title">
+  <title id="title">Version v0.1.10</title>
+  <path fill="#454c54" d="M0 0h54v22H0z"/>
+  <path fill="#af401c" d="M54 0h54v22h-54z"/>
   <g fill="#fff" text-anchor="middle" font-family="Segoe UI, -apple-system, Microsoft YaHei, sans-serif" font-size="12" font-weight="600">
-    <text x="21" y="15">版本</text>
-    <text x="70" y="15">v0.1.9</text>
+    <text x="27" y="15">Version</text>
+    <text x="81" y="15">v0.1.10</text>
   </g>
 </svg>

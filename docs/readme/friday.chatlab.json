@@ -6,10 +6,10 @@
     { "platformId": "friday-ayuan", "accountName": "阿远" }
   ],
   "messages": [
-    { "sender": "friday-ayuan", "accountName": "阿远", "timestamp": 1781261100, "type": 0, "content": "今晚得加班，电影改天看好吗？", "platformMessageId": "friday-01" },
-    { "sender": "friday-xiaoman", "accountName": "小满", "timestamp": 1781261160, "type": 0, "content": "没事，你忙吧。", "platformMessageId": "friday-02" },
-    { "sender": "friday-ayuan", "accountName": "阿远", "timestamp": 1781261220, "type": 0, "content": "那我就放心了，还怕你生气。", "platformMessageId": "friday-03" },
-    { "sender": "friday-xiaoman", "accountName": "小满", "timestamp": 1781261520, "type": 0, "content": "其实我周五一直没约别人。每次改天，都是我再问你哪天有空。", "platformMessageId": "friday-04" },
-    { "sender": "friday-ayuan", "accountName": "阿远", "timestamp": 1781261640, "type": 0, "content": "我以为你想静一静，就没敢再问。", "platformMessageId": "friday-05" }
+    { "sender": "friday-ayuan", "accountName": "阿远", "timestamp": 1781261100, "type": 0, "content": "你出门没", "platformMessageId": "friday-01" },
+    { "sender": "friday-xiaoman", "accountName": "小满", "timestamp": 1781261160, "type": 0, "content": "鞋都穿好了，咋了", "platformMessageId": "friday-02" },
+    { "sender": "friday-ayuan", "accountName": "阿远", "timestamp": 1781261220, "type": 0, "content": "我还在公司……那两张票能退吗", "platformMessageId": "friday-03" },
+    { "sender": "friday-xiaoman", "accountName": "小满", "timestamp": 1781261520, "type": 0, "content": "行，我看看", "platformMessageId": "friday-04" },
+    { "sender": "friday-xiaoman", "accountName": "小满", "timestamp": 1781261640, "type": 0, "content": "退了。下次你买啊", "platformMessageId": "friday-05" }
   ]
 }

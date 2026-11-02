@@ -1,0 +1,120 @@
+{
+  "chatlab": {
+    "version": "0.0.2"
+  },
+  "meta": {
+    "name": "小舟",
+    "platform": "discord",
+    "type": "private",
+    "groupId": "whomi-readme-xiaozhou",
+    "ownerId": "whomi-readme-xiaozhou-man"
+  },
+  "members": [
+    {
+      "platformId": "whomi-readme-xiaozhou-man",
+      "accountName": "小满"
+    },
+    {
+      "platformId": "whomi-readme-xiaozhou-friend",
+      "accountName": "小舟"
+    }
+  ],
+  "messages": [
+    {
+      "sender": "whomi-readme-xiaozhou-friend",
+      "accountName": "小舟",
+      "timestamp": 1780792200,
+      "type": 0,
+      "content": "我到巷口了。烧烤排二十多号，取号吗",
+      "platformMessageId": "whomi-readme-xiaozhou-0-0"
+    },
+    {
+      "sender": "whomi-readme-xiaozhou-man",
+      "accountName": "小满",
+      "timestamp": 1780792300,
+      "type": 0,
+      "content": "先别取吧，走一圈，哪家闻着香就吃哪家",
+      "platformMessageId": "whomi-readme-xiaozhou-0-1"
+    },
+    {
+      "sender": "whomi-readme-xiaozhou-friend",
+      "accountName": "小舟",
+      "timestamp": 1780792400,
+      "type": 0,
+      "content": "好 我在红绿灯这边",
+      "platformMessageId": "whomi-readme-xiaozhou-0-2"
+    },
+    {
+      "sender": "whomi-readme-xiaozhou-man",
+      "accountName": "小满",
+      "timestamp": 1780792500,
+      "type": 0,
+      "content": "看见你了",
+      "platformMessageId": "whomi-readme-xiaozhou-0-3"
+    },
+    {
+      "sender": "whomi-readme-xiaozhou-friend",
+      "accountName": "小舟",
+      "timestamp": 1781397000,
+      "type": 0,
+      "content": "回程的票要一起买吗",
+      "platformMessageId": "whomi-readme-xiaozhou-1-0"
+    },
+    {
+      "sender": "whomi-readme-xiaozhou-man",
+      "accountName": "小满",
+      "timestamp": 1781397100,
+      "type": 0,
+      "content": "先别买，我还想等退潮了下去摸两只蛤蜊",
+      "platformMessageId": "whomi-readme-xiaozhou-1-1"
+    },
+    {
+      "sender": "whomi-readme-xiaozhou-friend",
+      "accountName": "小舟",
+      "timestamp": 1781397200,
+      "type": 0,
+      "content": "行，末班七点多",
+      "platformMessageId": "whomi-readme-xiaozhou-1-2"
+    },
+    {
+      "sender": "whomi-readme-xiaozhou-man",
+      "accountName": "小满",
+      "timestamp": 1781397300,
+      "type": 0,
+      "content": "那够了，桶我带",
+      "platformMessageId": "whomi-readme-xiaozhou-1-3"
+    },
+    {
+      "sender": "whomi-readme-xiaozhou-friend",
+      "accountName": "小舟",
+      "timestamp": 1782001800,
+      "type": 0,
+      "content": "桥上那个位置我帮你留？上次你说想画",
+      "platformMessageId": "whomi-readme-xiaozhou-2-0"
+    },
+    {
+      "sender": "whomi-readme-xiaozhou-man",
+      "accountName": "小满",
+      "timestamp": 1782001900,
+      "type": 0,
+      "content": "不用留。我拿着本子走，瞧见想画的再停",
+      "platformMessageId": "whomi-readme-xiaozhou-2-1"
+    },
+    {
+      "sender": "whomi-readme-xiaozhou-friend",
+      "accountName": "小舟",
+      "timestamp": 1782002000,
+      "type": 0,
+      "content": "那我带小凳子",
+      "platformMessageId": "whomi-readme-xiaozhou-2-2"
+    },
+    {
+      "sender": "whomi-readme-xiaozhou-man",
+      "accountName": "小满",
+      "timestamp": 1782002100,
+      "type": 0,
+      "content": "带俩，上次蹲得脚都麻了",
+      "platformMessageId": "whomi-readme-xiaozhou-2-3"
+    }
+  ]
+}

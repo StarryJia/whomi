@@ -1,9 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="115" height="22" viewBox="0 0 115 22" role="img" aria-labelledby="title">
-  <title id="title">GNU Affero 通用公共许可证第 3 版</title>
-  <path fill="#454c54" d="M0 0h42v22H0z"/>
-  <path fill="#664a86" d="M42 0h73v22h-73z"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="116" height="22" viewBox="0 0 116 22" role="img" aria-labelledby="title">
+  <title id="title">License AGPL-3.0</title>
+  <path fill="#454c54" d="M0 0h52v22H0z"/>
+  <path fill="#664a86" d="M52 0h64v22h-64z"/>
   <g fill="#fff" text-anchor="middle" font-family="Segoe UI, -apple-system, Microsoft YaHei, sans-serif" font-size="12" font-weight="600">
-    <text x="21" y="15">许可</text>
-    <text x="78.5" y="15">AGPL-3.0</text>
+    <text x="26" y="15">License</text>
+    <text x="84" y="15">AGPL-3.0</text>
   </g>
 </svg>

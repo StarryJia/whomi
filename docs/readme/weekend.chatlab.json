@@ -6,13 +6,13 @@
     { "platformId": "demo-he", "accountName": "阿禾" }
   ],
   "messages": [
-    { "sender": "demo-man", "accountName": "小满", "timestamp": 1780705800, "type": 0, "content": "九点半拿钥匙，十点货车到东门。搬家的事应该都排好了。", "platformMessageId": "demo-01" },
-    { "sender": "demo-he", "accountName": "阿禾", "timestamp": 1780705860, "type": 0, "content": "那猫怎么办？上回一开胶带，它就钻床底了。", "platformMessageId": "demo-02" },
-    { "sender": "demo-man", "accountName": "小满", "timestamp": 1780705980, "type": 0, "content": "还真把它漏了。能让它在你家躲半天吗？", "platformMessageId": "demo-03" },
-    { "sender": "demo-he", "accountName": "阿禾", "timestamp": 1780706040, "type": 0, "content": "当然。把它常睡的蓝毯子也带来，我把书房留给它。", "platformMessageId": "demo-04" },
-    { "sender": "demo-man", "accountName": "小满", "timestamp": 1780706160, "type": 0, "content": "毯子和猫粮装好了。门口那箱写着「先开」，是给它的。", "platformMessageId": "demo-05" },
-    { "sender": "demo-he", "accountName": "阿禾", "timestamp": 1780732800, "type": 0, "content": "报个平安，它在蓝毯子上睡着了。你慢慢搬。", "platformMessageId": "demo-06" },
-    { "sender": "demo-man", "accountName": "小满", "timestamp": 1780732920, "type": 0, "content": "最后一箱书进屋了。谢谢你记得它怕胶带，晚上我去接它。", "platformMessageId": "demo-07" },
-    { "sender": "demo-he", "accountName": "阿禾", "timestamp": 1780733040, "type": 0, "content": "好。你先把晚饭吃了，猫在我这儿不赶时间。", "platformMessageId": "demo-08" }
+    { "sender": "demo-man", "accountName": "小满", "timestamp": 1780705800, "type": 0, "content": "货车到楼下了", "platformMessageId": "demo-01" },
+    { "sender": "demo-he", "accountName": "阿禾", "timestamp": 1780705860, "type": 0, "content": "猫呢？我过去接？", "platformMessageId": "demo-02" },
+    { "sender": "demo-man", "accountName": "小满", "timestamp": 1780705980, "type": 0, "content": "刚撕个胶带它就钻床底了", "platformMessageId": "demo-03" },
+    { "sender": "demo-he", "accountName": "阿禾", "timestamp": 1780706040, "type": 0, "content": "我拿猫包来，你找找它那条蓝毯子", "platformMessageId": "demo-04" },
+    { "sender": "demo-man", "accountName": "小满", "timestamp": 1780706160, "type": 0, "content": "在沙发上。到楼下喊我一声", "platformMessageId": "demo-05" },
+    { "sender": "demo-he", "accountName": "阿禾", "timestamp": 1780732800, "type": 0, "content": "睡着了，你慢慢搬", "platformMessageId": "demo-06" },
+    { "sender": "demo-man", "accountName": "小满", "timestamp": 1780732920, "type": 0, "content": "哈哈 到你那儿倒是不认床了", "platformMessageId": "demo-07" },
+    { "sender": "demo-he", "accountName": "阿禾", "timestamp": 1780733040, "type": 0, "content": "认毯子吧，连个角都不肯分给我", "platformMessageId": "demo-08" }
   ]
 }
