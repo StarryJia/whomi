@@ -41,13 +41,13 @@ test('local manuscripts vote once per relationship and retract on identity corre
       for(let c=1;c<=2;c++){
         writer.prepare("INSERT INTO conversations(id,title,kind,created_at_ms) VALUES(?,?,'direct',0)").run(c,names[c-1]);
         writer.prepare("INSERT INTO source_conversations(id,conversation_id,platform,namespace) VALUES(?,?,'sample',?)").run(c,c,'r'+c);
-        const me=c*10, friend=me+1;
-        for(const [id,key,name] of [[me,'self','本人'],[friend,'friend','朋友']]) writer.prepare("INSERT INTO memberships(id,conversation_id,source_conversation_id,source_key,display_name) VALUES(?,?,?,?,?)").run(id,c,c,key,name);
+        const me=c*10, friend=me+1, friendName=c===1?'小林':'小方';
+        for(const [id,key,name] of [[me,'self','本人'],[friend,'friend',friendName]]) writer.prepare("INSERT INTO memberships(id,conversation_id,source_conversation_id,source_key,display_name) VALUES(?,?,?,?,?)").run(id,c,c,key,name);
         writer.prepare("INSERT INTO self_confirmations(conversation_id,member_id,status,source) VALUES(?,?,'confirmed','user')").run(c,me);
         const insert=writer.prepare("INSERT INTO messages(conversation_id,member_id,sender_kind,sender_name,kind,text,ordinal) VALUES(?,?,'member',?,'text',?,?)");
         const count=c===1?3:5;
         for(let i=0;i<count;i++) insert.run(c,me,'本人',topics[i]+(c===1?'我想提前定好安排。':'我喜欢到时候再决定。'),i);
-        insert.run(c,friend,'朋友','展览我想提前选日子。',count);
+        insert.run(c,friend,friendName,'展览我想提前选日子。',count);
         writer.prepare("INSERT INTO conversation_summaries(conversation_id,message_count,member_count,status) VALUES(?,?,2,'ready')").run(c,count+1);
       }return true;
     }`)
@@ -82,7 +82,8 @@ test('local manuscripts vote once per relationship and retract on identity corre
       await resize(width)
       await expect(manuscript.getByText('???J', { exact: true })).toBeVisible()
       await expect(manuscript.getByText('旅行、展览和比赛中，你都主动提出提前定好安排。', { exact: true })).toBeVisible()
-      await expect(manuscript.locator('.memory-dimension-explanations dt')).toHaveText(['精力来源E / I', '理解信息S / N', '做决定T / F', '安排方式J / P'])
+      await expect(manuscript.locator('.memory-dimension-explanations dt')).toHaveText(['精力来源', '理解信息', '做决定', '安排方式'])
+      await expect(manuscript.getByText('偏向判断 J', { exact: true })).toBeVisible()
       await expect(manuscript.getByText('暂难判断', { exact: true })).toHaveCount(3)
       expect(await manuscript.locator('.memory-prose').evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true)
       await page.screenshot({ path: join(evidence, `contextual-explanation-${width}.png`), animations: 'disabled' })
@@ -94,8 +95,8 @@ test('local manuscripts vote once per relationship and retract on identity corre
       await resize(width)
       await expect(row).toContainText('关系票数持平')
       await expect(row.getByRole('img')).toHaveCount(0)
-      await expect(row).toContainText('我和小林偏向提前安排。')
-      await expect(row).toContainText('我和小方偏向保留弹性。')
+      await expect(row).toContainText('与小林相处时，你更习惯提前安排。')
+      await expect(row).toContainText('与小方相处时，你更习惯保留弹性。')
       await row.scrollIntoViewIfNeeded()
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
       await page.screenshot({ path: join(evidence, `tie-${width}.png`), animations: 'disabled' })
@@ -105,17 +106,17 @@ test('local manuscripts vote once per relationship and retract on identity corre
     await page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name: names[0], exact: true }).click()
     await page.getByRole('button', { name: '选择本人', exact: true }).click()
     const identity = page.getByRole('dialog', { name: '选择本人' })
-    await identity.getByRole('radio', { name: '朋友' }).check()
+    await identity.getByRole('radio', { name: '小林' }).check()
     await identity.getByRole('button', { name: '设为本人' }).click()
     await expect(identity).toHaveCount(0)
     await page.getByRole('button', { name: '个人总览', exact: true }).click()
     await expect(row).toContainText('尚待了解')
     await expect(row).not.toContainText('关系票数持平')
     await expect(row.getByRole('img')).toHaveCount(0)
-    const relations = page.getByRole('region', { name: '各段关系中的表现' })
+    const relations = page.getByRole('region', { name: '你在不同关系中的表现' })
     await expect(relations).toContainText('至少需要两段关系')
-    await expect(relations.getByRole('button', { name: names[1] })).toBeVisible()
-    await expect(relations.getByRole('button', { name: names[0] })).toHaveCount(0)
+    await expect(relations.getByRole('button', { name: /与小方相处时.*你的倾向/ })).toBeVisible()
+    await expect(relations.getByRole('button', { name: /与小林相处时/ })).toHaveCount(0)
     await page.screenshot({ path: join(evidence, 'retracted.png'), animations: 'disabled' })
   } finally {
     server.closeAllConnections()

@@ -11,7 +11,7 @@ export function MemoryArticle({ report }: { report: SavedReport }) {
     {report.limitations && <section><h3>解读范围</h3><p>{report.limitations}</p></section>}
   </article>
   return <article className="memory-prose">
-    <p className="memory-scope">这是一份根据你们的聊天写成的娱乐解读。性格预测和关系印象，供你轻松回看这段经历时参考。</p>
+    <p className="memory-scope">根据聊天记录写成的娱乐解读，仅供参考。</p>
     <section><h3><abbr title="迈尔斯–布里格斯性格类型指标">MBTI</abbr> 预测</h3>
       <p>你在这段关系中的人格倾向</p>
       <p className="memory-prediction">{predictionText(report.dimensions)}</p>
