@@ -56,6 +56,15 @@
 
 聊天记录保存在本机，阅读原文无需连接模型。提问或整理记忆时，相关材料会发送给你选择的模型服务。详见[模型设置与引用提问](docs/getting-started.md#试一次引用提问)。
 
+## 致谢
+
+- [ChatLab](https://github.com/ChatLab/ChatLab) 提供了 Whomi 导入聊天记录时使用的文件解析代码。
+- [Cherry Studio](https://github.com/CherryHQ/cherry-studio) 提供了模型服务设置和对话回复排版所用的代码。
+- [shadcn/ui](https://github.com/shadcn-ui/ui) 提供了侧栏和工具提示的参考实现。
+- [Simple Icons](https://github.com/simple-icons/simple-icons) 提供了 README 和操作指引中的聊天平台图标。
+
+各组件与素材的来源和许可见[第三方声明](THIRD_PARTY_NOTICES.md)。
+
 ## 开源许可
 
-Whomi 采用 [GNU Affero 通用公共许可证第 3 版（AGPL-3.0）](LICENSE)。第三方组件和素材的来源与许可见[第三方声明](THIRD_PARTY_NOTICES.md)。
+[AGPL-3.0](LICENSE) · [StarryJia/whomi](https://github.com/StarryJia/whomi)
