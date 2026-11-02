@@ -152,9 +152,12 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
     return () => { active = false; unsubscribe() }
   }, [api?.ai, memoryRevision, refreshMemories])
   const contributions = useMemo(() => {
-    const titles = new Map(memories.map(task => [task.id, task.conversationTitle]))
+    const sources = new Map(memories.map(task => [task.id, task]))
     return currentMemoryContributions(memories).filter(item => dimensionKeys.some(key => item.dimensions[key]))
-      .map(item => ({ ...item, title: titles.get(item.taskId) ?? '会话 ' + item.conversationId }))
+      .map(item => {
+        const source = sources.get(item.taskId)
+        return { ...item, title: source?.conversationTitle ?? '会话 ' + item.conversationId, counterpartName: source?.counterpartName }
+      })
   }, [memories])
   const preferences = useMemo(() => relationshipPreferences(contributions), [contributions])
   const [coverKey, setCoverKey] = useState(0)

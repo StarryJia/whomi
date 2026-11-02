@@ -54,12 +54,12 @@ describe('会话工作区的明确入口和独立对话', () => {
     await user.click(screen.getByRole('button', { name: '选取原文' }))
     await user.click(screen.getByRole('button', { name: '显示对话列表' }))
     await user.click(screen.getByRole('button', { name: 'second' }))
-    expect(screen.queryByRole('button', { name: '1 条引用' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '1 组引用' })).not.toBeInTheDocument()
     await user.type(screen.getByRole('textbox'), '草稿乙')
     await user.click(screen.getByRole('button', { name: '显示对话列表' }))
     await user.click(screen.getByRole('button', { name: 'first' }))
     expect(screen.getByRole('textbox')).toHaveValue('草稿甲')
-    expect(screen.getByRole('button', { name: '1 条引用' })).toBeVisible()
+    expect(screen.getByRole('button', { name: '1 组引用' })).toBeVisible()
     await user.click(screen.getByRole('button', { name: '发送给 AI' }))
     expect(adapter.respond).toHaveBeenCalledWith(expect.objectContaining({ threadId: 'first', prompt: '草稿甲', references: [{ id: 'r1', messages: [{ id: '9', text: '引用文字' }] }] }), expect.anything())
   })
@@ -115,7 +115,9 @@ describe('会话工作区的明确入口和独立对话', () => {
     const user = userEvent.setup(), adapter = client()
     let finish!: (value: Awaited<ReturnType<NonNullable<ConversationAiAdapter['createThread']>>>) => void
     adapter.listThreads = async () => [{ id: 'first', conversationId: 'c', title: '原对话', createdAtMs: 1, updatedAtMs: 1 }]
-    adapter.restoreThread = async () => []
+    adapter.restoreThread = async (_conversation, id) => id === 'first'
+      ? [{ id: 'turn', requestId: 'r', modelId: 'm', prompt: '原问题', text: '原回答', referenceIds: [], state: 'completed' }]
+      : []
     adapter.createThread = vi.fn(() => new Promise<AiThread>(resolve => { finish = resolve }))
     render(<Fixture adapter={adapter} />)
     await user.click(screen.getByRole('button', { name: 'AI 对话' }))
@@ -144,7 +146,7 @@ describe('会话工作区的明确入口和独立对话', () => {
     expect(screen.queryByText('继续 AI 对话')).not.toBeInTheDocument()
   })
 
-  it('取消选择会清除所有消息高亮，并可继续重新选择', async () => {
+  it('清空对话引用后可以在原文中继续选择', async () => {
     const user = userEvent.setup()
     render(<App client={createPreviewClient([{ id: 'c', title: '示例聊天', messages: [{ id: '1', sender: '甲', text: '第一条' }, { id: '2', sender: '乙', text: '第二条' }] }])} />)
     await user.click(screen.getByRole('button', { name: '展开会话列表' }))
@@ -152,9 +154,10 @@ describe('会话工作区的明确入口和独立对话', () => {
     await user.click(screen.getByRole('button', { name: '选择消息' }))
     await user.click(screen.getByRole('option', { name: '甲：第一条' }))
     await user.click(screen.getByRole('option', { name: '乙：第二条' }))
-    await user.click(screen.getByRole('button', { name: '取消选择' }))
+    await user.click(screen.getByRole('button', { name: 'AI 对话' }))
+    await user.click(screen.getByRole('button', { name: '清空全部引用' }))
     expect(screen.queryAllByRole('option', { selected: true })).toHaveLength(0)
-    expect(screen.queryByText('已选 2 条')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '清空全部引用' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('option', { name: '甲：第一条' }))
     expect(screen.getByRole('option', { name: '甲：第一条' })).toHaveAttribute('aria-selected', 'true')
   })

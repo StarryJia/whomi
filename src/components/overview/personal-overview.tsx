@@ -1,7 +1,9 @@
-import { useEffect, useId, useRef, type CSSProperties, type RefObject, type ReactNode } from 'react'
+import { useEffect, useId, useRef, type RefObject, type ReactNode } from 'react'
 import { ArrowLeft, ArrowRight, ChevronRight, FileInput, MessageSquare, Sparkles, ThumbsDown, ThumbsUp } from 'lucide-react'
-import type { OverviewData, PreferenceEstimate, PreferenceId, SourceReference, SparkDiscovery, SparkScene } from './types'
+import type { OverviewData, PreferenceEstimate, SourceReference, SparkDiscovery, SparkScene } from './types'
 import type { useOverviewFeedback } from './use-overview-feedback'
+import { dimensionKeys, type MemoryDimensions } from '../../shared/memory'
+import { personalityDimensions } from '../personality-dimensions'
 import './personal-overview.css'
 
 interface PersonalOverviewProps {
@@ -22,57 +24,28 @@ interface PersonalOverviewProps {
   feedback: ReturnType<typeof useOverviewFeedback>
 }
 
-const preferences: readonly {
-  id: PreferenceId; left: string; right: string; leftLetter: string; rightLetter: string; description: string
-  leftContext: string; rightContext: string
-}[] = [
-  { id: 'energy', left: '外向', right: '内向', leftLetter: 'E', rightLetter: 'I', description: '互动或独处中恢复精力。',
-    leftContext: '更习惯从互动中恢复精力。', rightContext: '更习惯从独处中恢复精力。' },
-  { id: 'information', left: '实感', right: '直觉', leftLetter: 'S', rightLetter: 'N', description: '具体经验与关联可能。',
-    leftContext: '更常从具体经验和细节理解事情。', rightContext: '更常留意事物间的关联和可能。' },
-  { id: 'decisions', left: '思考', right: '情感', leftLetter: 'T', rightLetter: 'F', description: '逻辑与感受在决策中的侧重。',
-    leftContext: '做决定时更侧重逻辑与一致性。', rightContext: '做决定时更侧重感受与对人的影响。' },
-  { id: 'approach', left: '判断', right: '感知', leftLetter: 'J', rightLetter: 'P', description: '提前安排与保留弹性。',
-    leftContext: '更习惯提前安排和确定计划。', rightContext: '更习惯保留弹性和临场调整。' },
-]
-
-const axisNames: Record<PreferenceId, string> = {energy: '精力来源', information: '理解信息', decisions: '做决定', approach: '安排方式'}
 const unknownEstimate: PreferenceEstimate = { status: 'unknown' }
 const noDiscoveries: readonly SparkDiscovery[] = []
 
-function PreferenceRow({ preference, estimate }: { preference: typeof preferences[number]; estimate: PreferenceEstimate }) {
-  const { left, right, leftLetter, rightLetter } = preference
-  const name = `${left} ${leftLetter} / ${right} ${rightLetter}`
-  const title = <div className="overview-preference-name"><h3>{axisNames[preference.id]}</h3><p title={preference.description}>{name}</p></div>
-  if (estimate.status === 'unknown') return <div className="overview-preference-row is-unknown" role="group" aria-label={name}>
-    {title}
-    <div className="overview-preference-result"><strong>尚待了解</strong>{estimate.reason && <p>{estimate.reason}</p>}</div>
-  </div>
-  if (estimate.status === 'split') {
-    return <div className="overview-preference-row" role="group" aria-label={name}>
-      <div className="overview-preference-name"><h3>{axisNames[preference.id]}</h3><p>关系票数持平</p></div>
-      {estimate.contexts.map(context => <p key={context}>{context}</p>)}
-    </div>
+function PreferenceRow({ axis, estimate }: { axis: keyof MemoryDimensions; estimate: PreferenceEstimate }) {
+  const { name, left, right } = personalityDimensions[axis]
+  let result = '尚待了解'
+  let evidence: ReactNode
+  if (estimate.status === 'unknown') {
+    evidence = estimate.reason
+  } else if (estimate.status === 'split') {
+    result = '关系票数持平'
+    evidence = estimate.contexts.map(context => <p key={context}>{context}</p>)
+  } else {
+    const strength = estimate.strength === 'slight' ? '略偏' : '偏向'
+    result = estimate.leaning === 'balanced' ? '较均衡' : strength + (estimate.leaning === 'left' ? left : right)
+    evidence = estimate.context
   }
-  const balanced = estimate.leaning === 'balanced'
-  const leaningLeft = estimate.leaning === 'left'
-  const strength = estimate.strength === 'slight' ? '略偏' : '偏向'
-  const result = balanced ? '较均衡' : `${strength}${leaningLeft ? left : right}`
-  const marker = balanced ? '50%' : leaningLeft ? (estimate.strength === 'clear' ? '17%' : '34%')
-    : (estimate.strength === 'clear' ? '83%' : '66%')
-  const description = estimate.context || (balanced ? `在${left}与${right}之间，没有明显偏向。` : leaningLeft ? preference.leftContext : preference.rightContext)
 
-  return <div className="overview-preference-row" role="group" aria-label={name}>
-    {title}
-    <div className="overview-preference-gauge" role="img"
-        aria-label={balanced ? `${left}与${right}较均衡，标记位于中点` : `${result}，仅表示定性倾向`}>
-        <span aria-hidden="true">{leftLetter}</span>
-        <div className="overview-preference-track" style={{ '--preference-marker': marker } as CSSProperties} aria-hidden="true">
-          <i /><i /><i /><i /><i /><b />
-        </div>
-        <span aria-hidden="true">{rightLetter}</span>
-      </div>
-    <div className="overview-preference-result"><strong>{result}</strong><p>{description}</p></div>
+  return <div className="overview-preference-row" role="group" aria-label={`${left} / ${right}`}>
+    <div className="overview-preference-name"><h3>{name}</h3><p>{left} · {right}</p></div>
+    <strong className={`overview-preference-result${estimate.status === 'unknown' ? ' is-unknown' : ''}`}>{result}</strong>
+    {evidence && <div className="overview-preference-evidence">{evidence}</div>}
   </div>
 }
 
@@ -162,19 +135,15 @@ export function PersonalOverview({ data, concealed = false, status = 'ready', re
   const discoveries = data?.discoveries ?? noDiscoveries
   const initialize = feedback.initialize
   useEffect(() => { initialize(discoveries) }, [discoveries, initialize])
-  const summary = preferences.map((preference) => {
-    const estimate = data?.preferences?.[preference.id]
+  const summary = dimensionKeys.map(axis => {
+    const estimate = data?.preferences?.[personalityDimensions[axis].id]
     return estimate?.status === 'known' && estimate.leaning !== 'balanced'
-      ? estimate.leaning === 'left' ? preference.leftLetter : preference.rightLetter : '?'
+      ? axis[estimate.leaning === 'left' ? 0 : 1] : '?'
   }).join('')
-  const balancedPreferences = preferences.filter((preference) => {
-    const estimate = data?.preferences?.[preference.id]
-    return estimate?.status === 'known' && estimate.leaning === 'balanced'
-  })
   const visibleDiscoveries = discoveries.map((discovery) => ({ discovery, scenes: contextualScenes(discovery) }))
     .filter(({ discovery, scenes }) => discovery.observation.trim() && scenes.length)
-  const hasKnownPreferences = preferences.some(preference => {
-    const estimate = data?.preferences?.[preference.id]
+  const hasKnownPreferences = dimensionKeys.some(axis => {
+    const estimate = data?.preferences?.[personalityDimensions[axis].id]
     return estimate && estimate.status !== 'unknown'
   })
   const noRecords = !data || data.materialStatus === 'none'
@@ -183,12 +152,12 @@ export function PersonalOverview({ data, concealed = false, status = 'ready', re
     <button type="button" className="overview-return" aria-label="返回 Hello" onClick={onReturnToCover}><ArrowLeft aria-hidden="true" />返回</button>
     <h1 ref={headingRef} tabIndex={-1}>个人总览</h1>
     <section className="overview-personality" aria-labelledby="overview-personality-title">
-      <div className="overview-personality-header"><h2 id="overview-personality-title">人格偏好</h2>
-        {!concealed && status === 'ready' && hasKnownPreferences && <><span className="overview-estimate-label">当前推测</span>
-          <strong className="overview-type" aria-label="当前推测类型">{summary}</strong></>}
+      <div className="overview-personality-header"><h2 id="overview-personality-title">你的人格倾向</h2>
+        {!concealed && status === 'ready' && hasKnownPreferences && <div className="overview-estimate"><span className="overview-estimate-label">当前推测</span>
+          <strong className="overview-type" aria-label="当前推测类型">{summary}</strong></div>}
       </div>
-      {concealed ? <div className="overview-preferences">{preferences.map(axis => <div key={axis.id} className="overview-preference-row">
-        <strong>{axisNames[axis.id]}</strong><span className="overview-masked-value" aria-hidden="true" /></div>)}</div>
+      {concealed ? <div className="overview-preferences">{dimensionKeys.map(axis => <div key={axis} className="overview-preference-row">
+        <strong>{personalityDimensions[axis].name}</strong><span className="overview-masked-value" aria-hidden="true" /></div>)}</div>
       : status !== 'ready' ? <div className="overview-start" role={status === 'loading' ? 'status' : 'alert'}>
         {status === 'loading' ? '正在读取个人总览…' : <>读取总览失败。 <button className="page-secondary" type="button" onClick={retry}>重试</button></>}
       </div> : <>{noRecords || noAnalysis ? <div className="overview-start">
@@ -197,11 +166,8 @@ export function PersonalOverview({ data, concealed = false, status = 'ready', re
           {noRecords ? <FileInput aria-hidden="true" /> : <ArrowRight aria-hidden="true" />}{noRecords ? '导入聊天记录' : '打开会话整理'}</button>}
       </div> : data?.materialStatus === 'partial' && <p className="overview-material-note">当前观察仅来自已分析的部分记录。</p>}
       <div className="overview-preferences">
-        {preferences.map(preference => <PreferenceRow key={preference.id} preference={preference} estimate={data?.preferences?.[preference.id] ?? unknownEstimate} />)}
+        {dimensionKeys.map(axis => <PreferenceRow key={axis} axis={axis} estimate={data?.preferences?.[personalityDimensions[axis].id] ?? unknownEstimate} />)}
       </div>
-      {hasKnownPreferences && <p className="overview-type-explanation">材料不足的维度保留问号。
-          {balancedPreferences.map((preference) => <span key={preference.id}>{preference.left}与{preference.right}这一位较均衡，因此保留问号。</span>)}
-        </p>}
       {!noRecords && onOpenMemory && !hasRelationshipObservations && <button className="overview-return" type="button" onClick={onOpenMemory}>查看记忆<ChevronRight aria-hidden="true" /></button>}
       {children}</>}
       </section>

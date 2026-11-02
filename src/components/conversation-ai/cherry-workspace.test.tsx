@@ -85,7 +85,7 @@ describe('Cherry 对话流程接入', () => {
     await screen.findByText('示例回答')
     expect(screen.getByRole('region', { name: '原文区域' })).toBeEmptyDOMElement()
     expect(screen.queryByText('不需要重复的会话名')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: '清除引用' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '清空全部引用' })).not.toBeInTheDocument()
     expect(within(screen.getByRole('log')).getByRole('button', { name: '1 条引用' })).toBeInTheDocument()
   })
 

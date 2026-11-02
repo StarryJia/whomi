@@ -58,7 +58,11 @@ describe('个人总览', () => {
 
   it('未知偏好显示问号且没有倾向轨道，四组偏好都有完整说明', () => {
     render(<Harness />)
+    expect(screen.getByRole('heading', { name: '你的人格倾向' })).toBeVisible()
     expect(screen.getByLabelText('当前推测类型')).toHaveTextContent('E?F?')
+    expect(screen.getByText('略偏外向 E')).toBeVisible()
+    expect(screen.queryByRole('img')).not.toBeInTheDocument()
+    expect(screen.queryByText(/保留问号/)).not.toBeInTheDocument()
     const unknown = screen.getByRole('group', { name: '实感 S / 直觉 N' })
     expect(within(unknown).getByText('尚待了解')).toBeVisible()
     expect(within(unknown).queryByRole('img')).not.toBeInTheDocument()
@@ -68,12 +72,13 @@ describe('个人总览', () => {
     expect(screen.getByRole('heading', {name:'安排方式'})).toBeInTheDocument()
   })
 
-  it('均衡偏好保留中点，汇总对应位仍为问号并解释含义', () => {
+  it('均衡偏好在本维显示文字，汇总对应位仍为问号', () => {
     render(<Harness overview={{ ...data, preferences: { ...data.preferences, energy: { status: 'known', leaning: 'balanced' } } }} />)
     expect(screen.getByLabelText('当前推测类型')).toHaveTextContent('??F?')
     const balanced = screen.getByRole('group', { name: '外向 E / 内向 I' })
-    expect(within(balanced).getByRole('img', { name: '外向与内向较均衡，标记位于中点' })).toBeInTheDocument()
-    expect(screen.getByText(/外向与内向这一位较均衡/)).toBeInTheDocument()
+    expect(within(balanced).getByText('较均衡')).toBeVisible()
+    expect(within(balanced).queryByRole('img')).not.toBeInTheDocument()
+    expect(screen.queryByText(/保留问号/)).not.toBeInTheDocument()
   })
 
   it('先呈现背景、交流和行为，再呈现观察，原文入口包含情境摘要并可打开', async () => {

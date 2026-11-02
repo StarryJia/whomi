@@ -109,7 +109,7 @@ const messageKinds: Record<MessageView['kind'], string> = {
   location: '位置', reply: '引用', forward: '转发', system: '系统', unknown: '未知类型',
 }
 
-type QuoteJump = { targetId: string; originId?: string; referenceIds?: readonly string[] }
+type QuoteJump = { targetId: string; originId?: string; referenceIds?: readonly string[]; pending?: boolean }
 
 export function ConversationReader({ conversation, initialAnalysisTaskId, openAnalysisOnEntry, range, sourceStatus, onReturn, returnLabel = '返回个人总览',
   beforeCursor, afterCursor, onBefore, onAfter, loading, error, onRetry, messageCount, aiAdapter,
@@ -147,7 +147,7 @@ export function ConversationReader({ conversation, initialAnalysisTaskId, openAn
   const selectionButton = useRef<HTMLButtonElement>(null)
   const selection = useMessageSelection(conversation.messages, selectionMode)
   const [jump, setJump] = useState<QuoteJump>()
-  const [highlightedReferences, setHighlightedReferences] = useState<ReadonlySet<string>>()
+  const [highlightedReferences, setHighlightedReferences] = useState<{ ids: ReadonlySet<string>; pending?: boolean }>()
   const [quoteReturnId, setQuoteReturnId] = useState<string>()
   const [quoteBusy, setQuoteBusy] = useState(false)
   const [quoteFailure, setQuoteFailure] = useState<QuoteJump>()
@@ -267,7 +267,7 @@ export function ConversationReader({ conversation, initialAnalysisTaskId, openAn
       }
       if (generation !== quoteGeneration.current) return
       setJump({ ...request })
-      setHighlightedReferences(request.referenceIds ? new Set(request.referenceIds) : undefined)
+      setHighlightedReferences(request.referenceIds ? { ids: new Set(request.referenceIds), pending: request.pending } : undefined)
       setQuoteReturnId(request.originId)
     } catch {
       if (generation === quoteGeneration.current) setQuoteFailure(request)
@@ -345,13 +345,13 @@ export function ConversationReader({ conversation, initialAnalysisTaskId, openAn
 
   return <ConversationWorkspace initialAnalysisTaskId={initialAnalysisTaskId} openAnalysisOnEntry={openAnalysisOnEntry} onConfigureModels={onConfigureModels} onOpenAnalysisResult={onOpenMemory} conversationId={conversation.id} identityRevision={identityRevision} title={conversation.title} messageCount={messageCount}
     references={selection.references} onClearReferences={selection.clear} onRestoreReferences={selection.restore}
-    onJumpReference={(ids, targetId = ids[0]) => { if (targetId) void navigateQuote({ targetId, referenceIds: ids }) }} adapter={aiAdapter}>
+    onJumpReference={(ids, targetId = ids[0], pending) => { if (targetId) void navigateQuote({ targetId, referenceIds: ids, pending }) }} adapter={aiAdapter}>
     {({ analysisControl, chatControl, composer }) => <section className="conversation-reader" aria-labelledby="conversation-title" onKeyDown={event => {
       if (event.key !== 'Escape' || event.defaultPrevented || !selectionMode) return
       if ((event.target as HTMLElement).closest('input, textarea, select, [contenteditable="true"]')) return
       event.preventDefault()
       setSelectionMode(false)
-      selectionButton.current?.focus()
+      selectionButton.current?.focus({ preventScroll: true })
     }}>
     <header className="reader-header">
       {onReturn && <button className="reader-return" type="button" onClick={onReturn}>
@@ -359,8 +359,8 @@ export function ConversationReader({ conversation, initialAnalysisTaskId, openAn
       </button>}
       <div className="reader-heading-row"><h1 id="conversation-title" ref={heading} tabIndex={-1}>{conversation.title}</h1>
         <div className="reader-actions">
-          <button ref={selectionButton} className="reader-selection-toggle" type="button" aria-label={selectionMode ? '退出选择' : '选择消息'}
-            title={selectionMode ? '退出选择' : '选择消息'} aria-pressed={selectionMode} onClick={() => setSelectionMode(value => !value)}>
+          <button ref={selectionButton} className="reader-selection-toggle" type="button" aria-label="选择消息"
+            title={selectionMode ? '退出选择' : '选择消息'} aria-pressed={selectionMode} onClick={() => setSelectionMode(active => !active)}>
             <MousePointer2 aria-hidden="true" />
           </button>
           {analysisControl}
@@ -376,9 +376,8 @@ export function ConversationReader({ conversation, initialAnalysisTaskId, openAn
       </div>
       {quoteReturnId && <button className="reader-return reader-quote-return" type="button" disabled={quoteBusy}
         onClick={() => { void navigateQuote({ targetId: quoteReturnId }) }}><ArrowLeft aria-hidden="true" />返回引用位置</button>}
-      {quoteFailure && <p className="reader-source-note" role="alert">未找到原消息，请重试。{' '}
+      {quoteFailure && (!quoteFailure.pending || selection.selectedIds.has(quoteFailure.targetId)) && <p className="reader-source-note" role="alert">未找到原消息，请重试。{' '}
         <button type="button" onClick={() => { void navigateQuote(quoteFailure) }}>重试定位</button></p>}
-      {selectionMode && <div className="reader-selection-hint"><span className="reader-selection-instructions">单击选择，长按后拖动或滚轮多选</span>{selection.selectedIds.size > 0 && <><span role="status">已选 {selection.selectedIds.size} 条</span><button type="button" onClick={selection.clear}>取消选择</button></>}</div>}
       {sourceStatus && <p className="reader-source-note" role="status">{sourceStatus === 'available'
         ? '已定位相关交流，可继续阅读前后文。' : sourceStatus === 'loading' ? '正在定位原文…' : '原文不可用，请返回后重试。'}</p>}
       {error && <p className="reader-source-note" role="alert">{error} <button type="button" onClick={onRetry}>重新打开会话</button></p>}
@@ -392,6 +391,8 @@ export function ConversationReader({ conversation, initialAnalysisTaskId, openAn
           const end = range?.end.id === message.id
           const highlighted = range && comparePosition(message, range.start) >= 0 && comparePosition(message, range.end) <= 0
           const selected = selection.selectedIds.has(message.id)
+          const referenced = highlightedReferences?.ids.has(message.id) && (!highlightedReferences.pending || selected)
+          const jumpTarget = jump?.targetId === message.id && (!jump.pending || selected)
           const joinedBefore = selected && index > 0 && selection.selectedIds.has(conversation.messages[index - 1].id)
           const joinedAfter = selected && index < conversation.messages.length - 1 && selection.selectedIds.has(conversation.messages[index + 1].id)
           return <li key={message.id} data-message-id={message.id}
@@ -400,7 +401,7 @@ export function ConversationReader({ conversation, initialAnalysisTaskId, openAn
           tabIndex={selectionMode && tabStopId === message.id ? 0 : -1} {...(selectionMode ? selection.bindings(message) : {})} onFocus={() => setFocusedMessageId(message.id)}
           className={clsx('message', message.isSelf && 'message-self', highlighted && 'message-source', selected && 'message-selected',
             joinedBefore && 'selection-joined-before', joinedAfter && 'selection-joined-after',
-            (highlightedReferences?.has(message.id) || jump?.targetId === message.id) && 'message-reference-target')}>
+            (referenced || jumpTarget) && 'message-reference-target')}>
           <Initial name={message.senderName} />
           <div className="message-content">
             {message.timeBucket === 1 && (index === 0 || conversation.messages[index - 1].timeBucket !== 1) && <p className="message-time-unknown">时间未知</p>}

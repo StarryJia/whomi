@@ -90,6 +90,6 @@ test('identity entry accepts pointer and keyboard input outside its draggable he
     await page.getByRole('button', { name: '取消', exact: true }).focus()
     await page.keyboard.press('Escape')
     await expect(page.getByRole('dialog')).toHaveCount(0)
-    await expect(page.getByRole('button', { name: '退出选择', exact: true })).toHaveAttribute('aria-pressed', 'true')
+    await expect(page.getByRole('button', { name: '选择消息', pressed: true })).toBeVisible()
   } finally { await app.close() }
 })
