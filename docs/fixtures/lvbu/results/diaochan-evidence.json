@@ -1,0 +1,129 @@
+{
+  "EI": [],
+  "SN": [
+    {
+      "id": "58964",
+      "ordinal": 1,
+      "text": "灰的。我刚摸过，里面厚，领口也不扎。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v1-dc01-02"
+    },
+    {
+      "id": "58966",
+      "ordinal": 3,
+      "text": "好看是好看，可你上次骑马，脖子让硬领磨红了。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v1-dc01-04"
+    },
+    {
+      "id": "58982",
+      "ordinal": 19,
+      "text": "先别换。我昨日拨灯芯，它就亮了，底座也没漏油。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v1-dc04-02"
+    },
+    {
+      "id": "58984",
+      "ordinal": 21,
+      "text": "我关窗试过。换根灯芯看看，不成再买。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v1-dc04-04"
+    },
+    {
+      "id": "58988",
+      "ordinal": 25,
+      "text": "你各弹一小段给我听。光听他说，我分不出来。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v1-dc05-02"
+    },
+    {
+      "id": "58990",
+      "ordinal": 27,
+      "text": "后一段尾音发尖，倒是旧的听着舒服。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v1-dc05-04"
+    },
+    {
+      "id": "58992",
+      "ordinal": 29,
+      "text": "先用旧的。价钱贵，听着不顺也没用。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v1-dc05-06"
+    }
+  ],
+  "TF": [
+    {
+      "id": "58995",
+      "ordinal": 32,
+      "text": "我听见笑声就走了，以为你也瞧不起我。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v1-dc06-03"
+    },
+    {
+      "id": "59011",
+      "ordinal": 48,
+      "text": "你说被管事责备了？我去找他。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v1-dc09-01"
+    }
+  ],
+  "JP": [
+    {
+      "id": "58970",
+      "ordinal": 7,
+      "text": "先别定。我明日回来看看街上有什么。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v1-dc02-02"
+    },
+    {
+      "id": "58972",
+      "ordinal": 9,
+      "text": "记得。这次饿了就先吃，不必非等那一家。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v1-dc02-04"
+    },
+    {
+      "id": "58975",
+      "ordinal": 12,
+      "text": "雨停了，今日别坐车，去河边走走。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v1-dc03-01"
+    },
+    {
+      "id": "58977",
+      "ordinal": 14,
+      "text": "路上见河边起了雾，忽然想去。灯明日也能看。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v1-dc03-03"
+    },
+    {
+      "id": "59006",
+      "ordinal": 43,
+      "text": "练完骑射就去。沿河有新摊子，我想边走边看。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v1-dc08-02"
+    },
+    {
+      "id": "59008",
+      "ordinal": 45,
+      "text": "行，见面再定去哪儿，别替我排满一晚上。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v1-dc08-04"
+    }
+  ]
+}

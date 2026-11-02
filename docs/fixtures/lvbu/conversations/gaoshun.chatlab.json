@@ -1,0 +1,456 @@
+{
+  "chatlab": {
+    "version": "0.0.2"
+  },
+  "meta": {
+    "name": "高顺",
+    "platform": "telegram",
+    "type": "private",
+    "groupId": "whomi-fiction-lvbu-gaoshun",
+    "ownerId": "whomi-fiction-lvbu"
+  },
+  "members": [
+    {
+      "platformId": "whomi-fiction-lvbu",
+      "accountName": "吕布"
+    },
+    {
+      "platformId": "whomi-fiction-gaoshun",
+      "accountName": "高顺"
+    }
+  ],
+  "messages": [
+    {
+      "sender": "whomi-fiction-gaoshun",
+      "accountName": "高顺",
+      "timestamp": 1781004600,
+      "type": 0,
+      "content": "向导说浅滩能过马，明早从那里走？",
+      "platformMessageId": "whomi-lvbu-v1-gs01-01"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1781004645,
+      "type": 0,
+      "content": "我刚过去看了，树根水痕比昨日高。先别信他。",
+      "platformMessageId": "whomi-lvbu-v1-gs01-02"
+    },
+    {
+      "sender": "whomi-fiction-gaoshun",
+      "accountName": "高顺",
+      "timestamp": 1781004690,
+      "type": 0,
+      "content": "要另找一处？",
+      "platformMessageId": "whomi-lvbu-v1-gs01-03"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1781004735,
+      "type": 0,
+      "content": "我牵马试西边那段，水不到肚腹再让队伍过。",
+      "platformMessageId": "whomi-lvbu-v1-gs01-04"
+    },
+    {
+      "sender": "whomi-fiction-gaoshun",
+      "accountName": "高顺",
+      "timestamp": 1781004780,
+      "type": 0,
+      "content": "我让后队先等。",
+      "platformMessageId": "whomi-lvbu-v1-gs01-05"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1781004825,
+      "type": 0,
+      "content": "等我回信，别见前面动就跟。",
+      "platformMessageId": "whomi-lvbu-v1-gs01-06"
+    },
+    {
+      "sender": "whomi-fiction-gaoshun",
+      "accountName": "高顺",
+      "timestamp": 1782387000,
+      "type": 0,
+      "content": "新兵说弓太硬，想换软的。",
+      "platformMessageId": "whomi-lvbu-v1-gs02-01"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1782387045,
+      "type": 0,
+      "content": "我看过他的手，拇指磨破了，是扣弦姿势不对。",
+      "platformMessageId": "whomi-lvbu-v1-gs02-02"
+    },
+    {
+      "sender": "whomi-fiction-gaoshun",
+      "accountName": "高顺",
+      "timestamp": 1782387090,
+      "type": 0,
+      "content": "他照着图学的。",
+      "platformMessageId": "whomi-lvbu-v1-gs02-03"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1782387135,
+      "type": 0,
+      "content": "让他到场上看我拉两回，照着手的位置试，再说换弓。",
+      "platformMessageId": "whomi-lvbu-v1-gs02-04"
+    },
+    {
+      "sender": "whomi-fiction-gaoshun",
+      "accountName": "高顺",
+      "timestamp": 1782387180,
+      "type": 0,
+      "content": "今日伤口先包好。",
+      "platformMessageId": "whomi-lvbu-v1-gs02-05"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1782387225,
+      "type": 0,
+      "content": "嗯，今日只看，不让他硬拉。",
+      "platformMessageId": "whomi-lvbu-v1-gs02-06"
+    },
+    {
+      "sender": "whomi-fiction-gaoshun",
+      "accountName": "高顺",
+      "timestamp": 1783855800,
+      "type": 0,
+      "content": "探子说坡后没人，能直冲。",
+      "platformMessageId": "whomi-lvbu-v1-gs03-01"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1783855845,
+      "type": 0,
+      "content": "我看见那边草尖向两侧压着，还有新折的树枝。",
+      "platformMessageId": "whomi-lvbu-v1-gs03-02"
+    },
+    {
+      "sender": "whomi-fiction-gaoshun",
+      "accountName": "高顺",
+      "timestamp": 1783855890,
+      "type": 0,
+      "content": "怕是猎人留下的？",
+      "platformMessageId": "whomi-lvbu-v1-gs03-03"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1783855935,
+      "type": 0,
+      "content": "也可能。先往坡侧放一箭，看有没有人动，再决定。",
+      "platformMessageId": "whomi-lvbu-v1-gs03-04"
+    },
+    {
+      "sender": "whomi-fiction-gaoshun",
+      "accountName": "高顺",
+      "timestamp": 1783855980,
+      "type": 0,
+      "content": "我让骑兵停在射程外。",
+      "platformMessageId": "whomi-lvbu-v1-gs03-05"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1783856025,
+      "type": 0,
+      "content": "好，不能把猜测当准信。",
+      "platformMessageId": "whomi-lvbu-v1-gs03-06"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1785411000,
+      "type": 0,
+      "content": "今日去南坡练，昨夜雨过，正好试马下湿坡。",
+      "platformMessageId": "whomi-lvbu-v1-gs04-01"
+    },
+    {
+      "sender": "whomi-fiction-gaoshun",
+      "accountName": "高顺",
+      "timestamp": 1785411045,
+      "type": 0,
+      "content": "原定西场，粮车也往那里送。",
+      "platformMessageId": "whomi-lvbu-v1-gs04-02"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1785411090,
+      "type": 0,
+      "content": "西场太平，我想趁今天的泥试一回。粮车让人接。",
+      "platformMessageId": "whomi-lvbu-v1-gs04-03"
+    },
+    {
+      "sender": "whomi-fiction-gaoshun",
+      "accountName": "高顺",
+      "timestamp": 1785411135,
+      "type": 0,
+      "content": "谁去接？不能又让全队空等。",
+      "platformMessageId": "whomi-lvbu-v1-gs04-04"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1785411180,
+      "type": 0,
+      "content": "留两人在岔路引车。先练一个时辰，车不到就回来。",
+      "platformMessageId": "whomi-lvbu-v1-gs04-05"
+    },
+    {
+      "sender": "whomi-fiction-gaoshun",
+      "accountName": "高顺",
+      "timestamp": 1785411225,
+      "type": 0,
+      "content": "我这就交代。下回改地点先知会我。",
+      "platformMessageId": "whomi-lvbu-v1-gs04-06"
+    },
+    {
+      "sender": "whomi-fiction-gaoshun",
+      "accountName": "高顺",
+      "timestamp": 1786793400,
+      "type": 0,
+      "content": "明日的训练单给您看，三个时辰都排满了。",
+      "platformMessageId": "whomi-lvbu-v1-gs05-01"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1786793445,
+      "type": 0,
+      "content": "前一个时辰照你的来，后面先空着。",
+      "platformMessageId": "whomi-lvbu-v1-gs05-02"
+    },
+    {
+      "sender": "whomi-fiction-gaoshun",
+      "accountName": "高顺",
+      "timestamp": 1786793490,
+      "type": 0,
+      "content": "不排好，各队不知道练什么。",
+      "platformMessageId": "whomi-lvbu-v1-gs05-03"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1786793535,
+      "type": 0,
+      "content": "我想先看他们哪样最弱，现场补哪样，不愿为了照单子换场。",
+      "platformMessageId": "whomi-lvbu-v1-gs05-04"
+    },
+    {
+      "sender": "whomi-fiction-gaoshun",
+      "accountName": "高顺",
+      "timestamp": 1786793580,
+      "type": 0,
+      "content": "那各队都把弓和长枪带齐。",
+      "platformMessageId": "whomi-lvbu-v1-gs05-05"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1786793625,
+      "type": 0,
+      "content": "对，东西备齐，次序到了再定。",
+      "platformMessageId": "whomi-lvbu-v1-gs05-06"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1788262200,
+      "type": 0,
+      "content": "马商今日过境，我想临时挑两匹。",
+      "platformMessageId": "whomi-lvbu-v1-gs06-01"
+    },
+    {
+      "sender": "whomi-fiction-gaoshun",
+      "accountName": "高顺",
+      "timestamp": 1788262245,
+      "type": 0,
+      "content": "军中月初定过了，这月不买马。",
+      "platformMessageId": "whomi-lvbu-v1-gs06-02"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1788262290,
+      "type": 0,
+      "content": "我看中那匹青骢，它伤好了，价钱也降了，错过就没了。",
+      "platformMessageId": "whomi-lvbu-v1-gs06-03"
+    },
+    {
+      "sender": "whomi-fiction-gaoshun",
+      "accountName": "高顺",
+      "timestamp": 1788262335,
+      "type": 0,
+      "content": "若用军资，粮钱便不够。",
+      "platformMessageId": "whomi-lvbu-v1-gs06-04"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1788262380,
+      "type": 0,
+      "content": "那不用军资。我自己出钱，只买青骢，另一匹算了。",
+      "platformMessageId": "whomi-lvbu-v1-gs06-05"
+    },
+    {
+      "sender": "whomi-fiction-gaoshun",
+      "accountName": "高顺",
+      "timestamp": 1788262425,
+      "type": 0,
+      "content": "私人马匹另记，别混进军册。",
+      "platformMessageId": "whomi-lvbu-v1-gs06-06"
+    },
+    {
+      "sender": "whomi-fiction-gaoshun",
+      "accountName": "高顺",
+      "timestamp": 1789731000,
+      "type": 0,
+      "content": "昨日救回斥候的是魏续，记功写他？",
+      "platformMessageId": "whomi-lvbu-v1-gs07-01"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1789731045,
+      "type": 0,
+      "content": "我最后替他挡了一阵，也该有我的。",
+      "platformMessageId": "whomi-lvbu-v1-gs07-02"
+    },
+    {
+      "sender": "whomi-fiction-gaoshun",
+      "accountName": "高顺",
+      "timestamp": 1789731090,
+      "type": 0,
+      "content": "您已有统领功。接人出谷的是他，不能又全记到您名下。",
+      "platformMessageId": "whomi-lvbu-v1-gs07-03"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1789731135,
+      "type": 0,
+      "content": "我那一阵便不算了？",
+      "platformMessageId": "whomi-lvbu-v1-gs07-04"
+    },
+    {
+      "sender": "whomi-fiction-gaoshun",
+      "accountName": "高顺",
+      "timestamp": 1789731180,
+      "type": 0,
+      "content": "另写您断后，接人的功劳仍给他。",
+      "platformMessageId": "whomi-lvbu-v1-gs07-05"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1789731225,
+      "type": 0,
+      "content": "就这样写。两件事都写明白。",
+      "platformMessageId": "whomi-lvbu-v1-gs07-06"
+    },
+    {
+      "sender": "whomi-fiction-gaoshun",
+      "accountName": "高顺",
+      "timestamp": 1791027000,
+      "type": 0,
+      "content": "有个旧部误了岗，求您免罚，说跟您多年。",
+      "platformMessageId": "whomi-lvbu-v1-gs08-01"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1791027045,
+      "type": 0,
+      "content": "误了多久？谁替他守的？",
+      "platformMessageId": "whomi-lvbu-v1-gs08-02"
+    },
+    {
+      "sender": "whomi-fiction-gaoshun",
+      "accountName": "高顺",
+      "timestamp": 1791027090,
+      "type": 0,
+      "content": "半个时辰。新兵替上了。",
+      "platformMessageId": "whomi-lvbu-v1-gs08-03"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1791027135,
+      "type": 0,
+      "content": "照半个时辰罚，替岗的补赏。跟我久也不能让别人白担着。",
+      "platformMessageId": "whomi-lvbu-v1-gs08-04"
+    },
+    {
+      "sender": "whomi-fiction-gaoshun",
+      "accountName": "高顺",
+      "timestamp": 1791027180,
+      "type": 0,
+      "content": "他怕您当众训斥。",
+      "platformMessageId": "whomi-lvbu-v1-gs08-05"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1791027225,
+      "type": 0,
+      "content": "罚照规矩，别另叫全营来看。",
+      "platformMessageId": "whomi-lvbu-v1-gs08-06"
+    },
+    {
+      "sender": "whomi-fiction-gaoshun",
+      "accountName": "高顺",
+      "timestamp": 1792495800,
+      "type": 0,
+      "content": "敌军丢了空营，追下去能再得些马，粮车便要留下。",
+      "platformMessageId": "whomi-lvbu-v1-gs09-01"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1792495845,
+      "type": 0,
+      "content": "粮还够几日？",
+      "platformMessageId": "whomi-lvbu-v1-gs09-02"
+    },
+    {
+      "sender": "whomi-fiction-gaoshun",
+      "accountName": "高顺",
+      "timestamp": 1792495890,
+      "type": 0,
+      "content": "丢了这批，只够两日。",
+      "platformMessageId": "whomi-lvbu-v1-gs09-03"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1792495935,
+      "type": 0,
+      "content": "那收粮，不追。我是想要马，可不能赢一阵就叫全队饿着。",
+      "platformMessageId": "whomi-lvbu-v1-gs09-04"
+    },
+    {
+      "sender": "whomi-fiction-gaoshun",
+      "accountName": "高顺",
+      "timestamp": 1792495980,
+      "type": 0,
+      "content": "我派人护车。",
+      "platformMessageId": "whomi-lvbu-v1-gs09-05"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1792496025,
+      "type": 0,
+      "content": "清点完给我数目，少了多少也报。",
+      "platformMessageId": "whomi-lvbu-v1-gs09-06"
+    }
+  ]
+}

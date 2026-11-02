@@ -1,0 +1,232 @@
+{
+  "chatlab": {
+    "version": "0.0.2"
+  },
+  "meta": {
+    "name": "高顺",
+    "platform": "telegram",
+    "type": "private",
+    "groupId": "whomi-fiction-lvbu-gaoshun",
+    "ownerId": "whomi-fiction-lvbu"
+  },
+  "members": [
+    {
+      "platformId": "whomi-fiction-lvbu",
+      "accountName": "吕布"
+    },
+    {
+      "platformId": "whomi-fiction-gaoshun",
+      "accountName": "高顺"
+    }
+  ],
+  "messages": [
+    {
+      "sender": "whomi-fiction-gaoshun",
+      "accountName": "高顺",
+      "timestamp": 1781259000,
+      "type": 0,
+      "content": "明早只放一人出城。旧部想去取刀，新兵想去请医生。牌给谁？",
+      "platformMessageId": "whomi-lvbu-v2-gaoshun-1-1"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1781259055,
+      "type": 0,
+      "content": "给请医生的。刀晚一天还在，人误了一天说不好。",
+      "platformMessageId": "whomi-lvbu-v2-gaoshun-1-2"
+    },
+    {
+      "sender": "whomi-fiction-gaoshun",
+      "accountName": "高顺",
+      "timestamp": 1781259110,
+      "type": 0,
+      "content": "旧部先来，已等两个时辰了。",
+      "platformMessageId": "whomi-lvbu-v2-gaoshun-1-3"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1781259165,
+      "type": 0,
+      "content": "这块牌是救急的，谁先来、跟过我几年，都别算进去。",
+      "platformMessageId": "whomi-lvbu-v2-gaoshun-1-4"
+    },
+    {
+      "sender": "whomi-fiction-gaoshun",
+      "accountName": "高顺",
+      "timestamp": 1783246200,
+      "type": 0,
+      "content": "我想把陈二提成弓教头，他在您帐下最久。",
+      "platformMessageId": "whomi-lvbu-v2-gaoshun-2-1"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1783246255,
+      "type": 0,
+      "content": "他自己射得准，带出来三个徒弟还不会扣弦。上次教新兵的那个呢？",
+      "platformMessageId": "whomi-lvbu-v2-gaoshun-2-2"
+    },
+    {
+      "sender": "whomi-fiction-gaoshun",
+      "accountName": "高顺",
+      "timestamp": 1783246310,
+      "type": 0,
+      "content": "那个刚来半年。您亲自带过陈二，真不用他？",
+      "platformMessageId": "whomi-lvbu-v2-gaoshun-2-3"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1783246365,
+      "type": 0,
+      "content": "叫两个人各教五个生手，三日后看谁教得会。输的人是我旧部也照换。",
+      "platformMessageId": "whomi-lvbu-v2-gaoshun-2-4"
+    },
+    {
+      "sender": "whomi-fiction-gaoshun",
+      "accountName": "高顺",
+      "timestamp": 1783246420,
+      "type": 0,
+      "content": "那五个人怎么分？",
+      "platformMessageId": "whomi-lvbu-v2-gaoshun-2-5"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1783246475,
+      "type": 0,
+      "content": "抽签，别把学过的都塞给一边。",
+      "platformMessageId": "whomi-lvbu-v2-gaoshun-2-6"
+    },
+    {
+      "sender": "whomi-fiction-gaoshun",
+      "accountName": "高顺",
+      "timestamp": 1786011000,
+      "type": 0,
+      "content": "昨夜跟弟兄说到几更？您这两天眼底都是青的。",
+      "platformMessageId": "whomi-lvbu-v2-gaoshun-3-1"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1786011055,
+      "type": 0,
+      "content": "比躺着翻身强。听老宋讲那一箭怎么射偏的，我笑完才睡着。",
+      "platformMessageId": "whomi-lvbu-v2-gaoshun-3-2"
+    },
+    {
+      "sender": "whomi-fiction-gaoshun",
+      "accountName": "高顺",
+      "timestamp": 1786011110,
+      "type": 0,
+      "content": "今夜还叫他们来？",
+      "platformMessageId": "whomi-lvbu-v2-gaoshun-3-3"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1786011165,
+      "type": 0,
+      "content": "不了，昨夜想听人说话。今夜我只想睡个整觉。",
+      "platformMessageId": "whomi-lvbu-v2-gaoshun-3-4"
+    },
+    {
+      "sender": "whomi-fiction-gaoshun",
+      "accountName": "高顺",
+      "timestamp": 1787479800,
+      "type": 0,
+      "content": "木料只能修一段。帅帐背后漏风，南灶那儿也豁了。",
+      "platformMessageId": "whomi-lvbu-v2-gaoshun-4-1"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1787479855,
+      "type": 0,
+      "content": "南灶先修。我的帐子能挪，灶下雨就没法开火。",
+      "platformMessageId": "whomi-lvbu-v2-gaoshun-4-2"
+    },
+    {
+      "sender": "whomi-fiction-gaoshun",
+      "accountName": "高顺",
+      "timestamp": 1787479910,
+      "type": 0,
+      "content": "夜里客人来，要从破墙边走。",
+      "platformMessageId": "whomi-lvbu-v2-gaoshun-4-3"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1787479965,
+      "type": 0,
+      "content": "让他看。木料花在哪儿能顶最多人的事，就修哪儿。",
+      "platformMessageId": "whomi-lvbu-v2-gaoshun-4-4"
+    },
+    {
+      "sender": "whomi-fiction-gaoshun",
+      "accountName": "高顺",
+      "timestamp": 1790417400,
+      "type": 0,
+      "content": "旧弓照册交给新补的人。弓主的父亲想来取，您回他一句？",
+      "platformMessageId": "whomi-lvbu-v2-gaoshun-5-1"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1790417455,
+      "type": 0,
+      "content": "先缓缓。老人总不能空着手走。",
+      "platformMessageId": "whomi-lvbu-v2-gaoshun-5-2"
+    },
+    {
+      "sender": "whomi-fiction-gaoshun",
+      "accountName": "高顺",
+      "timestamp": 1790417510,
+      "type": 0,
+      "content": "按先例，兵器不能带出营。",
+      "platformMessageId": "whomi-lvbu-v2-gaoshun-5-3"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1790417565,
+      "type": 0,
+      "content": "弓照册交。我身上那枚跟他儿子换来的箭扣，可以还给老人。你带他来，我亲手给。",
+      "platformMessageId": "whomi-lvbu-v2-gaoshun-5-4"
+    },
+    {
+      "sender": "whomi-fiction-gaoshun",
+      "accountName": "高顺",
+      "timestamp": 1792923000,
+      "type": 0,
+      "content": "营里还在争，您不留下听？",
+      "platformMessageId": "whomi-lvbu-v2-gaoshun-6-1"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1792923055,
+      "type": 0,
+      "content": "再听我就要挑那个顶嘴的罚了。我沿壕走一圈，你先记口供。",
+      "platformMessageId": "whomi-lvbu-v2-gaoshun-6-2"
+    },
+    {
+      "sender": "whomi-fiction-gaoshun",
+      "accountName": "高顺",
+      "timestamp": 1792923110,
+      "type": 0,
+      "content": "派个亲兵陪着？",
+      "platformMessageId": "whomi-lvbu-v2-gaoshun-6-3"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1792923165,
+      "type": 0,
+      "content": "我一个人走。等气下去，我回来听他把话说完。",
+      "platformMessageId": "whomi-lvbu-v2-gaoshun-6-4"
+    }
+  ]
+}

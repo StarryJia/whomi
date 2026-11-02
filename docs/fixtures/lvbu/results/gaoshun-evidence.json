@@ -1,0 +1,169 @@
+{
+  "EI": [],
+  "SN": [
+    {
+      "id": "58910",
+      "ordinal": 1,
+      "text": "我刚过去看了，树根水痕比昨日高。先别信他。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v1-gs01-02"
+    },
+    {
+      "id": "58912",
+      "ordinal": 3,
+      "text": "我牵马试西边那段，水不到肚腹再让队伍过。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v1-gs01-04"
+    },
+    {
+      "id": "58916",
+      "ordinal": 7,
+      "text": "我看过他的手，拇指磨破了，是扣弦姿势不对。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v1-gs02-02"
+    },
+    {
+      "id": "58918",
+      "ordinal": 9,
+      "text": "让他到场上看我拉两回，照着手的位置试，再说换弓。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v1-gs02-04"
+    },
+    {
+      "id": "59032",
+      "ordinal": 7,
+      "text": "叫两个人各教五个生手，三日后看谁教得会。输的人是我旧部也照换。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v2-gaoshun-2-4"
+    },
+    {
+      "id": "58924",
+      "ordinal": 15,
+      "text": "也可能。先往坡侧放一箭，看有没有人动，再决定。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v1-gs03-04"
+    },
+    {
+      "id": "58927",
+      "ordinal": 18,
+      "text": "今日去南坡练，昨夜雨过，正好试马下湿坡。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v1-gs04-01"
+    },
+    {
+      "id": "58962",
+      "ordinal": 53,
+      "text": "清点完给我数目，少了多少也报。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v1-gs09-06"
+    }
+  ],
+  "TF": [
+    {
+      "id": "59028",
+      "ordinal": 3,
+      "text": "这块牌是救急的，谁先来、跟过我几年，都别算进去。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v2-gaoshun-1-4"
+    },
+    {
+      "id": "59032",
+      "ordinal": 7,
+      "text": "叫两个人各教五个生手，三日后看谁教得会。输的人是我旧部也照换。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v2-gaoshun-2-4"
+    },
+    {
+      "id": "59034",
+      "ordinal": 9,
+      "text": "抽签，别把学过的都塞给一边。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v2-gaoshun-2-6"
+    },
+    {
+      "id": "59040",
+      "ordinal": 15,
+      "text": "南灶先修。我的帐子能挪，灶下雨就没法开火。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v2-gaoshun-4-2"
+    },
+    {
+      "id": "59042",
+      "ordinal": 17,
+      "text": "让他看。木料花在哪儿能顶最多人的事，就修哪儿。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v2-gaoshun-4-4"
+    },
+    {
+      "id": "58960",
+      "ordinal": 51,
+      "text": "那收粮，不追。我是想要马，可不能赢一阵就叫全队饿着。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v1-gs09-04"
+    }
+  ],
+  "JP": [
+    {
+      "id": "58929",
+      "ordinal": 20,
+      "text": "西场太平，我想趁今天的泥试一回。粮车让人接。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v1-gs04-03"
+    },
+    {
+      "id": "58934",
+      "ordinal": 25,
+      "text": "前一个时辰照你的来，后面先空着。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v1-gs05-02"
+    },
+    {
+      "id": "58936",
+      "ordinal": 27,
+      "text": "我想先看他们哪样最弱，现场补哪样，不愿为了照单子换场。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v1-gs05-04"
+    },
+    {
+      "id": "58938",
+      "ordinal": 29,
+      "text": "对，东西备齐，次序到了再定。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v1-gs05-06"
+    },
+    {
+      "id": "58939",
+      "ordinal": 30,
+      "text": "马商今日过境，我想临时挑两匹。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v1-gs06-01"
+    },
+    {
+      "id": "58941",
+      "ordinal": 32,
+      "text": "我看中那匹青骢，它伤好了，价钱也降了，错过就没了。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v1-gs06-03"
+    }
+  ]
+}

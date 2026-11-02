@@ -1,0 +1,520 @@
+{
+  "chatlab": {
+    "version": "0.0.2"
+  },
+  "meta": {
+    "name": "貂蝉",
+    "platform": "telegram",
+    "type": "private",
+    "groupId": "whomi-fiction-lvbu-diaochan",
+    "ownerId": "whomi-fiction-lvbu"
+  },
+  "members": [
+    {
+      "platformId": "whomi-fiction-lvbu",
+      "accountName": "吕布"
+    },
+    {
+      "platformId": "whomi-fiction-diaochan",
+      "accountName": "貂蝉"
+    }
+  ],
+  "messages": [
+    {
+      "sender": "whomi-fiction-diaochan",
+      "accountName": "貂蝉",
+      "timestamp": 1780572600,
+      "type": 0,
+      "content": "铺子送来两件披风，你觉得哪件好？",
+      "platformMessageId": "whomi-lvbu-v1-dc01-01"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1780572645,
+      "type": 0,
+      "content": "灰的。我刚摸过，里面厚，领口也不扎。",
+      "platformMessageId": "whomi-lvbu-v1-dc01-02"
+    },
+    {
+      "sender": "whomi-fiction-diaochan",
+      "accountName": "貂蝉",
+      "timestamp": 1780572690,
+      "type": 0,
+      "content": "红的绣得细。",
+      "platformMessageId": "whomi-lvbu-v1-dc01-03"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1780572735,
+      "type": 0,
+      "content": "好看是好看，可你上次骑马，脖子让硬领磨红了。",
+      "platformMessageId": "whomi-lvbu-v1-dc01-04"
+    },
+    {
+      "sender": "whomi-fiction-diaochan",
+      "accountName": "貂蝉",
+      "timestamp": 1780572780,
+      "type": 0,
+      "content": "那留灰的。扣子有点松。",
+      "platformMessageId": "whomi-lvbu-v1-dc01-05"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1780572825,
+      "type": 0,
+      "content": "我叫人补两针，补好你再试。",
+      "platformMessageId": "whomi-lvbu-v1-dc01-06"
+    },
+    {
+      "sender": "whomi-fiction-diaochan",
+      "accountName": "貂蝉",
+      "timestamp": 1781609400,
+      "type": 0,
+      "content": "明日晚饭，我先让茶铺留桌？",
+      "platformMessageId": "whomi-lvbu-v1-dc02-01"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1781609445,
+      "type": 0,
+      "content": "先别定。我明日回来看看街上有什么。",
+      "platformMessageId": "whomi-lvbu-v1-dc02-02"
+    },
+    {
+      "sender": "whomi-fiction-diaochan",
+      "accountName": "貂蝉",
+      "timestamp": 1781609490,
+      "type": 0,
+      "content": "你上回这样，最后没赶上热饭。",
+      "platformMessageId": "whomi-lvbu-v1-dc02-03"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1781609535,
+      "type": 0,
+      "content": "记得。这次饿了就先吃，不必非等那一家。",
+      "platformMessageId": "whomi-lvbu-v1-dc02-04"
+    },
+    {
+      "sender": "whomi-fiction-diaochan",
+      "accountName": "貂蝉",
+      "timestamp": 1781609580,
+      "type": 0,
+      "content": "我可不跟你走遍半条街。",
+      "platformMessageId": "whomi-lvbu-v1-dc02-05"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1781609625,
+      "type": 0,
+      "content": "成，就在桥头两家里挑。",
+      "platformMessageId": "whomi-lvbu-v1-dc02-06"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1782991800,
+      "type": 0,
+      "content": "雨停了，今日别坐车，去河边走走。",
+      "platformMessageId": "whomi-lvbu-v1-dc03-01"
+    },
+    {
+      "sender": "whomi-fiction-diaochan",
+      "accountName": "貂蝉",
+      "timestamp": 1782991845,
+      "type": 0,
+      "content": "不是说去看灯吗？",
+      "platformMessageId": "whomi-lvbu-v1-dc03-02"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1782991890,
+      "type": 0,
+      "content": "路上见河边起了雾，忽然想去。灯明日也能看。",
+      "platformMessageId": "whomi-lvbu-v1-dc03-03"
+    },
+    {
+      "sender": "whomi-fiction-diaochan",
+      "accountName": "貂蝉",
+      "timestamp": 1782991935,
+      "type": 0,
+      "content": "我鞋底薄，那边都是泥。",
+      "platformMessageId": "whomi-lvbu-v1-dc03-04"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1782991980,
+      "type": 0,
+      "content": "那走石桥，到桥头再看你想不想往前。",
+      "platformMessageId": "whomi-lvbu-v1-dc03-05"
+    },
+    {
+      "sender": "whomi-fiction-diaochan",
+      "accountName": "貂蝉",
+      "timestamp": 1782992025,
+      "type": 0,
+      "content": "只走石桥，不许又拐进芦苇里。",
+      "platformMessageId": "whomi-lvbu-v1-dc03-06"
+    },
+    {
+      "sender": "whomi-fiction-diaochan",
+      "accountName": "貂蝉",
+      "timestamp": 1784374200,
+      "type": 0,
+      "content": "灯又灭了，铺子说换整盏。",
+      "platformMessageId": "whomi-lvbu-v1-dc04-01"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1784374245,
+      "type": 0,
+      "content": "先别换。我昨日拨灯芯，它就亮了，底座也没漏油。",
+      "platformMessageId": "whomi-lvbu-v1-dc04-02"
+    },
+    {
+      "sender": "whomi-fiction-diaochan",
+      "accountName": "貂蝉",
+      "timestamp": 1784374290,
+      "type": 0,
+      "content": "你确定不是风？",
+      "platformMessageId": "whomi-lvbu-v1-dc04-03"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1784374335,
+      "type": 0,
+      "content": "我关窗试过。换根灯芯看看，不成再买。",
+      "platformMessageId": "whomi-lvbu-v1-dc04-04"
+    },
+    {
+      "sender": "whomi-fiction-diaochan",
+      "accountName": "貂蝉",
+      "timestamp": 1784374380,
+      "type": 0,
+      "content": "那旧的先放着。",
+      "platformMessageId": "whomi-lvbu-v1-dc04-05"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1784374425,
+      "type": 0,
+      "content": "嗯，今晚点一阵，看还灭不灭。",
+      "platformMessageId": "whomi-lvbu-v1-dc04-06"
+    },
+    {
+      "sender": "whomi-fiction-diaochan",
+      "accountName": "貂蝉",
+      "timestamp": 1785756600,
+      "type": 0,
+      "content": "琴师带了两套弦，说贵的那套余音长。",
+      "platformMessageId": "whomi-lvbu-v1-dc05-01"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1785756645,
+      "type": 0,
+      "content": "你各弹一小段给我听。光听他说，我分不出来。",
+      "platformMessageId": "whomi-lvbu-v1-dc05-02"
+    },
+    {
+      "sender": "whomi-fiction-diaochan",
+      "accountName": "貂蝉",
+      "timestamp": 1785756690,
+      "type": 0,
+      "content": "刚发你的，前一段是旧弦，后一段是新的。",
+      "platformMessageId": "whomi-lvbu-v1-dc05-03"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1785756735,
+      "type": 0,
+      "content": "后一段尾音发尖，倒是旧的听着舒服。",
+      "platformMessageId": "whomi-lvbu-v1-dc05-04"
+    },
+    {
+      "sender": "whomi-fiction-diaochan",
+      "accountName": "貂蝉",
+      "timestamp": 1785756780,
+      "type": 0,
+      "content": "我也嫌新弦绷得太紧。",
+      "platformMessageId": "whomi-lvbu-v1-dc05-05"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1785756825,
+      "type": 0,
+      "content": "先用旧的。价钱贵，听着不顺也没用。",
+      "platformMessageId": "whomi-lvbu-v1-dc05-06"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1787139000,
+      "type": 0,
+      "content": "昨日他们说我只会使戟，你也笑了？",
+      "platformMessageId": "whomi-lvbu-v1-dc06-01"
+    },
+    {
+      "sender": "whomi-fiction-diaochan",
+      "accountName": "貂蝉",
+      "timestamp": 1787139045,
+      "type": 0,
+      "content": "我笑的是后面那句，说你连醉了都不肯下马。",
+      "platformMessageId": "whomi-lvbu-v1-dc06-02"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1787139090,
+      "type": 0,
+      "content": "我听见笑声就走了，以为你也瞧不起我。",
+      "platformMessageId": "whomi-lvbu-v1-dc06-03"
+    },
+    {
+      "sender": "whomi-fiction-diaochan",
+      "accountName": "貂蝉",
+      "timestamp": 1787139135,
+      "type": 0,
+      "content": "下回先问我，别一夜不回话。",
+      "platformMessageId": "whomi-lvbu-v1-dc06-04"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1787139180,
+      "type": 0,
+      "content": "我当时不想听。现在听你说完，倒没那么气了。",
+      "platformMessageId": "whomi-lvbu-v1-dc06-05"
+    },
+    {
+      "sender": "whomi-fiction-diaochan",
+      "accountName": "貂蝉",
+      "timestamp": 1787139225,
+      "type": 0,
+      "content": "那这句也听完：醉了就别骑马。",
+      "platformMessageId": "whomi-lvbu-v1-dc06-06"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1788607800,
+      "type": 0,
+      "content": "给你挑了匹马，明日让人送去。",
+      "platformMessageId": "whomi-lvbu-v1-dc07-01"
+    },
+    {
+      "sender": "whomi-fiction-diaochan",
+      "accountName": "貂蝉",
+      "timestamp": 1788607845,
+      "type": 0,
+      "content": "别送。我这里没人照料。",
+      "platformMessageId": "whomi-lvbu-v1-dc07-02"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1788607890,
+      "type": 0,
+      "content": "马夫也给你找好。",
+      "platformMessageId": "whomi-lvbu-v1-dc07-03"
+    },
+    {
+      "sender": "whomi-fiction-diaochan",
+      "accountName": "貂蝉",
+      "timestamp": 1788607935,
+      "type": 0,
+      "content": "我想出门时借一匹，不想每天多一件要管的事。",
+      "platformMessageId": "whomi-lvbu-v1-dc07-04"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1788607980,
+      "type": 0,
+      "content": "原来你嫌的是这个。那马留我这里，你要用再来牵。",
+      "platformMessageId": "whomi-lvbu-v1-dc07-05"
+    },
+    {
+      "sender": "whomi-fiction-diaochan",
+      "accountName": "貂蝉",
+      "timestamp": 1788608025,
+      "type": 0,
+      "content": "这样就好。以后先问问我。",
+      "platformMessageId": "whomi-lvbu-v1-dc07-06"
+    },
+    {
+      "sender": "whomi-fiction-diaochan",
+      "accountName": "貂蝉",
+      "timestamp": 1790076600,
+      "type": 0,
+      "content": "明日放河灯，你何时来？",
+      "platformMessageId": "whomi-lvbu-v1-dc08-01"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1790076645,
+      "type": 0,
+      "content": "练完骑射就去。沿河有新摊子，我想边走边看。",
+      "platformMessageId": "whomi-lvbu-v1-dc08-02"
+    },
+    {
+      "sender": "whomi-fiction-diaochan",
+      "accountName": "貂蝉",
+      "timestamp": 1790076690,
+      "type": 0,
+      "content": "那我先放，不守着桥口等你。",
+      "platformMessageId": "whomi-lvbu-v1-dc08-03"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1790076735,
+      "type": 0,
+      "content": "行，见面再定去哪儿，别替我排满一晚上。",
+      "platformMessageId": "whomi-lvbu-v1-dc08-04"
+    },
+    {
+      "sender": "whomi-fiction-diaochan",
+      "accountName": "貂蝉",
+      "timestamp": 1790076780,
+      "type": 0,
+      "content": "最后一盏给你留着。",
+      "platformMessageId": "whomi-lvbu-v1-dc08-05"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1790076825,
+      "type": 0,
+      "content": "别怕我来迟，灯给你放也一样。",
+      "platformMessageId": "whomi-lvbu-v1-dc08-06"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1791631800,
+      "type": 0,
+      "content": "你说被管事责备了？我去找他。",
+      "platformMessageId": "whomi-lvbu-v1-dc09-01"
+    },
+    {
+      "sender": "whomi-fiction-diaochan",
+      "accountName": "貂蝉",
+      "timestamp": 1791631845,
+      "type": 0,
+      "content": "先坐一会儿。我今天不想再跟人争。",
+      "platformMessageId": "whomi-lvbu-v1-dc09-02"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1791631890,
+      "type": 0,
+      "content": "就让他这样欺负你？",
+      "platformMessageId": "whomi-lvbu-v1-dc09-03"
+    },
+    {
+      "sender": "whomi-fiction-diaochan",
+      "accountName": "貂蝉",
+      "timestamp": 1791631935,
+      "type": 0,
+      "content": "我只想把这一天说完，不用你立刻替我赢回来。",
+      "platformMessageId": "whomi-lvbu-v1-dc09-04"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1791631980,
+      "type": 0,
+      "content": "好，我听。方才只顾着生气，没问你想怎样。",
+      "platformMessageId": "whomi-lvbu-v1-dc09-05"
+    },
+    {
+      "sender": "whomi-fiction-diaochan",
+      "accountName": "貂蝉",
+      "timestamp": 1791632025,
+      "type": 0,
+      "content": "你肯听，我就能慢慢说。",
+      "platformMessageId": "whomi-lvbu-v1-dc09-06"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1793187000,
+      "type": 0,
+      "content": "我到西门了。董卓说你自己愿意留下？",
+      "platformMessageId": "whomi-lvbu-v1-dc10-01"
+    },
+    {
+      "sender": "whomi-fiction-diaochan",
+      "accountName": "貂蝉",
+      "timestamp": 1793187045,
+      "type": 0,
+      "content": "他当着众人问，我怎么说要走？",
+      "platformMessageId": "whomi-lvbu-v1-dc10-02"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1793187090,
+      "type": 0,
+      "content": "我进去接你。",
+      "platformMessageId": "whomi-lvbu-v1-dc10-03"
+    },
+    {
+      "sender": "whomi-fiction-diaochan",
+      "accountName": "貂蝉",
+      "timestamp": 1793187135,
+      "type": 0,
+      "content": "你把我带走，明日他问起来，还是我答。",
+      "platformMessageId": "whomi-lvbu-v1-dc10-04"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1793187180,
+      "type": 0,
+      "content": "那你要我怎么办？",
+      "platformMessageId": "whomi-lvbu-v1-dc10-05"
+    },
+    {
+      "sender": "whomi-fiction-diaochan",
+      "accountName": "貂蝉",
+      "timestamp": 1793187225,
+      "type": 0,
+      "content": "等我一会儿，让我自己同他说。",
+      "platformMessageId": "whomi-lvbu-v1-dc10-06"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1793187270,
+      "type": 0,
+      "content": "好。我去桥边等，不进来。",
+      "platformMessageId": "whomi-lvbu-v1-dc10-07"
+    },
+    {
+      "sender": "whomi-fiction-diaochan",
+      "accountName": "貂蝉",
+      "timestamp": 1793187315,
+      "type": 0,
+      "content": "外头冷，去茶铺坐。我出来找你。",
+      "platformMessageId": "whomi-lvbu-v1-dc10-08"
+    }
+  ]
+}

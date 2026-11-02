@@ -32,15 +32,17 @@
 
 ## 界面截图
 
-截图来自 [Whomi 0.1.10 桌面版](docs/releases/0.1.10-windows-validation.md)。聊天记录和模型回复均为虚构示例。
+截图来自 Whomi 0.1.11 正式版。以吕布为本人，使用与貂蝉、董卓、高顺的虚构聊天及已保存的 GPT-6.1-Sol 记忆与问答。[查看截图核验记录](docs/fixtures/lvbu/results/0.1.11/README.md)。
 
 ### 个人总览
 
 ![个人总览](docs/readme/screenshots/personal-overview.png)
 
-### 选择原文提问
+### 从这段聊天看，有什么是我没留意到的？
 
-![选择原文提问](docs/readme/screenshots/conversation-question.png)
+![吕布引用西门八句原话，回看貂蝉为什么要他等，以及她最后对他的照顾](docs/readme/screenshots/conversation-question.png)
+
+吕布想进去接人，貂蝉却在想明天谁来回答董卓。再读到最后一句，她想自己去说，也惦记着在外面等她的吕布。[试一次引用提问](docs/getting-started.md#试一次引用提问)。
 
 ### 记忆仓库
 
@@ -52,7 +54,7 @@
 
 ## 使用指南
 
-按[使用指南](docs/getting-started.md)启动 Whomi 后，点侧栏「会话」旁的 **＋**，选择[周六搬家示例](docs/readme/weekend.telegram.json)。点「打开会话」，选择「小满」为本人，就能读到这段虚构聊天的 8 条原文。
+启动 Whomi 后，点侧栏「会话」旁的 **＋** 导入[貂蝉会话](docs/fixtures/lvbu/conversations/diaochan.chatlab.json)，打开会话并选「吕布」为本人。最后八句就是截图里的西门之约。按[使用指南](docs/getting-started.md#先试一段虚构聊天)导入另外两段关系，即可复现这组测试的输入。
 
 聊天记录保存在本机，阅读原文无需连接模型。提问或整理记忆时，相关材料会发送给你选择的模型服务。详见[模型设置与引用提问](docs/getting-started.md#试一次引用提问)。
 

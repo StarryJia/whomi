@@ -1,0 +1,411 @@
+{
+  "revision": "lvbu-v1",
+  "fictional": true,
+  "self": "吕布",
+  "files": [
+    {
+      "path": "conversations/diaochan.chatlab.json",
+      "sha256": "0e0a890526a3c4d86c9ba768af933779ad7b490fd7dc50d0ef21c447e74dea5c",
+      "messages": 62,
+      "selfMessages": 31,
+      "events": [
+        {
+          "id": "dc01",
+          "title": "挑披风",
+          "date": "2026-06-04",
+          "messageIds": [
+            "whomi-lvbu-v1-dc01-01",
+            "whomi-lvbu-v1-dc01-02",
+            "whomi-lvbu-v1-dc01-03",
+            "whomi-lvbu-v1-dc01-04",
+            "whomi-lvbu-v1-dc01-05",
+            "whomi-lvbu-v1-dc01-06"
+          ],
+          "authorCheck": "判断依据是触感及上次磨伤，不应补写对方生病。"
+        },
+        {
+          "id": "dc02",
+          "title": "晚饭去哪",
+          "date": "2026-06-16",
+          "messageIds": [
+            "whomi-lvbu-v1-dc02-01",
+            "whomi-lvbu-v1-dc02-02",
+            "whomi-lvbu-v1-dc02-03",
+            "whomi-lvbu-v1-dc02-04",
+            "whomi-lvbu-v1-dc02-05",
+            "whomi-lvbu-v1-dc02-06"
+          ],
+          "authorCheck": "保留选择与接受范围约束并存，不把约定范围写成预订成功。"
+        },
+        {
+          "id": "dc03",
+          "title": "雨中改道",
+          "date": "2026-07-02",
+          "messageIds": [
+            "whomi-lvbu-v1-dc03-01",
+            "whomi-lvbu-v1-dc03-02",
+            "whomi-lvbu-v1-dc03-03",
+            "whomi-lvbu-v1-dc03-04",
+            "whomi-lvbu-v1-dc03-05",
+            "whomi-lvbu-v1-dc03-06"
+          ],
+          "authorCheck": "临时改意有自发选择，不等同于所有变动都能接受。"
+        },
+        {
+          "id": "dc04",
+          "title": "修灯",
+          "date": "2026-07-18",
+          "messageIds": [
+            "whomi-lvbu-v1-dc04-01",
+            "whomi-lvbu-v1-dc04-02",
+            "whomi-lvbu-v1-dc04-03",
+            "whomi-lvbu-v1-dc04-04",
+            "whomi-lvbu-v1-dc04-05",
+            "whomi-lvbu-v1-dc04-06"
+          ],
+          "authorCheck": "是排查步骤与待验证判断；不能说已彻底修好。"
+        },
+        {
+          "id": "dc05",
+          "title": "挑琴弦",
+          "date": "2026-08-03",
+          "messageIds": [
+            "whomi-lvbu-v1-dc05-01",
+            "whomi-lvbu-v1-dc05-02",
+            "whomi-lvbu-v1-dc05-03",
+            "whomi-lvbu-v1-dc05-04",
+            "whomi-lvbu-v1-dc05-05",
+            "whomi-lvbu-v1-dc05-06"
+          ],
+          "authorCheck": "聊天仅含对声音的描述，测试文件不包含真实音频。"
+        },
+        {
+          "id": "dc06",
+          "title": "席上的笑话",
+          "date": "2026-08-19",
+          "messageIds": [
+            "whomi-lvbu-v1-dc06-01",
+            "whomi-lvbu-v1-dc06-02",
+            "whomi-lvbu-v1-dc06-03",
+            "whomi-lvbu-v1-dc06-04",
+            "whomi-lvbu-v1-dc06-05",
+            "whomi-lvbu-v1-dc06-06"
+          ],
+          "authorCheck": "有误读、逃避和事后修正；不能诊断疾病或断言谁蓄意羞辱。"
+        },
+        {
+          "id": "dc07",
+          "title": "没有送出的马",
+          "date": "2026-09-05",
+          "messageIds": [
+            "whomi-lvbu-v1-dc07-01",
+            "whomi-lvbu-v1-dc07-02",
+            "whomi-lvbu-v1-dc07-03",
+            "whomi-lvbu-v1-dc07-04",
+            "whomi-lvbu-v1-dc07-05",
+            "whomi-lvbu-v1-dc07-06"
+          ],
+          "authorCheck": "关心起初变成代替决定，随后调整；不能写成已赠马。"
+        },
+        {
+          "id": "dc08",
+          "title": "放河灯",
+          "date": "2026-09-22",
+          "messageIds": [
+            "whomi-lvbu-v1-dc08-01",
+            "whomi-lvbu-v1-dc08-02",
+            "whomi-lvbu-v1-dc08-03",
+            "whomi-lvbu-v1-dc08-04",
+            "whomi-lvbu-v1-dc08-05",
+            "whomi-lvbu-v1-dc08-06"
+          ],
+          "authorCheck": "对约会留出弹性，但不推断实际是否赴约。"
+        },
+        {
+          "id": "dc09",
+          "title": "等她说完",
+          "date": "2026-10-10",
+          "messageIds": [
+            "whomi-lvbu-v1-dc09-01",
+            "whomi-lvbu-v1-dc09-02",
+            "whomi-lvbu-v1-dc09-03",
+            "whomi-lvbu-v1-dc09-04",
+            "whomi-lvbu-v1-dc09-05",
+            "whomi-lvbu-v1-dc09-06"
+          ],
+          "authorCheck": "留有当事人明确请求；倾听不是证明所有关系都同样体贴。"
+        },
+        {
+          "id": "dc10",
+          "title": "西门之约",
+          "date": "2026-10-28",
+          "messageIds": [
+            "whomi-lvbu-v1-dc10-01",
+            "whomi-lvbu-v1-dc10-02",
+            "whomi-lvbu-v1-dc10-03",
+            "whomi-lvbu-v1-dc10-04",
+            "whomi-lvbu-v1-dc10-05",
+            "whomi-lvbu-v1-dc10-06",
+            "whomi-lvbu-v1-dc10-07",
+            "whomi-lvbu-v1-dc10-08"
+          ],
+          "authorCheck": "固定展示的八句原文。董卓的意图、貂蝉最终离开与否均未被直接证实。"
+        }
+      ]
+    },
+    {
+      "path": "conversations/dongzhuo.chatlab.json",
+      "sha256": "13a27b94f76b6953a49931dfdef8bb5ddd8406cb607950ad209c68b7a396e4ba",
+      "messages": 48,
+      "selfMessages": 24,
+      "events": [
+        {
+          "id": "dz01",
+          "title": "选马",
+          "date": "2026-06-06",
+          "messageIds": [
+            "whomi-lvbu-v1-dz01-01",
+            "whomi-lvbu-v1-dz01-02",
+            "whomi-lvbu-v1-dz01-03",
+            "whomi-lvbu-v1-dz01-04",
+            "whomi-lvbu-v1-dz01-05",
+            "whomi-lvbu-v1-dz01-06"
+          ],
+          "authorCheck": "试骑是已发生，坡路复试尚未发生。"
+        },
+        {
+          "id": "dz02",
+          "title": "巡城路线",
+          "date": "2026-06-21",
+          "messageIds": [
+            "whomi-lvbu-v1-dz02-01",
+            "whomi-lvbu-v1-dz02-02",
+            "whomi-lvbu-v1-dz02-03",
+            "whomi-lvbu-v1-dz02-04",
+            "whomi-lvbu-v1-dz02-05",
+            "whomi-lvbu-v1-dz02-06"
+          ],
+          "authorCheck": "弹性是吕布主动提出；接受一项期限是反向材料。"
+        },
+        {
+          "id": "dz03",
+          "title": "功劳记在谁名下",
+          "date": "2026-07-09",
+          "messageIds": [
+            "whomi-lvbu-v1-dz03-01",
+            "whomi-lvbu-v1-dz03-02",
+            "whomi-lvbu-v1-dz03-03",
+            "whomi-lvbu-v1-dz03-04",
+            "whomi-lvbu-v1-dz03-05",
+            "whomi-lvbu-v1-dz03-06"
+          ],
+          "authorCheck": "求认可包含自身利益；奖赏是否纠正仍未知。"
+        },
+        {
+          "id": "dz04",
+          "title": "试新戟",
+          "date": "2026-07-26",
+          "messageIds": [
+            "whomi-lvbu-v1-dz04-01",
+            "whomi-lvbu-v1-dz04-02",
+            "whomi-lvbu-v1-dz04-03",
+            "whomi-lvbu-v1-dz04-04",
+            "whomi-lvbu-v1-dz04-05",
+            "whomi-lvbu-v1-dz04-06"
+          ],
+          "authorCheck": "具体使用反馈支持选择，不应推断拒绝一切新事物。"
+        },
+        {
+          "id": "dz05",
+          "title": "临时看射猎",
+          "date": "2026-08-12",
+          "messageIds": [
+            "whomi-lvbu-v1-dz05-01",
+            "whomi-lvbu-v1-dz05-02",
+            "whomi-lvbu-v1-dz05-03",
+            "whomi-lvbu-v1-dz05-04",
+            "whomi-lvbu-v1-dz05-05",
+            "whomi-lvbu-v1-dz05-06"
+          ],
+          "authorCheck": "保留任性和外部限制；不能把见人自动等同外向。"
+        },
+        {
+          "id": "dz06",
+          "title": "粮车过桥",
+          "date": "2026-08-29",
+          "messageIds": [
+            "whomi-lvbu-v1-dz06-01",
+            "whomi-lvbu-v1-dz06-02",
+            "whomi-lvbu-v1-dz06-03",
+            "whomi-lvbu-v1-dz06-04",
+            "whomi-lvbu-v1-dz06-05",
+            "whomi-lvbu-v1-dz06-06"
+          ],
+          "authorCheck": "现场检查、取舍和严格时限同时存在，不能只保留单一人格证据。"
+        },
+        {
+          "id": "dz07",
+          "title": "被问行踪",
+          "date": "2026-09-16",
+          "messageIds": [
+            "whomi-lvbu-v1-dz07-01",
+            "whomi-lvbu-v1-dz07-02",
+            "whomi-lvbu-v1-dz07-03",
+            "whomi-lvbu-v1-dz07-04",
+            "whomi-lvbu-v1-dz07-05",
+            "whomi-lvbu-v1-dz07-06"
+          ],
+          "authorCheck": "被猜疑后的急切与举证并存，不将对话写成已查明的阴谋。"
+        },
+        {
+          "id": "dz08",
+          "title": "席位未定",
+          "date": "2026-10-08",
+          "messageIds": [
+            "whomi-lvbu-v1-dz08-01",
+            "whomi-lvbu-v1-dz08-02",
+            "whomi-lvbu-v1-dz08-03",
+            "whomi-lvbu-v1-dz08-04",
+            "whomi-lvbu-v1-dz08-05",
+            "whomi-lvbu-v1-dz08-06"
+          ],
+          "authorCheck": "偏好延后选择，但接受截止时间；没有实际名单。"
+        }
+      ]
+    },
+    {
+      "path": "conversations/gaoshun.chatlab.json",
+      "sha256": "110ec18d0001552596074fca2b6a08f345dea2964810d335b40bf85b5a1e759b",
+      "messages": 54,
+      "selfMessages": 27,
+      "events": [
+        {
+          "id": "gs01",
+          "title": "渡口水痕",
+          "date": "2026-06-09",
+          "messageIds": [
+            "whomi-lvbu-v1-gs01-01",
+            "whomi-lvbu-v1-gs01-02",
+            "whomi-lvbu-v1-gs01-03",
+            "whomi-lvbu-v1-gs01-04",
+            "whomi-lvbu-v1-gs01-05",
+            "whomi-lvbu-v1-gs01-06"
+          ],
+          "authorCheck": "有亲眼所见与计划验证，不应写成已经全军渡河。"
+        },
+        {
+          "id": "gs02",
+          "title": "新兵握弓",
+          "date": "2026-06-25",
+          "messageIds": [
+            "whomi-lvbu-v1-gs02-01",
+            "whomi-lvbu-v1-gs02-02",
+            "whomi-lvbu-v1-gs02-03",
+            "whomi-lvbu-v1-gs02-04",
+            "whomi-lvbu-v1-gs02-05",
+            "whomi-lvbu-v1-gs02-06"
+          ],
+          "authorCheck": "不能把教学场景扩写为医疗建议；观摩和实际练习有区别。"
+        },
+        {
+          "id": "gs03",
+          "title": "坡后伏弓",
+          "date": "2026-07-12",
+          "messageIds": [
+            "whomi-lvbu-v1-gs03-01",
+            "whomi-lvbu-v1-gs03-02",
+            "whomi-lvbu-v1-gs03-03",
+            "whomi-lvbu-v1-gs03-04",
+            "whomi-lvbu-v1-gs03-05",
+            "whomi-lvbu-v1-gs03-06"
+          ],
+          "authorCheck": "提出伏兵可能但未证实；须保留不确定性。"
+        },
+        {
+          "id": "gs04",
+          "title": "临时换训练场",
+          "date": "2026-07-30",
+          "messageIds": [
+            "whomi-lvbu-v1-gs04-01",
+            "whomi-lvbu-v1-gs04-02",
+            "whomi-lvbu-v1-gs04-03",
+            "whomi-lvbu-v1-gs04-04",
+            "whomi-lvbu-v1-gs04-05",
+            "whomi-lvbu-v1-gs04-06"
+          ],
+          "authorCheck": "临时变更确有协调成本，不把建议误记为既成训练成果。"
+        },
+        {
+          "id": "gs05",
+          "title": "明日的训练单",
+          "date": "2026-08-15",
+          "messageIds": [
+            "whomi-lvbu-v1-gs05-01",
+            "whomi-lvbu-v1-gs05-02",
+            "whomi-lvbu-v1-gs05-03",
+            "whomi-lvbu-v1-gs05-04",
+            "whomi-lvbu-v1-gs05-05",
+            "whomi-lvbu-v1-gs05-06"
+          ],
+          "authorCheck": "备齐器材与不固定次序并存，不简单等于毫无准备。"
+        },
+        {
+          "id": "gs06",
+          "title": "临时买马",
+          "date": "2026-09-01",
+          "messageIds": [
+            "whomi-lvbu-v1-gs06-01",
+            "whomi-lvbu-v1-gs06-02",
+            "whomi-lvbu-v1-gs06-03",
+            "whomi-lvbu-v1-gs06-04",
+            "whomi-lvbu-v1-gs06-05",
+            "whomi-lvbu-v1-gs06-06"
+          ],
+          "authorCheck": "机会驱动而非完全无视约束；付款及成交未得到后续确认。"
+        },
+        {
+          "id": "gs07",
+          "title": "记功争执",
+          "date": "2026-09-18",
+          "messageIds": [
+            "whomi-lvbu-v1-gs07-01",
+            "whomi-lvbu-v1-gs07-02",
+            "whomi-lvbu-v1-gs07-03",
+            "whomi-lvbu-v1-gs07-04",
+            "whomi-lvbu-v1-gs07-05",
+            "whomi-lvbu-v1-gs07-06"
+          ],
+          "authorCheck": "保留争功动机与最后接受区分，不能塑造成从不计较的上级。"
+        },
+        {
+          "id": "gs08",
+          "title": "罚误岗",
+          "date": "2026-10-03",
+          "messageIds": [
+            "whomi-lvbu-v1-gs08-01",
+            "whomi-lvbu-v1-gs08-02",
+            "whomi-lvbu-v1-gs08-03",
+            "whomi-lvbu-v1-gs08-04",
+            "whomi-lvbu-v1-gs08-05",
+            "whomi-lvbu-v1-gs08-06"
+          ],
+          "authorCheck": "处理标准与避免公开羞辱并存，不由此断定对所有人都公正。"
+        },
+        {
+          "id": "gs09",
+          "title": "留粮还是追击",
+          "date": "2026-10-20",
+          "messageIds": [
+            "whomi-lvbu-v1-gs09-01",
+            "whomi-lvbu-v1-gs09-02",
+            "whomi-lvbu-v1-gs09-03",
+            "whomi-lvbu-v1-gs09-04",
+            "whomi-lvbu-v1-gs09-05",
+            "whomi-lvbu-v1-gs09-06"
+          ],
+          "authorCheck": "明确权衡欲望与补给，不能添加获得多少粮马的虚构结果。"
+        }
+      ]
+    }
+  ]
+}

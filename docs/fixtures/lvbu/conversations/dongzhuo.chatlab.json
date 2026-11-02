@@ -1,0 +1,408 @@
+{
+  "chatlab": {
+    "version": "0.0.2"
+  },
+  "meta": {
+    "name": "董卓",
+    "platform": "telegram",
+    "type": "private",
+    "groupId": "whomi-fiction-lvbu-dongzhuo",
+    "ownerId": "whomi-fiction-lvbu"
+  },
+  "members": [
+    {
+      "platformId": "whomi-fiction-lvbu",
+      "accountName": "吕布"
+    },
+    {
+      "platformId": "whomi-fiction-dongzhuo",
+      "accountName": "董卓"
+    }
+  ],
+  "messages": [
+    {
+      "sender": "whomi-fiction-dongzhuo",
+      "accountName": "董卓",
+      "timestamp": 1780745400,
+      "type": 0,
+      "content": "新送来两匹马，黑马来头好，给你如何？",
+      "platformMessageId": "whomi-lvbu-v1-dz01-01"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1780745445,
+      "type": 0,
+      "content": "我骑过了，转弯时后腿发软。我选那匹枣红的。",
+      "platformMessageId": "whomi-lvbu-v1-dz01-02"
+    },
+    {
+      "sender": "whomi-fiction-dongzhuo",
+      "accountName": "董卓",
+      "timestamp": 1780745490,
+      "type": 0,
+      "content": "枣红的个头小。",
+      "platformMessageId": "whomi-lvbu-v1-dz01-03"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1780745535,
+      "type": 0,
+      "content": "跑完一圈气还匀，急停也稳。上阵我要这个。",
+      "platformMessageId": "whomi-lvbu-v1-dz01-04"
+    },
+    {
+      "sender": "whomi-fiction-dongzhuo",
+      "accountName": "董卓",
+      "timestamp": 1780745580,
+      "type": 0,
+      "content": "随你。别挑完又换。",
+      "platformMessageId": "whomi-lvbu-v1-dz01-05"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1780745625,
+      "type": 0,
+      "content": "先留它，我明日再跑趟坡路。",
+      "platformMessageId": "whomi-lvbu-v1-dz01-06"
+    },
+    {
+      "sender": "whomi-fiction-dongzhuo",
+      "accountName": "董卓",
+      "timestamp": 1782041400,
+      "type": 0,
+      "content": "下月巡城，先把每日走哪一门报来。",
+      "platformMessageId": "whomi-lvbu-v1-dz02-01"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1782041445,
+      "type": 0,
+      "content": "人数我报。路不想排死，到时看哪处有事就去哪处。",
+      "platformMessageId": "whomi-lvbu-v1-dz02-02"
+    },
+    {
+      "sender": "whomi-fiction-dongzhuo",
+      "accountName": "董卓",
+      "timestamp": 1782041490,
+      "type": 0,
+      "content": "你总要让人找得到。",
+      "platformMessageId": "whomi-lvbu-v1-dz02-03"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1782041535,
+      "type": 0,
+      "content": "我每次出营留口信，改道再派人回报。",
+      "platformMessageId": "whomi-lvbu-v1-dz02-04"
+    },
+    {
+      "sender": "whomi-fiction-dongzhuo",
+      "accountName": "董卓",
+      "timestamp": 1782041580,
+      "type": 0,
+      "content": "至少北门三日去一次。",
+      "platformMessageId": "whomi-lvbu-v1-dz02-05"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1782041625,
+      "type": 0,
+      "content": "可以，这条记下，其他我到跟前再定。",
+      "platformMessageId": "whomi-lvbu-v1-dz02-06"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1783596600,
+      "type": 0,
+      "content": "昨日那队伏兵是我带人冲散的，赏单怎么只写胡轸？",
+      "platformMessageId": "whomi-lvbu-v1-dz03-01"
+    },
+    {
+      "sender": "whomi-fiction-dongzhuo",
+      "accountName": "董卓",
+      "timestamp": 1783596645,
+      "type": 0,
+      "content": "他统领全军，你还计较这几个字？",
+      "platformMessageId": "whomi-lvbu-v1-dz03-02"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1783596690,
+      "type": 0,
+      "content": "赏钱可以晚给，我的人拼了命，名字不能抹掉。",
+      "platformMessageId": "whomi-lvbu-v1-dz03-03"
+    },
+    {
+      "sender": "whomi-fiction-dongzhuo",
+      "accountName": "董卓",
+      "timestamp": 1783596735,
+      "type": 0,
+      "content": "你是替兵说话，还是替自己？",
+      "platformMessageId": "whomi-lvbu-v1-dz03-04"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1783596780,
+      "type": 0,
+      "content": "都有。我做的事，不肯认到别人头上。",
+      "platformMessageId": "whomi-lvbu-v1-dz03-05"
+    },
+    {
+      "sender": "whomi-fiction-dongzhuo",
+      "accountName": "董卓",
+      "timestamp": 1783596825,
+      "type": 0,
+      "content": "把出阵人数报来，再议。",
+      "platformMessageId": "whomi-lvbu-v1-dz03-06"
+    },
+    {
+      "sender": "whomi-fiction-dongzhuo",
+      "accountName": "董卓",
+      "timestamp": 1785065400,
+      "type": 0,
+      "content": "这柄新戟花了不少钱，你拿去。",
+      "platformMessageId": "whomi-lvbu-v1-dz04-01"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1785065445,
+      "type": 0,
+      "content": "我方才试了，柄粗半寸，回手不顺。",
+      "platformMessageId": "whomi-lvbu-v1-dz04-02"
+    },
+    {
+      "sender": "whomi-fiction-dongzhuo",
+      "accountName": "董卓",
+      "timestamp": 1785065490,
+      "type": 0,
+      "content": "用了自然就顺了。",
+      "platformMessageId": "whomi-lvbu-v1-dz04-03"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1785065535,
+      "type": 0,
+      "content": "眼下要出阵，我仍用旧的。新的先磨细握处，再试。",
+      "platformMessageId": "whomi-lvbu-v1-dz04-04"
+    },
+    {
+      "sender": "whomi-fiction-dongzhuo",
+      "accountName": "董卓",
+      "timestamp": 1785065580,
+      "type": 0,
+      "content": "别把好东西糟蹋了。",
+      "platformMessageId": "whomi-lvbu-v1-dz04-05"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1785065625,
+      "type": 0,
+      "content": "只改握的地方，刃不动。",
+      "platformMessageId": "whomi-lvbu-v1-dz04-06"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1786534200,
+      "type": 0,
+      "content": "下午我想去西郊看看，听说来了个会射连箭的。",
+      "platformMessageId": "whomi-lvbu-v1-dz05-01"
+    },
+    {
+      "sender": "whomi-fiction-dongzhuo",
+      "accountName": "董卓",
+      "timestamp": 1786534245,
+      "type": 0,
+      "content": "你早上不是说去马场？",
+      "platformMessageId": "whomi-lvbu-v1-dz05-02"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1786534290,
+      "type": 0,
+      "content": "马场哪日都能去，那人明早就走。我改今日去见他。",
+      "platformMessageId": "whomi-lvbu-v1-dz05-03"
+    },
+    {
+      "sender": "whomi-fiction-dongzhuo",
+      "accountName": "董卓",
+      "timestamp": 1786534335,
+      "type": 0,
+      "content": "晚宴别误了。",
+      "platformMessageId": "whomi-lvbu-v1-dz05-04"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1786534380,
+      "type": 0,
+      "content": "到时候看还能射几轮，真晚了我让人回来报。",
+      "platformMessageId": "whomi-lvbu-v1-dz05-05"
+    },
+    {
+      "sender": "whomi-fiction-dongzhuo",
+      "accountName": "董卓",
+      "timestamp": 1786534425,
+      "type": 0,
+      "content": "报信不能替你入席，酉时回来。",
+      "platformMessageId": "whomi-lvbu-v1-dz05-06"
+    },
+    {
+      "sender": "whomi-fiction-dongzhuo",
+      "accountName": "董卓",
+      "timestamp": 1788003000,
+      "type": 0,
+      "content": "新桥近，你带粮车从那里过。",
+      "platformMessageId": "whomi-lvbu-v1-dz06-01"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1788003045,
+      "type": 0,
+      "content": "不能走。我上午踩过，东侧两块板浮了，空马踩上去都响。",
+      "platformMessageId": "whomi-lvbu-v1-dz06-02"
+    },
+    {
+      "sender": "whomi-fiction-dongzhuo",
+      "accountName": "董卓",
+      "timestamp": 1788003090,
+      "type": 0,
+      "content": "守桥的说已经修好。",
+      "platformMessageId": "whomi-lvbu-v1-dz06-03"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1788003135,
+      "type": 0,
+      "content": "我把那两块的位置画给他。重车走旧桥，多半个时辰也得走。",
+      "platformMessageId": "whomi-lvbu-v1-dz06-04"
+    },
+    {
+      "sender": "whomi-fiction-dongzhuo",
+      "accountName": "董卓",
+      "timestamp": 1788003180,
+      "type": 0,
+      "content": "今晚之前必须到。",
+      "platformMessageId": "whomi-lvbu-v1-dz06-05"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1788003225,
+      "type": 0,
+      "content": "那现在就发车，不等后队。",
+      "platformMessageId": "whomi-lvbu-v1-dz06-06"
+    },
+    {
+      "sender": "whomi-fiction-dongzhuo",
+      "accountName": "董卓",
+      "timestamp": 1789558200,
+      "type": 0,
+      "content": "有人说你昨夜私见外客。",
+      "platformMessageId": "whomi-lvbu-v1-dz07-01"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1789558245,
+      "type": 0,
+      "content": "谁说的？我整夜在营里点马。",
+      "platformMessageId": "whomi-lvbu-v1-dz07-02"
+    },
+    {
+      "sender": "whomi-fiction-dongzhuo",
+      "accountName": "董卓",
+      "timestamp": 1789558290,
+      "type": 0,
+      "content": "只是问你一句，急什么。",
+      "platformMessageId": "whomi-lvbu-v1-dz07-03"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1789558335,
+      "type": 0,
+      "content": "您若不信，叫守门的来。我不愿背着这句话做事。",
+      "platformMessageId": "whomi-lvbu-v1-dz07-04"
+    },
+    {
+      "sender": "whomi-fiction-dongzhuo",
+      "accountName": "董卓",
+      "timestamp": 1789558380,
+      "type": 0,
+      "content": "明日到我这里说。",
+      "platformMessageId": "whomi-lvbu-v1-dz07-05"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1789558425,
+      "type": 0,
+      "content": "好，我带昨夜的名册来。",
+      "platformMessageId": "whomi-lvbu-v1-dz07-06"
+    },
+    {
+      "sender": "whomi-fiction-dongzhuo",
+      "accountName": "董卓",
+      "timestamp": 1791459000,
+      "type": 0,
+      "content": "后日来客，今日就把你手下同席的人定下。",
+      "platformMessageId": "whomi-lvbu-v1-dz08-01"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1791459045,
+      "type": 0,
+      "content": "先给我留三个位子，人后日再挑。",
+      "platformMessageId": "whomi-lvbu-v1-dz08-02"
+    },
+    {
+      "sender": "whomi-fiction-dongzhuo",
+      "accountName": "董卓",
+      "timestamp": 1791459090,
+      "type": 0,
+      "content": "一顿饭也不能早定？",
+      "platformMessageId": "whomi-lvbu-v1-dz08-03"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1791459135,
+      "type": 0,
+      "content": "谁那日轮休还没准。我想留着名额，临近了换人也方便。",
+      "platformMessageId": "whomi-lvbu-v1-dz08-04"
+    },
+    {
+      "sender": "whomi-fiction-dongzhuo",
+      "accountName": "董卓",
+      "timestamp": 1791459180,
+      "type": 0,
+      "content": "明晚之前给我名单。",
+      "platformMessageId": "whomi-lvbu-v1-dz08-05"
+    },
+    {
+      "sender": "whomi-fiction-lvbu",
+      "accountName": "吕布",
+      "timestamp": 1791459225,
+      "type": 0,
+      "content": "行，明晚给，今日先不点人。",
+      "platformMessageId": "whomi-lvbu-v1-dz08-06"
+    }
+  ]
+}

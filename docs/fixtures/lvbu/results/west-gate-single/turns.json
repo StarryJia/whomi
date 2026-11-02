@@ -1,0 +1,47 @@
+{
+  "appVersion": "0.1.10",
+  "provider": "openai-codex",
+  "conversation": "貂蝉",
+  "threadId": "20",
+  "sourceIds": [
+    "whomi-lvbu-v1-dc10-01",
+    "whomi-lvbu-v1-dc10-02",
+    "whomi-lvbu-v1-dc10-03",
+    "whomi-lvbu-v1-dc10-04",
+    "whomi-lvbu-v1-dc10-05",
+    "whomi-lvbu-v1-dc10-06",
+    "whomi-lvbu-v1-dc10-07",
+    "whomi-lvbu-v1-dc10-08"
+  ],
+  "turns": [
+    {
+      "id": "13",
+      "prompt": "她说「他当着众人问，我怎么说要走？」我怎么就听成了她要我进去接？拿我们以前的一件事比一比，三句话就好。",
+      "text": "你可能先听见了她“想走却不好开口”的为难，便把“她不愿留下”接成了“她需要我进去接”，中间少问了一句她想怎么处理。\n这和以前她被管事责备、你立刻想替她出面那次很像：你急着替她解围，她当时却只想让你听她把话讲完。\n这回她要的也不是你替她带走人，而是等她自己说清楚；你后来答应去桥边等，才对上了她真正提出的需要。",
+      "model": "gpt-6.1-sol",
+      "thinkingLevel": "high",
+      "state": "completed",
+      "usage": {
+        "inputTokens": 2343,
+        "totalInputTokens": 2343,
+        "outputTokens": 137,
+        "cacheReadTokens": 0,
+        "durationMs": 10216,
+        "outputTokensPerSecond": 13.410336726703212,
+        "firstTokenMs": 3792,
+        "startedAt": 1793623429543,
+        "completedAt": 1793623439759
+      },
+      "referenceIds": [
+        "59017",
+        "59018",
+        "59019",
+        "59020",
+        "59021",
+        "59022",
+        "59023",
+        "59024"
+      ]
+    }
+  ]
+}

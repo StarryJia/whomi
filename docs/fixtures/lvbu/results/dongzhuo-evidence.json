@@ -1,0 +1,169 @@
+{
+  "EI": [],
+  "SN": [
+    {
+      "id": "58862",
+      "ordinal": 1,
+      "text": "我骑过了，转弯时后腿发软。我选那匹枣红的。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v1-dz01-02"
+    },
+    {
+      "id": "58864",
+      "ordinal": 3,
+      "text": "跑完一圈气还匀，急停也稳。上阵我要这个。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v1-dz01-04"
+    },
+    {
+      "id": "58866",
+      "ordinal": 5,
+      "text": "先留它，我明日再跑趟坡路。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v1-dz01-06"
+    },
+    {
+      "id": "59056",
+      "ordinal": 5,
+      "text": "老赵的仓还满，河边那户的稻子是真淹了。我去过。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v2-dongzhuo-2-2"
+    },
+    {
+      "id": "58880",
+      "ordinal": 19,
+      "text": "我方才试了，柄粗半寸，回手不顺。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v1-dz04-02"
+    },
+    {
+      "id": "58882",
+      "ordinal": 21,
+      "text": "眼下要出阵，我仍用旧的。新的先磨细握处，再试。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v1-dz04-04"
+    },
+    {
+      "id": "59064",
+      "ordinal": 13,
+      "text": "军印失了算我的。把两辆车的封扣、锁眼都列给我。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v2-dongzhuo-4-2"
+    },
+    {
+      "id": "58892",
+      "ordinal": 31,
+      "text": "不能走。我上午踩过，东侧两块板浮了，空马踩上去都响。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v1-dz06-02"
+    },
+    {
+      "id": "58894",
+      "ordinal": 33,
+      "text": "我把那两块的位置画给他。重车走旧桥，多半个时辰也得走。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v1-dz06-04"
+    }
+  ],
+  "TF": [
+    {
+      "id": "59052",
+      "ordinal": 1,
+      "text": "先问那天一共有几个牵马的。若说为那一程给赏，就人人照路程领。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v2-dongzhuo-1-2"
+    },
+    {
+      "id": "59054",
+      "ordinal": 3,
+      "text": "所以更不能只赏他。我这匹裁开，按每个人走的里数分。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v2-dongzhuo-1-4"
+    },
+    {
+      "id": "59058",
+      "ordinal": 7,
+      "text": "我看的是还能拿出多少粮。谁真遭了灾谁缓，明年换作老赵，我也这样算。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v2-dongzhuo-2-4"
+    },
+    {
+      "id": "59066",
+      "ordinal": 15,
+      "text": "价钱一样，就看路上能不能不留痕地打开。哪辆过得了这一关我用哪辆，换谁荐的也一样。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v2-dongzhuo-4-4"
+    },
+    {
+      "id": "59074",
+      "ordinal": 23,
+      "text": "谁递降书都一样，先交兵符再开门。他是我朋友也不能少这一道。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v2-dongzhuo-6-4"
+    }
+  ],
+  "JP": [
+    {
+      "id": "58868",
+      "ordinal": 7,
+      "text": "人数我报。路不想排死，到时看哪处有事就去哪处。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v1-dz02-02"
+    },
+    {
+      "id": "58872",
+      "ordinal": 11,
+      "text": "可以，这条记下，其他我到跟前再定。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v1-dz02-06"
+    },
+    {
+      "id": "58887",
+      "ordinal": 26,
+      "text": "马场哪日都能去，那人明早就走。我改今日去见他。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v1-dz05-03"
+    },
+    {
+      "id": "58889",
+      "ordinal": 28,
+      "text": "到时候看还能射几轮，真晚了我让人回来报。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v1-dz05-05"
+    },
+    {
+      "id": "58904",
+      "ordinal": 43,
+      "text": "先给我留三个位子，人后日再挑。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v1-dz08-02"
+    },
+    {
+      "id": "58906",
+      "ordinal": 45,
+      "text": "谁那日轮休还没准。我想留着名额，临近了换人也方便。",
+      "author": "吕布",
+      "self": true,
+      "fixtureMessageId": "whomi-lvbu-v1-dz08-04"
+    }
+  ]
+}

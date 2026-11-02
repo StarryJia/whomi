@@ -1,0 +1,20 @@
+{
+  "version": "0.1.11",
+  "executable": "D:\\Chat\\Whomi\\Whomi.exe",
+  "packaged": true,
+  "model": "gpt-6.1-sol",
+  "thinkingLevel": null,
+  "referenceIds": [
+    "59017",
+    "59018",
+    "59019",
+    "59020",
+    "59021",
+    "59022",
+    "59023",
+    "59024"
+  ],
+  "answerUnchanged": true,
+  "import": "新增 0 条消息，重复 62 条。",
+  "screenshots": 6
+}
