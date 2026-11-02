@@ -227,6 +227,8 @@ body:has(.desktop-shell) .cherry-panel-header { padding-top: calc(var(--desktop-
   padding: var(--space-8);
 }
 .home:focus { outline: none; }
+.app-shell > .home[hidden] { display: none; }
+.sidebar-navigation[inert] { opacity: .5; }
 .home:focus-visible { outline: 2px solid var(--focus); outline-offset: -6px; }
 .home.overview-home { display: block; }
 .greeting {
