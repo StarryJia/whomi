@@ -5,6 +5,8 @@
 }
 .settings-page {
   --settings-inset: var(--space-8);
+  --settings-column: 900px;
+  --settings-edge: max(var(--settings-inset), calc((100% - var(--settings-column)) / 2 + var(--settings-inset)));
   display: flex;
   flex-direction: column;
   height: 100dvh;
@@ -14,7 +16,7 @@
   font-size: 14px;
 }
 .sp-header {
-  padding: var(--space-4) var(--settings-inset) 0;
+  padding: var(--space-4) var(--settings-edge) 0;
   border-bottom: 1px solid var(--line);
 }
 .sp-heading-row { display: flex; align-items: center; gap: var(--space-3); }
@@ -53,8 +55,9 @@
 .sp-main { flex: 1; min-height: 0; background: var(--surface); }
 .sp-main > div:not([hidden]) { height: 100%; min-height: 0; overflow-y: auto; }
 .sp-main :is(.mp-page, .aw-page, .prompt-settings) {
+  width: 100%;
   margin-inline: 0;
-  padding: var(--space-6) var(--settings-inset) var(--space-8);
+  padding: var(--space-6) var(--settings-edge) var(--space-8);
 }
 .sp-main .prompt-content { margin-inline: 0; }
 @container settings (max-width: 520px) {
