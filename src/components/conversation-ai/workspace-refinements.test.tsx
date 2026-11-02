@@ -146,7 +146,7 @@ describe('会话工作区的明确入口和独立对话', () => {
     expect(screen.queryByText('继续 AI 对话')).not.toBeInTheDocument()
   })
 
-  it('清空已选会清除所有消息高亮，并可继续重新选择', async () => {
+  it('清空对话引用后可以在原文中继续选择', async () => {
     const user = userEvent.setup()
     render(<App client={createPreviewClient([{ id: 'c', title: '示例聊天', messages: [{ id: '1', sender: '甲', text: '第一条' }, { id: '2', sender: '乙', text: '第二条' }] }])} />)
     await user.click(screen.getByRole('button', { name: '展开会话列表' }))
@@ -154,10 +154,10 @@ describe('会话工作区的明确入口和独立对话', () => {
     await user.click(screen.getByRole('button', { name: '选择消息' }))
     await user.click(screen.getByRole('option', { name: '甲：第一条' }))
     await user.click(screen.getByRole('option', { name: '乙：第二条' }))
-    await user.click(screen.getByRole('button', { name: '清空已选' }))
+    await user.click(screen.getByRole('button', { name: 'AI 对话' }))
+    await user.click(screen.getByRole('button', { name: '清空全部引用' }))
     expect(screen.queryAllByRole('option', { selected: true })).toHaveLength(0)
-    expect(screen.getByText('已选 0 条')).toBeVisible()
-    expect(screen.getByRole('button', { name: '清空已选' })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: '清空全部引用' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('option', { name: '甲：第一条' }))
     expect(screen.getByRole('option', { name: '甲：第一条' })).toHaveAttribute('aria-selected', 'true')
   })

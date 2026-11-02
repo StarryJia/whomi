@@ -73,7 +73,7 @@ test('核对同一问题的19条原文，跨页、失败重试和重启后保持
     await button('加载后文').click()
     await button('加载后文').click()
     for (const n of selectedNumbers) await page.getByRole('option', { name: `${n % 2 ? '本人' : '小林'}：${sourceMessages[n - 1]}`, exact: true }).click()
-    await button('完成选择').click()
+    await page.getByRole('button', { name: '选择消息', pressed: true }).click()
     await button('AI 对话').click()
     const draft = page.getByRole('textbox', { name: '向 AI 提问' })
     await draft.fill('帮我回顾这次搬家。')

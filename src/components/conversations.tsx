@@ -145,17 +145,6 @@ export function ConversationReader({ conversation, initialAnalysisTaskId, openAn
   const previousFirst = useRef(firstMessage)
   const [selectionMode, setSelectionMode] = useState(false)
   const selectionButton = useRef<HTMLButtonElement>(null)
-  const focusSelectionControl = useRef(false)
-  function changeSelectionMode(enabled: boolean) {
-    focusSelectionControl.current = true
-    setSelectionMode(enabled)
-  }
-  useLayoutEffect(() => {
-    if (focusSelectionControl.current) {
-      focusSelectionControl.current = false
-      selectionButton.current?.focus({ preventScroll: true })
-    }
-  }, [selectionMode])
   const selection = useMessageSelection(conversation.messages, selectionMode)
   const [jump, setJump] = useState<QuoteJump>()
   const [highlightedReferences, setHighlightedReferences] = useState<{ ids: ReadonlySet<string>; pending?: boolean }>()
@@ -361,7 +350,8 @@ export function ConversationReader({ conversation, initialAnalysisTaskId, openAn
       if (event.key !== 'Escape' || event.defaultPrevented || !selectionMode) return
       if ((event.target as HTMLElement).closest('input, textarea, select, [contenteditable="true"]')) return
       event.preventDefault()
-      changeSelectionMode(false)
+      setSelectionMode(false)
+      selectionButton.current?.focus({ preventScroll: true })
     }}>
     <header className="reader-header">
       {onReturn && <button className="reader-return" type="button" onClick={onReturn}>
@@ -369,8 +359,10 @@ export function ConversationReader({ conversation, initialAnalysisTaskId, openAn
       </button>}
       <div className="reader-heading-row"><h1 id="conversation-title" ref={heading} tabIndex={-1}>{conversation.title}</h1>
         <div className="reader-actions">
-          {!selectionMode && <button ref={selectionButton} className="reader-selection-toggle" type="button" aria-label="选择消息"
-            title="选择消息" onClick={() => changeSelectionMode(true)}><MousePointer2 aria-hidden="true" /></button>}
+          <button ref={selectionButton} className="reader-selection-toggle" type="button" aria-label="选择消息"
+            title={selectionMode ? '退出选择' : '选择消息'} aria-pressed={selectionMode} onClick={() => setSelectionMode(active => !active)}>
+            <MousePointer2 aria-hidden="true" />
+          </button>
           {analysisControl}
           {chatControl}
           <div className="reader-identity-entry">
@@ -390,11 +382,6 @@ export function ConversationReader({ conversation, initialAnalysisTaskId, openAn
         ? '已定位相关交流，可继续阅读前后文。' : sourceStatus === 'loading' ? '正在定位原文…' : '原文不可用，请返回后重试。'}</p>}
       {error && <p className="reader-source-note" role="alert">{error} <button type="button" onClick={onRetry}>重新打开会话</button></p>}
     </header>
-    {selectionMode && <div className="reader-selection-bar" role="group" aria-label="消息选择">
-      <span role="status">已选 {selection.selectedIds.size} 条</span>
-      <button type="button" disabled={!selection.selectedIds.size} onClick={selection.clear}>清空已选</button>
-      <button ref={selectionButton} type="button" className="reader-selection-done" onClick={() => changeSelectionMode(false)}>完成选择</button>
-    </div>}
     <div ref={scroll} className={clsx('reader-scroll', selectionMode && 'reader-selecting')} role="region" aria-label="聊天记录" tabIndex={0} aria-busy={loading} onScroll={rememberPosition}>
       {beforeCursor && <button className="reader-load" type="button" disabled={loading} onClick={() => { void load('before') }}>加载前文</button>}
       {conversation.messages.length ? <ol className="message-list" role={selectionMode ? 'listbox' : undefined}

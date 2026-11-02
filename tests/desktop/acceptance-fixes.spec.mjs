@@ -81,7 +81,7 @@ test('active import remains recoverable and compact reply navigation preserves t
     await page.getByRole('button', { name: '关闭 AI 对话' }).click()
     await expect(page.getByText('已定位相关交流，可继续阅读前后文。')).toHaveCount(0)
     await expect(page.getByText('引用范围起点', { exact: true })).toHaveCount(0)
-    await page.getByRole('button', { name: '完成选择', exact: true }).click()
+    await page.getByRole('button', { name: '选择消息', pressed: true }).click()
     await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(960, 720))
     await reply.scrollIntoViewIfNeeded()
     await page.screenshot({ path: join(evidence, '04-compact-minimum-desktop.png'), animations: 'disabled' })
