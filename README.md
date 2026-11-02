@@ -5,7 +5,7 @@
 <p align="center"><strong>从会话中发现自己</strong></p>
 
 <p align="center">
-  <a href="package.json"><img src="docs/readme/badges/version.svg" alt="Version v0.1.10"></a>
+  <a href="package.json"><img src="docs/readme/badges/version.svg" alt="Version v0.1.11"></a>
   <a href="docs/getting-started.md#从安装包启动"><img src="docs/readme/badges/windows.svg" alt="Windows x64"></a>
   <a href="#开源许可"><img src="docs/readme/badges/license.svg" alt="License AGPL-3.0"></a>
 </p>
