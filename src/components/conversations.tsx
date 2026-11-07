@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { actionError, ManagedRow, ReaderDialog } from './ui/managed-row'
 import { ArrowLeft, ChevronRight, MousePointer2, Plus, UserRound } from 'lucide-react'
 import clsx from 'clsx'
@@ -152,6 +152,7 @@ export function ConversationReader({ conversation, initialAnalysisTaskId, openAn
   const [quoteBusy, setQuoteBusy] = useState(false)
   const [quoteFailure, setQuoteFailure] = useState<QuoteJump>()
   const quoteGeneration = useRef(0)
+  const activeQuote = useRef<QuoteJump | undefined>(undefined)
   const [focusedMessageId, setFocusedMessageId] = useState<string>()
   const tabStopId = conversation.messages.some(item => item.id === focusedMessageId) ? focusedMessageId : firstMessage
 
@@ -257,20 +258,51 @@ export function ConversationReader({ conversation, initialAnalysisTaskId, openAn
 
   useEffect(() => () => { quoteGeneration.current++ }, [conversation.id])
 
+  const endReferenceView = useCallback(() => {
+    ++quoteGeneration.current
+    activeQuote.current = undefined
+    setJump(undefined)
+    setHighlightedReferences(undefined)
+    setQuoteReturnId(undefined)
+    setQuoteFailure(undefined)
+    setQuoteBusy(false)
+  }, [])
+
+  useLayoutEffect(() => {
+    const request = activeQuote.current
+    if (!request?.pending) return
+    if (!selection.selectedIds.has(request.targetId)) { endReferenceView(); return }
+    const ids = request.referenceIds?.filter(id => selection.selectedIds.has(id))
+    if (ids?.length === request.referenceIds?.length) return
+    const retained = { ...request, referenceIds: ids }
+    activeQuote.current = retained
+    setHighlightedReferences(current => current?.pending ? { ...current, ids: new Set(ids) } : current)
+    setJump(current => current?.pending ? retained : current)
+    setQuoteFailure(current => current?.pending ? retained : current)
+  }, [selection.selectedIds, endReferenceView])
+
+  function toggleSelectionMode() {
+    if (!selectionMode) endReferenceView()
+    setSelectionMode(active => !active)
+  }
+
   async function navigateQuote(request: QuoteJump) {
-    const generation = ++quoteGeneration.current
+    endReferenceView()
+    const generation = quoteGeneration.current
+    activeQuote.current = request
     setQuoteBusy(true)
     setQuoteFailure(undefined)
     try {
       if (quoteBusy || !conversation.messages.some(message => message.id === request.targetId)) {
         if (!onLocateMessageId || !await onLocateMessageId(request.targetId)) throw new Error('unavailable')
       }
-      if (generation !== quoteGeneration.current) return
-      setJump({ ...request })
-      setHighlightedReferences(request.referenceIds ? { ids: new Set(request.referenceIds), pending: request.pending } : undefined)
-      setQuoteReturnId(request.originId)
+      const current = activeQuote.current
+      if (generation !== quoteGeneration.current || !current) return
+      setJump({ ...current })
+      setHighlightedReferences(current.referenceIds ? { ids: new Set(current.referenceIds), pending: current.pending } : undefined)
+      setQuoteReturnId(current.originId)
     } catch {
-      if (generation === quoteGeneration.current) setQuoteFailure(request)
+      if (generation === quoteGeneration.current) setQuoteFailure(activeQuote.current)
     } finally {
       if (generation === quoteGeneration.current) setQuoteBusy(false)
     }
@@ -345,6 +377,7 @@ export function ConversationReader({ conversation, initialAnalysisTaskId, openAn
 
   return <ConversationWorkspace initialAnalysisTaskId={initialAnalysisTaskId} openAnalysisOnEntry={openAnalysisOnEntry} onConfigureModels={onConfigureModels} onOpenAnalysisResult={onOpenMemory} conversationId={conversation.id} identityRevision={identityRevision} title={conversation.title} messageCount={messageCount}
     references={selection.references} onClearReferences={selection.clear} onRestoreReferences={selection.restore}
+    onEndReferenceView={endReferenceView}
     onJumpReference={(ids, targetId = ids[0], pending) => { if (targetId) void navigateQuote({ targetId, referenceIds: ids, pending }) }} adapter={aiAdapter}>
     {({ analysisControl, chatControl, composer }) => <section className="conversation-reader" aria-labelledby="conversation-title" onKeyDown={event => {
       if (event.key !== 'Escape' || event.defaultPrevented || !selectionMode) return
@@ -360,7 +393,7 @@ export function ConversationReader({ conversation, initialAnalysisTaskId, openAn
       <div className="reader-heading-row"><h1 id="conversation-title" ref={heading} tabIndex={-1}>{conversation.title}</h1>
         <div className="reader-actions">
           <button ref={selectionButton} className="reader-selection-toggle" type="button" aria-label="选择消息"
-            title={selectionMode ? '退出选择' : '选择消息'} aria-pressed={selectionMode} onClick={() => setSelectionMode(active => !active)}>
+            title={selectionMode ? '退出选择' : '选择消息'} aria-pressed={selectionMode} onClick={toggleSelectionMode}>
             <MousePointer2 aria-hidden="true" />
           </button>
           {analysisControl}

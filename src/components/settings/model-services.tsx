@@ -1,5 +1,5 @@
 // Adapted from Cherry Studio ProviderSettings, fixed revision f19aa72 (AGPL-3.0).
-import { useEffect, useId, useRef, useState, type Dispatch, type SetStateAction } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { usePaneDivider } from '../ui/pane-divider'
 import * as ContextMenu from '@radix-ui/react-context-menu'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
@@ -143,13 +143,24 @@ export function ModelServices({ api, snapshot, setSnapshot, onChanged, registerG
 
 function ProviderDetail({ api, provider, refreshAccount, models, savedProvider, savedModels, removedModels, registerGuard, onBusy, onBack }: { api: SettingsApi; provider: Provider; refreshAccount: (isCurrent: () => boolean) => Promise<void>; models: SettingsModel[]; savedProvider: (value: Provider) => void; savedModels: (value: SettingsModel[]) => void; removedModels: (ids: string[]) => void; registerGuard: RegisterGuard; onBusy: (value: boolean) => void; onBack: () => void }) {
   const subscriptionId = getSubscriptionId(provider.id)
-  const [accountState, setAccountState] = useState<'disconnected' | 'pending' | 'connected' | 'unknown'>('unknown')
-  const accountUnavailable = !!subscriptionId && (!provider.enabled || accountState !== 'connected')
+  const [account, setAccount] = useState<{ state: 'disconnected' | 'pending' | 'connected' | 'unknown'; id?: string }>({ state: 'unknown' })
+  const accountState = account.state
+  const boundAccount = accountState === 'connected' && account.id && account.id === provider.planAccount ? account.id : undefined
+  const accountUnavailable = !!subscriptionId && (!provider.enabled || !boundAccount)
+  const visibleModels = subscriptionId ? boundAccount ? models.filter(model => model.planAccount === boundAccount) : [] : models
+  const owner = subscriptionId ? boundAccount : provider.id
+  const scope = useMemo(() => ({}), [owner])
+  const currentScope = useRef(scope), mounted = useRef(true)
+  currentScope.current = scope
+  const isCurrent = useCallback(() => mounted.current && currentScope.current === scope, [scope])
   const [draft, setDraft] = useState(() => providerInput(provider)), latest = useRef(draft); latest.current = draft
   const saved = useRef(providerInput(provider)), [showKey, setShowKey] = useState(false), [errors, setErrors] = useState<Record<string, string>>({}), [error, setError] = useState('')
   const [picker, setPicker] = useState(false), [editor, setEditor] = useState<SettingsModel | 'new' | null>(null), [busy, setBusy] = useState(false), [stopRequired, setStopRequired] = useState(false)
   const modelSearch = useRef<HTMLInputElement>(null)
   const [detections, setDetections] = useState<Record<string, string>>({}), [modelQuery, setModelQuery] = useState('')
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false } }, [])
+  useEffect(() => { setPicker(false); setEditor(null); setBusy(false); setError(''); setDetections({}); setModelQuery('') }, [scope])
+  const modelBusy = useCallback((value: boolean) => { if (isCurrent()) setBusy(value) }, [isCurrent])
   const id = useId()
   const saver = useAutoSave<ProviderInput>(async input => {
     try {
@@ -174,12 +185,12 @@ function ProviderDetail({ api, provider, refreshAccount, models, savedProvider, 
   function navigate(action: () => void) { if (busy) return; void commit().then(ok => { if (ok) action() }) }
   useEffect(() => { registerGuard(navigate); return () => registerGuard(null) })
   useEffect(() => { onBusy(busy); return () => onBusy(false) }, [busy, onBusy])
-  async function test(model: SettingsModel) { if (!await commit()) return; setBusy(true); setError(''); setDetections(current => ({ ...current, [model.id]: '检测中…' })); try { await api.testModel(model.id); setDetections(current => ({ ...current, [model.id]: '连接成功' })) } catch (cause) { setDetections(current => ({ ...current, [model.id]: '检测失败' })); setError(errorText(cause, '检测失败，请检查配置后重试。')) } finally { setBusy(false) } }
-  async function toggle(model: SettingsModel) { setBusy(true); setError(''); try { savedModels([await api.saveModel({ ...modelInput(model), enabled: !model.enabled })]) } catch (cause) { setError(errorText(cause)) } finally { setBusy(false) } }
-  const filtered = models.filter(model => `${model.label} ${model.model}`.toLowerCase().includes(modelQuery.toLowerCase()))
+  async function test(model: SettingsModel) { if (accountUnavailable || !await commit() || !isCurrent()) return; setBusy(true); setError(''); setDetections(current => ({ ...current, [model.id]: '检测中…' })); try { await api.testModel(model.id); if (isCurrent()) setDetections(current => ({ ...current, [model.id]: '连接成功' })) } catch (cause) { if (isCurrent()) { setDetections(current => ({ ...current, [model.id]: '检测失败' })); setError(errorText(cause, '检测失败，请检查配置后重试。')) } } finally { modelBusy(false) } }
+  async function toggle(model: SettingsModel) { if (accountUnavailable) return; setBusy(true); setError(''); try { const saved = await api.saveModel({ ...modelInput(model), enabled: !model.enabled }); if (isCurrent()) savedModels([saved]) } catch (cause) { if (isCurrent()) setError(errorText(cause)) } finally { modelBusy(false) } }
+  const filtered = visibleModels.filter(model => `${model.label} ${model.model}`.toLowerCase().includes(modelQuery.toLowerCase()))
   const groups = [...new Set(filtered.map(model => model.group || '模型'))]
   return <section className="ms-detail" aria-label="服务商配置"><div className="ms-detail-body"><button className="ms-mobile-back ms-text-button" onClick={() => navigate(onBack)}><ArrowLeft size={14} />返回服务商</button>
-    {subscriptionId ? <ProviderAccount id={subscriptionId} api={api} provider={provider} refresh={refreshAccount} onConnection={setAccountState} /> : <>
+    {subscriptionId ? <ProviderAccount id={subscriptionId} api={api} provider={provider} refresh={refreshAccount} onConnection={(state, id) => setAccount({ state, id })} /> : <>
     <div className="ms-detail-header"><div className="ms-detail-title">{(provider.image || provider.avatarId || preset) && <ProviderAvatar name={provider.name} image={provider.image} avatarId={provider.avatarId} preset={preset} />}<h2>{provider.name}</h2></div><Switch label="启用服务商" checked={draft.enabled} disabled={busy || saver.pending} onChange={() => { const next = { ...draft, enabled: !draft.enabled }; setDraft(next); void commit(next) }} /></div>
     {preset && <PresetLinks preset={preset} />}
     <p className="ms-data-note">使用云模型时，数据会发送给所配置的模型服务商。</p>
@@ -189,18 +200,19 @@ function ProviderDetail({ api, provider, refreshAccount, models, savedProvider, 
       {(saver.error || error) && <div role="alert"><p className="ms-error">{saver.error || error}</p>{saver.error && <button className="ms-button" disabled={saver.pending} onClick={() => { void (async () => { try { if (stopRequired) await api.stopModelTasks(models.map(model => model.id)); setError(''); await commit() } catch (cause) { setError(errorText(cause)) } })() }}>{stopRequired ? '停止任务并重试' : '重试保存'}</button>}</div>}
     </div>
     </>}
-    <section className="ms-models"><div className="ms-models-heading"><h3>模型 <span>{models.length}</span></h3><div className="ms-model-actions"><button className="ms-text-button" disabled={busy || saver.pending || dirty || accountUnavailable} onClick={() => setEditor('new')}>手动添加</button><button className="ms-button" disabled={busy || saver.pending || dirty || accountUnavailable} onClick={() => setPicker(true)}><RefreshCw size={14} />同步模型</button><button className="ms-icon" aria-label="添加模型" title="添加模型" disabled={busy || saver.pending || dirty || accountUnavailable} onClick={() => setPicker(true)}><Plus size={14} /></button></div></div>
-      {!!models.length && <div className="ms-search"><Search size={14} /><input ref={modelSearch} aria-label="搜索已添加模型" placeholder="搜索模型" value={modelQuery} onChange={event => setModelQuery(event.target.value)} /></div>}
-      {!models.length && (subscriptionId ? <div className="account-empty-models">
+    <section className="ms-models"><div className="ms-models-heading"><h3>模型 <span>{visibleModels.length}</span></h3><div className="ms-model-actions"><button className="ms-text-button" disabled={busy || saver.pending || dirty || accountUnavailable} onClick={() => setEditor('new')}>手动添加</button><button className="ms-button" disabled={busy || saver.pending || dirty || accountUnavailable} onClick={() => setPicker(true)}><RefreshCw size={14} />同步模型</button><button className="ms-icon" aria-label="添加模型" title="添加模型" disabled={busy || saver.pending || dirty || accountUnavailable} onClick={() => setPicker(true)}><Plus size={14} /></button></div></div>
+      {subscriptionId && error && <p className="ms-error" role="alert">{error}</p>}
+      {!!visibleModels.length && <div className="ms-search"><Search size={14} /><input ref={modelSearch} aria-label="搜索已添加模型" placeholder="搜索模型" value={modelQuery} onChange={event => setModelQuery(event.target.value)} /></div>}
+      {!visibleModels.length && (subscriptionId ? <div className="account-empty-models">
         <Inbox size={38} strokeWidth={1.25} aria-hidden="true" />
         <p>尚未添加模型</p><p>{accountState === 'unknown' ? '请先核对账户状态。' : accountState === 'pending' ? '授权完成后可同步模型。'
           : accountState === 'disconnected' ? '登录后可同步账户模型。' : !provider.enabled ? '启用服务商后可同步模型。' : '点击上方的“同步模型”添加模型。'}</p>
       </div> : <p className="ms-hint">添加模型或同步模型列表。</p>)}
-      {!!models.length && !filtered.length && <div className="ms-filter-empty"><Search size={22} aria-hidden="true" /><p>没有匹配的已添加模型</p><button type="button" className="ms-text-button" onClick={() => { setModelQuery(''); modelSearch.current?.focus() }}>清除模型搜索</button></div>}
-      {groups.map(group => <div className="cherry-model-group" key={group}><h4>{group}</h4>{filtered.filter(model => (model.group || '模型') === group).map(model => <div className="ms-model-row" key={model.id}><button className="cherry-model-name" title={`${model.label} · ${model.model}`} onClick={() => setEditor(model)}><strong>{model.label}</strong>{model.label !== model.model && <span>{model.model}</span>}</button><div className="settings-model-actions"><span className="cherry-health" role="status">{detections[model.id]}</span><button className="ms-icon" aria-label={`检测${model.label}`} title="检测连接" disabled={busy || saver.pending || !provider.enabled || !model.enabled || accountUnavailable} onClick={() => void test(model)}><RefreshCw size={14} /></button><button className="ms-icon" aria-label={`编辑${model.label}`} disabled={busy || saver.pending} onClick={() => setEditor(model)}><Pencil size={14} /></button><Switch label={`启用${model.label}`} checked={model.enabled} disabled={busy || saver.pending} onChange={() => void toggle(model)} /></div></div>)}</div>)}
+      {!!visibleModels.length && !filtered.length && <div className="ms-filter-empty"><Search size={22} aria-hidden="true" /><p>没有匹配的已添加模型</p><button type="button" className="ms-text-button" onClick={() => { setModelQuery(''); modelSearch.current?.focus() }}>清除模型搜索</button></div>}
+      {groups.map(group => <div className="cherry-model-group" key={group}><h4>{group}</h4>{filtered.filter(model => (model.group || '模型') === group).map(model => <div className="ms-model-row" key={model.id}><button className="cherry-model-name" title={`${model.label} · ${model.model}`} disabled={busy || saver.pending || accountUnavailable} onClick={() => setEditor(model)}><strong>{model.label}</strong>{model.label !== model.model && <span>{model.model}</span>}</button><div className="settings-model-actions"><span className="cherry-health" role="status">{detections[model.id]}</span><button className="ms-icon" aria-label={`检测${model.label}`} title="检测连接" disabled={busy || saver.pending || !provider.enabled || !model.enabled || accountUnavailable} onClick={() => void test(model)}><RefreshCw size={14} /></button><button className="ms-icon" aria-label={`编辑${model.label}`} disabled={busy || saver.pending || accountUnavailable} onClick={() => setEditor(model)}><Pencil size={14} /></button><Switch label={`启用${model.label}`} checked={model.enabled} disabled={busy || saver.pending || accountUnavailable} onChange={() => void toggle(model)} /></div></div>)}</div>)}
     </section>
     </div>
-    {picker && <ModelPicker api={api} provider={provider} models={models} onClose={() => setPicker(false)} onAdded={savedModels} onRemoved={removedModels} onBusy={setBusy} />}
-    {editor && <ModelEditor api={api} provider={provider} models={models} existing={editor === 'new' ? undefined : editor} onClose={() => setEditor(null)} onSaved={value => savedModels([value])} />}
+    {picker && !accountUnavailable && <ModelPicker api={api} provider={provider} models={visibleModels} onClose={() => { if (isCurrent()) setPicker(false) }} onAdded={values => { if (isCurrent()) savedModels(values) }} onRemoved={ids => { if (isCurrent()) removedModels(ids) }} onBusy={modelBusy} />}
+    {editor && !accountUnavailable && <ModelEditor api={api} provider={provider} models={visibleModels} existing={editor === 'new' ? undefined : editor} onClose={() => { if (isCurrent()) setEditor(null) }} onSaved={value => { if (isCurrent()) savedModels([value]) }} />}
   </section>
 }

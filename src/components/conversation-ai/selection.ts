@@ -137,8 +137,13 @@ export function useMessageSelection(messages: readonly MessageView[], enabled = 
         if (!enabled || event.button !== 0 || event.isPrimary === false) return
         finish()
         suppressClick.current = false
-        const up = () => finish()
-        const cancel = () => finish(true)
+        const up = (event: PointerEvent) => {
+          if (event.pointerId === gesture.current?.pointerId) finish()
+        }
+        const cancel = (event: PointerEvent) => {
+          if (event.pointerId === gesture.current?.pointerId) finish(true)
+        }
+        const blur = () => finish(true)
         const preventTouchScroll = (event: TouchEvent) => {
           if (gesture.current?.active && event.cancelable) event.preventDefault()
         }
@@ -156,6 +161,8 @@ export function useMessageSelection(messages: readonly MessageView[], enabled = 
           release: () => {
             document.removeEventListener('pointerup', up)
             document.removeEventListener('pointercancel', cancel)
+            current.element.removeEventListener('lostpointercapture', cancel)
+            window.removeEventListener('blur', blur)
             document.removeEventListener('touchmove', preventTouchScroll)
             document.removeEventListener('contextmenu', preventContextMenu)
             current.reader?.removeEventListener('scroll', followScroll)
@@ -163,6 +170,8 @@ export function useMessageSelection(messages: readonly MessageView[], enabled = 
         }
         document.addEventListener('pointerup', up)
         document.addEventListener('pointercancel', cancel)
+        current.element.addEventListener('lostpointercapture', cancel)
+        window.addEventListener('blur', blur)
         document.addEventListener('touchmove', preventTouchScroll, { passive: false })
         document.addEventListener('contextmenu', preventContextMenu)
         current.reader?.addEventListener('scroll', followScroll, { passive: true })
@@ -193,8 +202,8 @@ export function useMessageSelection(messages: readonly MessageView[], enabled = 
         event.preventDefault()
         updatePoint(current)
       },
-      onPointerUp() { finish() },
-      onPointerCancel() { finish(true) },
+      onPointerUp(event) { if (event.pointerId === gesture.current?.pointerId) finish() },
+      onPointerCancel(event) { if (event.pointerId === gesture.current?.pointerId) finish(true) },
       onKeyDown(event) {
         if (!enabled) return
         if (event.key === ' ' || event.key === 'Enter') {

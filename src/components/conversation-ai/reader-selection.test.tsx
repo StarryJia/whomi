@@ -15,6 +15,84 @@ async function conversation(id = 'c') {
 }
 
 describe('阅读与消息选择模式', () => {
+  it('查看引用后开启选择会清除定位标记，退出选择不恢复标记，并保留已选消息和草稿', async () => {
+    const user = userEvent.setup()
+    const adapter: ConversationAiAdapter = {
+      models: [], skills: [], respond: vi.fn(), analyze: vi.fn(),
+      restoreThread: async () => [{ id: 'turn', requestId: 'r', prompt: '核对原文',
+        referenceIds: ['1', '2'], modelId: 'm', text: '回答', state: 'completed' }],
+    }
+    render(<ConversationReader conversation={await conversation()} aiAdapter={adapter} />)
+    const toggle = screen.getByRole('button', { name: '选择消息' })
+    await user.click(toggle)
+    await user.click(screen.getByRole('option', { name: '小林：先读这句话。' }))
+    await user.click(toggle)
+    await user.click(screen.getByRole('button', { name: 'AI 对话' }))
+    await user.type(screen.getByRole('textbox'), '保留这个问题')
+    await user.click(await screen.findByRole('button', { name: '2 条引用' }))
+    expect(document.querySelectorAll('.message-reference-target')).toHaveLength(2)
+
+    await user.click(toggle)
+    expect(toggle).toHaveAttribute('aria-pressed', 'true')
+    expect(document.querySelectorAll('.message-reference-target')).toHaveLength(0)
+    expect(screen.getByRole('option', { name: '小林：先读这句话。' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('textbox')).toHaveValue('保留这个问题')
+    expect(screen.getByRole('button', { name: '1 组引用' })).toBeVisible()
+    await user.click(toggle)
+    expect(document.querySelectorAll('.message-reference-target')).toHaveLength(0)
+    await user.click(screen.getByRole('button', { name: '2 条引用' }))
+    expect(document.querySelectorAll('.message-reference-target')).toHaveLength(2)
+  })
+
+  it.each([true, false])('开启选择后忽略未完成引用定位的回执（成功：%s）', async located => {
+    const user = userEvent.setup()
+    let finish!: (value: boolean) => void
+    const pending = new Promise<boolean>(resolve => { finish = resolve })
+    const full = await conversation()
+    const locate = vi.fn(async () => {
+      const result = await pending
+      if (result) view.rerender(reader(full.messages))
+      return result
+    })
+    const adapter: ConversationAiAdapter = {
+      models: [], skills: [], respond: vi.fn(), analyze: vi.fn(),
+      restoreThread: async () => [{ id: 'turn', requestId: 'r', prompt: '核对原文',
+        referenceIds: ['1'], modelId: 'm', text: '回答', state: 'completed' }],
+    }
+    const reader = (messages: typeof full.messages) => <ConversationReader conversation={{ ...full, messages }} aiAdapter={adapter} onLocateMessageId={locate} />
+    const view = render(reader(full.messages.slice(1)))
+    await user.click(screen.getByRole('button', { name: 'AI 对话' }))
+    await user.click(await screen.findByRole('button', { name: '1 条引用' }))
+    const toggle = screen.getByRole('button', { name: '选择消息' })
+    await user.click(toggle)
+    await act(async () => { finish(located); await pending })
+    expect(toggle).toHaveFocus()
+    expect(document.querySelectorAll('.message-reference-target')).toHaveLength(0)
+    expect(screen.queryByRole('button', { name: '重试定位' })).not.toBeInTheDocument()
+    // 下一次定位当前页消息应直接完成，不沿用已取消请求的忙碌状态。
+    await user.click(screen.getByRole('option', { name: '我：再看这句话。' }))
+    await user.click(toggle)
+    await user.click(screen.getByRole('button', { name: '1 组引用' }))
+    await user.click(screen.getByRole('button', { name: /引用 1 · 我/ }))
+    expect(document.querySelector('[data-message-id="2"]')).toHaveClass('message-reference-target')
+    expect(locate).toHaveBeenCalledTimes(1)
+  })
+
+  it('开启选择清除引用定位失败的重试入口', async () => {
+    const user = userEvent.setup()
+    const adapter: ConversationAiAdapter = {
+      models: [], skills: [], respond: vi.fn(), analyze: vi.fn(),
+      restoreThread: async () => [{ id: 'turn', requestId: 'r', prompt: '核对原文',
+        referenceIds: ['missing'], modelId: 'm', text: '回答', state: 'completed' }],
+    }
+    render(<ConversationReader conversation={await conversation()} aiAdapter={adapter} onLocateMessageId={async () => false} />)
+    await user.click(screen.getByRole('button', { name: 'AI 对话' }))
+    await user.click(await screen.findByRole('button', { name: '1 条引用' }))
+    expect(await screen.findByRole('button', { name: '重试定位' })).toBeVisible()
+    await user.click(screen.getByRole('button', { name: '选择消息' }))
+    expect(screen.queryByRole('button', { name: '重试定位' })).not.toBeInTheDocument()
+  })
+
   it('跨页定位未完成又点击当前页引用时，以最后点击的引用为准', async () => {
     const user = userEvent.setup()
     const client = createPreviewClient([{ id: 'c', title: '连续核对', messages: Array.from({ length: 110 }, (_, i) => ({

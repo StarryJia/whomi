@@ -88,7 +88,7 @@ describe('长按滑动选择', () => {
     hit = nodes[3]
     act(() => reader.dispatchEvent(new Event('scroll')))
     expect([...result.current.selectedIds]).toEqual(['1', '2', '3', '4'])
-    act(() => document.dispatchEvent(new Event('pointerup')))
+    act(() => document.dispatchEvent(new window.PointerEvent('pointerup', { pointerId: 1 })))
     hit = nodes[4]
     act(() => reader.dispatchEvent(new Event('scroll')))
     expect([...result.current.selectedIds]).toEqual(['1', '2', '3', '4'])
@@ -143,7 +143,7 @@ describe('长按滑动选择', () => {
     act(() => result.current.bindings(items[0]).onPointerCancel(pointer(nodes[0])))
     expect([...result.current.selectedIds]).toEqual(['5'])
     act(() => result.current.bindings(items[0]).onPointerDown(pointer(nodes[0])))
-    act(() => document.dispatchEvent(new Event('pointerup')))
+    act(() => document.dispatchEvent(new window.PointerEvent('pointerup', { pointerId: 1 })))
     act(() => vi.advanceTimersByTime(500))
     expect([...result.current.selectedIds]).toEqual(['5'])
     act(() => result.current.bindings(items[0]).onPointerDown(pointer(nodes[0])))

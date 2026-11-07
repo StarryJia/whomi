@@ -22,6 +22,8 @@ export function useImport(api?: DesktopApi) {
   const [error, setError] = useState<DesktopError | null>(null)
   const [busy, setBusy] = useState(false)
   const [retriedSummaries, setRetriedSummaries] = useState<ReadonlySet<string>>(new Set())
+  const [retryingSummaries, setRetryingSummaries] = useState<ReadonlySet<string>>(new Set())
+  const summaryRequests = useRef(new Set<string>())
   const selectionTail = useRef(Promise.resolve())
   const session = useRef({ alive: false, generation: 0, jobId: null as string | null, snapshot: null as ImportSnapshot | null,
     preparing: false, events: new Map<string, ImportSnapshot>(), eventVersion: 0 })
@@ -41,7 +43,9 @@ export function useImport(api?: DesktopApi) {
   useEffect(() => {
     const current = session.current
     current.alive = true
-    if (!api) return () => { current.alive = false; current.generation++ }
+    summaryRequests.current.clear()
+    setRetryingSummaries(new Set())
+    if (!api) return () => { current.alive = false; current.generation++; summaryRequests.current.clear() }
     const stop = api.onImport(value => {
       if (!current.alive) return
       if (current.jobId === value.jobId) { current.eventVersion++; accept(value) }
@@ -67,7 +71,7 @@ export function useImport(api?: DesktopApi) {
         setError(failure)
       }).finally(() => { if (current.alive && generation === current.generation) setBusy(false) })
     }
-    return () => { current.alive = false; current.generation++; current.events.clear(); stop() }
+    return () => { current.alive = false; current.generation++; current.events.clear(); summaryRequests.current.clear(); stop() }
   }, [api, accept])
 
   async function refresh(generation: number, jobId: string) {
@@ -81,6 +85,8 @@ export function useImport(api?: DesktopApi) {
     if (!api) return
     const current = session.current, generation = ++current.generation
     const valid = () => current.alive && generation === current.generation
+    summaryRequests.current.clear()
+    setRetryingSummaries(new Set())
     const previous = selectionTail.current
     let release!: () => void
     selectionTail.current = new Promise<void>(resolve => { release = resolve })
@@ -125,22 +131,39 @@ export function useImport(api?: DesktopApi) {
     }
   }
   async function retrySummary(id: string) {
-    if (!api || !session.current.snapshot?.results.some(r => isPersistedResult(r) && r.conversationId === id)) return
     const current = session.current, generation = current.generation
+    if (!api || !current.alive || summaryRequests.current.has(id) ||
+      !current.snapshot?.results.some(r => isPersistedResult(r) && r.conversationId === id)) return
+    summaryRequests.current.add(id)
+    setRetryingSummaries(new Set(summaryRequests.current))
     setError(null)
     try {
       await api.retrySummary(id)
       if (current.alive && generation === current.generation) setRetriedSummaries(previous => new Set([...previous, id]))
     } catch (value) { if (current.alive && generation === current.generation) setError(importError(value)) }
+    finally {
+      if (current.alive && generation === current.generation) {
+        summaryRequests.current.delete(id)
+        setRetryingSummaries(new Set(summaryRequests.current))
+      }
+    }
   }
   const reset = useCallback(() => {
-    session.current.jobId = null
-    session.current.snapshot = null
+    const current = session.current
+    current.generation++
+    current.jobId = null
+    current.snapshot = null
+    current.preparing = false
+    current.events.clear()
+    summaryRequests.current.clear()
     setSnapshot(null)
     setError(null)
+    setBusy(false)
+    setRetriedSummaries(new Set())
+    setRetryingSummaries(new Set())
     remember(null)
   }, [])
-  return { snapshot, error, busy, retriedSummaries,
+  return { snapshot, error, busy, retriedSummaries, retryingSummaries,
     choose: (kind: 'files' | 'directory') => select(() => api!.chooseSources(kind)),
     drop: (files: File[]) => select(() => api!.acceptDroppedFiles(files)),
     stage: (entryIds: string[]) => run(jobId => api!.startImport({ kind: 'stage', jobId, entryIds })),
