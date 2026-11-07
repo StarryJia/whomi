@@ -13,9 +13,9 @@ const statusLabels: Record<string, string> = {
   awaiting_commit: '请确认会话后保存。', committing: '正在保存…', completed: '导入完成。', partially_completed: '部分会话未完成，请查看下方结果。', failed: '导入失败，请查看操作提示。', cancelled: '已取消导入。',
 }
 const resultLabels: Record<string, string> = { pending: '等待处理', blocked: '无法保存', staged: '已解析，尚未保存', committing: '正在保存…', saved: '已保存', duplicate: '重复无新增', failed: '导入失败', cancelled: '已取消' }
-export function ImportProgress({ snapshot, busy, onCancel, onOpen, onRetrySummary, retriedSummaries, onReset, onRechoose, onChooseFiles, onChooseDirectory }: {
+export function ImportProgress({ snapshot, busy, onCancel, onOpen, onRetrySummary, retriedSummaries, retryingSummaries, onReset, onRechoose, onChooseFiles, onChooseDirectory }: {
   snapshot: ImportSnapshot; busy: boolean; onCancel: () => void; onOpen?: (id: string) => void
-  onRetrySummary: (id: string) => void; retriedSummaries: ReadonlySet<string>; onReset?: () => void; onRechoose?: () => void
+  onRetrySummary: (id: string) => void; retriedSummaries: ReadonlySet<string>; retryingSummaries: ReadonlySet<string>; onReset?: () => void; onRechoose?: () => void
   onChooseFiles?: () => void; onChooseDirectory?: () => void
 }) {
   const isCancelledPartial = snapshot.status === 'cancelled' && snapshot.results.some(isPersistedResult)
@@ -53,7 +53,9 @@ export function ImportProgress({ snapshot, busy, onCancel, onOpen, onRetrySummar
         {persisted && !singleComplete && <button className="import-primary" type="button" disabled={!onOpen} onClick={() => onOpen?.(result.conversationId!)}>打开会话</button>}
         {persisted && result.summaryFailed && !retriedSummaries.has(result.conversationId!) && <>
           <p className="import-muted">消息已保存，摘要待更新。</p>
-          <button className="import-secondary" type="button" onClick={() => onRetrySummary(result.conversationId!)}>重试摘要</button>
+          <button className="import-secondary" type="button" disabled={retryingSummaries.has(result.conversationId!)} onClick={() => onRetrySummary(result.conversationId!)}>
+            {retryingSummaries.has(result.conversationId!) ? '正在更新…' : '重试摘要'}
+          </button>
         </>}
         {retriedSummaries.has(result.conversationId!) && <p role="status">摘要已更新。</p>}
       </li>

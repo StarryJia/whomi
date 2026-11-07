@@ -28,33 +28,40 @@ function accountError(cause: unknown) {
 }
 
 export function ProviderAccount({ id, api, provider, refresh, onConnection }: {
-  id: SubscriptionProviderId; api: SettingsApi; provider: Provider; refresh: (isCurrent: () => boolean) => Promise<void>; onConnection: (value: ChatgptStatus['state'] | 'unknown') => void
+  id: SubscriptionProviderId; api: SettingsApi; provider: Provider; refresh: (isCurrent: () => boolean) => Promise<void>; onConnection: (value: ChatgptStatus['state'] | 'unknown', accountId?: string) => void
 }) {
   const accountName = accountNames[id], isCodex = id === 'openai-codex', seenKey = 'whomi:account-used:' + id
   const [status, setStatus] = useState<ChatgptStatus>(disconnected)
   const [unverified, setUnverified] = useState(false)
   const [hadAccount, setHadAccount] = useState(() => hasSeen(seenKey) || !!provider.planAccount)
-  const [error, setError] = useState(''), [working, setWorking] = useState(false)
+  const [error, setError] = useState(''), [readError, setReadError] = useState(''), [working, setWorking] = useState(false)
   const [confirmExit, setConfirmExit] = useState(false), [welcome, setWelcome] = useState(false)
   const version = useRef(0), signing = useRef(false)
   const refreshRef = useRef(refresh)
   refreshRef.current = refresh
   function receive(value: ChatgptStatus) {
+    setReadError('')
     setUnverified(false)
     setStatus(value)
-    onConnection(value.state)
+    onConnection(value.state, value.accountId)
     if (value.state === 'connected') { setHadAccount(true); markSeen(seenKey) }
   }
   function unreadable(cause: unknown) {
-    setUnverified(true); onConnection('unknown'); setError(accountError(cause))
+    setUnverified(true); onConnection('unknown'); setReadError(accountError(cause))
+  }
+  async function settle(value: ChatgptStatus, live: () => boolean) {
+    if (!live()) return
+    if (value.state !== 'connected') receive(value)
+    await refreshRef.current(live)
+    if (live() && value.state === 'connected') receive(value)
   }
   useEffect(() => {
     const current = ++version.current
     const live = () => current === version.current
     void api.getAccountStatus(id).then(async value => {
       if (!live()) return
-      receive(value)
-      if (value.state === 'connected' || provider.planAccount) await refreshRef.current(live)
+      if (value.state === 'connected' || provider.planAccount) await settle(value, live)
+      else receive(value)
     }).catch(cause => { if (live()) unreadable(cause) })
     return () => {
       version.current++
@@ -71,9 +78,10 @@ export function ProviderAccount({ id, api, provider, refresh, onConnection }: {
       const live = () => active && sequence === version.current
       try {
         const value = await api.getAccountStatus(id)
+        if (live()) setReadError('')
         if (live() && value.state === 'pending') receive(value)
-        else if (live() && !signing.current) { receive(value); await refreshRef.current(live) }
-      } catch (cause) { if (live()) setError(accountError(cause)) }
+        else if (live() && !signing.current) await settle(value, live)
+      } catch (cause) { if (live()) setReadError(accountError(cause)) }
       if (active) timer = setTimeout(poll, 800)
     }
     timer = setTimeout(poll, 400)
@@ -82,7 +90,7 @@ export function ProviderAccount({ id, api, provider, refresh, onConnection }: {
 
   async function reconcile(live: () => boolean) {
     const value = await api.getAccountStatus(id)
-    if (live()) { receive(value); await refreshRef.current(live) }
+    if (live()) await settle(value, live)
   }
   async function connect(newAccount: boolean) {
     if (working || signing.current) return
@@ -92,21 +100,21 @@ export function ProviderAccount({ id, api, provider, refresh, onConnection }: {
     try {
       const value = await api.signInAccount(id, newAccount)
       if (!live()) return
-      receive(value)
-      await refreshRef.current(live)
+      try { await settle(value, live) } catch (cause) { if (live()) unreadable(cause); return }
       if (live() && isCodex && value.state === 'connected') setWelcome(!hasSeen(welcomeKey))
     } catch (cause) {
       if (live()) {
         receive(disconnected)
         setError(accountError(cause))
-        try { await reconcile(live) } catch { /* 保留服务端对本次登录的处理指引。 */ }
+        try { await reconcile(live) } catch (cause) { if (live()) unreadable(cause) }
       }
     } finally { if (live()) signing.current = false }
   }
   async function change(action: 'cancel' | 'logout' | 'toggle' | 'read') {
     if (working) return
     const current = ++version.current, live = () => current === version.current
-    setWorking(true); setError('')
+    setWorking(true); setError(''); setReadError('')
+    if (action !== 'toggle') onConnection('unknown')
     let failure = ''
     try {
       if (action === 'toggle') await api.setAccountEnabled(id, !provider.enabled)
@@ -141,7 +149,7 @@ export function ProviderAccount({ id, api, provider, refresh, onConnection }: {
           : pending ? <button type="button" disabled={working} onClick={() => void change('cancel')}>取消登录</button>
             : <div className="account-actions"><button type="button" disabled={working} onClick={() => void connect(false)}><LogIn size={14} aria-hidden="true" />{needsPlanPermission ? '授权使用 ChatGPT 套餐' : '使用 ' + accountName + ' 登录'}</button>
               {hadAccount && !needsPlanPermission && <button className="account-alternative" type="button" disabled={working} onClick={() => void connect(true)}>使用其他账号登录</button>}</div>}
-        {error && <p role="alert" className="ms-error">{error}</p>}
+        {(error || readError) && <p role="alert" className="ms-error">{error || readError}</p>}
       </div>
     </section>
     {isCodex && connected && <CodexUsage key={status.accountId ?? status.email} api={api} accountId={status.accountId ?? ''} />}

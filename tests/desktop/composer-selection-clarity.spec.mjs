@@ -121,7 +121,23 @@ for (const width of [1280, 360]) test(`在 ${width} 像素窗口逐组管理待�
     await preview.getByRole('button', { name: /引用 1 · 小禾/ }).click()
     await showSource()
     await checkMarked('.message-reference-target', [0, 1, 3])
+    await shot('reference-outlines')
+    // 读取实际渲染的下边缘像素，防止相邻选区背景盖住描边。
+    const edges = await page.locator('.message-reference-target .message-text').evaluateAll(nodes => nodes.map(node => {
+      const rect = node.getBoundingClientRect(), style = getComputedStyle(node)
+      const [r, g, b] = style.outlineColor.match(/\d+/g).map(Number)
+      return { x: Math.floor(rect.left + rect.width / 2), y: Math.floor(rect.bottom + parseFloat(style.outlineOffset) + parseFloat(style.outlineWidth) - 1), expected: [b, g, r, 255] }
+    }))
+    for (const edge of edges) {
+      const pixels = await app.evaluate(async ({ BrowserWindow }, point) => {
+        const image = await BrowserWindow.getAllWindows()[0].webContents.capturePage({ x: point.x, y: point.y, width: 1, height: 1 })
+        return Array.from(image.toBitmap()).slice(0, 4)
+      }, edge)
+      expect(pixels, '引用气泡下边缘应保持完整描边').toEqual(edge.expected)
+    }
     await toggle.click()
+    await checkMarked('.message-reference-target', [])
+    await shot('selection-after-reference')
     await openPanel()
     await entry.click()
     const keep = narrow ? [0, 1] : [3]
@@ -137,7 +153,7 @@ for (const width of [1280, 360]) test(`在 ${width} 像素窗口逐组管理待�
     await showSource()
     await expect(toggle).toHaveAttribute('aria-pressed', 'true')
     await checkMarked('.message-selected', keep)
-    await checkMarked('.message-reference-target', keep)
+    await checkMarked('.message-reference-target', [])
     await openPanel()
     await button('1 组引用').click()
     await button('移除第 1 组引用').click()
