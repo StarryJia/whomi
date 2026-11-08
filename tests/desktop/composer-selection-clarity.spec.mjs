@@ -5,7 +5,7 @@ import { basename, dirname, join, resolve } from 'node:path'
 
 const messages = ['周六一起去公园吗？', '好，上午十点见。', '我会带上水。', '那我来带野餐垫。']
 const question = '我们分别准备带什么？'
-const evidence = resolve('artifacts/clarity-acceptance')
+const evidence = resolve('artifacts/reference-selection-reverse')
 const fixture = {
   chatlab: { version: '0.0.2' },
   meta: { name: '虚构会话 · 周六野餐', platform: 'discord', type: 'direct', groupId: 'picnic-example' },
@@ -16,7 +16,7 @@ const fixture = {
   })),
 }
 
-for (const width of [1280, 360]) test(`在 ${width} 像素窗口逐组管理待发送引用，保留输入中的问题`, async () => {
+for (const width of [1280, 360]) test(`在 ${width} 像素窗口双向切换选择与引用，逐组管理时保留草稿`, async () => {
   test.setTimeout(90000)
   const directory = await mkdtemp(join(tmpdir(), 'whomi-runtime-composer-'))
   const source = join(directory, 'picnic.json')
@@ -98,6 +98,10 @@ for (const width of [1280, 360]) test(`在 ${width} 像素窗口逐组管理待�
     await button('收起对话列表').click()
     await expect(entry).toBeVisible()
 
+    await showSource()
+    await toggle.click()
+    await expect(toggle).toHaveAttribute('aria-pressed', 'true')
+    await openPanel()
     await entry.click()
     await expect(preview.getByRole('button', { name: /引用 1 · 小禾/ })).toContainText('共 2 条消息')
     await expect(preview.getByRole('button', { name: /引用 2 · 小松/ })).toContainText('共 1 条消息')
@@ -121,7 +125,28 @@ for (const width of [1280, 360]) test(`在 ${width} 像素窗口逐组管理待�
     await preview.getByRole('button', { name: /引用 1 · 小禾/ }).click()
     await showSource()
     await checkMarked('.message-reference-target', [0, 1, 3])
+    await shot('reference-outlines')
+    await expect(toggle).toHaveAttribute('aria-pressed', 'false')
+    await checkMarked('.message-selected', [])
+    await expect(page.locator('.message[aria-selected], .reader-selecting')).toHaveCount(0)
+    // 读取实际渲染的下边缘像素，防止相邻选区背景盖住描边。
+    const edges = await page.locator('.message-reference-target .message-text').evaluateAll(nodes => nodes.map(node => {
+      const rect = node.getBoundingClientRect(), style = getComputedStyle(node)
+      const [r, g, b] = style.outlineColor.match(/\d+/g).map(Number)
+      return { x: Math.floor(rect.left + rect.width / 2), y: Math.floor(rect.bottom + parseFloat(style.outlineOffset) + parseFloat(style.outlineWidth) - 1), expected: [b, g, r, 255] }
+    }))
+    for (const edge of edges) {
+      const pixels = await app.evaluate(async ({ BrowserWindow }, point) => {
+        const image = await BrowserWindow.getAllWindows()[0].webContents.capturePage({ x: point.x, y: point.y, width: 1, height: 1 })
+        return Array.from(image.toBitmap()).slice(0, 4)
+      }, edge)
+      expect(pixels, '引用气泡下边缘应保持完整描边').toEqual(edge.expected)
+    }
     await toggle.click()
+    await expect(toggle).toHaveAttribute('aria-pressed', 'true')
+    await checkMarked('.message-selected', [0, 1, 3])
+    await checkMarked('.message-reference-target', [])
+    await shot('selection-after-reference')
     await openPanel()
     await entry.click()
     const keep = narrow ? [0, 1] : [3]
@@ -137,7 +162,7 @@ for (const width of [1280, 360]) test(`在 ${width} 像素窗口逐组管理待�
     await showSource()
     await expect(toggle).toHaveAttribute('aria-pressed', 'true')
     await checkMarked('.message-selected', keep)
-    await checkMarked('.message-reference-target', keep)
+    await checkMarked('.message-reference-target', [])
     await openPanel()
     await button('1 组引用').click()
     await button('移除第 1 组引用').click()

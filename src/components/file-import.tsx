@@ -197,11 +197,14 @@ export function FileImport({ api, onSaved, onOpenConversation }: {
           </div>
         )}
         {(snapshot.status === 'committing' || snapshot.status === 'completed' || snapshot.status === 'partially_completed' || snapshot.status === 'failed' || (snapshot.status === 'cancelled' && snapshot.results.some(isPersistedResult))) && (
-          <ImportProgress snapshot={snapshot} busy={busy} onCancel={() => { void controller.cancel() }} onOpen={onOpenConversation}
-            onRetrySummary={id => { void controller.retrySummary(id) }} retriedSummaries={controller.retriedSummaries}
-            onReset={controller.reset} onRechoose={() => { void controller.choose('files') }}
-            onChooseFiles={() => { if (api) void controller.choose('files'); else input.current?.click() }}
-            onChooseDirectory={api ? () => { void controller.choose('directory') } : undefined} />
+          <>
+            <ImportProgress snapshot={snapshot} busy={busy} onCancel={() => { void controller.cancel() }} onOpen={onOpenConversation}
+              onRetrySummary={id => { void controller.retrySummary(id) }} retriedSummaries={controller.retriedSummaries} retryingSummaries={controller.retryingSummaries}
+              onReset={controller.reset} onRechoose={() => { void controller.choose('files') }}
+              onChooseFiles={() => { if (api) void controller.choose('files'); else input.current?.click() }}
+              onChooseDirectory={api ? () => { void controller.choose('directory') } : undefined} />
+            {controller.error && <div className="import-picker-feedback"><p className="import-error" role="alert" data-error-code={controller.error.code}>{controller.error.action}</p></div>}
+          </>
         )}
       </>
     )}

@@ -176,10 +176,11 @@ function Usage({ usage, model }: { usage?: GenerationUsage; model?: ModelOption 
 type Turn = { id: number | string; request: ConversationRequest; modelIdentity?: ModelOption; referenceIds?: string[]; text: string; usage?: GenerationUsage; status: 'running' | 'done' | 'failed' | 'stopped'; error?: string; remote?: boolean }
 const turnModel = (turn: Turn): ModelOption => turn.modelIdentity ?? { id: turn.request.modelId, label: '未知模型' }
 type Slots = { analysisControl: ReactNode; chatControl: ReactNode; composer: ReactNode; panelOpen: boolean }
-export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, openAnalysisOnEntry = false, identityRevision = 0, title, messageCount, references, onClearReferences, onRestoreReferences, onJumpReference, onOpenAnalysisResult, onConfigureModels, adapter, children }: {
+export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, openAnalysisOnEntry = false, identityRevision = 0, title, messageCount, references, onClearReferences, onRestoreReferences, onJumpReference, onEndReferenceView, onOpenAnalysisResult, onConfigureModels, adapter, children }: {
   conversationId: string; identityRevision?: number; title: string; messageCount?: number; references: readonly ReferenceRange[]
   onClearReferences: () => void; onJumpReference: (ids: readonly string[], targetId?: string, pending?: boolean) => void
   onRestoreReferences?: (references: readonly ReferenceRange[]) => void
+  onEndReferenceView?: () => void
   onConfigureModels?: (onReturn: () => void) => void
   openAnalysisOnEntry?: boolean; initialAnalysisTaskId?: string
   onOpenAnalysisResult?: (taskId: string) => void
@@ -196,6 +197,7 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
   const creatingThread = useRef(false)
   const [threadListAttempt, setThreadListAttempt] = useState(0)
   const activeThread = useRef<string | undefined>(undefined)
+  const threadGeneration = useRef(0)
   const threadDrafts = useRef(new Map<string, string>())
   const threadTurns = useRef(new Map<string, Turn[]>())
   const threadReferences = useRef(new Map<string, readonly ReferenceRange[]>())
@@ -262,6 +264,8 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
   const canSend = !!adapter && !!selectedModel && !!draft.trim() && !busy && !restoring && !threadCreating && !threadListLoading && !threadListError && !modelSaving.conversation
 
   function activateThread(id: string | undefined, keepDraft = false) {
+    ++threadGeneration.current
+    onEndReferenceView?.()
     threadDrafts.current.set(activeThread.current ?? 'initial', latestDraft.current)
     threadTurns.current.set(activeThread.current ?? 'initial', latestTurns.current)
     threadReferences.current.set(activeThread.current ?? 'initial', latestReferences.current)
@@ -292,6 +296,7 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
     if (!adapter?.createThread || creatingThread.current || restoring || threadListLoading) return
     const origin = activeThread.current
     if (origin && latestTurns.current.length === 0 && !restoreError) {
+      onEndReferenceView?.()
       focusThreadEditor()
       return origin
     }
@@ -337,6 +342,7 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
     setShowReport(false)
     return () => {
       alive.current = false
+      ++threadGeneration.current
       selectionGeneration.current.analysis++
       selectionGeneration.current.conversation++
       chatRun.current?.abort('detach')
@@ -370,7 +376,11 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
     return () => controller.abort('detach')
   }, [adapter, conversationId, threadId])
   useEffect(() => {
-    if (!analysisOpen || !analysisConfirming || !adapter?.prepareAnalysis || !selectedAnalysisModel) return
+    if (!analysisOpen || !analysisConfirming || !adapter?.prepareAnalysis || !selectedAnalysisModel) {
+      setPreparing(false)
+      setPreparation(undefined)
+      return
+    }
     let current = true
     setPreparing(true)
     setPreparation(undefined)
@@ -420,10 +430,14 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
     setBusy(false)
     setTurns(items => items.map(turn => turn.status === 'running' ? { ...turn, status: 'stopped' } : turn))
     const running = turns.find(turn => turn.remote && turn.status === 'running')
-    if (running) void adapter?.stopTurn?.(String(running.id)).catch(error => setRestoreError(errorText(error)))
+    const generation = threadGeneration.current
+    if (running) void adapter?.stopTurn?.(String(running.id)).catch(error => {
+      if (alive.current && generation === threadGeneration.current) setRestoreError(errorText(error))
+    })
   }
   async function send(retry?: Turn) {
     if (!adapter || busy || chatRun.current || (!retry && !canSend)) return
+    setPanelOpen(true)
     const request: ConversationRequest = retry?.request ?? { requestId: crypto.randomUUID(), conversationId, threadId, prompt: draft.trim(),
       references: references.map(reference => ({ ...reference, messages: [...reference.messages] })), modelId, ...(effectiveThinkingLevel ? { thinkingLevel: effectiveThinkingLevel } : {}),
       history: turns.filter(turn => turn.status === 'done').flatMap(turn => [
@@ -448,7 +462,6 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
     }
     const controller = new AbortController()
     chatRun.current = controller
-    setPanelOpen(true)
     setBusy(true)
     atEnd.current = true
     const next: Turn = { id, request, modelIdentity, text: '', status: 'running' }
@@ -536,7 +549,6 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
             <ThinkingSelector levels={selectedAnalysisModel?.thinkingLevels} value={analysisThinkingLevel} onSelect={setAnalysisThinkingLevel} disabled={modelSaving.analysis || !selectedAnalysisModel} />
           </div>}
           {modelErrors.analysis && <p id={`${panelId}-analysis-model-error`} role="alert" className="conversation-error">{modelErrors.analysis}</p>}
-          {preparing && <p role="status" className="analysis-notice">正在核对分析范围…</p>}
           {messageCount === 0 && !adapter?.prepareAnalysis ? <p className="analysis-notice">请先导入聊天记录。</p>
             : !selectedAnalysisModel && <p className="analysis-notice">{adapter?.models.length ? '请选择分析模型。' : onConfigureModels ? '选择模型后即可整理这段聊天。' : '请在设置中添加模型。'}</p>}
           {analysisError && <p role="alert" className="conversation-error">{analysisError}</p>}
@@ -585,7 +597,8 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
     onClearReferences()
     textarea.current?.focus({ preventScroll: true })
   }
-  const referenceControl = references.length > 0 && <References references={references}
+  const threadContentActive = panelOpen && !threadListOpen
+  const referenceControl = threadContentActive && references.length > 0 && <References references={references}
     onJump={(ids, targetId) => jump(ids, targetId, true)} onClear={clearDraftReferences}
     onRemove={onRestoreReferences && (id => {
       const remaining = references.filter(range => range.id !== id)
@@ -671,14 +684,14 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
           <MessageCircle aria-hidden="true" /><strong>你想从这段聊天里了解什么？</strong><p>直接写下问题，或从原文选择想讨论的消息。</p>
         </div>}
         {turns.map(turn => <div className="conversation-turn" key={turn.request.requestId ?? turn.id}>
-          <div className="conversation-user-turn"><p>{turn.request.prompt}</p><References references={turn.request.references} savedIds={turn.referenceIds} onJump={jump} /></div>
+          <div className="conversation-user-turn"><p>{turn.request.prompt}</p>{threadContentActive && <References references={turn.request.references} savedIds={turn.referenceIds} onJump={jump} />}</div>
           <div className="conversation-assistant-turn"><div className="conversation-answer-label"><MessageCircle aria-hidden="true" /><strong title={[turnModel(turn).label, turnModel(turn).model].filter(Boolean).join(' | ')}>{turnModel(turn).label}</strong></div>
             {turn.status === 'running' && !turn.text && <p className="conversation-waiting" role="status">正在回答…</p>}
             {turn.text && <AnswerContent id={turn.request.requestId ?? String(turn.id)} text={turn.text} status={turn.status} />}
             {turn.status === 'failed' && <div role="alert"><p className="conversation-error">{turn.error}</p><button type="button" className="conversation-text-button" disabled={busy} onClick={() => { void send(turn) }}>重试回答</button></div>}
             {turn.status === 'stopped' && <p className="conversation-state-copy">已停止回答。</p>}
             <div className="conversation-answer-footer"><AnswerActions text={turn.text} available={turn.status !== 'running'} />
-              <Usage usage={turn.usage} model={turnModel(turn)} /></div>
+              {threadContentActive && <Usage usage={turn.usage} model={turnModel(turn)} />}</div>
           </div>
         </div>)}
         </div>

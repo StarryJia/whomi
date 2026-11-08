@@ -51,9 +51,15 @@ describe('文件选择与会话前端', () => {
     await user.click(screen.getByRole('button', { name: '1 组引用' }))
     expect(locate).not.toHaveBeenCalled()
     await user.click(within(screen.getByRole('region', { name: '引用预览' })).getByRole('button', { name: /引用 1 · 成员/ }))
-    expect(await screen.findByRole('option', { name: '成员：引用原文 1' })).toHaveAttribute('aria-selected', 'true')
+    const target = await screen.findByText('引用原文 1', { selector: '.message-text' })
+    expect(target.closest('li')).toHaveClass('message-reference-target')
+    expect(document.querySelectorAll('.message-selected')).toHaveLength(0)
+    expect(screen.getByRole('button', { name: '选择消息' })).toHaveAttribute('aria-pressed', 'false')
     expect(locate).toHaveBeenCalledExactlyOnceWith({ conversationId: 'long', messageId: '1' })
     expect(screen.getByRole('textbox')).toHaveValue('保留这个问题')
+    await user.click(screen.getByRole('button', { name: '选择消息' }))
+    expect(screen.getByRole('option', { name: '成员：引用原文 1' })).toHaveAttribute('aria-selected', 'true')
+    expect(document.querySelectorAll('.message-reference-target')).toHaveLength(0)
   }, 15000)
 
   it('移除上方页和恢复前文时，保留消息的可见位置不变', async () => {
