@@ -549,7 +549,6 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
             <ThinkingSelector levels={selectedAnalysisModel?.thinkingLevels} value={analysisThinkingLevel} onSelect={setAnalysisThinkingLevel} disabled={modelSaving.analysis || !selectedAnalysisModel} />
           </div>}
           {modelErrors.analysis && <p id={`${panelId}-analysis-model-error`} role="alert" className="conversation-error">{modelErrors.analysis}</p>}
-          {preparing && <p role="status" className="analysis-notice">正在核对分析范围…</p>}
           {messageCount === 0 && !adapter?.prepareAnalysis ? <p className="analysis-notice">请先导入聊天记录。</p>
             : !selectedAnalysisModel && <p className="analysis-notice">{adapter?.models.length ? '请选择分析模型。' : onConfigureModels ? '选择模型后即可整理这段聊天。' : '请在设置中添加模型。'}</p>}
           {analysisError && <p role="alert" className="conversation-error">{analysisError}</p>}
