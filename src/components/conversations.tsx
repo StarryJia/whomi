@@ -143,7 +143,8 @@ export function ConversationReader({ conversation, initialAnalysisTaskId, openAn
   const anchors = useRef<Array<{ id: string; top: number }>>([])
   const firstMessage = conversation.messages[0]?.id
   const previousFirst = useRef(firstMessage)
-  const [selectionMode, setSelectionMode] = useState(false)
+  const [readerMode, setReaderMode] = useState<'reading' | 'selecting' | 'reference'>('reading')
+  const selectionMode = readerMode === 'selecting'
   const selectionButton = useRef<HTMLButtonElement>(null)
   const selection = useMessageSelection(conversation.messages, selectionMode)
   const [jump, setJump] = useState<QuoteJump>()
@@ -252,7 +253,7 @@ export function ConversationReader({ conversation, initialAnalysisTaskId, openAn
   }
 
   useLayoutEffect(() => {
-    setSelectionMode(false)
+    setReaderMode('reading')
     selection.clear()
   }, [conversation.id, selection.clear])
 
@@ -261,6 +262,7 @@ export function ConversationReader({ conversation, initialAnalysisTaskId, openAn
   const endReferenceView = useCallback(() => {
     ++quoteGeneration.current
     activeQuote.current = undefined
+    setReaderMode(mode => mode === 'reference' ? 'reading' : mode)
     setJump(undefined)
     setHighlightedReferences(undefined)
     setQuoteReturnId(undefined)
@@ -283,11 +285,12 @@ export function ConversationReader({ conversation, initialAnalysisTaskId, openAn
 
   function toggleSelectionMode() {
     if (!selectionMode) endReferenceView()
-    setSelectionMode(active => !active)
+    setReaderMode(selectionMode ? 'reading' : 'selecting')
   }
 
   async function navigateQuote(request: QuoteJump) {
     endReferenceView()
+    setReaderMode('reference')
     const generation = quoteGeneration.current
     activeQuote.current = request
     setQuoteBusy(true)
@@ -383,7 +386,7 @@ export function ConversationReader({ conversation, initialAnalysisTaskId, openAn
       if (event.key !== 'Escape' || event.defaultPrevented || !selectionMode) return
       if ((event.target as HTMLElement).closest('input, textarea, select, [contenteditable="true"]')) return
       event.preventDefault()
-      setSelectionMode(false)
+      setReaderMode('reading')
       selectionButton.current?.focus({ preventScroll: true })
     }}>
     <header className="reader-header">
@@ -424,15 +427,16 @@ export function ConversationReader({ conversation, initialAnalysisTaskId, openAn
           const end = range?.end.id === message.id
           const highlighted = range && comparePosition(message, range.start) >= 0 && comparePosition(message, range.end) <= 0
           const selected = selection.selectedIds.has(message.id)
+          const showSelected = selected && readerMode !== 'reference'
           const referenced = highlightedReferences?.ids.has(message.id) && (!highlightedReferences.pending || selected)
           const jumpTarget = jump?.targetId === message.id && (!jump.pending || selected)
-          const joinedBefore = selected && index > 0 && selection.selectedIds.has(conversation.messages[index - 1].id)
-          const joinedAfter = selected && index < conversation.messages.length - 1 && selection.selectedIds.has(conversation.messages[index + 1].id)
+          const joinedBefore = showSelected && index > 0 && selection.selectedIds.has(conversation.messages[index - 1].id)
+          const joinedAfter = showSelected && index < conversation.messages.length - 1 && selection.selectedIds.has(conversation.messages[index + 1].id)
           return <li key={message.id} data-message-id={message.id}
           ref={start ? firstSource : undefined}
           role={selectionMode ? 'option' : undefined} aria-selected={selectionMode ? selected : undefined} aria-label={`${message.senderName}：${message.text || messageKinds[message.kind]}`}
           tabIndex={selectionMode && tabStopId === message.id ? 0 : -1} {...(selectionMode ? selection.bindings(message) : {})} onFocus={() => setFocusedMessageId(message.id)}
-          className={clsx('message', message.isSelf && 'message-self', highlighted && 'message-source', selected && 'message-selected',
+          className={clsx('message', message.isSelf && 'message-self', highlighted && 'message-source', showSelected && 'message-selected',
             joinedBefore && 'selection-joined-before', joinedAfter && 'selection-joined-after',
             (referenced || jumpTarget) && 'message-reference-target')}>
           <Initial name={message.senderName} />
