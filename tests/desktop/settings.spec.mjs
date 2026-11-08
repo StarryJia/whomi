@@ -1,4 +1,5 @@
 import { test, expect, _electron as electron } from '@playwright/test'
+import { chatEditor } from './chat-helpers.mjs'
 import { createServer } from 'node:http'
 import { mkdtemp, mkdir, writeFile, readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -46,7 +47,7 @@ test('settings persist real models, process outbound chat, preserve drafts and m
     await page.reload()
     await page.getByRole('button', { name: '展开会话列表' }).click()
     await page.getByRole('button', { name: '设置验收 · 虚构会话', exact: true }).click()
-    const draft = page.getByRole('textbox', { name: '向 AI 提问', exact: true })
+    const draft = chatEditor(page)
     await page.getByRole('button', { name: 'AI 对话', exact: true }).click()
     await draft.fill('设置后保留的草稿')
     await page.getByRole('button', { name: '设置', exact: true }).click()
@@ -106,7 +107,7 @@ test('settings persist real models, process outbound chat, preserve drafts and m
     expect(await page.locator('.ms-detail').evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true)
     await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(960, 720))
     await page.getByRole('button', { name: '返回', exact: true }).click()
-    await expect(draft).toHaveValue('设置后保留的草稿')
+    await expect(draft).toHaveText('设置后保留的草稿')
     const state = await page.evaluate(() => window.whomi.settings.get())
     const chatId = state.models.find(model => model.model === 'synthetic-chat').id
     const analysisId = state.models.find(model => model.model === 'synthetic-analysis').id
@@ -168,7 +169,7 @@ test('settings persist real models, process outbound chat, preserve drafts and m
     await page.getByRole('button', { name: 'AI 对话', exact: true }).click()
     await expect(page.getByRole('combobox', { name: '对话模型' })).toContainText('synthetic-chat')
     await expect(page.getByText('合成验收回答', { exact: true })).toBeVisible()
-    await page.getByRole('textbox', { name: '向 AI 提问', exact: true }).fill('迁移后继续')
+    await chatEditor(page).fill('迁移后继续')
     await page.getByRole('button', { name: '发送给 AI', exact: true }).click()
     await expect(page.getByText('合成验收回答', { exact: true })).toHaveCount(2, { timeout: 30000 })
     expect(JSON.stringify(requests.at(-1))).not.toMatch(/示例甲|13800138000|example@example\.com/)

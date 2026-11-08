@@ -1,10 +1,13 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { clearFixtureDrafts, composerTextbox, expectComposerText, pasteComposerText } from '../../test/cherry-composer-helpers'
 import type { ConversationAiAdapter } from './types'
 import { ConversationReader } from '../conversations'
 import { createPreviewClient } from '../../data/preview-client'
 import App from '../../App'
+
+beforeEach(() => clearFixtureDrafts('c'))
 
 async function conversation(id = 'c') {
   const client = createPreviewClient([{ id, title: '选择模式示例', messages: [
@@ -27,7 +30,7 @@ describe('阅读与消息选择模式', () => {
     }
     render(<ConversationReader conversation={full} aiAdapter={adapter} />)
     await user.click(screen.getByRole('button', { name: 'AI 对话' }))
-    await user.type(screen.getByRole('textbox'), '保留这个问题')
+    await pasteComposerText('保留这个问题')
     const toggle = screen.getByRole('button', { name: '选择消息' })
     await user.click(toggle)
     await user.click(screen.getByRole('option', { name: '小林：先读这句话。' }))
@@ -48,7 +51,7 @@ describe('阅读与消息选择模式', () => {
     expect(document.querySelectorAll('.selection-joined-before, .selection-joined-after')).toHaveLength(0)
     expect(document.querySelectorAll('.message-reference-target')).toHaveLength(1)
     expect(screen.getByRole('button', { name: '1 组引用' })).toBeVisible()
-    expect(screen.getByRole('textbox')).toHaveValue('保留这个问题')
+    await expectComposerText('保留这个问题')
     await user.click(screen.getByText('先读这句话。'))
     expect(screen.getByRole('button', { name: '1 组引用' })).toBeVisible()
 
@@ -104,7 +107,7 @@ describe('阅读与消息选择模式', () => {
     await user.click(screen.getByRole('option', { name: '小林：先读这句话。' }))
     await user.click(toggle)
     await user.click(screen.getByRole('button', { name: 'AI 对话' }))
-    await user.type(screen.getByRole('textbox'), '保留这个问题')
+    await pasteComposerText('保留这个问题')
     await user.click(await screen.findByRole('button', { name: '2 条引用' }))
     expect(document.querySelectorAll('.message-reference-target')).toHaveLength(2)
     expect(document.querySelectorAll('.message-selected')).toHaveLength(0)
@@ -113,11 +116,11 @@ describe('阅读与消息选择模式', () => {
     expect(toggle).toHaveAttribute('aria-pressed', 'true')
     expect(document.querySelectorAll('.message-reference-target')).toHaveLength(0)
     expect(screen.getByRole('option', { name: '小林：先读这句话。' })).toHaveAttribute('aria-selected', 'true')
-    expect(screen.getByRole('textbox')).toHaveValue('保留这个问题')
+    await expectComposerText('保留这个问题')
     expect(screen.getByRole('button', { name: '1 组引用' })).toBeVisible()
     await user.click(toggle)
     expect(document.querySelectorAll('.message-reference-target')).toHaveLength(0)
-    await user.click(screen.getByRole('button', { name: '2 条引用' }))
+    await user.click(await within(screen.getByRole('log')).findByRole('button', { name: '2 条引用' }))
     expect(document.querySelectorAll('.message-reference-target')).toHaveLength(2)
   })
 
@@ -237,7 +240,7 @@ describe('阅读与消息选择模式', () => {
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
     expect(document.querySelectorAll('.message[tabindex="0"]')).toHaveLength(0)
     await user.click(screen.getByRole('button', { name: 'AI 对话' }))
-    await user.type(screen.getByRole('textbox'), '保留问题')
+    await pasteComposerText('保留问题')
     const toggle = screen.getByRole('button', { name: '选择消息', pressed: false })
     await user.click(toggle)
     expect(toggle).toHaveAttribute('aria-pressed', 'true')
@@ -247,7 +250,7 @@ describe('阅读与消息选择模式', () => {
     await user.click(toggle)
     expect(toggle).toHaveAttribute('aria-pressed', 'false')
     expect(screen.getByRole('button', { name: '1 组引用' })).toBeInTheDocument()
-    expect(screen.getByRole('textbox')).toHaveValue('保留问题')
+    await expectComposerText('保留问题')
     await user.click(screen.getByText('再看这句话。'))
     expect(document.querySelectorAll('.message-selected')).toHaveLength(1)
   })
@@ -262,13 +265,14 @@ describe('阅读与消息选择模式', () => {
       selectedModels: { conversation: 'b' }, skills: [], respond: vi.fn(), analyze: vi.fn() }
     render(<ConversationReader conversation={{ id: 'c', title: '逐组核对', messages: items }} aiAdapter={adapter} />)
     await user.click(screen.getByRole('button', { name: 'AI 对话' }))
-    const draft = screen.getByRole('textbox')
-    await user.type(draft, '接下来该怎么回应？')
+    await pasteComposerText('接下来该怎么回应？')
+    const draft = await composerTextbox()
     await user.click(screen.getByRole('button', { name: '选择消息' }))
     const message = (n: number) => screen.getByRole('option', { name: `小林：原文 ${n}` })
     for (const n of [1, 2, 4]) await user.click(message(n))
     const entry = screen.getByRole('button', { name: '2 组引用' })
-    expect(draft.closest('form')).not.toContainElement(entry)
+    expect(draft.closest('[data-composer-inputbar]')).toContainElement(entry)
+    expect(draft.closest('[data-composer-editor-frame]')).not.toContainElement(entry)
     await user.click(entry)
     const list = screen.getByRole('region', { name: '引用预览' })
     expect(within(list).getByText(/共 2 条消息/)).toBeVisible()
@@ -291,13 +295,13 @@ describe('阅读与消息选择模式', () => {
     await user.keyboard('{Enter}')
     expect(screen.queryByRole('region', { name: '引用预览' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /组引用/ })).not.toBeInTheDocument()
-    expect(draft).toHaveFocus()
+    await waitFor(() => expect(draft).toHaveFocus())
     expect(screen.queryAllByRole('option', { selected: true })).toHaveLength(0)
     for (const n of [1, 4]) await user.click(message(n))
     await user.click(screen.getByRole('button', { name: '清空全部引用' }))
     expect(screen.queryByRole('button', { name: /组引用/ })).not.toBeInTheDocument()
     expect(document.querySelectorAll('.message-selected')).toHaveLength(0)
-    expect(draft).toHaveValue('接下来该怎么回应？')
+    await expectComposerText('接下来该怎么回应？')
     expect(screen.getByRole('combobox', { name: '对话模型' })).toHaveAttribute('title', '乙模型')
     expect(adapter.respond).not.toHaveBeenCalled()
   })
@@ -323,10 +327,13 @@ describe('阅读与消息选择模式', () => {
     render(<ConversationReader conversation={await conversation()} />)
     await user.click(screen.getByRole('button', { name: '选择消息' }))
     await user.click(screen.getByRole('button', { name: 'AI 对话' }))
-    await user.type(screen.getByRole('textbox'), '正在编辑的问题{Escape}')
+    await pasteComposerText('正在编辑的问题')
+    const draft = await composerTextbox()
+    act(() => draft.focus())
+    await user.keyboard('{Escape}')
     expect(screen.getByRole('button', { name: '选择消息', pressed: true })).toBeVisible()
     await waitFor(() => expect(screen.getByRole('button', { name: 'AI 对话' })).toHaveFocus())
     await user.click(screen.getByRole('button', { name: 'AI 对话' }))
-    expect(screen.getByRole('textbox')).toHaveValue('正在编辑的问题')
+    await expectComposerText('正在编辑的问题')
   })
 })

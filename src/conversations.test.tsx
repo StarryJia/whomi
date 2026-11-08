@@ -5,6 +5,7 @@ import App from './App'
 import { createPreviewClient } from './data/preview-client'
 import { ConversationReader } from './components/conversations'
 import { fakeImportApi, saved, snapshot } from './test/import-api'
+import { clearFixtureDrafts, expectComposerText, pasteComposerText } from './test/cherry-composer-helpers'
 
 const conversations = [{
   id: 'sample', title: '项目讨论', messages: [
@@ -21,7 +22,7 @@ function setViewport(mobile = false) {
   }))
 }
 
-beforeEach(() => setViewport())
+beforeEach(() => { setViewport(); for (const id of ['long', 'sample']) clearFixtureDrafts(id) })
 
 describe('文件选择与会话前端', () => {
   it('已选消息移出分页窗口后引用仍能跳回，草稿与选择保持', async () => {
@@ -45,7 +46,7 @@ describe('文件选择与会话前端', () => {
     expect(document.querySelectorAll('.message[tabindex="0"]')).toHaveLength(1)
     await user.click(screen.getByRole('option', { name: '成员：引用原文 1' }))
     await user.click(screen.getByRole('button', { name: 'AI 对话' }))
-    await user.type(screen.getByRole('textbox'), '保留这个问题')
+    await pasteComposerText('保留这个问题')
     for (let index = 0; index < 5; index++) await user.click(screen.getByRole('button', { name: '加载后文' }))
     expect(screen.queryByRole('option', { name: '成员：引用原文 1' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '1 组引用' }))
@@ -56,7 +57,7 @@ describe('文件选择与会话前端', () => {
     expect(document.querySelectorAll('.message-selected')).toHaveLength(0)
     expect(screen.getByRole('button', { name: '选择消息' })).toHaveAttribute('aria-pressed', 'false')
     expect(locate).toHaveBeenCalledExactlyOnceWith({ conversationId: 'long', messageId: '1' })
-    expect(screen.getByRole('textbox')).toHaveValue('保留这个问题')
+    await expectComposerText('保留这个问题')
     await user.click(screen.getByRole('button', { name: '选择消息' }))
     expect(screen.getByRole('option', { name: '成员：引用原文 1' })).toHaveAttribute('aria-selected', 'true')
     expect(document.querySelectorAll('.message-reference-target')).toHaveLength(0)
@@ -230,8 +231,8 @@ describe('文件选择与会话前端', () => {
     await user.click(screen.getByRole('button', { name: '项目讨论' }))
     await user.click(screen.getByRole('button', { name: 'AI 对话' }))
     expect(screen.getByRole('textbox', { name: '向 AI 提问' })).toBeInTheDocument()
-    await user.type(screen.getByRole('textbox', { name: '向 AI 提问' }), '帮我看看这段交流')
-    expect(screen.getByRole('button', { name: '发送给 AI' })).toBeDisabled()
+    await pasteComposerText('帮我看看这段交流')
+    expect(screen.getByRole('button', { name: '发送给 AI' })).toHaveAttribute('aria-disabled', 'true')
     await user.click(screen.getByRole('link', { name: 'Whomi 首页' }))
     expect(screen.queryByText('先确认页面范围。')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: '收起侧栏' })).toBeInTheDocument()

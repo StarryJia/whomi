@@ -1,0 +1,50 @@
+@layer cherry-theme, cherry-utilities;
+@import 'tailwindcss/theme.css' layer(cherry-theme);
+@import 'tailwindcss/utilities.css' layer(cherry-utilities) source(none);
+@import './fonts/iconfont.css';
+
+@source '../';
+@source '../../../components/conversation-ai/cherry';
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--foreground);
+  --color-border: var(--border);
+  --color-input: var(--border);
+  --color-ring: var(--primary);
+  --color-popover: var(--background);
+  --color-popover-foreground: var(--foreground);
+  --color-destructive: #b42318;
+  --color-destructive-hover: #912018;
+  --color-card: var(--background);
+  --color-card-foreground: var(--foreground);
+  --color-secondary: var(--muted);
+  --color-secondary-foreground: var(--foreground);
+}
+
+.cherry-chat-surface {
+  --background: var(--surface, #fff);
+  --foreground: var(--text, #26303d);
+  --muted: var(--canvas, #f5f7f9);
+  --muted-foreground: var(--text-muted, #5c6674);
+  --primary: var(--focus, #b83b12);
+  --primary-foreground: #fff;
+  --accent: var(--hover, #f0f3f6);
+  --border: var(--line, #e0e5eb);
+  --chat-message-well: var(--surface, #fff);
+  --chat-message-well-solid: var(--surface, #fff);
+  --radius: 0.5rem;
+  min-width: 0;
+  color: var(--foreground);
+  font: inherit;
+}
+
+.cherry-chat-surface :where(button, input, textarea, select) { font: inherit; }
+.cherry-chat-surface :where(button:not(:disabled)) { cursor: pointer; }
+.cherry-chat-surface :where(button:disabled) { cursor: not-allowed; }

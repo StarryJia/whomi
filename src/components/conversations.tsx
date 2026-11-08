@@ -382,7 +382,7 @@ export function ConversationReader({ conversation, initialAnalysisTaskId, openAn
     references={selection.references} onClearReferences={selection.clear} onRestoreReferences={selection.restore}
     onEndReferenceView={endReferenceView}
     onJumpReference={(ids, targetId = ids[0], pending) => { if (targetId) void navigateQuote({ targetId, referenceIds: ids, pending }) }} adapter={aiAdapter}>
-    {({ analysisControl, chatControl, composer }) => <section className="conversation-reader" aria-labelledby="conversation-title" onKeyDown={event => {
+    {({ analysisControl, chatControl, composer, referencesLocked }) => <section className="conversation-reader" aria-labelledby="conversation-title" onKeyDown={event => {
       if (event.key !== 'Escape' || event.defaultPrevented || !selectionMode) return
       if ((event.target as HTMLElement).closest('input, textarea, select, [contenteditable="true"]')) return
       event.preventDefault()
@@ -395,7 +395,7 @@ export function ConversationReader({ conversation, initialAnalysisTaskId, openAn
       </button>}
       <div className="reader-heading-row"><h1 id="conversation-title" ref={heading} tabIndex={-1}>{conversation.title}</h1>
         <div className="reader-actions">
-          <button ref={selectionButton} className="reader-selection-toggle" type="button" aria-label="选择消息"
+          <button ref={selectionButton} className="reader-selection-toggle" type="button" aria-label="选择消息" disabled={referencesLocked}
             title={selectionMode ? '退出选择' : '选择消息'} aria-pressed={selectionMode} onClick={toggleSelectionMode}>
             <MousePointer2 aria-hidden="true" />
           </button>
@@ -435,7 +435,7 @@ export function ConversationReader({ conversation, initialAnalysisTaskId, openAn
           return <li key={message.id} data-message-id={message.id}
           ref={start ? firstSource : undefined}
           role={selectionMode ? 'option' : undefined} aria-selected={selectionMode ? selected : undefined} aria-label={`${message.senderName}：${message.text || messageKinds[message.kind]}`}
-          tabIndex={selectionMode && tabStopId === message.id ? 0 : -1} {...(selectionMode ? selection.bindings(message) : {})} onFocus={() => setFocusedMessageId(message.id)}
+          tabIndex={selectionMode && !referencesLocked && tabStopId === message.id ? 0 : -1} {...(selectionMode && !referencesLocked ? selection.bindings(message) : {})} onFocus={() => setFocusedMessageId(message.id)}
           className={clsx('message', message.isSelf && 'message-self', highlighted && 'message-source', showSelected && 'message-selected',
             joinedBefore && 'selection-joined-before', joinedAfter && 'selection-joined-after',
             (referenced || jumpTarget) && 'message-reference-target')}>

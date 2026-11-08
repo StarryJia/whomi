@@ -1,4 +1,5 @@
 import { _electron as electron, expect, test } from '@playwright/test'
+import { chatEditor } from './chat-helpers.mjs'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, dirname, join, resolve } from 'node:path'
@@ -39,7 +40,7 @@ for (const width of [1280, 360]) test(`在 ${width} 像素窗口双向切换选�
     await expect.poll(() => page.evaluate(() => innerWidth)).toBe(width)
     const button = name => page.getByRole('button', { name, exact: true })
     const panel = page.getByRole('complementary', { name: 'AI 对话' })
-    const editor = page.getByRole('textbox', { name: '向 AI 提问' })
+    const editor = chatEditor(page)
     const preview = page.getByRole('region', { name: '引用预览' })
     const toggle = button('选择消息')
     const option = index => page.getByRole('option', { name: fixture.messages[index].accountName + '：' + messages[index], exact: true })
@@ -81,9 +82,9 @@ for (const width of [1280, 360]) test(`在 ${width} 像素窗口双向切换选�
     await editor.fill(question)
     const entry = button('2 组引用')
     await expect(entry).toBeInViewport()
-    expect(await entry.evaluate(node => node.closest('form') === null)).toBe(true)
-    const form = editor.locator('xpath=ancestor::form')
-    const frame = await form.boundingBox()
+    expect(await entry.evaluate(node => !!node.closest('[data-composer-inputbar]') &&
+      !node.closest('[data-composer-editor-frame]'))).toBe(true)
+    const frame = await editor.locator('xpath=ancestor::*[@data-composer-editor-frame]').boundingBox()
     const chip = await entry.boundingBox()
     expect(chip.y + chip.height).toBeLessThanOrEqual(frame.y)
 
@@ -91,7 +92,7 @@ for (const width of [1280, 360]) test(`在 ${width} 像素窗口双向切换选�
     await expect(editor).toBeFocused()
     await button('新建 AI 对话').click()
     await expect(editor).toBeFocused()
-    await expect(editor).toHaveValue(question)
+    await expect(editor).toHaveText(question)
     await button('显示对话列表').click()
     const history = page.getByRole('navigation', { name: 'AI 对话列表' })
     await expect(history.getByRole('button', { name: '新对话', exact: true })).toHaveCount(1)
@@ -155,7 +156,7 @@ for (const width of [1280, 360]) test(`在 ${width} 像素窗口双向切换选�
     await expect(preview.getByRole('button', { name: /引用 1 ·/ })).toContainText(messages[keep[0]])
     await expect(preview.getByRole('button', { name: /移除第/ })).toHaveCount(1)
     await expect(button('1 组引用')).toBeVisible()
-    await expect(editor).toHaveValue(question)
+    await expect(editor).toHaveText(question)
     await shot('one-group')
     await page.keyboard.press('Escape')
     await expect(preview).toHaveCount(0)
@@ -169,7 +170,7 @@ for (const width of [1280, 360]) test(`在 ${width} 像素窗口双向切换选�
     await expect(preview).toHaveCount(0)
     await expect(button('1 组引用')).toHaveCount(0)
     await expect(button('清空全部引用')).toHaveCount(0)
-    await expect(editor).toHaveValue(question)
+    await expect(editor).toHaveText(question)
     await showSource()
     await checkMarked('.message-reference-target', [])
     await checkMarked('.message-selected', [])
@@ -178,7 +179,7 @@ for (const width of [1280, 360]) test(`在 ${width} 像素窗口双向切换选�
     await openPanel()
     await expect(entry).toBeVisible()
     await button('清空全部引用').click()
-    await expect(editor).toHaveValue(question)
+    await expect(editor).toHaveText(question)
     await expect(entry).toHaveCount(0)
     await expect(button('清空全部引用')).toHaveCount(0)
     await showSource()
@@ -187,7 +188,7 @@ for (const width of [1280, 360]) test(`在 ${width} 像素窗口双向切换选�
     await shot('selection-cleared')
     await toggle.click()
     await openPanel()
-    await expect(editor).toHaveValue(question)
+    await expect(editor).toHaveText(question)
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   } finally {
     await app?.close()

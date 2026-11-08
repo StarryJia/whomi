@@ -1,0 +1,128 @@
+{
+  "fixture": "合成数据",
+  "migrationBundle": "index-Cy7Pe1st.js",
+  "baselineCommit": "b6378890e14796e131c37a67ef432e7cf58298d9",
+  "baselineBundle": "index-D1QYg9cY.js",
+  "modelRequests": [
+    {
+      "case": "complete",
+      "model": "rollback-fixture"
+    },
+    {
+      "case": "stop",
+      "model": "rollback-fixture"
+    }
+  ],
+  "beforeCopy": {
+    "id": "1",
+    "title": "示例正常完成的问题",
+    "turns": [
+      {
+        "id": "1",
+        "threadId": "1",
+        "requestId": "9172dfce-4732-421d-ae0b-e97a9c320ae3",
+        "prompt": "示例正常完成的问题",
+        "state": "completed",
+        "text": "示例正常完成的回答。",
+        "modelId": "a6674866-4243-43a8-b5c5-95ea440bb3b8",
+        "modelIdentity": {
+          "id": "a6674866-4243-43a8-b5c5-95ea440bb3b8",
+          "version": 1,
+          "label": "示例回退模型",
+          "model": "rollback-fixture"
+        },
+        "referenceIds": [
+          "1"
+        ]
+      },
+      {
+        "id": "2",
+        "threadId": "1",
+        "requestId": "1f3dd500-f555-46f3-8b0a-8c490faa38b7",
+        "prompt": "示例主动停止的问题",
+        "state": "stopped",
+        "text": "示例停止时保留的回答。",
+        "modelId": "a6674866-4243-43a8-b5c5-95ea440bb3b8",
+        "modelIdentity": {
+          "id": "a6674866-4243-43a8-b5c5-95ea440bb3b8",
+          "version": 1,
+          "label": "示例回退模型",
+          "model": "rollback-fixture"
+        },
+        "referenceIds": [
+          "2"
+        ]
+      }
+    ]
+  },
+  "copy": {
+    "distinctDirectories": true,
+    "files": [
+      {
+        "name": "whomi.db",
+        "sha256": "97e8d54f8a7255106f66cf1b213c4a4d7b558d21310b1c2bfedc3d0d526dddda"
+      },
+      {
+        "name": "whomi.db-wal",
+        "sha256": "12d73a86d6cd5aea2b3e7b0cd4fd3d5a7b25d3dfc93ce9c1cdad714043d2c9ae"
+      }
+    ]
+  },
+  "afterCopy": {
+    "id": "1",
+    "title": "示例正常完成的问题",
+    "turns": [
+      {
+        "id": "1",
+        "threadId": "1",
+        "requestId": "9172dfce-4732-421d-ae0b-e97a9c320ae3",
+        "prompt": "示例正常完成的问题",
+        "state": "completed",
+        "text": "示例正常完成的回答。",
+        "modelId": "a6674866-4243-43a8-b5c5-95ea440bb3b8",
+        "modelIdentity": {
+          "id": "a6674866-4243-43a8-b5c5-95ea440bb3b8",
+          "version": 1,
+          "label": "示例回退模型",
+          "model": "rollback-fixture"
+        },
+        "referenceIds": [
+          "1"
+        ]
+      },
+      {
+        "id": "2",
+        "threadId": "1",
+        "requestId": "1f3dd500-f555-46f3-8b0a-8c490faa38b7",
+        "prompt": "示例主动停止的问题",
+        "state": "stopped",
+        "text": "示例停止时保留的回答。",
+        "modelId": "a6674866-4243-43a8-b5c5-95ea440bb3b8",
+        "modelIdentity": {
+          "id": "a6674866-4243-43a8-b5c5-95ea440bb3b8",
+          "version": 1,
+          "label": "示例回退模型",
+          "model": "rollback-fixture"
+        },
+        "referenceIds": [
+          "2"
+        ]
+      }
+    ]
+  },
+  "samePersistedTurns": true,
+  "baselineReader": {
+    "renderedReplies": [
+      "示例正常完成的回答。",
+      "示例停止时保留的回答。"
+    ],
+    "showedStoppedState": true,
+    "modelLabels": 2,
+    "referenceChips": 2,
+    "highlightedReference": {
+      "id": "2",
+      "text": "示例回退原文乙"
+    }
+  },
+  "originalDatabaseHashUnchanged": true
+}

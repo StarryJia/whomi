@@ -4,6 +4,10 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "moduleResolution": "Bundler",
+    "paths": {
+      "@cherrystudio/ui": ["./src/vendor/cherry-chat/shared/ui.ts"],
+      "@cherrystudio/ui/lib/utils": ["./src/vendor/cherry-chat/shared/lib/utils.ts"]
+    },
     "jsx": "react-jsx",
     "strict": true,
     "skipLibCheck": true,

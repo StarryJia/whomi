@@ -1,0 +1,849 @@
+{
+  "startedAt": "2026-11-08T11:32:26.546Z",
+  "browser": "Electron showInactive BrowserWindow for real wheel delivery",
+  "data": "Synthetic SQLite and loopback model only",
+  "userData": "C:\\Users\\86188\\AppData\\Local\\Temp\\whomi-PROTOTYPE-cherry-window-Z0GlL5",
+  "checks": [
+    {
+      "name": "composition Enter does not submit",
+      "status": "passed",
+      "method": "Synthetic DOM CompositionEvent/KeyboardEvent, not OS IME"
+    },
+    {
+      "name": "normal generation and next draft",
+      "status": "passed",
+      "turnId": "3",
+      "usage": {
+        "inputTokens": 24,
+        "totalInputTokens": 24,
+        "outputTokens": 180,
+        "durationMs": 1151.2253000000492,
+        "outputTokensPerSecond": 156.35514612126082,
+        "firstTokenMs": 9.12420000002021,
+        "startedAt": 1794137548989,
+        "completedAt": 1794137550140
+      },
+      "nextDraft": "下一条草稿：我想补充当时的背景"
+    },
+    {
+      "name": "reference returns to synthetic original",
+      "status": "passed"
+    },
+    {
+      "name": "user scroll ownership and resume following",
+      "status": "passed",
+      "held": {
+        "top": 3642,
+        "height": 4954,
+        "viewport": 544,
+        "distance": 768
+      },
+      "afterGrowth": {
+        "top": 3642,
+        "height": 5174,
+        "viewport": 544,
+        "distance": 988
+      },
+      "lengthBefore": 72,
+      "lengthAfter": 336,
+      "measuredHeightGrew": true,
+      "note": "Virtualized offscreen content can grow without an immediate scrollHeight measurement."
+    },
+    {
+      "name": "stop persists partial content and prevents growth",
+      "status": "passed",
+      "turnId": "4",
+      "retainedCharacters": 336
+    },
+    {
+      "name": "failure retries original turn without replacing draft",
+      "status": "passed",
+      "turnId": "5",
+      "attempt": 2,
+      "turnCount": 5
+    },
+    {
+      "name": "close and reopen actual SQLite",
+      "status": "passed",
+      "savedTurnIds": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5"
+      ],
+      "database": "C:\\Users\\86188\\AppData\\Local\\Temp\\whomi-PROTOTYPE-cherry-op59uH"
+    },
+    {
+      "name": "close and reopen panel",
+      "status": "passed"
+    },
+    {
+      "name": "960 by 720 window keeps operations within viewport",
+      "status": "passed",
+      "width": 960,
+      "height": 720,
+      "scrollWidth": 960
+    },
+    {
+      "name": "window runtime diagnostics",
+      "status": "failed",
+      "error": "Error: expect(received).toEqual(expected) // deep equality\n\n- Expected  -   1\n+ Received  + 612\n\n- Array []\n+ Array [\n+   Object {\n+     \"check\": \"launch\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137547999,\n+   },\n+   Object {\n+     \"check\": \"normal generation and next draft\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137549032,\n+   },\n+   Object {\n+     \"check\": \"normal generation and next draft\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137549083,\n+   },\n+   Object {\n+     \"check\": \"normal generation and next draft\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137549109,\n+   },\n+   Object {\n+     \"check\": \"normal generation and next draft\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137549133,\n+   },\n+   Object {\n+     \"check\": \"normal generation and next draft\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137549201,\n+   },\n+   Object {\n+     \"check\": \"normal generation and next draft\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137549246,\n+   },\n+   Object {\n+     \"check\": \"normal generation and next draft\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137549310,\n+   },\n+   Object {\n+     \"check\": \"normal generation and next draft\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137549372,\n+   },\n+   Object {\n+     \"check\": \"normal generation and next draft\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137549426,\n+   },\n+   Object {\n+     \"check\": \"normal generation and next draft\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137549486,\n+   },\n+   Object {\n+     \"check\": \"normal generation and next draft\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137549515,\n+   },\n+   Object {\n+     \"check\": \"normal generation and next draft\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137549547,\n+   },\n+   Object {\n+     \"check\": \"normal generation and next draft\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137549574,\n+   },\n+   Object {\n+     \"check\": \"normal generation and next draft\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137549609,\n+   },\n+   Object {\n+     \"check\": \"normal generation and next draft\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137549636,\n+   },\n+   Object {\n+     \"check\": \"normal generation and next draft\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137549673,\n+   },\n+   Object {\n+     \"check\": \"normal generation and next draft\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137549699,\n+   },\n+   Object {\n+     \"check\": \"normal generation and next draft\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137549733,\n+   },\n+   Object {\n+     \"check\": \"normal generation and next draft\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137549761,\n+   },\n+   Object {\n+     \"check\": \"normal generation and next draft\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137549822,\n+   },\n+   Object {\n+     \"check\": \"normal generation and next draft\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137549890,\n+   },\n+   Object {\n+     \"check\": \"normal generation and next draft\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137549950,\n+   },\n+   Object {\n+     \"check\": \"normal generation and next draft\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137550024,\n+   },\n+   Object {\n+     \"check\": \"normal generation and next draft\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137550081,\n+   },\n+   Object {\n+     \"check\": \"normal generation and next draft\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137550109,\n+   },\n+   Object {\n+     \"check\": \"user scroll ownership and resume following\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137552451,\n+   },\n+   Object {\n+     \"check\": \"user scroll ownership and resume following\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137552705,\n+   },\n+   Object {\n+     \"check\": \"user scroll ownership and resume following\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137552748,\n+   },\n+   Object {\n+     \"check\": \"user scroll ownership and resume following\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137552905,\n+   },\n+   Object {\n+     \"check\": \"user scroll ownership and resume following\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137553237,\n+   },\n+   Object {\n+     \"check\": \"user scroll ownership and resume following\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137553551,\n+   },\n+   Object {\n+     \"check\": \"user scroll ownership and resume following\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137553863,\n+   },\n+   Object {\n+     \"check\": \"user scroll ownership and resume following\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137554156,\n+   },\n+   Object {\n+     \"check\": \"user scroll ownership and resume following\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137554478,\n+   },\n+   Object {\n+     \"check\": \"failure retries original turn without replacing draft\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137555700,\n+   },\n+   Object {\n+     \"check\": \"failure retries original turn without replacing draft\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137555963,\n+   },\n+   Object {\n+     \"check\": \"failure retries original turn without replacing draft\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137556001,\n+   },\n+   Object {\n+     \"check\": \"failure retries original turn without replacing draft\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137556031,\n+   },\n+   Object {\n+     \"check\": \"failure retries original turn without replacing draft\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137556063,\n+   },\n+   Object {\n+     \"check\": \"failure retries original turn without replacing draft\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137556127,\n+   },\n+   Object {\n+     \"check\": \"failure retries original turn without replacing draft\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137556188,\n+   },\n+   Object {\n+     \"check\": \"failure retries original turn without replacing draft\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137556252,\n+   },\n+   Object {\n+     \"check\": \"failure retries original turn without replacing draft\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137556321,\n+   },\n+   Object {\n+     \"check\": \"failure retries original turn without replacing draft\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137556386,\n+   },\n+   Object {\n+     \"check\": \"failure retries original turn without replacing draft\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137556447,\n+   },\n+   Object {\n+     \"check\": \"failure retries original turn without replacing draft\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137556471,\n+   },\n+   Object {\n+     \"check\": \"failure retries original turn without replacing draft\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137556502,\n+   },\n+   Object {\n+     \"check\": \"failure retries original turn without replacing draft\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137556527,\n+   },\n+   Object {\n+     \"check\": \"failure retries original turn without replacing draft\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137556557,\n+   },\n+   Object {\n+     \"check\": \"failure retries original turn without replacing draft\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137556587,\n+   },\n+   Object {\n+     \"check\": \"failure retries original turn without replacing draft\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137556617,\n+   },\n+   Object {\n+     \"check\": \"failure retries original turn without replacing draft\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137556643,\n+   },\n+   Object {\n+     \"check\": \"failure retries original turn without replacing draft\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137556673,\n+   },\n+   Object {\n+     \"check\": \"failure retries original turn without replacing draft\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137556701,\n+   },\n+   Object {\n+     \"check\": \"failure retries original turn without replacing draft\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137556763,\n+   },\n+   Object {\n+     \"check\": \"failure retries original turn without replacing draft\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137556822,\n+   },\n+   Object {\n+     \"check\": \"failure retries original turn without replacing draft\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137556885,\n+   },\n+   Object {\n+     \"check\": \"failure retries original turn without replacing draft\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137556947,\n+   },\n+   Object {\n+     \"check\": \"failure retries original turn without replacing draft\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137557009,\n+   },\n+   Object {\n+     \"check\": \"failure retries original turn without replacing draft\",\n+     \"column\": 0,\n+     \"filename\": \"http://127.0.0.1:5193/\",\n+     \"kind\": \"error\",\n+     \"line\": 0,\n+     \"message\": \"ResizeObserver loop completed with undelivered notifications.\",\n+     \"stack\": undefined,\n+     \"timestamp\": 1794137557036,\n+   },\n+ ]\n    at captureRawStack (D:\\University\\github\\whomi\\node_modules\\playwright-core\\lib\\coreBundle.js:9282:17)\n    at callMatcherAsStep (D:\\University\\github\\whomi\\node_modules\\playwright\\lib\\matchers\\expect.js:13316:57)\n    at Object.toEqual (D:\\University\\github\\whomi\\node_modules\\playwright\\lib\\matchers\\expect.js:13308:23)\n    at D:\\University\\github\\whomi\\prototypes\\cherry-chat-alignment\\verify.mjs:208:31"
+    }
+  ],
+  "consoleErrors": [],
+  "windowErrors": [
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137547999,
+      "check": "launch"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137549032,
+      "check": "normal generation and next draft"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137549083,
+      "check": "normal generation and next draft"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137549109,
+      "check": "normal generation and next draft"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137549133,
+      "check": "normal generation and next draft"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137549201,
+      "check": "normal generation and next draft"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137549246,
+      "check": "normal generation and next draft"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137549310,
+      "check": "normal generation and next draft"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137549372,
+      "check": "normal generation and next draft"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137549426,
+      "check": "normal generation and next draft"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137549486,
+      "check": "normal generation and next draft"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137549515,
+      "check": "normal generation and next draft"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137549547,
+      "check": "normal generation and next draft"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137549574,
+      "check": "normal generation and next draft"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137549609,
+      "check": "normal generation and next draft"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137549636,
+      "check": "normal generation and next draft"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137549673,
+      "check": "normal generation and next draft"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137549699,
+      "check": "normal generation and next draft"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137549733,
+      "check": "normal generation and next draft"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137549761,
+      "check": "normal generation and next draft"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137549822,
+      "check": "normal generation and next draft"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137549890,
+      "check": "normal generation and next draft"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137549950,
+      "check": "normal generation and next draft"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137550024,
+      "check": "normal generation and next draft"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137550081,
+      "check": "normal generation and next draft"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137550109,
+      "check": "normal generation and next draft"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137552451,
+      "check": "user scroll ownership and resume following"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137552705,
+      "check": "user scroll ownership and resume following"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137552748,
+      "check": "user scroll ownership and resume following"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137552905,
+      "check": "user scroll ownership and resume following"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137553237,
+      "check": "user scroll ownership and resume following"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137553551,
+      "check": "user scroll ownership and resume following"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137553863,
+      "check": "user scroll ownership and resume following"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137554156,
+      "check": "user scroll ownership and resume following"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137554478,
+      "check": "user scroll ownership and resume following"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137555700,
+      "check": "failure retries original turn without replacing draft"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137555963,
+      "check": "failure retries original turn without replacing draft"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137556001,
+      "check": "failure retries original turn without replacing draft"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137556031,
+      "check": "failure retries original turn without replacing draft"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137556063,
+      "check": "failure retries original turn without replacing draft"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137556127,
+      "check": "failure retries original turn without replacing draft"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137556188,
+      "check": "failure retries original turn without replacing draft"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137556252,
+      "check": "failure retries original turn without replacing draft"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137556321,
+      "check": "failure retries original turn without replacing draft"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137556386,
+      "check": "failure retries original turn without replacing draft"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137556447,
+      "check": "failure retries original turn without replacing draft"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137556471,
+      "check": "failure retries original turn without replacing draft"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137556502,
+      "check": "failure retries original turn without replacing draft"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137556527,
+      "check": "failure retries original turn without replacing draft"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137556557,
+      "check": "failure retries original turn without replacing draft"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137556587,
+      "check": "failure retries original turn without replacing draft"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137556617,
+      "check": "failure retries original turn without replacing draft"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137556643,
+      "check": "failure retries original turn without replacing draft"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137556673,
+      "check": "failure retries original turn without replacing draft"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137556701,
+      "check": "failure retries original turn without replacing draft"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137556763,
+      "check": "failure retries original turn without replacing draft"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137556822,
+      "check": "failure retries original turn without replacing draft"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137556885,
+      "check": "failure retries original turn without replacing draft"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137556947,
+      "check": "failure retries original turn without replacing draft"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137557009,
+      "check": "failure retries original turn without replacing draft"
+    },
+    {
+      "kind": "error",
+      "message": "ResizeObserver loop completed with undelivered notifications.",
+      "filename": "http://127.0.0.1:5193/",
+      "line": 0,
+      "column": 0,
+      "timestamp": 1794137557036,
+      "check": "failure retries original turn without replacing draft"
+    }
+  ],
+  "externalRequests": [],
+  "screenshots": [
+    "D:\\University\\github\\whomi\\artifacts\\cherry-chat-alignment\\01-initial-1280.png",
+    "D:\\University\\github\\whomi\\artifacts\\cherry-chat-alignment\\02-table-and-next-draft.png",
+    "D:\\University\\github\\whomi\\artifacts\\cherry-chat-alignment\\03-streaming-reading-held.png",
+    "D:\\University\\github\\whomi\\artifacts\\cherry-chat-alignment\\04-stopped-partial-answer.png",
+    "D:\\University\\github\\whomi\\artifacts\\cherry-chat-alignment\\05-failure-and-draft.png",
+    "D:\\University\\github\\whomi\\artifacts\\cherry-chat-alignment\\06-retry-completed.png",
+    "D:\\University\\github\\whomi\\artifacts\\cherry-chat-alignment\\07-narrow-960.png",
+    "D:\\University\\github\\whomi\\artifacts\\cherry-chat-alignment\\failure.png"
+  ],
+  "bootstrap": {
+    "threadId": "1",
+    "bootstrap": {
+      "conversationId": "1",
+      "modelId": "probe-local",
+      "referenceIds": [
+        "1",
+        "2"
+      ],
+      "references": [
+        {
+          "id": "1",
+          "senderName": "本人",
+          "text": "想听听你的想法"
+        },
+        {
+          "id": "2",
+          "senderName": "对方",
+          "text": "我需要一些时间"
+        }
+      ],
+      "directory": "C:\\Users\\86188\\AppData\\Local\\Temp\\whomi-PROTOTYPE-cherry-op59uH",
+      "modelRequests": 2
+    }
+  },
+  "initialTurns": [
+    {
+      "id": "1",
+      "state": "completed"
+    },
+    {
+      "id": "2",
+      "state": "stopped"
+    }
+  ],
+  "status": "failed",
+  "failureState": {
+    "url": "http://127.0.0.1:5193/",
+    "body": "Cherry 对话兼容验证示例数据\n生成场景\n正常生成\n慢速生成\n下一次失败\n重开保存记录\n关闭对话\n讨论时间\n\n选中原文后发送示例问题。\n\n本人\n想听听你的想法\n对方\n我需要一些时间\n你\n\n验证一次失败后重试原请求\n\n引用 1\n引用 2\n本机合成模型\n示例聊天整理\n\n以下内容来自本次合成消息。\n\n发言人\t原文\n本人\t想听听你的想法\n对方\t我需要一些时间\n\n观察： 双方正在表达不同的交流节奏，材料不足以作更多推断。\n\n示例段落 1\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n示例段落 2\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n示例段落 3\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n示例段落 4\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n示例段落 5\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n示例段落 6\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n示例段落 7\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n示例段落 8\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n示例段落 9\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n示例段落 10\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n示例段落 11\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n示例段落 12\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n示例段落 13\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n示例段落 14\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n示例段落 15\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n已完成\n2 条待发送引用\n\n失败后继续保留的新草稿\n\n可以继续输入\n5 轮对话",
+    "turns": [
+      {
+        "id": "1",
+        "threadId": "1",
+        "requestId": "c544f8bd-c37c-41e9-9671-c6c8801697db",
+        "prompt": "尺寸观察器诊断：输出合成表格",
+        "referenceIds": [
+          "1",
+          "2"
+        ],
+        "modelId": "probe-local",
+        "modelIdentity": {
+          "id": "probe-local",
+          "version": 1,
+          "label": "本机合成模型",
+          "model": "probe-local-model"
+        },
+        "text": "## 示例聊天整理\n\n以下内容来自本次合成消息。\n\n| 发言人 | 原文 |\n| --- | --- |\n| 本人 | 想听听你的想法 |\n| 对方 | 我需要一些时间 |\n\n**观察：** 双方正在表达不同的交流节奏，材料不足以作更多推断。\n\n### 示例段落 1\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 2\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 3\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 4\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 5\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 6\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 7\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 8\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 9\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 10\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 11\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 12\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 13\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 14\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 15\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n",
+        "state": "completed",
+        "attempt": 1,
+        "usage": {
+          "inputTokens": 24,
+          "totalInputTokens": 24,
+          "outputTokens": 180,
+          "durationMs": 1364.2924000000057,
+          "outputTokensPerSecond": 131.93652621681338,
+          "firstTokenMs": 256.356300000014,
+          "startedAt": 1794137486007,
+          "completedAt": 1794137487372
+        },
+        "eventSequence": 41
+      },
+      {
+        "id": "2",
+        "threadId": "1",
+        "requestId": "816f3c56-aff2-4f41-9ec2-dc1d19e36b97",
+        "prompt": "尺寸观察器诊断：生成时向上阅读",
+        "referenceIds": [
+          "1",
+          "2"
+        ],
+        "modelId": "probe-local",
+        "modelIdentity": {
+          "id": "probe-local",
+          "version": 1,
+          "label": "本机合成模型",
+          "model": "probe-local-model"
+        },
+        "text": "## 示例聊天整理\n\n以下内容来自本次合成消息。\n\n| 发言人 | 原文 |\n| --- | --- |\n| 本人 | 想听听你的想法 |\n| 对方 | 我需要一些时间 |\n\n**观察：** 双方正在表达不同的交流节奏，材料不足以作更多推断。\n\n### 示例段落 1\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 2\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 3\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 4\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 5\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 6\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 7\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 8\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 9\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 10\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 11\n\n这是一段用于检查流式阅",
+        "state": "stopped",
+        "attempt": 1,
+        "usage": {
+          "durationMs": 4157.582400000014,
+          "incomplete": true,
+          "firstTokenMs": 7.573499999998603,
+          "startedAt": 1794137490066,
+          "completedAt": 1794137494224
+        },
+        "eventSequence": 31
+      },
+      {
+        "id": "3",
+        "threadId": "1",
+        "requestId": "330070fb-edee-4642-a983-c1a8942a6d5f",
+        "prompt": "把这段聊天整理成表格",
+        "referenceIds": [
+          "1",
+          "2"
+        ],
+        "modelId": "probe-local",
+        "modelIdentity": {
+          "id": "probe-local",
+          "version": 1,
+          "label": "本机合成模型",
+          "model": "probe-local-model"
+        },
+        "text": "## 示例聊天整理\n\n以下内容来自本次合成消息。\n\n| 发言人 | 原文 |\n| --- | --- |\n| 本人 | 想听听你的想法 |\n| 对方 | 我需要一些时间 |\n\n**观察：** 双方正在表达不同的交流节奏，材料不足以作更多推断。\n\n### 示例段落 1\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 2\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 3\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 4\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 5\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 6\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 7\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 8\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 9\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 10\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 11\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 12\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 13\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 14\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 15\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n",
+        "state": "completed",
+        "attempt": 1,
+        "usage": {
+          "inputTokens": 24,
+          "totalInputTokens": 24,
+          "outputTokens": 180,
+          "durationMs": 1151.2253000000492,
+          "outputTokensPerSecond": 156.35514612126082,
+          "firstTokenMs": 9.12420000002021,
+          "startedAt": 1794137548989,
+          "completedAt": 1794137550140
+        },
+        "eventSequence": 41
+      },
+      {
+        "id": "4",
+        "threadId": "1",
+        "requestId": "3a72a723-d46f-435b-9644-1fa3ba58c4b0",
+        "prompt": "请继续输出供滚动检查的合成内容",
+        "referenceIds": [
+          "1",
+          "2"
+        ],
+        "modelId": "probe-local",
+        "modelIdentity": {
+          "id": "probe-local",
+          "version": 1,
+          "label": "本机合成模型",
+          "model": "probe-local-model"
+        },
+        "text": "## 示例聊天整理\n\n以下内容来自本次合成消息。\n\n| 发言人 | 原文 |\n| --- | --- |\n| 本人 | 想听听你的想法 |\n| 对方 | 我需要一些时间 |\n\n**观察：** 双方正在表达不同的交流节奏，材料不足以作更多推断。\n\n### 示例段落 1\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 2\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 3\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 4\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 5\n\n这",
+        "state": "stopped",
+        "attempt": 1,
+        "usage": {
+          "durationMs": 2173.1959999999963,
+          "incomplete": true,
+          "firstTokenMs": 6.808999999950174,
+          "startedAt": 1794137552405,
+          "completedAt": 1794137554578
+        },
+        "eventSequence": 18
+      },
+      {
+        "id": "5",
+        "threadId": "1",
+        "requestId": "f2912d2d-0a74-4fe2-9860-aa192037dc95",
+        "prompt": "验证一次失败后重试原请求",
+        "referenceIds": [
+          "1",
+          "2"
+        ],
+        "modelId": "probe-local",
+        "modelIdentity": {
+          "id": "probe-local",
+          "version": 1,
+          "label": "本机合成模型",
+          "model": "probe-local-model"
+        },
+        "text": "## 示例聊天整理\n\n以下内容来自本次合成消息。\n\n| 发言人 | 原文 |\n| --- | --- |\n| 本人 | 想听听你的想法 |\n| 对方 | 我需要一些时间 |\n\n**观察：** 双方正在表达不同的交流节奏，材料不足以作更多推断。\n\n### 示例段落 1\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 2\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 3\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 4\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 5\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 6\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 7\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 8\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 9\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 10\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 11\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 12\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 13\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 14\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n\n### 示例段落 15\n\n这是一段用于检查流式阅读位置的合成回答。向上阅读时，新增内容应继续保存。\n",
+        "state": "completed",
+        "attempt": 2,
+        "usage": {
+          "inputTokens": 24,
+          "totalInputTokens": 24,
+          "outputTokens": 180,
+          "durationMs": 1142.250800000038,
+          "incomplete": true,
+          "outputTokensPerSecond": 157.58360598214858,
+          "startedAt": 1794137555659,
+          "completedAt": 1794137557078
+        },
+        "eventSequence": 46
+      }
+    ]
+  },
+  "completedAt": "2026-11-08T11:32:38.533Z"
+}

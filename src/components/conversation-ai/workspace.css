@@ -20,7 +20,7 @@
 .conversation-thread-list > button { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 36px; padding: 8px; border: 0; border-radius: 8px; background: transparent; color: var(--text-muted); font: inherit; font-size: 13px; cursor: pointer; text-align: left; }
 .conversation-thread-list > button span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .conversation-thread-list > button:hover, .conversation-thread-list > button[aria-current='true'] { background: var(--hover); color: var(--text); }
-.conversation-thread-content { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.conversation-thread-content { display: flex; flex-direction: column; min-width: 0; min-height: 0; flex: 1; }
 .conversation-thread-scrim { position: absolute; inset: 0; z-index: 1; padding: 0; border: 0; background: rgb(38 48 61 / 12%); cursor: pointer; }
 .conversation-thread-error { padding: 12px 16px; color: var(--focus); font-size: 13px; }
 .conversation-chat-empty { display: grid; place-content: center; justify-items: center; gap: 8px; min-height: 100%; color: var(--text-muted); }

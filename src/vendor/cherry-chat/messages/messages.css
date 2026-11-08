@@ -1,0 +1,35 @@
+.cherry-messages .message-user .message-content-container {
+  background: var(--conversation-soft-accent, var(--muted));
+}
+
+.cherry-messages .message-content-container {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.cherry-messages .message-user .markdown {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.7;
+}
+
+.cherry-messages .cherry-assistant-footer {
+  opacity: 0;
+  transition: opacity 150ms;
+}
+
+.cherry-messages .message:hover .cherry-assistant-footer,
+.cherry-messages .cherry-assistant-footer:focus-within,
+.cherry-messages .cherry-assistant-footer:has([aria-expanded="true"]) {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .cherry-messages .cherry-assistant-footer { opacity: 1; }
+}
+
+.cherry-message-token-popover {
+  max-width: min(28rem, calc(100vw - 24px), var(--radix-hover-card-content-available-width, 28rem));
+  max-height: var(--radix-hover-card-content-available-height, 80vh);
+  overflow: auto;
+}

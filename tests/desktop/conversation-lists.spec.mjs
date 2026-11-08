@@ -1,4 +1,5 @@
 import { dismissIdentity } from './fixtures/identity.mjs'
+import { chatEditor } from './chat-helpers.mjs'
 import { _electron as electron, expect, test } from '@playwright/test'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -66,7 +67,7 @@ for (const width of [1280, 440]) test(`两类会话管理在 ${width} 像素下�
     await btn(originals[0]).click()
     await dismissIdentity(page)
     await btn('AI 对话').click()
-    const draft = () => page.getByRole('textbox', { name: '向 AI 提问' })
+    const draft = () => chatEditor(page)
     await draft().fill('我还想确认周六的搬家安排')
     await btn('显示对话列表').click()
     await expect.poll(() => names(history())).toEqual(threads)
@@ -78,7 +79,7 @@ for (const width of [1280, 440]) test(`两类会话管理在 ${width} 像素下�
     await shot('history-menu'); await menu('取消置顶').click(); await choose(threads[1], '置顶')
     await choose(threads[1], '删除'); await expect(page.getByRole('dialog', { name: '删除 AI 对话' })).toContainText('备用提问')
     await btn('取消').click(); await btn('收起对话列表').click()
-    await expect(draft()).toHaveValue('我还想确认周六的搬家安排')
+    await expect(draft()).toHaveText('我还想确认周六的搬家安排')
 
     await app.close(); await launch(); await openList()
     await expect.poll(() => names(list())).toEqual([originals[1], originals[0], originals[2]])
@@ -89,7 +90,7 @@ for (const width of [1280, 440]) test(`两类会话管理在 ${width} 像素下�
     await btn(threads[0]).click(); await draft().fill('保留这条草稿')
     await btn('显示对话列表').click(); await choose(threads[1], '删除'); await btn('确认删除').click()
     await expect.poll(() => names(history())).toEqual([threads[2], threads[0]])
-    await btn('收起对话列表').click(); await expect(draft()).toHaveValue('保留这条草稿')
+    await btn('收起对话列表').click(); await expect(draft()).toHaveText('保留这条草稿')
     await btn('关闭 AI 对话').click()
     const scroll = page.locator('.reader-scroll')
     const top = await scroll.evaluate(el => { el.scrollTop = 380; return el.scrollTop })
@@ -101,7 +102,7 @@ for (const width of [1280, 440]) test(`两类会话管理在 ${width} 像素下�
     if (width < 600) await btn('收起侧栏').click()
     await expect(page.getByRole('heading', { name: title })).toBeVisible()
     expect(await scroll.evaluate(el => el.scrollTop)).toBe(top)
-    await btn('AI 对话').click(); await expect(draft()).toHaveValue('保留这条草稿')
+    await btn('AI 对话').click(); await expect(draft()).toHaveText('保留这条草稿')
   } finally {
     await app?.close()
     if (dirname(directory) === resolve(tmpdir()) && directory.includes('whomi-runtime-lists-')) await rm(directory, { recursive: true, force: true })

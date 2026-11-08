@@ -1,4 +1,5 @@
 import { _electron as electron, expect, test } from '@playwright/test'
+import { chatEditor } from './chat-helpers.mjs'
 import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
@@ -36,13 +37,13 @@ for (const width of [1440, 360]) {
       expect(await history.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
       await screenshot('首次对话')
       await button('开始新对话').click()
-      const draft = page.getByRole('textbox', {name:'向 AI 提问'})
+      const draft = chatEditor(page)
       await expect(draft).toBeFocused()
       await draft.fill('保留这条虚构草稿')
       await button('配置模型').click()
       await expect(page.getByLabel('搜索服务商', {exact:true})).toBeVisible()
       await button('返回').click()
-      await expect(draft).toHaveValue('保留这条虚构草稿')
+      await expect(draft).toHaveText('保留这条虚构草稿')
       await expect(draft).toBeFocused()
       expect(await page.evaluate(async () => (await window.whomi.ai.listThreads('1')).length)).toBe(1)
       await page.keyboard.press('Escape')

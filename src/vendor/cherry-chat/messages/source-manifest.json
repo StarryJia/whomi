@@ -1,0 +1,342 @@
+{
+  "commit": "263667f7a99dfed736c939708a55deb435164820",
+  "license": "AGPL-3.0",
+  "files": [
+    {
+      "source": "src/renderer/components/chat/actions/actionRegistry.ts",
+      "target": "actions/actionRegistry.ts",
+      "gitHash": "4d30c9b21203c57f22405353bd2ace1acbe2e8da",
+      "sha256": "31250dca40534b4b22c9dd6894f9e8aeacfd565abcd462b71bbeedbe536dcd88",
+      "modified": false
+    },
+    {
+      "source": "src/renderer/components/chat/actions/actionTypes.ts",
+      "target": "actions/actionTypes.ts",
+      "gitHash": "31b5ea857453b5488705b22d316287e9d102fddd",
+      "sha256": "c720760dc928e641cc530738833d264ee558507300f1a3003c25bd704d68b9ba",
+      "modified": true
+    },
+    {
+      "source": "src/renderer/components/chat/messages/blocks/ErrorBlock.tsx",
+      "target": "blocks/ErrorBlock.tsx",
+      "gitHash": "db4fc49711ced2b67d5a26066fb05c0fd90e6802",
+      "sha256": "323395b33df39a8059aba1d8ca982fd703599e898683421c19920e7b120b4090",
+      "modified": true
+    },
+    {
+      "source": "src/renderer/components/chat/messages/blocks/MainTextBlock.tsx",
+      "target": "blocks/MainTextBlock.tsx",
+      "gitHash": "1bf948be7db63ee5199c1daa1c4f93f991b81750",
+      "sha256": "26b047af4334335eb34200c1accb3ecdf0c4574a3d673d3ffe7dd0fa44752360",
+      "modified": true
+    },
+    {
+      "source": "src/renderer/components/chat/messages/blocks/MessagePartsContext.tsx",
+      "target": "blocks/MessagePartsContext.tsx",
+      "gitHash": "ed4226c7eb22f5ecc87a830e21d999933d4d1ead",
+      "sha256": "518751c2116a3100be6b9ae5518c00d3922e9acb12d1d768a313d293b86d6d8d",
+      "modified": true
+    },
+    {
+      "source": "src/renderer/components/chat/messages/blocks/MessagePartsRenderer.tsx",
+      "target": "blocks/MessagePartsRenderer.tsx",
+      "gitHash": "5f77af6d20053e6cfeb5888ac2521aea65d7a766",
+      "sha256": "ff4a98022bd4e871cf4a008c2ab367119be3056fe21ef4962b1bf0c3acd96f47",
+      "modified": true
+    },
+    {
+      "source": "src/renderer/components/chat/messages/blocks/PlaceholderBlock.tsx",
+      "target": "blocks/PlaceholderBlock.tsx",
+      "gitHash": "3ee228392682f539876d4e522311521d24f9565b",
+      "sha256": "a48afd45405f3968e34b66685d3cdabff0d7175ea1b40d8e88240386ec200a11",
+      "modified": true
+    },
+    {
+      "source": "src/renderer/components/chat/messages/blocks/__tests__/useScrollAnchor.test.tsx",
+      "target": "blocks/useScrollAnchor.test.tsx",
+      "gitHash": "7301ccbbfae8f722432f814f388469c122b7692f",
+      "sha256": "bd4fd87882aea6f7b8818d57d492c5fe0a87fc904e4a7faa164a437e16e7805e",
+      "modified": true
+    },
+    {
+      "source": "src/renderer/components/chat/messages/blocks/useScrollAnchor.ts",
+      "target": "blocks/useScrollAnchor.ts",
+      "gitHash": "67881c3c00d510002d8985c72b8b96bd234a0c64",
+      "sha256": "cfdfb3d8604f4bdee65425b2ef8493af7061021959feafd5e32b7f83891ea4a7",
+      "modified": false
+    },
+    {
+      "source": "src/renderer/components/ActionIconButton.tsx",
+      "target": "frame/ActionIconButton.tsx",
+      "gitHash": "973056641c546341d560509d4dbdbd9ecef77724",
+      "sha256": "9ad965f4fee0da14beab29f4f5a0b1d0939420a87eeb1dc88e478fa5c0d0b82b",
+      "modified": true
+    },
+    {
+      "source": "src/renderer/components/HorizontalScrollContainer.tsx",
+      "target": "frame/HorizontalScrollContainer.tsx",
+      "gitHash": "6cb1e7a567ed1744b6802627e9cb8c0b68ebbd96",
+      "sha256": "2a9ff4e68cf62d5bb520d384a77e7aac08539ada961511914dde41c1fca24707",
+      "modified": false
+    },
+    {
+      "source": "src/renderer/components/chat/messages/frame/MessageActionButton.tsx",
+      "target": "frame/MessageActionButton.tsx",
+      "gitHash": "eb10c5589a585e01da872880ca761365a9e3d985",
+      "sha256": "e5b7db52aa083d81edfce166c124027476b35be6be8893b7b910974b3fe24c6f",
+      "modified": true
+    },
+    {
+      "source": "src/renderer/components/chat/messages/frame/MessageAvatar.tsx",
+      "target": "frame/MessageAvatar.tsx",
+      "gitHash": "772833d5c45bb1d4af3a74a6d0523ac6f357a40c",
+      "sha256": "003554587e97ab31c922e85409374600224ed812107bec1c83d2058efc30a9e5",
+      "modified": true
+    },
+    {
+      "source": "src/renderer/components/chat/messages/frame/MessageContent.tsx",
+      "target": "frame/MessageContent.tsx",
+      "gitHash": "77db106b81c07455790dbfa49491d39973575a47",
+      "sha256": "beade1462c85f31be15ee23938e69a7cbb140ec4eb076111dab9134d6e9d3410",
+      "modified": true
+    },
+    {
+      "source": "src/renderer/components/chat/messages/frame/MessageErrorBoundary.tsx",
+      "target": "frame/MessageErrorBoundary.tsx",
+      "gitHash": "8da5ab31c1f6c9bbfcb13f42457ceb41a1b8f97e",
+      "sha256": "0fe1bb5f3386500f6f139352cebba56e6077abb98cc07ed61f3cde7a4ff24935",
+      "modified": true
+    },
+    {
+      "source": "src/renderer/components/chat/messages/frame/MessageFrame.tsx",
+      "target": "frame/MessageFrame.tsx",
+      "gitHash": "f19ce51296c8eb995a33caedd4e07ecfa97221a7",
+      "sha256": "393cc2ab1fabf9d57642d8105523a5b1f1513ff1e569932d2125a312a594a766",
+      "modified": true
+    },
+    {
+      "source": "src/renderer/components/chat/messages/frame/MessageHeader.tsx",
+      "target": "frame/MessageHeader.tsx",
+      "gitHash": "dbc69102330bc457323ac0aafc943d45c3009c30",
+      "sha256": "44afab4b133255cf8f6d6ccceb165a41a744fb95e90aa4d99d9ce148ab81f273",
+      "modified": true
+    },
+    {
+      "source": "src/renderer/components/chat/messages/frame/MessageMenuBar.tsx",
+      "target": "frame/MessageMenuBar.tsx",
+      "gitHash": "1a592707a94fceac01fdaf3fd5c5ab120009e7f5",
+      "sha256": "e209d139b75200bfc7c3b8d54744ef65cd5e50949303d2ff82ba0bbe7d99014e",
+      "modified": true
+    },
+    {
+      "source": "src/renderer/components/chat/messages/frame/messageMenuBarActions.tsx",
+      "target": "frame/messageMenuBarActions.tsx",
+      "gitHash": "58eda7eb2eb2f4a086f1acecbedf9ee2db7efe7b",
+      "sha256": "f2983869e872ea28a6f61523d3065b9101e26e6c07c9cf2550bd687ed0f3958e",
+      "modified": true
+    },
+    {
+      "source": "src/renderer/components/chat/messages/frame/MessageMenuBarToolbarRenderers.tsx",
+      "target": "frame/MessageMenuBarToolbarRenderers.tsx",
+      "gitHash": "e3d8edcb6aec02e41712908f2298e990368109e3",
+      "sha256": "451f26bf645391c23dca40a9a73b628d002d76fd3f3654da6896ebeb3d900f55",
+      "modified": true
+    },
+    {
+      "source": "src/renderer/components/chat/messages/frame/MessageTokenDetailsCard.tsx",
+      "target": "frame/MessageTokenDetailsCard.tsx",
+      "gitHash": "c388816fd356ccfde5f3e448d6e57d7909cfcb5b",
+      "sha256": "a079965e0f74021a5e44c3e15fa5df4b284164282ea84aec5ea7535e61a2acf8",
+      "modified": true
+    },
+    {
+      "source": "src/renderer/components/chat/messages/frame/MessageTokens.tsx",
+      "target": "frame/MessageTokens.tsx",
+      "gitHash": "7e87ce603520528333ecc05dc11408c46bcde0c2",
+      "sha256": "b613280d7204e16d0ebdaeff15356e05feb2fdf3bfafe470ff1e36c3f803d4f9",
+      "modified": true
+    },
+    {
+      "source": "src/renderer/components/chat/messages/frame/MessageUserLayout.tsx",
+      "target": "frame/MessageUserLayout.tsx",
+      "gitHash": "26770281b0809e1a2128f58d8c09d69ef2d7ec59",
+      "sha256": "087e64ab26f5d242ff83f17879f7bfcbbaad9f063253f71320b7e8d6a3725932",
+      "modified": true
+    },
+    {
+      "source": "src/renderer/hooks/useTemporaryValue.ts",
+      "target": "hooks/useTemporaryValue.ts",
+      "gitHash": "c494fc397eb751dd29b0d94da39b0c131cc82f9a",
+      "sha256": "939df8927f0d5542d2afbecf9e5e25e8a9f543e6a030291dacd73e840ca55099",
+      "modified": false
+    },
+    {
+      "source": "src/renderer/components/chat/messages/list/__tests__/chatVirtualizerRuntime.test.tsx",
+      "target": "list/__tests__/chatVirtualizerRuntime.test.tsx",
+      "gitHash": "5aeb898534f3781dc5b78ef69f9bf1a78b4e8456",
+      "sha256": "94c34501be02e443a9d4a23f5e445138f0abba66e44bf0b771650233cf72705d",
+      "modified": true
+    },
+    {
+      "source": "src/renderer/components/chat/messages/list/__tests__/scrollGeometry.test.ts",
+      "target": "list/__tests__/scrollGeometry.test.ts",
+      "gitHash": "c1e0cae601195bf8779ae93cbfd36e2fcbf176c0",
+      "sha256": "1fef4b58375a004007620e95134cddf7823828776f474fdb26eb8100133c84a6",
+      "modified": false
+    },
+    {
+      "source": "src/renderer/components/chat/messages/list/__tests__/useScrollPositionMemory.test.ts",
+      "target": "list/__tests__/useScrollPositionMemory.test.ts",
+      "gitHash": "4671e934655b7e866ff1c094237eb325f70dda5d",
+      "sha256": "ec7a65bbe5eaed103e59b9e442ef4cfbe81e4829483c89ae8035e63b9e7af268",
+      "modified": true
+    },
+    {
+      "source": "src/renderer/components/chat/messages/list/__tests__/useSmoothScrollAnimation.test.tsx",
+      "target": "list/__tests__/useSmoothScrollAnimation.test.tsx",
+      "gitHash": "f9f89904dbca1e28f45ac1dc51082587be5a65a3",
+      "sha256": "7dddff5661fb84701084d79e59b7c02db63b29b37527b7ecf6f5630e15bdd3fc",
+      "modified": false
+    },
+    {
+      "source": "src/renderer/components/chat/messages/list/__tests__/useViewportFollowState.test.tsx",
+      "target": "list/__tests__/useViewportFollowState.test.tsx",
+      "gitHash": "a2d0033253f61825eb3cd6b9f257dfbbd5346c6f",
+      "sha256": "f28eb39d9e06ee3c4a2cfbe171feac0316eb97bb693974d4fa3b6812f90600f6",
+      "modified": false
+    },
+    {
+      "source": "src/renderer/components/chat/messages/list/chatVirtualizerRuntime.tsx",
+      "target": "list/chatVirtualizerRuntime.tsx",
+      "gitHash": "cdb71d16ae4955d4e14378a297dc5eef3774f2c5",
+      "sha256": "ae4331154171de4c6780cc0dd80835fe0290d337f625707a90990af2ae530bf4",
+      "modified": true
+    },
+    {
+      "source": "src/renderer/components/chat/messages/list/MessageGroup.tsx",
+      "target": "list/MessageGroup.tsx",
+      "gitHash": "90b2228f822719c351fd1eb14bcd8a25c6d67069",
+      "sha256": "c995d53f58bc094f47b9574b5507d3dd903504fe762d40d96b32cf3b40226b71",
+      "modified": true
+    },
+    {
+      "source": "src/renderer/components/chat/messages/list/MessageVirtualList.tsx",
+      "target": "list/MessageVirtualList.tsx",
+      "gitHash": "7a5fd7ddc2351534260b2a906722c715387b89fe",
+      "sha256": "d7a91709a71b12165956dbc68995feff2ce92bf389c719311442e697d589650b",
+      "modified": true
+    },
+    {
+      "source": "src/renderer/components/chat/messages/list/scrollGeometry.ts",
+      "target": "list/scrollGeometry.ts",
+      "gitHash": "acde62c3188d80931a82be3624e4e1c4358d59c7",
+      "sha256": "64189d6b60d55133d93245a9ed059cc8d8c28e349341e4e015459d2946209a37",
+      "modified": false
+    },
+    {
+      "source": "src/renderer/components/chat/messages/list/ScrollOwnershipContext.tsx",
+      "target": "list/ScrollOwnershipContext.tsx",
+      "gitHash": "7ac20c5e5733cb4acf4ebee954df5be5df8aeaac",
+      "sha256": "72b667bf674b9079633ba3ce5c15064d736e5376dbfa88407669e7704c552c78",
+      "modified": true
+    },
+    {
+      "source": "src/renderer/components/ScrollViewportOwnershipProvider.tsx",
+      "target": "list/ScrollViewportOwnershipProvider.tsx",
+      "gitHash": "6e16f591cd1a5fbc135179a1894826d1c34e7a44",
+      "sha256": "58aa6bcf490a1f9c9ac069e95683a7353971ca18bc1237c3a184d3920509d03c",
+      "modified": true
+    },
+    {
+      "source": "src/renderer/components/chat/messages/list/useAutoStickToBottom.ts",
+      "target": "list/useAutoStickToBottom.ts",
+      "gitHash": "b944861d04a7608cc7a8f7977a6ee80008847035",
+      "sha256": "b3a0b5afecd233401c8b8165f7e92870a7d52a9511d382fe2758d3587e3ef162",
+      "modified": false
+    },
+    {
+      "source": "src/renderer/components/chat/messages/list/useScrollPositionMemory.ts",
+      "target": "list/useScrollPositionMemory.ts",
+      "gitHash": "dbeaa70b825229578d454a1bcd6e7752405b5386",
+      "sha256": "33f47a583b4d3a017e5847e1ee6dbb61f3d8ae760533c3d91f8e7cc5be96940a",
+      "modified": true
+    },
+    {
+      "source": "src/renderer/hooks/useScrollViewportOwnership.ts",
+      "target": "list/useScrollViewportOwnership.ts",
+      "gitHash": "b74167e6d51b60ac59127e936b94443486433648",
+      "sha256": "470938c79754df288bd0c3c25dca5c6830e61c67888755aae06113b8e9063da3",
+      "modified": false
+    },
+    {
+      "source": "src/renderer/components/chat/messages/list/useSmoothScrollAnimation.ts",
+      "target": "list/useSmoothScrollAnimation.ts",
+      "gitHash": "c5e937e41d8915340eefd79b7e345a9f548d0157",
+      "sha256": "da8a9cde9cc6739cd0504d291d3e63a287958eb4929740a2de5ab437820911f1",
+      "modified": false
+    },
+    {
+      "source": "src/renderer/components/chat/messages/list/useViewportFollowState.ts",
+      "target": "list/useViewportFollowState.ts",
+      "gitHash": "bbbefc772a505376ee64d461bb26d459f70c4c1f",
+      "sha256": "812965beb5ff5b0b3fb95564a12ff244a6bc4799adf96da4dc8906fb9467fe61",
+      "modified": false
+    },
+    {
+      "source": "src/renderer/components/chat/messages/MessageList.tsx",
+      "target": "MessageList.tsx",
+      "gitHash": "8894f6b7b07f9f605ab08959ac5d574f5eab3d43",
+      "sha256": "53028fc81a9ff6cc15dcde5b9769f32c7d49bd80b50cad29ed1ee7ea2881efb2",
+      "modified": true
+    },
+    {
+      "source": "src/renderer/components/chat/messages/MessageListProvider.tsx",
+      "target": "MessageListProvider.tsx",
+      "gitHash": "b675a5034b34c5768fd8ffd2bc24122606e7e199",
+      "sha256": "fd35994a4b61365a12fd423a1e4094087446723e2237b650670ea7254ab4c102",
+      "modified": true
+    },
+    {
+      "source": "src/renderer/components/chat/messages/stream/__tests__/useStableMessagePartsLayers.test.ts",
+      "target": "stream/__tests__/useStableMessagePartsLayers.test.ts",
+      "gitHash": "0433b8a1c8b5d613ddbf872a06f50dffe19f701e",
+      "sha256": "f2c3b2811f55c8bf6ab1330b38a3432fd9a8e7ec472b7d8e806fa7db2e9664ab",
+      "modified": true
+    },
+    {
+      "source": "src/renderer/components/chat/messages/stream/useMessageStreamingLayers.ts",
+      "target": "stream/useMessageStreamingLayers.ts",
+      "gitHash": "e70fb9a5c17c7048fedacefb7c714a9953b35ce0",
+      "sha256": "4c00d244637048b958751804351b80e3a0e39755c367b55443c3cbc783642196",
+      "modified": true
+    },
+    {
+      "source": "src/renderer/components/chat/messages/stream/useStableMessagePartsLayers.ts",
+      "target": "stream/useStableMessagePartsLayers.ts",
+      "gitHash": "6a3c6243bc7497f395e3a19c07e18d02c93c64d0",
+      "sha256": "198689fe2c10b799ed4ec02595115847b3241c995dd8054a1e6d2a454fc3bb27",
+      "modified": true
+    },
+    {
+      "source": "src/renderer/components/chat/messages/types.ts",
+      "target": "types.ts",
+      "gitHash": "0dddbf995c85a80929dc5043abe7a7634f43a1a1",
+      "sha256": "ec788841f2327e35cc67615faeed5274107419cf758c8b3cbc3ec3477b1f4e3c",
+      "modified": true
+    },
+    {
+      "source": "src/renderer/components/chat/messages/utils/messageGroupKey.ts",
+      "target": "utils/messageGroupKey.ts",
+      "gitHash": "9c9dd524bee33cb22474935b12c0d81411f50a67",
+      "sha256": "53d7c11c55caa4a401573a8a52b5dc163180d566877aaa1611b4485667906458",
+      "modified": false
+    },
+    {
+      "source": "src/renderer/components/chat/messages/utils/stableGroupedMessages.ts",
+      "target": "utils/stableGroupedMessages.ts",
+      "gitHash": "5f30a7329ca598f863abdd8207cb6d9462419925",
+      "sha256": "f87f77047771283d0ffb0714e5eacdaf833981b7fc899e5c91f95a133cb8e5a6",
+      "modified": false
+    }
+  ]
+}

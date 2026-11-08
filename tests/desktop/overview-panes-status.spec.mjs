@@ -1,4 +1,5 @@
 import { _electron as electron, expect, test } from '@playwright/test'
+import { chatEditor } from './chat-helpers.mjs'
 import { createServer } from 'node:http'
 import { copyFile, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -127,15 +128,23 @@ test('从空总览导入记录，调整三个分栏，在宽窄窗口发送、�
         await expect(page.locator('.conversation-source')).toHaveAttribute('inert','')
         await expect.poll(() => page.locator('.brand-symbol img').evaluate(el => el.naturalWidth)).toBeGreaterThan(0)
       }
-      const draft = page.getByRole('textbox', { name: '向 AI 提问' })
-      await draft.fill('回顾搬家安排 · ' + width)
+      const draft = chatEditor(page)
+      const question = '回顾搬家安排 · ' + width
+      await draft.fill(question)
       await button('发送给 AI').click()
-      const turn = page.locator('.conversation-assistant-turn').last()
-      const waiting = turn.getByText('正在回答…', { exact: true })
+      const log = page.getByRole('log', { name: 'AI 对话记录' })
+      const sent = log.locator('[data-message-id$=":user"]')
+        .filter({ has: page.getByText(question, { exact: true }) })
+      const sentId = await sent.getAttribute('data-message-id')
+      const turn = log.locator(`[data-message-id="${sentId.replace(/:user$/, ':assistant')}"] .message-assistant`)
+      const waiting = turn.getByRole('status').getByText('正在回答…', { exact: true })
       await expect(waiting).toBeInViewport()
-      const icon = await turn.locator('.conversation-answer-label svg').boundingBox(), label = await waiting.boundingBox()
-      expect(Math.abs(icon.x-label.x)).toBeLessThanOrEqual(1)
-      expect(label.y).toBeGreaterThanOrEqual(icon.y+icon.height)
+      const avatar = await turn.locator('.message-avatar svg').boundingBox()
+      const model = await turn.getByText('搬家示例模型', { exact: true }).boundingBox()
+      const label = await waiting.boundingBox()
+      expect(avatar.x + avatar.width).toBeLessThanOrEqual(label.x)
+      expect(Math.abs(model.x - label.x)).toBeLessThanOrEqual(1)
+      expect(label.y).toBeGreaterThanOrEqual(model.y + model.height)
       await shot('08-waiting-' + width)
       await expect.poll(() => !!pending, { timeout: 30000 }).toBe(true)
       pending.writeHead(400, { 'Content-Type': 'application/json' })
@@ -157,7 +166,7 @@ test('从空总览导入记录，调整三个分栏，在宽窄窗口发送、�
       pending.end('data: ' + JSON.stringify({ id: 'fixture', choices: [{ index: 0, delta: {}, finish_reason: 'stop' }], usage: { prompt_tokens: 40, completion_tokens: 8 } }) + '\n\ndata: [DONE]\n\n')
       pending = undefined
       await expect(turn.getByRole('button', { name: '复制回答' })).toBeVisible()
-      await expect(draft).toHaveValue('下一条草稿 · ' + width)
+      await expect(draft).toHaveText('下一条草稿 · ' + width)
       await noOverflow()
     }
     await button('关闭 AI 对话').click()

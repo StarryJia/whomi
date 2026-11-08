@@ -1,4 +1,5 @@
 import { test, expect, _electron as electron } from '@playwright/test'
+import { chatEditor } from './chat-helpers.mjs'
 import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
@@ -41,7 +42,7 @@ test('设置保留导航和对话草稿，主导航等待有效配置保存后�
     await button('展开会话列表').click()
     await button('示例会话').click()
     await button('AI 对话').click()
-    const draft = page.getByRole('textbox', { name: '向 AI 提问', exact: true })
+    const draft = chatEditor(page)
     await draft.fill('只用于验证的草稿')
     const divider = page.getByRole('separator', { name: '调整主导航宽度' })
     await divider.press('ArrowRight')
@@ -61,7 +62,7 @@ test('设置保留导航和对话草稿，主导航等待有效配置保存后�
     await expect(address).toBeVisible()
     await page.screenshot({ path: join(evidence, 'desktop.png') })
     await button('返回').click()
-    await expect(draft).toHaveValue('只用于验证的草稿')
+    await expect(draft).toHaveText('只用于验证的草稿')
     await button('设置').click()
     await address.fill('无效地址')
     await button('记忆仓库').click()

@@ -74,17 +74,27 @@ for (const width of [1920, 360]) test(`订阅服务商在 ${width} 像素下可�
     await expect(login).toBeInViewport({ ratio: 1 })
     await expect(button('同步模型')).toBeDisabled()
     await expect(page.getByText('登录后可同步账户模型。', { exact: true })).toBeVisible()
-    async function verifyCenters() {
-      const boxes = await page.evaluate(() => ['.ms-detail','.ms-detail-header','.account-login-card','.ms-models'].map(s => {
-        const rect = document.querySelector(s).getBoundingClientRect()
-        return {center: (rect.left + rect.right) / 2, width: rect.width}
-      }))
-      for (const box of boxes.slice(1)) {
-        expect(Math.abs(box.center - boxes[0].center)).toBeLessThanOrEqual(8)
-        expect(box.width).toBe(boxes[1].width)
+    async function verifyDetailAlignment() {
+      const { contentLeft, contentRight, boxes } = await page.evaluate(() => {
+        const detail = document.querySelector('.ms-detail')
+        const bounds = detail.getBoundingClientRect()
+        const style = getComputedStyle(detail)
+        return {
+          contentLeft: bounds.left + detail.clientLeft + parseFloat(style.paddingLeft),
+          contentRight: bounds.left + detail.clientLeft + detail.clientWidth - parseFloat(style.paddingRight),
+          boxes: ['.ms-detail-header', '.account-login-card', '.ms-models'].map(selector => {
+            const { left, right, width } = detail.querySelector(selector).getBoundingClientRect()
+            return { left, right, width }
+          }),
+        }
+      })
+      for (const box of boxes) {
+        expect(Math.abs(box.left - contentLeft)).toBeLessThanOrEqual(1)
+        expect(box.right).toBeLessThanOrEqual(contentRight + 1)
+        expect(box.width).toBe(boxes[0].width)
       }
     }
-    await verifyCenters()
+    await verifyDetailAlignment()
     if (width === 1920) {
       const handle = await page.getByRole('separator', { name:'调整服务商列表宽度' }).boundingBox()
       const start = await page.locator('.ms-provider-list').boundingBox()
@@ -93,7 +103,7 @@ for (const width of [1920, 360]) test(`订阅服务商在 ${width} 像素下可�
       await page.mouse.move(handle.x + handle.width / 2 + 60, handle.y + 80, {steps:6})
       await page.mouse.up()
       await expect.poll(async () => (await page.locator('.ms-provider-list').boundingBox()).width).toBeGreaterThan(start.width + 40)
-      await verifyCenters()
+      await verifyDetailAlignment()
     }
     expect(await page.locator('.account-empty-models').evaluate(el => {
       const bounds = el.getBoundingClientRect(), icon = el.querySelector('svg').getBoundingClientRect()

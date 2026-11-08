@@ -1,0 +1,15 @@
+
+> whomi@0.1.11 test:backend
+> vitest run --config vitest.backend.config.ts
+
+
+ RUN  v5.0.5 D:/CodexData/worktrees/cherry-chat-migration/whomi
+
+
+ Test Files  47 passed (47)
+      Tests  540 passed (540)
+   Start at  20:53:26
+   Duration  59.02s (tests 93%, import 5%, transform 1%)
+
+    Isolate  47 workers spawned · ~189ms startup each (spawn + environment, per file)
+             at least ~4.24s faster with isolate: false — reuses workers across files instead of one per file

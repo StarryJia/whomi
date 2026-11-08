@@ -1,5 +1,5 @@
 import { cherryProviderIcon } from '../vendor/cherry-providers/icons'
-import type { AiApi, AiEvent, AiTurn, AnalysisTask } from '../shared/ai-contract'
+import type { AiApi, AiEvent, AiThread, AiTurn, AnalysisTask } from '../shared/ai-contract'
 import type { AnalysisProgress, AnalysisResult, ConversationAiAdapter, ConversationRequest, RestoredConversationTurn } from '../components/conversation-ai/types'
 import type { ModelFeature, SettingsApi } from '../shared/settings-contract'
 
@@ -10,6 +10,58 @@ const requestId = () => crypto.randomUUID()
 const restore = (turn: AiTurn): RestoredConversationTurn => ({ ...turn })
 const errorCode = (error: unknown) => error && typeof error === 'object' && 'code' in error ? error.code : undefined
 const analysisReadBackoff = [500, 1000, 2000]
+const retryPreWriteRejectionCodes = new Set([
+  'INVALID_ARGUMENT', 'AI_CLOSED',
+  'INVALID_ID', 'INVALID_THREAD', 'INVALID_TURN', 'INVALID_REFERENCE', 'INVALID_MODEL',
+  'INVALID_STATE', 'IDENTITY_CHANGED', 'MODEL_CHANGED',
+])
+const notSubmittedErrors = new WeakSet<object>()
+
+/** 标记只对应产生该错误的这次提交调用。 */
+export function isConversationNotSubmitted(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && notSubmittedErrors.has(error)
+}
+
+function rejectNotSubmitted(error: unknown): never {
+  const failure = typeof error === 'object' && error !== null ? error : new Error('请重新打开对话后重试。', { cause: error })
+  notSubmittedErrors.add(failure)
+  throw failure
+}
+
+type ConversationRequestSnapshot = Pick<ConversationRequest, 'requestId' | 'prompt' | 'modelId' | 'thinkingLevel' | 'skillId' | 'referenceIds'>
+  & Partial<Pick<ConversationRequest, 'references'>>
+type RetryBaseline = Pick<AiTurn, 'attempt' | 'eventSequence'>
+
+function stableReferenceIds({ referenceIds = [], references = [] }: Pick<ConversationRequestSnapshot, 'referenceIds' | 'references'>) {
+  return [...new Set([...referenceIds, ...references.flatMap(reference => reference.messages.map(message => message.id))])]
+}
+
+export function matchesConversationRequest(turn: RestoredConversationTurn, request: ConversationRequestSnapshot): boolean {
+  if (turn.requestId !== request.requestId || turn.prompt !== request.prompt || turn.modelId !== request.modelId || turn.thinkingLevel !== request.thinkingLevel) return false
+  const referenceIds = stableReferenceIds(request)
+  const skillId = referenceIds.length ? request.skillId || undefined : undefined
+  return turn.skillId === skillId && turn.referenceIds.length === referenceIds.length && turn.referenceIds.every((id, index) => id === referenceIds[index])
+}
+
+export class ConversationAcceptancePendingError extends Error {
+  readonly code = 'CONVERSATION_ACCEPTANCE_PENDING'
+  readonly stopRequested: boolean
+  readonly retryBaseline?: RetryBaseline
+
+  constructor(readonly requestId: string, options?: ErrorOptions & { stopRequested?: boolean; retryBaseline?: RetryBaseline }) {
+    super('发送状态待确认，请再次确认。', options)
+    this.name = 'ConversationAcceptancePendingError'
+    this.stopRequested = options?.stopRequested ?? false
+    this.retryBaseline = options?.retryBaseline
+  }
+}
+
+export class ConversationTurnError extends Error {
+  constructor(readonly turn: RestoredConversationTurn) {
+    super(turn.error ?? (turn.state === 'stopped' ? '已停止回答。' : '回答中断，请重试。'))
+    this.name = 'ConversationTurnError'
+  }
+}
 
 /** 正式请求只传稳定编号，原文与历史由后台重新读取。 */
 export async function createConversationAiClient(api: AiApi, settings?: SettingsApi): Promise<ConversationAiAdapter> {
@@ -30,6 +82,66 @@ export async function createConversationAiClient(api: AiApi, settings?: Settings
     const thread = threadId ? await api.getThread(threadId) : await open(conversationId)
     if (thread.conversationId !== conversationId) throw new Error('请选择当前会话中的对话。')
     return thread
+  }
+
+  async function sendTurn(request: ConversationRequest, threadId: string, signal: AbortSignal): Promise<AiTurn> {
+    let id = request.requestId ?? requestIds.get(request)
+    if (!id) { id = requestId(); requestIds.set(request, id) }
+    const referenceIds = stableReferenceIds(request)
+    const input = { threadId, requestId: id, prompt: request.prompt, referenceIds, modelId: request.modelId,
+      ...(request.thinkingLevel ? { thinkingLevel: request.thinkingLevel } : {}), ...(referenceIds.length && request.skillId ? { skillId: request.skillId } : {}) }
+    try {
+      return await api.sendTurn(input)
+    } catch (error) {
+      if (errorCode(error) === 'REQUEST_CONFLICT') rejectNotSubmitted(error)
+      if (signal.aborted && signal.reason === 'detach') throw cancelled()
+      let saved: AiTurn | undefined
+      try { saved = (await api.getThread(threadId)).turns.find(turn => turn.threadId === threadId && turn.requestId === id) }
+      catch (readError) {
+        if (signal.aborted && signal.reason === 'detach') throw cancelled()
+        throw new ConversationAcceptancePendingError(id, { cause: readError, stopRequested: signal.aborted })
+      }
+      if (saved && matchesConversationRequest(saved, input)) return saved
+      // 后台可能省略模型不支持的思考强度，须用原编号再次核对。
+      if (saved && input.thinkingLevel && saved.thinkingLevel === undefined && matchesConversationRequest(saved, { ...input, thinkingLevel: undefined })) {
+        if (signal.aborted && signal.reason === 'detach') throw cancelled()
+        throw new ConversationAcceptancePendingError(id, { cause: error, stopRequested: signal.aborted })
+      }
+      rejectNotSubmitted(signal.aborted ? cancelled() : error)
+    }
+  }
+
+  async function retryTurn(prior: AiTurn, signal: AbortSignal): Promise<AiTurn> {
+    const { id, threadId, requestId, attempt, eventSequence } = prior
+    const retryBaseline = { attempt, eventSequence }
+    try {
+      return await api.retryTurn(id)
+    } catch (error) {
+      const code = errorCode(error)
+      const rejectedBeforeWrite = typeof code === 'string' && retryPreWriteRejectionCodes.has(code)
+      if (signal.aborted && signal.reason === 'detach') {
+        if (rejectedBeforeWrite) rejectNotSubmitted(error)
+        throw cancelled()
+      }
+      let latest: AiTurn | undefined
+      try {
+        latest = (await api.getThread(threadId)).turns.find(turn => turn.threadId === threadId && turn.id === id && turn.requestId === requestId)
+      } catch (readError) {
+        if (rejectedBeforeWrite) rejectNotSubmitted(error)
+        if (signal.aborted && signal.reason === 'detach') throw cancelled()
+        throw new ConversationAcceptancePendingError(requestId, { cause: readError, stopRequested: signal.aborted, retryBaseline })
+      }
+      // 旧尝试的用量更新也会推进事件序号，重试入库会同时推进尝试次数。
+      if (latest && latest.attempt > attempt && latest.eventSequence > eventSequence) return latest
+      if (rejectedBeforeWrite) rejectNotSubmitted(error)
+      if (signal.aborted && signal.reason === 'detach') throw cancelled()
+      // 归属登记和会话删除检查也可能在入库后失败，需要先核对轮次。
+      if (code === 'INVALID_OWNER' || code === 'CONVERSATION_DELETING') {
+        check(signal)
+        throw error
+      }
+      throw new ConversationAcceptancePendingError(requestId, { cause: error, stopRequested: signal.aborted, retryBaseline })
+    }
   }
 
   function observe<T extends AiTurn | AnalysisTask>(initial: T, signal: AbortSignal, kind: AiEvent['kind'],
@@ -183,26 +295,35 @@ export async function createConversationAiClient(api: AiApi, settings?: Settings
       if (!latest) return
       await observe(latest, signal, 'analysis', () => api.getAnalysis(latest.id), undefined, onChange)
     },
-    async respond(request, { signal, onText }) {
-      check(signal)
-      const thread = await selectedThread(request.conversationId, request.threadId)
-      check(signal)
-      if (request.turnId && !thread.turns.some(turn => turn.id === request.turnId)) {
-        const current = await api.getThread(thread.id)
-        if (!current.turns.some(turn => turn.id === request.turnId)) throw new Error('请选择当前对话中的提问后重试。')
+    async respond(request, { signal, onAccepted, onSnapshot, onText }) {
+      let thread: AiThread
+      let prior: AiTurn | undefined
+      try {
+        check(signal)
+        thread = await selectedThread(request.conversationId, request.threadId)
+        check(signal)
+        if (request.turnId) {
+          const current = request.threadId ? thread : await api.getThread(thread.id)
+          check(signal)
+          prior = current.turns.find(turn => turn.threadId === thread.id && turn.id === request.turnId)
+          if (!prior) throw new Error('请选择当前对话中的提问后重试。')
+        }
+      } catch (error) {
+        rejectNotSubmitted(error)
       }
-      let id = request.requestId ?? requestIds.get(request)
-      if (!id) { id = requestId(); requestIds.set(request, id) }
-      const referenceIds = [...new Set([...request.referenceIds ?? [], ...request.references.flatMap(reference => reference.messages.map(message => message.id))])]
-      const initial = request.turnId ? await api.retryTurn(request.turnId) : await api.sendTurn({ threadId: thread.id, requestId: id, prompt: request.prompt, referenceIds,
-        modelId: request.modelId, ...(request.thinkingLevel ? { thinkingLevel: request.thinkingLevel } : {}), ...(referenceIds.length && request.skillId ? { skillId: request.skillId } : {}) })
+      const initial = prior ? await retryTurn(prior, signal) : await sendTurn(request, thread.id, signal)
+      if (!signal.aborted) onAccepted?.(restore(initial))
       const result = await observe(initial, signal, 'turn', async () => {
         const value = (await api.getThread(thread.id)).turns.find(turn => turn.id === initial.id)
         if (!value) throw new Error('未找到这轮对话，请重新打开会话。')
         return value
-      }, () => api.stopTurn(initial.id), value => onText(value.text))
-      if (result.state !== 'completed') throw new Error(result.error ?? (result.state === 'stopped' ? '已停止回答。' : '回答中断，请重试。'))
-      return { text: result.text, usage: result.usage, ...(result.modelIdentity ? { modelIdentity: result.modelIdentity } : {}) }
+      }, () => api.stopTurn(initial.id), value => {
+        onSnapshot?.(restore(value))
+        onText(value.text)
+      })
+      const turn = restore(result)
+      if (result.state !== 'completed') throw new ConversationTurnError(turn)
+      return { text: result.text, usage: result.usage, ...(result.modelIdentity ? { modelIdentity: result.modelIdentity } : {}), turn }
     },
     async analyze(request, { signal, onProgress }) {
       check(signal)

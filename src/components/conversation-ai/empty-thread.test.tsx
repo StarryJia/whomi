@@ -1,9 +1,12 @@
+import { clearFixtureDrafts, composerTextbox, expectComposerText, pasteComposerText } from '../../test/cherry-composer-helpers'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { expect, it, vi } from 'vitest'
+import { beforeEach, expect, it, vi } from 'vitest'
 import type { AiThread } from '../../shared/ai-contract'
 import type { ConversationAiAdapter, RestoredConversationTurn } from './types'
 import { ConversationWorkspace } from './workspace'
+
+beforeEach(() => clearFixtureDrafts('chat', ['first', 'new']))
 
 function mount(restoreThread: NonNullable<ConversationAiAdapter['restoreThread']>, hasCurrent: boolean) {
   const thread: AiThread = { id: 'first', conversationId: 'chat', title: '新对话', createdAtMs: 1, updatedAtMs: 1, turns: [] }
@@ -25,11 +28,11 @@ it('再次新建时复用当前空对话并聚焦已有草稿', async () => {
   await user.click(screen.getByRole('button', { name: 'AI 对话' }))
   const newChat = screen.getByRole('button', { name: '新建 AI 对话' })
   await user.click(newChat)
-  const editor = screen.getByRole('textbox', { name: '向 AI 提问' })
-  await user.type(editor, '待发送的问题')
+  await pasteComposerText('待发送的问题')
+  const editor = await composerTextbox()
   await user.click(newChat)
   expect(create).toHaveBeenCalledTimes(1)
-  expect(editor).toHaveValue('待发送的问题')
+  await expectComposerText('待发送的问题')
   await vi.waitFor(() => expect(editor).toHaveFocus())
 })
 

@@ -1,4 +1,5 @@
 import { _electron as electron, expect, test } from '@playwright/test'
+import { chatEditor } from './chat-helpers.mjs'
 import { createServer } from 'node:http'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -49,7 +50,7 @@ test('切换与新建 AI 对话结束旧引用查看，保留各自草稿', asyn
     await page.getByRole('option', { name: '小林：周六十点在车站见。', exact: true }).click()
     await button('选择消息').click()
     await button('AI 对话').click()
-    const draft = page.getByRole('textbox', { name: '向 AI 提问' })
+    const draft = chatEditor(page)
     await draft.fill('对话 A：核对见面时间')
     await button('发送给 AI').click()
     await expect(page.getByRole('log')).toContainText('这是虚构会话的本机验收回答。', { timeout: 30000 })
@@ -58,7 +59,7 @@ test('切换与新建 AI 对话结束旧引用查看，保留各自草稿', asyn
     await expect(page.locator('.message-reference-target')).toHaveCount(1)
     await shot('01-reference-in-a')
     await button('新建 AI 对话').click()
-    await expect(draft).toHaveValue('')
+    await expect(draft).toHaveText('')
     await shot('02-new-thread')
     await expect.soft(page.locator('.message-reference-target')).toHaveCount(0)
     await draft.fill('对话 B：另一件事')
@@ -67,12 +68,12 @@ test('切换与新建 AI 对话结束旧引用查看，保留各自草稿', asyn
     await draft.fill('B 的未发送草稿')
     await button('显示对话列表').click()
     await page.getByRole('navigation', { name: 'AI 对话列表' }).getByRole('button', { name: '对话 A：核对见面时间', exact: true }).click()
-    await expect(draft).toHaveValue('A 的未发送草稿')
+    await expect(draft).toHaveText('A 的未发送草稿')
     await button('1 条引用').click()
     await expect(page.locator('.message-reference-target')).toHaveCount(1)
     await button('显示对话列表').click()
     await page.getByRole('navigation', { name: 'AI 对话列表' }).getByRole('button', { name: '对话 B：另一件事', exact: true }).click()
-    await expect(draft).toHaveValue('B 的未发送草稿')
+    await expect(draft).toHaveText('B 的未发送草稿')
     await shot('03-switched-to-b')
     await expect.soft(page.locator('.message-reference-target')).toHaveCount(0)
     await button('生成统计').click()
@@ -103,7 +104,7 @@ test('切换与新建 AI 对话结束旧引用查看，保留各自草稿', asyn
     await button('AI 对话').click()
     await button('显示对话列表').click()
     await page.getByRole('navigation', { name: 'AI 对话列表' }).getByRole('button', { name: '对话 B：另一件事', exact: true }).click()
-    await expect(draft).toHaveValue('B 的未发送草稿')
+    await expect(draft).toHaveText('B 的未发送草稿')
     await button('关闭 AI 对话').click()
     await shot('08-narrow-switched-to-b')
     await expect.soft(page.locator('.message-reference-target')).toHaveCount(0)

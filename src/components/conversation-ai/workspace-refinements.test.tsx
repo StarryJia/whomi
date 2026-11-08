@@ -1,6 +1,7 @@
+import { clearFixtureDrafts, expectComposerText, pasteComposerText, persistedTurn } from '../../test/cherry-composer-helpers'
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ConversationWorkspace } from './workspace'
 import type { ConversationAiAdapter } from './types'
 import type { AiThread } from '../../shared/ai-contract'
@@ -8,6 +9,8 @@ import App from '../../App'
 import { createPreviewClient } from '../../data/preview-client'
 import { useState } from 'react'
 import type { ReferenceRange } from './selection'
+
+beforeEach(() => clearFixtureDrafts('c', ['first', 'second', 'new', '1']))
 
 function Fixture({ adapter }: { adapter: ConversationAiAdapter }) {
   return <ConversationWorkspace conversationId="c" title="示例原始聊天" references={[]} onClearReferences={() => {}} onJumpReference={() => {}} adapter={adapter}>
@@ -33,7 +36,7 @@ describe('会话工作区的明确入口和独立对话', () => {
     await user.click(screen.getByRole('menuitem', { name: '删除' }))
     await user.click(screen.getByRole('button', { name: '确认删除' }))
     await user.click(screen.getByRole('button', { name: '收起对话列表' }))
-    await user.type(screen.getByRole('textbox'), '新的问题')
+    await pasteComposerText('新的问题')
     await user.click(screen.getByRole('button', { name: '发送给 AI' }))
     expect(adapter.respond).toHaveBeenCalledOnce()
   })
@@ -50,15 +53,15 @@ describe('会话工作区的明确入口和独立对话', () => {
     }
     render(<ReferencesFixture />)
     await user.click(screen.getByRole('button', { name: 'AI 对话' }))
-    await user.type(screen.getByRole('textbox'), '草稿甲')
+    await pasteComposerText('草稿甲')
     await user.click(screen.getByRole('button', { name: '选取原文' }))
     await user.click(screen.getByRole('button', { name: '显示对话列表' }))
     await user.click(screen.getByRole('button', { name: 'second' }))
     expect(screen.queryByRole('button', { name: '1 组引用' })).not.toBeInTheDocument()
-    await user.type(screen.getByRole('textbox'), '草稿乙')
+    await pasteComposerText('草稿乙')
     await user.click(screen.getByRole('button', { name: '显示对话列表' }))
     await user.click(screen.getByRole('button', { name: 'first' }))
-    expect(screen.getByRole('textbox')).toHaveValue('草稿甲')
+    await expectComposerText('草稿甲')
     expect(screen.getByRole('button', { name: '1 组引用' })).toBeVisible()
     await user.click(screen.getByRole('button', { name: '发送给 AI' }))
     expect(adapter.respond).toHaveBeenCalledWith(expect.objectContaining({ threadId: 'first', prompt: '草稿甲', references: [{ id: 'r1', messages: [{ id: '9', text: '引用文字' }] }] }), expect.anything())
@@ -70,13 +73,13 @@ describe('会话工作区的明确入口和独立对话', () => {
     render(<Fixture adapter={client()} />)
     await user.click(screen.getByRole('button', { name: 'AI 对话' }))
     expect(screen.queryByRole('navigation', { name: 'AI 对话列表' })).not.toBeInTheDocument()
-    await user.type(screen.getByRole('textbox'), '保留这个草稿')
+    await pasteComposerText('保留这个草稿')
     await user.click(screen.getByRole('button', { name: '显示对话列表' }))
     await user.keyboard('{Escape}')
     expect(screen.getByRole('complementary', { name: 'AI 对话' })).toBeVisible()
     expect(screen.queryByRole('navigation', { name: 'AI 对话列表' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: '显示对话列表' })).toHaveFocus()
-    expect(screen.getByRole('textbox')).toHaveValue('保留这个草稿')
+    await expectComposerText('保留这个草稿')
   })
   it('窄窗历史列表可以单独退出，不遮住可继续操作的输入框', async () => {
     const media = window.matchMedia('')
@@ -94,21 +97,29 @@ describe('会话工作区的明确入口和独立对话', () => {
     vi.restoreAllMocks()
   })
 
-  it('首次创建对话较慢时，先交接已发送文字，回执不会覆盖后来输入', async () => {
+  it('首次创建对话较慢时保留本次问题，受理后开放下一条草稿', async () => {
     const user = userEvent.setup(), adapter = client()
     let finish!: (value: Awaited<ReturnType<NonNullable<ConversationAiAdapter['createThread']>>>) => void
     adapter.listThreads = async () => []
     adapter.createThread = vi.fn(() => new Promise<AiThread>(resolve => { finish = resolve }))
+    let finishAnswer!: (result: { text: string }) => void
+    adapter.respond = vi.fn((request, { onAccepted }) => {
+      onAccepted?.(persistedTurn(request))
+      return new Promise<{ text: string }>(resolve => { finishAnswer = resolve })
+    })
     render(<Fixture adapter={adapter} />)
     await user.click(screen.getByRole('button', { name: 'AI 对话' }))
-    await user.type(screen.getByRole('textbox'), '第一条问题')
+    await pasteComposerText('第一条问题')
     await user.click(screen.getByRole('button', { name: '发送给 AI' }))
-    expect(screen.getByRole('textbox')).toHaveValue('')
-    await user.type(screen.getByRole('textbox'), '下一条草稿')
+    await expectComposerText('第一条问题')
+    expect(screen.getByRole('textbox', { name: '向 AI 提问' })).toHaveAttribute('contenteditable', 'false')
     await act(async () => finish({ id: 'new', conversationId: 'c', title: '新对话', createdAtMs: 1, updatedAtMs: 1, turns: [] }))
+    await expectComposerText('')
+    await pasteComposerText('下一条草稿')
+    await act(async () => finishAnswer({ text: '回答' }))
     await screen.findByText('回答')
     expect(adapter.respond).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ threadId: 'new', prompt: '第一条问题' }), expect.anything())
-    expect(screen.getByRole('textbox')).toHaveValue('下一条草稿')
+    await expectComposerText('下一条草稿')
   })
 
   it('新建按钮等待回执时编辑的原对话草稿在切回后仍保留', async () => {
@@ -121,14 +132,13 @@ describe('会话工作区的明确入口和独立对话', () => {
     adapter.createThread = vi.fn(() => new Promise<AiThread>(resolve => { finish = resolve }))
     render(<Fixture adapter={adapter} />)
     await user.click(screen.getByRole('button', { name: 'AI 对话' }))
-    await user.type(screen.getByRole('textbox'), '原草稿')
+    await pasteComposerText('原草稿')
     await user.click(screen.getByRole('button', { name: '新建 AI 对话' }))
-    await user.clear(screen.getByRole('textbox'))
-    await user.type(screen.getByRole('textbox'), '等待时改过的草稿')
+    await pasteComposerText('等待时改过的草稿', { replace: true })
     await act(async () => finish({ id: 'new', conversationId: 'c', title: '新对话', createdAtMs: 2, updatedAtMs: 2, turns: [] }))
     await user.click(screen.getByRole('button', { name: '显示对话列表' }))
     await user.click(screen.getByRole('button', { name: '原对话' }))
-    expect(screen.getByRole('textbox')).toHaveValue('等待时改过的草稿')
+    await expectComposerText('等待时改过的草稿')
   })
 
   it('只从顶部入口打开侧窗，关闭后回到入口且保留草稿', async () => {
@@ -137,12 +147,12 @@ describe('会话工作区的明确入口和独立对话', () => {
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
     const entry = within(screen.getByRole('region', { name: '原文' })).getByRole('button', { name: 'AI 对话' })
     await user.click(entry)
-    await user.type(screen.getByRole('textbox'), '下一条问题')
+    await pasteComposerText('下一条问题')
     await user.click(screen.getByRole('button', { name: '关闭 AI 对话' }))
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
     await vi.waitFor(() => expect(entry).toHaveFocus())
     await user.click(entry)
-    expect(screen.getByRole('textbox')).toHaveValue('下一条问题')
+    await expectComposerText('下一条问题')
     expect(screen.queryByText('继续 AI 对话')).not.toBeInTheDocument()
   })
 
@@ -167,14 +177,14 @@ describe('会话工作区的明确入口和独立对话', () => {
     adapter.respond = async () => ({ text: '本轮回答', usage: { outputTokens: 12, incomplete: true } })
     render(<Fixture adapter={adapter} />)
     await user.click(screen.getByRole('button', { name: 'AI 对话' }))
-    await user.type(screen.getByRole('textbox'), '统计问题')
+    await pasteComposerText('统计问题')
     await user.click(screen.getByRole('button', { name: '发送给 AI' }))
     await screen.findByText('本轮回答')
     expect(screen.queryByText('统计不完整')).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: /输出 12/ }))
+    await user.click(await screen.findByRole('button', { name: /输出 12/ }))
     const stats = screen.getByRole('region', { name: '生成统计' })
     expect(stats).toHaveTextContent('12 Tokens')
-    expect(stats).toHaveTextContent('模型生成 TPS')
+    expect(stats).toHaveTextContent('模型生成速度')
     expect(stats).not.toHaveTextContent('0 Tokens')
   })
 
@@ -188,24 +198,25 @@ describe('会话工作区的明确入口和独立对话', () => {
     render(<Fixture adapter={adapter} />)
     await user.click(screen.getByRole('button', { name: 'AI 对话' }))
     await screen.findByText('以前的回答')
-    await user.type(screen.getByRole('textbox'), '原对话草稿')
+    await pasteComposerText('原对话草稿')
     await user.click(screen.getByRole('button', { name: '新建 AI 对话' }))
     expect(adapter.createThread).toHaveBeenCalledWith('c')
     expect(screen.queryByText('以前的回答')).not.toBeInTheDocument()
-    expect(screen.getByRole('textbox')).toHaveValue('')
-    await user.type(screen.getByRole('textbox'), '第二个问题')
+    await expectComposerText('')
+    await pasteComposerText('第二个问题')
     await user.click(screen.getByRole('button', { name: '发送给 AI' }))
     await screen.findByText('回答')
     expect(adapter.respond).toHaveBeenCalledWith(expect.objectContaining({ threadId: 'second', prompt: '第二个问题', history: [] }), expect.anything())
     await user.click(screen.getByRole('button', { name: '显示对话列表' }))
     await user.click(screen.getByRole('button', { name: '第一次复盘' }))
     await screen.findByText('以前的回答')
-    expect(screen.getByRole('textbox')).toHaveValue('原对话草稿')
+    await expectComposerText('原对话草稿')
     expect(within(screen.getByRole('log')).queryByText('第二个问题')).not.toBeInTheDocument()
   })
 })
 
 it('在历史栏创建第一条对话并聚焦输入，不发送消息', async () => {
+  vi.spyOn(document, 'hasFocus').mockReturnValue(true)
   const user = userEvent.setup(), adapter = client()
   adapter.listThreads = async () => []
   adapter.createThread = vi.fn(async () => ({id:'1',conversationId:'c',title:'新对话',createdAtMs:1,updatedAtMs:1,turns:[]}))

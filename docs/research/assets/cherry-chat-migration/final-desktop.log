@@ -1,0 +1,66 @@
+
+> whomi@0.1.11 test:desktop
+> node scripts/desktop-smoke.mjs
+
+
+Running 51 tests using 1 worker
+
+  ok  1 tests\desktop\acceptance-fixes.spec.mjs:8:1 › active import remains recoverable and compact reply navigation preserves the draft across pages (12.7s)
+  ok  2 tests\desktop\account-model-lifecycle.spec.mjs:7:34 › 订阅账号退出、重新登录和换账号在 1280 像素下结束旧模型界面 (9.7s)
+  ok  3 tests\desktop\account-model-lifecycle.spec.mjs:7:34 › 订阅账号退出、重新登录和换账号在 360 像素下结束旧模型界面 (9.0s)
+  ok  4 tests\desktop\ai.spec.mjs:9:1 › real Pi process persists analysis reports and dialogue through the isolated desktop bridge (15.4s)
+  ok  5 tests\desktop\analysis-resume.spec.mjs:9:1 › resume a paused analysis after restart, retaining committed work and reporting against the same task (23.3s)
+ELECTRON STDERR: Debugger ending on ws://127.0.0.1:55049/57af88bc-2711-45da-8e6e-bb06fe17c195
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+  ok  6 tests\desktop\capture-evidence.spec.mjs:7:1 › capture comprehensive evidence for import flow, unified top bar, conversation management, and message bubbles (9.8s)
+  ok  7 tests\desktop\cherry-recovery.spec.mjs:77:1 › Cherry restores terminal and interrupted turns and shows real aggregate usage without loading remote answer resources (17.1s)
+  ok  8 tests\desktop\cherry-settings.spec.mjs:7:1 › Cherry settings menus, auto-save, sync recovery and capacity drawers work in the desktop window (10.0s)
+  ok  9 tests\desktop\codex-quota.spec.mjs:6:39 › 方案 C 在 1280 像素完成连接、刷新、重试、取消与来源切换（示例数据） (7.4s)
+  ok 10 tests\desktop\codex-quota.spec.mjs:6:39 › 方案 C 在 960 像素完成连接、刷新、重试、取消与来源切换（示例数据） (7.7s)
+  ok 11 tests\desktop\codex-quota.spec.mjs:6:39 › 方案 C 在 360 像素完成连接、刷新、重试、取消与来源切换（示例数据） (7.5s)
+  ok 12 tests\desktop\composer-selection-clarity.spec.mjs:20:34 › 在 1280 像素窗口双向切换选择与引用，逐组管理时保留草稿 (9.0s)
+  ok 13 tests\desktop\composer-selection-clarity.spec.mjs:20:34 › 在 360 像素窗口双向切换选择与引用，逐组管理时保留草稿 (11.0s)
+  ok 14 tests\desktop\conversation-entry.spec.mjs:8:3 › 首条 AI 对话与缺模型时的设置往返 · 1440 (9.3s)
+  ok 15 tests\desktop\conversation-entry.spec.mjs:8:3 › 首条 AI 对话与缺模型时的设置往返 · 360 (9.5s)
+  ok 16 tests\desktop\conversation-lists.spec.mjs:9:34 › 两类会话管理在 1280 像素下可拖序、恢复和删除 (20.3s)
+  ok 17 tests\desktop\conversation-lists.spec.mjs:9:34 › 两类会话管理在 440 像素下可拖序、恢复和删除 (22.1s)
+  ok 18 tests\desktop\custom-provider.spec.mjs:7:1 › 自定义服务商在宽窄窗口配置头像和两个端点，重启后按默认协议读取模型 (17.2s)
+  ok 19 tests\desktop\design-review-settings-replies.spec.mjs:19:1 › settings use the provider model drawer and a neutral grouped number focus (8.6s)
+  ok 20 tests\desktop\design-review-settings-replies.spec.mjs:97:1 › SIWX reimport repairs an old quote and jumps across unloaded pages without losing the draft (18.2s)
+  ok 21 tests\desktop\identity-entry.spec.mjs:6:34 › 导入后在 1280 像素确认本人，取消可阅读，重进重问，保存后重启不再提示 (14.0s)
+  ok 22 tests\desktop\identity-entry.spec.mjs:6:34 › 导入后在 360 像素确认本人，取消可阅读，重进重问，保存后重启不再提示 (6.9s)
+  ok 23 tests\desktop\import.spec.mjs:38:1 › import guide stays in the app, adapts to the panel and returns to the same picker (7.2s)
+firstWindowReadyMs=1914
+  ok 24 tests\desktop\import.spec.mjs:80:1 › actual import UI preserves old messages, self identity, source bytes and stable locations after restart (14.7s)
+  ok 25 tests\desktop\import.spec.mjs:147:1 › actual reader bounds six pages and preserves a visible anchor in both directions (9.4s)
+  ok 26 tests\desktop\import.spec.mjs:175:1 › actual import cancels before saving and retains partial results for recovery (8.3s)
+  ok 27 tests\desktop\import.spec.mjs:209:1 › actual large-file parsing shows real counts and can be cancelled (7.9s)
+  ok 28 tests\desktop\lifecycle-boundaries.spec.mjs:8:1 › 切换与新建 AI 对话结束旧引用查看，保留各自草稿 (16.3s)
+  -  29 tests\desktop\memory-capacity-upgrade.spec.mjs:20:1 › 0.1.7 capacity failure and committed prefix resume after upgrading the same database
+  ok 30 tests\desktop\memory-scoring.spec.mjs:7:1 › local manuscripts vote once per relationship and retract on identity correction (14.6s)
+  ok 31 tests\desktop\menu-hit-test.spec.mjs:7:1 › identity entry accepts pointer and keyboard input outside its draggable header (16.2s)
+  ok 32 tests\desktop\overview-panes-status.spec.mjs:9:1 › 从空总览导入记录，调整三个分栏，在宽窄窗口发送、重试并保留草稿 (32.5s)
+  ok 33 tests\desktop\primary-empty-pages.spec.mjs:8:34 › 首次整理在 1280 像素窗口从总览、问一问、仓库到真实文稿 (18.9s)
+  ok 34 tests\desktop\primary-empty-pages.spec.mjs:8:34 › 首次整理在 360 像素窗口从总览、问一问、仓库到真实文稿 (19.0s)
+  ok 35 tests\desktop\provider-presets.spec.mjs:10:1 › browse offline provider presets, configure one, and retain custom accounts across restarts (20.4s)
+  ok 36 tests\desktop\reading-polish.spec.mjs:34:1 › explicit safe webpage links reach the browser while executable schemes stay blocked (1.2s)
+  ok 37 tests\desktop\reading-polish.spec.mjs:52:1 › reading polish: fixed content, history, model identity, copy, retry and narrow windows (40.2s)
+  ok 38 tests\desktop\reference-group.spec.mjs:9:1 › 核对同一问题的19条原文，跨页、失败重试和重启后保持整组 (23.1s)
+  ok 39 tests\desktop\runtime.spec.mjs:7:42 › rejects a test directory junction at the main boundary without opening its target database (719ms)
+  ok 40 tests\desktop\runtime.spec.mjs:7:42 › rejects a test directory junction at the data boundary without opening its target database (1.2s)
+runtime=24.22.1 sqlite=3.53.4 writable=true
+  ok 41 tests\desktop\runtime.spec.mjs:70:1 › saved data survives a restart while the renderer stays isolated (2.6s)
+  ok 42 tests\desktop\runtime.spec.mjs:107:44 › crash recovery after actual import exits Before COMMIT (2.2s)
+  ok 43 tests\desktop\runtime.spec.mjs:107:44 › crash recovery after actual import exits After COMMIT (2.3s)
+  ok 44 tests\desktop\runtime.spec.mjs:130:1 › desktop bridge accepts genuine disk files and directory drops and keeps the renderer isolated (3.4s)
+  ok 45 tests\desktop\settings-shared-shell.spec.mjs:7:1 › 设置保留导航和对话草稿，主导航等待有效配置保存后切换 (9.0s)
+  ok 46 tests\desktop\settings.spec.mjs:8:1 › settings persist real models, process outbound chat, preserve drafts and migrate conversation storage (22.2s)
+  ok 47 tests\desktop\subscription-cards.spec.mjs:6:34 › 订阅服务商在 1920 像素下可登录、取消、退出和切换账号（模拟授权） (9.0s)
+  ok 48 tests\desktop\subscription-cards.spec.mjs:6:34 › 订阅服务商在 360 像素下可登录、取消、退出和切换账号（模拟授权） (8.3s)
+  ok 49 tests\desktop\system-prompts.spec.mjs:7:1 › 系统提示词保存、取消、失败重试、重启及实际请求 (8.3s)
+  -  50 tests\desktop\upgrade.spec.mjs:8:1 › existing data and encrypted models survive the packaged upgrade and subsequent restart
+  ok 51 tests\desktop\window-shell.spec.mjs:6:1 › desktop shell opens at a readable size, preserves bounds, and shows the refined conversation UI (12.4s)
+
+  2 skipped
+  49 passed (10.2m)

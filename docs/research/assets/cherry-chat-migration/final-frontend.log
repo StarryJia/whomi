@@ -1,0 +1,16 @@
+
+> whomi@0.1.11 test
+> vitest run --maxWorkers=4
+
+
+ RUN  v5.0.5 D:/CodexData/worktrees/cherry-chat-migration/whomi
+
+
+ Test Files  55 passed (55)
+      Tests  574 passed (574)
+   Start at  22:21:05
+   Duration  194.65s (tests 48%, environment 34%, import 12%, setup 6%, transform 1%)
+
+Environment  jsdom was created 55 times · 252.20s total, 34% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments

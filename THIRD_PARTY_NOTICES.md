@@ -44,6 +44,16 @@ README 及应用内操作指引的会话平台图标取自 [Simple Icons 13.0.0]
 
 后续文本协议映射与模型目录交互仍对照同一固定版本。协议映射文件为 `src/shared/model-protocol.ts`，原生请求使用已安装的 Pi 软件开发工具包；准确来源、地址兼容规则与界面差异见[协议接入](docs/research/cherry-protocol-reuse.md)及[模型目录选择](docs/research/cherry-catalog-selection.md)。
 
+### Cherry Studio 原对话输入与消息组件
+
+正式对话输入器、消息列表、动作、流式分层和阅读滚动复用 Cherry Studio 固定提交 `263667f7a99dfed736c939708a55deb435164820`。Whomi 负责本地对话、引用、请求受理和用量接入。来自 Cherry 应用的代码、布局和字体随附原始 GNU Affero 通用公共许可证第 3 版（AGPL-3.0）。共用控件、样式工具和 Flex 来自声明 MIT 的 Cherry 界面包。助手正文继续使用下文记录的较早版本 MarkdownCore。逐文件来源、适配和校验命令见[对话模块来源](src/vendor/cherry-chat/UPSTREAM.md)。
+
+本地桌面包随附该模块的两份许可证、来源说明和三份逐文件清单。本次授权范围为本地集成与验证，公开发布需另行授权。
+
+### virtua 虚拟列表
+
+对话消息列表使用 [virtua 0.49.1](https://www.npmjs.com/package/virtua/v/0.49.1) 的 React 构建。安装时应用本地尺寸回调补丁，版本和校验值见[来源记录](src/vendor/virtua-resize/UPSTREAM.md)，原始 MIT 许可见 [LICENSE](src/vendor/virtua-resize/LICENSE)。
+
 ### ChatLab 会话解析模块
 
 自动追加同时参考 [ChatLab 提交 bf8d5ac77443512b9973ff3a236f258424202bbc](https://github.com/ChatLab/ChatLab/tree/bf8d5ac77443512b9973ff3a236f258424202bbc) 的可靠身份与连续消息匹配机制；该版本根许可证同为 AGPL-3.0。Whomi 的来源指纹、冲突排除、歧义新建和逐条去重适配见[自动导入来源记录](docs/research/whomi-auto-import-reuse.md)。

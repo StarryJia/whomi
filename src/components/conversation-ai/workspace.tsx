@@ -1,21 +1,23 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowUp, ArrowRight, ArrowLeft, Pause, Play, Box, Check, ChevronDown, FileText, LoaderCircle, MessageCircle, PanelLeft, Square, SquarePen, X } from 'lucide-react'
+import { ArrowRight, ArrowLeft, Pause, Play, Box, Check, ChevronDown, FileText, MessageCircle, PanelLeft, Square, SquarePen, X } from 'lucide-react'
 import * as Select from '@radix-ui/react-select'
 import type { ReferenceRange } from './selection'
-import type { ConversationAiAdapter, ConversationRequest, GenerationUsage } from './types'
+import type { ConversationAiAdapter, ConversationRequest, RestoredConversationTurn } from './types'
 import type { AnalysisPreparation, AiThreadSummary } from '../../shared/ai-contract'
 import './workspace.css'
 import './analysis-panel.css'
 import { useAnalysisTask } from './use-analysis-task'
-import { ConversationPopoverOwner, ModelSelector, ThinkingSelector, type ThinkingLevel, type ModelOption } from './model-selector'
-import { messagePerformance } from './message-performance'
-import { AnswerContent } from './answer-content'
+import { ConversationPopoverOwner, ModelSelector, ThinkingSelector, type ThinkingLevel } from './model-selector'
 import { usePaneDivider } from '../ui/pane-divider'
 import { ManagedRow } from '../ui/managed-row'
 import { MemoryArticle } from '../memory-library'
 import { isMemoryReport } from '../../shared/memory'
-import { AnswerActions } from './answer-actions'
+import { CherryComposer, clearComposerDraft, clearComposerInputHistory, moveComposerInputHistory, readComposerDraft, useComposerDraft, writeComposerDraft, type CherryComposerHandle } from './cherry/composer'
+import { CherryMessages, type CherryMessagesHandle, type CherryMessageTurn } from './cherry/messages'
+import { forgetScrollPosition } from '../../vendor/cherry-chat/messages/list/useScrollPositionMemory'
+import { ConversationAcceptancePendingError, ConversationTurnError, isConversationNotSubmitted, matchesConversationRequest } from '../../data/conversation-ai-client'
+import '../../vendor/cherry-chat/shared/theme.css'
 
 const number = (value: number) => new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 1 }).format(value)
 const valid = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && value >= 0
@@ -75,9 +77,10 @@ function Popover({ anchor, label, children, onClose, above = false, alignStart =
     style={position} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>{children}</div></ConversationPopoverOwner.Provider>, document.body)
 }
 
-function References({ references, savedIds, onJump, onClear, onRemove }: {
+function References({ references, savedIds, onJump, onClear, onRemove, locked = false }: {
   references: readonly ReferenceRange[]; savedIds?: readonly string[]
   onJump: (ids: readonly string[], targetId?: string) => void; onClear?: () => void; onRemove?: (id: string) => void
+  locked?: boolean
 }) {
   const [open, setOpen] = useState<'hover' | 'pinned' | false>(false)
   const anchor = useRef<HTMLButtonElement>(null)
@@ -107,7 +110,7 @@ function References({ references, savedIds, onJump, onClear, onRemove }: {
       }}>
       <FileText aria-hidden="true" />{count} {onClear ? '组引用' : '条引用'}<ChevronDown aria-hidden="true" />
     </button>
-    {onClear && <button ref={clearButton} type="button" className="conversation-icon-button" aria-label="清空全部引用" title="清空全部引用" onClick={onClear}><X aria-hidden="true" /></button>}
+    {onClear && <button ref={clearButton} type="button" disabled={locked} className="conversation-icon-button" aria-label="清空全部引用" title="清空全部引用" onClick={onClear}><X aria-hidden="true" /></button>}
     {open && <Popover id={popoverId} anchor={anchor} above alignStart={!!onClear} label="引用预览" onClose={() => setOpen(false)} onMouseEnter={keep} onMouseLeave={leave}>
       <div ref={list} className="conversation-reference-list" onKeyDown={event => {
         if (event.key !== 'Tab') return
@@ -125,7 +128,7 @@ function References({ references, savedIds, onJump, onClear, onRemove }: {
             <FileText aria-hidden="true" /><span><strong>引用 {index + 1} · {first?.senderName ?? '消息'}</strong>
             <span className="conversation-reference-summary"><span>{first?.text || '查看原文'}</span><small>· 共 {reference.messages.length} 条消息</small></span></span>
           </button>
-          {onRemove && <button type="button" className="conversation-icon-button conversation-reference-remove" aria-label={removeLabel} title={removeLabel} onClick={() => {
+          {onRemove && <button type="button" disabled={locked} className="conversation-icon-button conversation-reference-remove" aria-label={removeLabel} title={removeLabel} onClick={() => {
             const buttons = list.current?.querySelectorAll<HTMLButtonElement>('.conversation-reference-remove')
             const neighbor = buttons?.[index + 1] ?? buttons?.[index - 1]
             neighbor?.focus({ preventScroll: true })
@@ -138,44 +141,33 @@ function References({ references, savedIds, onJump, onClear, onRemove }: {
   </div>
 }
 
-function Usage({ usage, model }: { usage?: GenerationUsage; model?: ModelOption }) {
-  const [open, setOpen] = useState(false)
-  const anchor = useRef<HTMLButtonElement>(null)
-  if (!usage || ![usage.inputTokens, usage.outputTokens, usage.totalInputTokens, usage.durationMs].some(valid)) return null
-  const performance = messagePerformance(usage)
-  const tokens = (value?: number) => valid(value) ? `${number(value)} Tokens` : '—'
-  const speed = (value?: number) => valid(value) ? `${number(value)} Token/秒` : '—'
-  return <div className="conversation-usage">
-    <button ref={anchor} type="button" aria-expanded={open} onClick={() => setOpen(value => !value)}>
-      {valid(usage.outputTokens) && <span>输出 {number(usage.outputTokens)} token</span>}
-      {valid(performance.modelTokensPerSecond) && <span>{number(performance.modelTokensPerSecond)} token/秒</span>}
-      {!valid(usage.outputTokens) && !valid(performance.modelTokensPerSecond) && '生成统计'}
-      <ChevronDown aria-hidden="true" />
-    </button>
-    {open && <Popover anchor={anchor} above label="生成统计" onClose={() => setOpen(false)}>
-      <div className="cherry-usage-identity"><Box aria-hidden="true" /><div><strong>{model?.label ?? '模型'}</strong>
-        {model?.model && <span>{model.model}</span>}</div>
-        <time>{usage.completedAt ? new Date(usage.completedAt).toLocaleString('zh-CN', { hour12: false }) : '—'}</time>
-      </div>
-      <dl className="conversation-usage-grid cherry-usage-primary">
-        <div><dt>输入</dt><dd title={tokens(performance.inputTokens)}>{tokens(performance.inputTokens)}</dd></div>
-        <div><dt>输出</dt><dd title={tokens(usage.outputTokens)}>{tokens(usage.outputTokens)}</dd></div>
-        <div><dt>模型生成 TPS</dt><dd title={speed(performance.modelTokensPerSecond)}>{speed(performance.modelTokensPerSecond)}</dd></div>
-      </dl><dl className="cherry-usage-details">
-        {valid(usage.cacheReadTokens) && usage.cacheReadTokens > 0 && <div><dt>缓存读取</dt><dd>{tokens(usage.cacheReadTokens)}</dd></div>}
-        {valid(usage.cacheWriteTokens) && usage.cacheWriteTokens > 0 && <div><dt>缓存写入</dt><dd>{tokens(usage.cacheWriteTokens)}</dd></div>}
-        <div><dt>未缓存</dt><dd>{tokens(performance.uncachedTokens)}</dd></div>
-        <div><dt>首 Token 耗时</dt><dd>{valid(usage.firstTokenMs) ? seconds(usage.firstTokenMs) : '—'}</dd></div>
-        <div><dt>端到端吞吐</dt><dd>{speed(performance.endToEndTokensPerSecond)}</dd></div>
-        <div><dt>端到端耗时</dt><dd>{valid(usage.durationMs) ? seconds(usage.durationMs) : '—'}</dd></div>
-      </dl>
-    </Popover>}
-  </div>
+type Turn = CherryMessageTurn & { eventSequence?: number; attempt?: number }
+type Slots = { analysisControl: ReactNode; chatControl: ReactNode; composer: ReactNode; panelOpen: boolean; referencesLocked: boolean }
+const draftScope = (conversationId: string, threadId?: string) => `${conversationId}:${threadId ?? 'initial'}`
+type UnconfirmedSubmission = { request: ConversationRequest; draftScope: string; stopRequested: boolean; retry?: Turn; retryBaseline?: { eventSequence: number; attempt: number } }
+// 页面卸载只断开观察；在确认受理前继续保留原请求编号。
+const unconfirmedSubmissions = new Map<string, UnconfirmedSubmission>()
+const submissionListeners = new Set<() => void>()
+let submissionRevision = 0
+const readSubmissionRevision = () => submissionRevision
+function subscribeSubmissions(listener: () => void) {
+  submissionListeners.add(listener)
+  return () => { submissionListeners.delete(listener) }
 }
-
-type Turn = { id: number | string; request: ConversationRequest; modelIdentity?: ModelOption; referenceIds?: string[]; text: string; usage?: GenerationUsage; status: 'running' | 'done' | 'failed' | 'stopped'; error?: string; remote?: boolean }
-const turnModel = (turn: Turn): ModelOption => turn.modelIdentity ?? { id: turn.request.modelId, label: '未知模型' }
-type Slots = { analysisControl: ReactNode; chatControl: ReactNode; composer: ReactNode; panelOpen: boolean }
+function notifySubmissions() {
+  ++submissionRevision
+  for (const listener of submissionListeners) listener()
+}
+function writeSubmission(id: string, value?: UnconfirmedSubmission) {
+  if (value) unconfirmedSubmissions.set(id, value)
+  else unconfirmedSubmissions.delete(id)
+  notifySubmissions()
+}
+function retryAdvanced(turn: RestoredConversationTurn, pending: UnconfirmedSubmission) {
+  const baseline = pending.retryBaseline ?? pending.retry
+  return !!baseline && (turn.eventSequence ?? -1) > (baseline.eventSequence ?? -1) &&
+    (baseline.attempt === undefined || (turn.attempt ?? -1) > baseline.attempt)
+}
 export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, openAnalysisOnEntry = false, identityRevision = 0, title, messageCount, references, onClearReferences, onRestoreReferences, onJumpReference, onEndReferenceView, onOpenAnalysisResult, onConfigureModels, adapter, children }: {
   conversationId: string; identityRevision?: number; title: string; messageCount?: number; references: readonly ReferenceRange[]
   onClearReferences: () => void; onJumpReference: (ids: readonly string[], targetId?: string, pending?: boolean) => void
@@ -186,9 +178,21 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
   onOpenAnalysisResult?: (taskId: string) => void
   adapter?: ConversationAiAdapter; children: (slots: Slots) => ReactNode
 }) {
+  useSyncExternalStore(subscribeSubmissions, readSubmissionRevision, readSubmissionRevision)
   const [panelOpen, setPanelOpen] = useState(false)
-  const [draft, setDraft] = useState('')
+  const [composerScope, setComposerScope] = useState(() => draftScope(conversationId))
+  const [draft, setDraft] = useComposerDraft(composerScope)
+  const [submitting, setSubmitting] = useState(false)
+  const submittingRef = useRef(false)
+  const scopeTransfer = useRef<{ from: string; to: string } | undefined>(undefined)
+  const [sendError, setSendError] = useState('')
+  const [pendingAcceptance, setPendingAcceptance] = useState<{ request: ConversationRequest; stopRequested: boolean; accept: (turn?: RestoredConversationTurn) => void; confirm?: () => Promise<void>; reject: () => void }>()
+  const [confirmingAcceptance, setConfirmingAcceptance] = useState(false)
+  const submissionReceiver = useRef<{ requestId?: string; accept: (turn: RestoredConversationTurn) => void } | undefined>(undefined)
+  const stoppingTurns = useRef(new Map<string, Promise<void>>())
   const [threadId, setThreadId] = useState<string>()
+  const heldSubmission = [...unconfirmedSubmissions.values()].find(value => value.request.conversationId === conversationId && value.request.threadId === threadId)
+  const submissionLocked = submitting || !!heldSubmission
   const [threads, setThreads] = useState<AiThreadSummary[]>([])
   const [threadListOpen, setThreadListOpen] = useState(false)
   const [threadListLoading, setThreadListLoading] = useState(false)
@@ -198,11 +202,8 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
   const [threadListAttempt, setThreadListAttempt] = useState(0)
   const activeThread = useRef<string | undefined>(undefined)
   const threadGeneration = useRef(0)
-  const threadDrafts = useRef(new Map<string, string>())
   const threadTurns = useRef(new Map<string, Turn[]>())
   const threadReferences = useRef(new Map<string, readonly ReferenceRange[]>())
-  const threadScrolls = useRef(new Map<string, { top: number; atEnd: boolean }>())
-  const pendingScroll = useRef<{ top: number; atEnd: boolean } | undefined>(undefined)
   const initialModel = (feature: 'analysis' | 'conversation') => adapter?.selectedModels ? adapter.selectedModels[feature] ?? '' : adapter?.models[0]?.id ?? ''
   const [modelId, setModelId] = useState(initialModel('conversation'))
   const [analysisModelId, setAnalysisModelId] = useState(initialModel('analysis'))
@@ -212,13 +213,12 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
   const [modelSaving, setModelSaving] = useState<Partial<Record<'analysis' | 'conversation', boolean>>>({})
   const [skillId, setSkillId] = useState('')
   const [turns, setTurns] = useState<Turn[]>([])
-  const latestDraft = useRef(draft)
   const latestTurns = useRef(turns)
   const latestReferences = useRef(references)
-  latestDraft.current = draft
   latestTurns.current = turns
   latestReferences.current = references
-  const [busy, setBusy] = useState(false)
+  const [responding, setBusy] = useState(false)
+  const busy = responding || turns.some(turn => turn.status === 'running')
   const [analysisOpen, setAnalysisOpen] = useState(openAnalysisOnEntry)
   const analysis = useAnalysisTask(adapter, conversationId, identityRevision, initialAnalysisTaskId, openAnalysisOnEntry)
   const { confirming: analysisConfirming, setConfirming: setAnalysisConfirming, phase: analysisState,
@@ -233,7 +233,8 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
   const chatPane = usePaneDivider('assistant', panelOpen && !narrow)
   const source = useRef<HTMLDivElement>(null)
   const aside = useRef<HTMLElement>(null)
-  const textarea = useRef<HTMLTextAreaElement>(null)
+  const composer = useRef<CherryComposerHandle>(null)
+  const messages = useRef<CherryMessagesHandle>(null)
   const analysisAnchor = useRef<HTMLButtonElement>(null)
   const chatAnchor = useRef<HTMLButtonElement>(null)
   const historyAnchor = useRef<HTMLButtonElement>(null)
@@ -242,10 +243,6 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
   const alive = useRef(true)
   const selectionGeneration = useRef({ analysis: 0, conversation: 0 })
   const panelId = useId()
-  const draftId = useId()
-  const scroll = useRef<HTMLDivElement>(null)
-  const transcript = useRef<HTMLDivElement>(null)
-  const atEnd = useRef(true)
   const selectedModel = adapter?.models.find(model => model.id === modelId)
   const selectedAnalysisModel = adapter?.models.find(model => model.id === analysisModelId)
   const effectiveThinkingLevel = thinkingLevel && selectedModel?.thinkingLevels?.includes(thinkingLevel) ? thinkingLevel : undefined
@@ -261,36 +258,58 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
     } catch (error) { if (selectionGeneration.current[feature] === generation) setModelErrors(current => ({ ...current, [feature]: errorText(error) })) }
     finally { if (selectionGeneration.current[feature] === generation) setModelSaving(current => ({ ...current, [feature]: false })) }
   }
-  const canSend = !!adapter && !!selectedModel && !!draft.trim() && !busy && !restoring && !threadCreating && !threadListLoading && !threadListError && !modelSaving.conversation
+  const canSend = !!adapter && !!selectedModel && !!draft.trim() && !busy && !submissionLocked && !pendingAcceptance && !restoring && !threadCreating && !threadListLoading && !threadListError && !modelSaving.conversation
 
-  function activateThread(id: string | undefined, keepDraft = false) {
+  function finishSubmitting(locked: boolean) {
+    submittingRef.current = locked
+    setSubmitting(locked)
+    if (!locked && scopeTransfer.current) {
+      const { from, to } = scopeTransfer.current
+      writeComposerDraft(to, readComposerDraft(from))
+      clearComposerDraft(from)
+      moveComposerInputHistory(from, to)
+      scopeTransfer.current = undefined
+      setComposerScope(to)
+    }
+  }
+
+  function activateThread(id: string | undefined, keepDraft = false, keepReferences = keepDraft) {
     ++threadGeneration.current
+    setConfirmingAcceptance(false)
     onEndReferenceView?.()
-    threadDrafts.current.set(activeThread.current ?? 'initial', latestDraft.current)
     threadTurns.current.set(activeThread.current ?? 'initial', latestTurns.current)
     threadReferences.current.set(activeThread.current ?? 'initial', latestReferences.current)
-    threadScrolls.current.set(activeThread.current ?? 'initial', { top: scroll.current?.scrollTop ?? 0, atEnd: atEnd.current })
     chatRun.current?.abort('detach')
     chatRun.current = undefined
     activeThread.current = id
     setThreadId(id)
+    const nextScope = draftScope(conversationId, id)
+    if (keepDraft && submittingRef.current) scopeTransfer.current = { from: composerScope, to: nextScope }
+    else {
+      if (keepDraft && nextScope !== composerScope) {
+        writeComposerDraft(nextScope, readComposerDraft(composerScope))
+        clearComposerDraft(composerScope)
+        moveComposerInputHistory(composerScope, nextScope)
+      }
+      setComposerScope(nextScope)
+    }
     if (!keepDraft) {
-      setDraft(threadDrafts.current.get(id ?? '') ?? '')
       setTurns(threadTurns.current.get(id ?? '') ?? [])
     }
     setBusy(false)
     setRestoring(false)
     setRestoreError('')
-    pendingScroll.current = threadScrolls.current.get(id ?? '') ?? { top: 0, atEnd: true }
-    atEnd.current = pendingScroll.current.atEnd
-    if (!keepDraft) {
+    setSendError('')
+    if (!keepReferences) {
       if (onRestoreReferences) onRestoreReferences(threadReferences.current.get(id ?? '') ?? [])
       else onClearReferences()
     }
+    const pending = [...unconfirmedSubmissions.values()].find(value => value.request.conversationId === conversationId && value.request.threadId === id)
+    if (pending && !pending.retry) onRestoreReferences?.(pending.request.references)
   }
   function focusThreadEditor() {
     setThreadListOpen(false)
-    requestAnimationFrame(() => textarea.current?.focus({ preventScroll: true }))
+    requestAnimationFrame(() => composer.current?.focus())
   }
   async function newThread(keepDraft = false) {
     if (!adapter?.createThread || creatingThread.current || restoring || threadListLoading) return
@@ -324,8 +343,8 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
       if (!current) return
       setThreads(items)
       if (!activeThread.current && items[0]) {
-        activeThread.current = items[0].id
-        setThreadId(items[0].id)
+        const targetScope = draftScope(conversationId, items[0].id)
+        activateThread(items[0].id, !!readComposerDraft(composerScope) && !readComposerDraft(targetScope), !!latestReferences.current.length)
       }
     }, error => { if (current) setThreadListError(errorText(error)) }).finally(() => { if (current) setThreadListLoading(false) })
     return () => { current = false }
@@ -353,17 +372,42 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
     if (!adapter?.watchThread && !adapter?.restoreThread) return
     if (adapter.listThreads && !threadId) return
     const controller = new AbortController()
+    const stoppingReadbacks = new Set<string>()
     setRestoring(true)
     setRestoreError('')
     const receive: Parameters<NonNullable<ConversationAiAdapter['watchThread']>>[1] = values => {
       if (controller.signal.aborted || (threadId && activeThread.current !== threadId)) return
       setRestoring(false)
+      for (const value of values) {
+        const pending = unconfirmedSubmissions.get(value.requestId)
+        if (!pending || !matchesConversationRequest(value, pending.request) ||
+          (pending.retry && !retryAdvanced(value, pending))) continue
+        if (pending.stopRequested && ['queued', 'running', 'summarizing'].includes(value.state)) {
+          if (adapter.stopTurn && !stoppingReadbacks.has(value.id)) {
+            stoppingReadbacks.add(value.id)
+            void stopPersistedTurn(value.id).then(async () => {
+              if (!controller.signal.aborted && adapter.restoreThread) receive(await adapter.restoreThread(conversationId, threadId))
+            }).catch(error => {
+              if (!controller.signal.aborted && unconfirmedSubmissions.get(value.requestId) === pending) setSendError(errorText(error))
+            }).finally(() => stoppingReadbacks.delete(value.id))
+          }
+          continue
+        }
+        if (submissionReceiver.current?.requestId === value.requestId) submissionReceiver.current.accept(value)
+        else {
+          writeSubmission(value.requestId)
+          if (!pending.retry) { clearComposerDraft(pending.draftScope); clearComposerDraft(draftScope(conversationId, threadId)); onClearReferences() }
+          setSendError('')
+        }
+      }
       setTurns(previous => {
         const restored: Turn[] = values.map(value => {
           const existing = previous.find(turn => turn.request.requestId === value.requestId)
-          return { id: value.id, remote: true, request: { conversationId, threadId, turnId: value.id, referenceIds: value.referenceIds, requestId: value.requestId, prompt: value.prompt,
+          if (existing && (existing.eventSequence ?? -1) > (value.eventSequence ?? -1)) return existing
+          return { id: value.id, remote: true, eventSequence: value.eventSequence, attempt: value.attempt, request: { conversationId, threadId, turnId: value.id, referenceIds: value.referenceIds, requestId: value.requestId, prompt: value.prompt,
             modelId: value.modelId, thinkingLevel: value.thinkingLevel, skillId: value.skillId, references: existing?.request.references ?? [] },
-            modelIdentity: value.modelIdentity, referenceIds: value.referenceIds, text: value.text, usage: value.usage, error: value.error,
+            modelIdentity: value.modelIdentity, referenceIds: value.referenceIds, text: value.text, usage: value.usage,
+            error: value.error ?? (value.state === 'interrupted' ? '回答中断，请重试。' : undefined),
             status: ['queued', 'running', 'summarizing'].includes(value.state) ? 'running' : value.state === 'completed' ? 'done' : value.state === 'stopped' ? 'stopped' : 'failed' }
         })
         return [...restored, ...previous.filter(turn => !turn.remote && !values.some(value => value.requestId === turn.request.requestId))]
@@ -397,23 +441,8 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
     return () => query.removeEventListener('change', update)
   }, [])
   useLayoutEffect(() => {
-    if (panelOpen) textarea.current?.focus({ preventScroll: true })
+    if (panelOpen) composer.current?.focus()
   }, [panelOpen])
-  useLayoutEffect(() => {
-    if (!scroll.current) return
-    if (pendingScroll.current) {
-      scroll.current.scrollTop = pendingScroll.current.atEnd ? scroll.current.scrollHeight : pendingScroll.current.top
-      pendingScroll.current = undefined
-    } else if (atEnd.current) scroll.current.scrollTop = scroll.current.scrollHeight
-  }, [turns])
-  useLayoutEffect(() => {
-    // 流式排版异步提交正文，按真实内容高度跟随末尾。
-    const observer = new ResizeObserver(() => {
-      if (atEnd.current && scroll.current) scroll.current.scrollTop = scroll.current.scrollHeight
-    })
-    if (transcript.current) observer.observe(transcript.current)
-    return () => observer.disconnect()
-  }, [])
   function closePanel() {
     setPanelOpen(false)
     requestAnimationFrame(() => {
@@ -424,63 +453,235 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
     if (narrow) setPanelOpen(false)
     onJumpReference(ids, targetId, pending)
   }
-  function stopChat() {
-    chatRun.current?.abort()
-    chatRun.current = undefined
-    setBusy(false)
-    setTurns(items => items.map(turn => turn.status === 'running' ? { ...turn, status: 'stopped' } : turn))
-    const running = turns.find(turn => turn.remote && turn.status === 'running')
-    const generation = threadGeneration.current
-    if (running) void adapter?.stopTurn?.(String(running.id)).catch(error => {
-      if (alive.current && generation === threadGeneration.current) setRestoreError(errorText(error))
+  function restoredTurn(value: RestoredConversationTurn, request: ConversationRequest): Turn {
+    return { id: value.id, remote: true, eventSequence: value.eventSequence, attempt: value.attempt,
+      request: { ...request, turnId: value.id, requestId: value.requestId, modelId: value.modelId,
+        thinkingLevel: value.thinkingLevel, skillId: value.skillId, referenceIds: value.referenceIds },
+      modelIdentity: value.modelIdentity, referenceIds: value.referenceIds, text: value.text, usage: value.usage,
+      error: value.error ?? (value.state === 'interrupted' ? '回答中断，请重试。' : undefined),
+      status: ['queued', 'running', 'summarizing'].includes(value.state) ? 'running' : value.state === 'completed' ? 'done' : value.state === 'stopped' ? 'stopped' : 'failed' }
+  }
+  function replaceTurn(next: Turn) {
+    setTurns(items => {
+      const index = items.findIndex(item => item.request.requestId === next.request.requestId)
+      if (index < 0) return [...items, next]
+      const previous = items[index]
+      if ((previous.eventSequence ?? -1) > (next.eventSequence ?? -1)) return items
+      return items.map((item, i) => i === index ? { ...next, modelIdentity: next.modelIdentity ?? item.modelIdentity } : item)
     })
   }
-  async function send(retry?: Turn) {
-    if (!adapter || busy || chatRun.current || (!retry && !canSend)) return
-    setPanelOpen(true)
-    const request: ConversationRequest = retry?.request ?? { requestId: crypto.randomUUID(), conversationId, threadId, prompt: draft.trim(),
-      references: references.map(reference => ({ ...reference, messages: [...reference.messages] })), modelId, ...(effectiveThinkingLevel ? { thinkingLevel: effectiveThinkingLevel } : {}),
+  function stopPersistedTurn(id: string) {
+    const existing = stoppingTurns.current.get(id)
+    if (existing) return existing
+    const work = (async () => {
+      if (!adapter?.stopTurn) throw new Error('请重新打开当前对话，停止回答。')
+      await adapter.stopTurn(id)
+    })().finally(() => stoppingTurns.current.delete(id))
+    stoppingTurns.current.set(id, work)
+    return work
+  }
+  async function stopChat() {
+    const running = latestTurns.current.find(turn => turn.status === 'running')
+    const pending = running?.request.requestId ? unconfirmedSubmissions.get(running.request.requestId) : undefined
+    if (pending) { pending.stopRequested = true; notifySubmissions() }
+    const generation = threadGeneration.current
+    const controller = chatRun.current
+    if (running?.remote && adapter?.stopTurn) {
+      controller?.abort('detach')
+      chatRun.current = undefined
+      try {
+        await stopPersistedTurn(String(running.id))
+        if (!alive.current || generation !== threadGeneration.current) return
+        setBusy(false)
+        setTurns(items => items.map(turn => turn.id === running.id && turn.status === 'running' ? { ...turn, status: 'stopped' } : turn))
+      } catch (error) {
+        if (alive.current && generation === threadGeneration.current) setRestoreError(errorText(error))
+      }
+    } else {
+      controller?.abort()
+      chatRun.current = undefined
+      setBusy(false)
+      setTurns(items => items.map(turn => turn.status === 'running' ? { ...turn, status: 'stopped' } : turn))
+    }
+  }
+  async function send(text: string, retry?: Turn, recovery?: UnconfirmedSubmission): Promise<boolean> {
+    if (!adapter || chatRun.current || (!recovery && (busy || heldSubmission || pendingAcceptance || (!retry && !canSend)))) return false
+    setSendError('')
+    retry ??= recovery?.retry
+    const request: ConversationRequest = recovery?.request ?? (retry ? { ...retry.request, turnId: String(retry.id) } : {
+      requestId: crypto.randomUUID(), conversationId, threadId, prompt: text,
+      references: references.map(reference => ({ ...reference, messages: [...reference.messages] })), modelId,
+      ...(effectiveThinkingLevel ? { thinkingLevel: effectiveThinkingLevel } : {}),
       history: turns.filter(turn => turn.status === 'done').flatMap(turn => [
         { role: 'user' as const, text: turn.request.prompt, references: turn.request.references },
         { role: 'assistant' as const, text: turn.text },
       ]),
-      ...(references.length && adapter.skills.some(skill => skill.id === skillId) ? { skillId } : {}) }
+      ...(references.length && adapter.skills.some(skill => skill.id === skillId) ? { skillId } : {}),
+    })
+    const submission: UnconfirmedSubmission = recovery ?? { request, draftScope: composerScope, stopRequested: false, retry }
+    writeSubmission(request.requestId!, submission)
     const id = retry?.id ?? ++sequence.current
-    const modelIdentity = retry ? retry.modelIdentity : selectedModel ? { id: selectedModel.id, label: selectedModel.label, model: selectedModel.model, version: selectedModel.version } : undefined
-    if (!retry) { latestDraft.current = ''; setDraft(''); onClearReferences() }
-    let targetThread = request.threadId
+    const modelIdentity = retry ? retry.modelIdentity : (selectedModel ? { id: selectedModel.id, label: selectedModel.label, model: selectedModel.model, version: selectedModel.version } : undefined)
     try {
-      targetThread ??= adapter.createThread ? await newThread(true) : undefined
-      if (!alive.current || (adapter.createThread && !targetThread)) return
-      request.threadId = targetThread
+      request.threadId ??= adapter.createThread ? await newThread(true) : undefined
+      if (!alive.current || (adapter.createThread && !request.threadId)) { writeSubmission(request.requestId!); return false }
     } catch (error) {
-      if (alive.current) setTurns(items => {
-        const failed: Turn = { id, request, modelIdentity, text: '', status: 'failed', error: errorText(error) }
-        return retry ? items.map(item => item.id === id ? failed : item) : [...items, failed]
-      })
-      return
+      writeSubmission(request.requestId!)
+      if (alive.current) setSendError(errorText(error))
+      return false
     }
-    const controller = new AbortController()
-    chatRun.current = controller
-    setBusy(true)
-    atEnd.current = true
     const next: Turn = { id, request, modelIdentity, text: '', status: 'running' }
-    setTurns(items => retry ? items.map(item => item.id === id ? next : item) : [...items, next])
-    if (targetThread && !retry) setThreads(items => items.map(item => item.id === targetThread && item.title === '新对话'
-      ? { ...item, title: Array.from(request.prompt.replace(/\s+/g, ' ')).slice(0, 40).join('') } : item))
-    const active = () => alive.current && chatRun.current === controller && !controller.signal.aborted
+    setTurns(items => items.some(item => item.request.requestId === request.requestId)
+      ? items.map(item => item.request.requestId === request.requestId ? next : item) : [...items, next])
+    setBusy(true)
+    const generation = threadGeneration.current
+    let accepted = false
+    let settledAcceptance = false
+    return new Promise<boolean>(resolve => {
+      const settle = (value: boolean) => {
+        if (settledAcceptance) return
+        settledAcceptance = true
+        resolve(value)
+      }
+      const current = () => alive.current && generation === threadGeneration.current
+      const onAccepted = (value?: RestoredConversationTurn) => {
+        if (!current()) { settle(false); return }
+        if (accepted) { if (value) replaceTurn(restoredTurn(value, request)); return }
+        accepted = true
+        messages.current?.scrollToBottom()
+        writeSubmission(request.requestId!)
+        submissionReceiver.current = undefined
+        if (value) replaceTurn(restoredTurn(value, request))
+        if (!retry) {
+          if (recovery) { clearComposerDraft(recovery.draftScope); clearComposerDraft(composerScope) }
+          onClearReferences()
+          if (request.threadId) setThreads(items => items.map(item => item.id === request.threadId && item.title === '新对话'
+            ? { ...item, title: Array.from(request.prompt.replace(/\s+/g, ' ')).slice(0, 40).join('') } : item))
+        }
+        setPendingAcceptance(undefined)
+        setSendError('')
+        settle(true)
+      }
+      submissionReceiver.current = { requestId: request.requestId, accept: onAccepted }
+      let observationCount = 0
+      const observe = async () => {
+        const firstSubmission = !recovery && observationCount++ === 0
+        const controller = new AbortController()
+        chatRun.current = controller
+        setBusy(true)
+        const active = () => current() && chatRun.current === controller
+        try {
+          const result = await adapter.respond(request, { signal: controller.signal, onAccepted,
+            onSnapshot: value => { if (active()) replaceTurn(restoredTurn(value, request)) }, onText: value => {
+            if (active()) setTurns(items => items.map(item => item.request.requestId === request.requestId && item.eventSequence === undefined ? { ...item, text: value } : item))
+          } })
+          if (!active()) { settle(false); return }
+          if (!accepted) onAccepted(result.turn)
+          if (result.turn) replaceTurn(restoredTurn(result.turn, request))
+          else setTurns(items => items.map(item => item.request.requestId === request.requestId
+            ? { ...item, modelIdentity: result.modelIdentity ?? item.modelIdentity, text: result.text, usage: result.usage, status: 'done' } : item))
+        } catch (error) {
+          if (error instanceof ConversationAcceptancePendingError && !accepted && unconfirmedSubmissions.get(request.requestId!) === submission) {
+            submission.stopRequested ||= error.stopRequested
+            submission.retryBaseline = error.retryBaseline
+            notifySubmissions()
+          }
+          if (!accepted && firstSubmission && isConversationNotSubmitted(error) && unconfirmedSubmissions.get(request.requestId!) === submission) {
+            writeSubmission(request.requestId!)
+            if (submissionReceiver.current?.requestId === request.requestId) submissionReceiver.current = undefined
+            if (current()) {
+              setPendingAcceptance(undefined)
+              setBusy(false)
+              setSendError(error instanceof DOMException && error.name === 'AbortError' ? '' : errorText(error))
+              setTurns(items => retry ? items.map(item => item.request.requestId === request.requestId ? retry : item)
+                : items.filter(item => item.request.requestId !== request.requestId))
+            }
+            settle(false)
+            return
+          }
+          if (!active()) { settle(false); return }
+          // 再次确认的前置失败不能证明此前请求尚未入库。
+          if (!firstSubmission && !accepted && isConversationNotSubmitted(error)) {
+            error = new ConversationAcceptancePendingError(request.requestId!, { stopRequested: submission.stopRequested, retryBaseline: submission.retryBaseline })
+          }
+          if (error instanceof ConversationAcceptancePendingError && !accepted) {
+            setSendError(error.message)
+            setPendingAcceptance({ request, stopRequested: error.stopRequested, accept: onAccepted,
+              confirm: error.stopRequested || request.turnId ? undefined : observe, reject: () => {
+                writeSubmission(request.requestId!)
+                submissionReceiver.current = undefined
+                setTurns(items => items.filter(item => item.request.requestId !== request.requestId))
+                setPendingAcceptance(undefined)
+                settle(false)
+              } })
+          } else if (accepted || error instanceof ConversationTurnError) {
+            if (error instanceof ConversationTurnError) {
+              if (!accepted) onAccepted(error.turn)
+              replaceTurn(restoredTurn(error.turn, request))
+            } else if (!(error instanceof DOMException && error.name === 'AbortError')) {
+              setRestoreError(errorText(error))
+            }
+          } else {
+            writeSubmission(request.requestId!)
+            submissionReceiver.current = undefined
+            setPendingAcceptance(undefined)
+            setSendError(errorText(error))
+            setTurns(items => retry ? items.map(item => item.request.requestId === request.requestId ? retry : item)
+              : items.filter(item => item.request.requestId !== request.requestId))
+            settle(false)
+          }
+        } finally {
+          if (active()) { chatRun.current = undefined; setBusy(false) }
+        }
+      }
+      void observe()
+    })
+  }
+  async function confirmPendingAcceptance() {
+    if ((!pendingAcceptance && !heldSubmission) || confirmingAcceptance) return
+    const generation = threadGeneration.current
+    const requestId = pendingAcceptance?.request.requestId ?? heldSubmission?.request.requestId
+    const capturedSubmission = requestId ? unconfirmedSubmissions.get(requestId) : undefined
+    const stillPending = () => alive.current && generation === threadGeneration.current &&
+      !!requestId && !!capturedSubmission && unconfirmedSubmissions.get(requestId) === capturedSubmission
+    setConfirmingAcceptance(true)
     try {
-      const result = await adapter.respond(request, { signal: controller.signal, onText: text => {
-        if (active()) setTurns(items => items.map(item => item.id === id ? { ...item, text } : item))
-      } })
-      if (!active()) return
-      if (!result.text.trim()) throw new Error('未收到回答，请重试。')
-      setTurns(items => items.map(item => item.id === id || item.request.requestId === request.requestId ? { ...item, modelIdentity: result.modelIdentity ?? item.modelIdentity, text: result.text, usage: result.usage, status: 'done' } : item))
-    } catch (error) {
-      if (active()) setTurns(items => items.map(item => item.id === id ? { ...item, status: 'failed', error: errorText(error) } : item))
-    } finally {
-      if (active()) { chatRun.current = undefined; setBusy(false) }
-    }
+      if (!pendingAcceptance && heldSubmission && !heldSubmission.stopRequested && !heldSubmission.request.turnId) { await send('', undefined, heldSubmission); return }
+      const pending = pendingAcceptance ?? (heldSubmission && {
+        request: heldSubmission.request, confirm: undefined,
+        reject: () => { writeSubmission(heldSubmission.request.requestId!); setSendError('未发送，请重新发送。') },
+        accept: (value: RestoredConversationTurn) => {
+          writeSubmission(heldSubmission.request.requestId!)
+          if (!heldSubmission.retry) {
+            clearComposerDraft(heldSubmission.draftScope)
+            clearComposerDraft(composerScope)
+            onClearReferences()
+          }
+          replaceTurn(restoredTurn(value, heldSubmission.request))
+          setSendError('')
+        },
+      })
+      if (!pending) return
+      if (pending.confirm) { await pending.confirm(); return }
+      const request = pending.request
+      if (!adapter?.restoreThread) throw new Error('请重新打开当前对话，确认发送状态。')
+      const values = await adapter.restoreThread(request.conversationId, request.threadId)
+      if (!stillPending()) return
+      const saved = values.find(value => value.requestId === request.requestId)
+      if (!saved) { pending.reject(); setSendError('未发送，请重新发送。'); return }
+      if (!matchesConversationRequest(saved, request)) throw new Error('发送状态待确认，请再次确认。')
+      const submission = unconfirmedSubmissions.get(request.requestId!)
+      if (request.turnId && (!submission || !retryAdvanced(saved, submission))) throw new Error('重试状态待确认，请再次确认。')
+      if (submission?.stopRequested && ['queued', 'running', 'summarizing'].includes(saved.state)) {
+        if (!adapter.stopTurn) throw new Error('请重新打开当前对话，停止回答。')
+        await stopPersistedTurn(saved.id)
+        if (!stillPending()) return
+      }
+      const latest = (await adapter.restoreThread(request.conversationId, request.threadId)).find(value => value.id === saved.id)
+      if (!stillPending()) return
+      pending.accept(latest ?? saved)
+    } catch (error) { if (stillPending()) setSendError(errorText(error)) }
+    finally { if (alive.current && generation === threadGeneration.current) setConfirmingAcceptance(false) }
   }
   function analyze() {
     if (!selectedAnalysisModel || modelSaving.analysis || preparing || (adapter?.prepareAnalysis && !preparation)) return
@@ -520,7 +721,7 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
     onConfigureModels(() => {
       if (!alive.current) return
       if (fromAnalysis) { confirmAnalysis(); setAnalysisOpen(true) }
-      else textarea.current?.focus({ preventScroll: true })
+      else composer.current?.focus()
     })
   }
   const coverageDescription = progress && valid(total) ? `${statusTitle}，已整理 ${number(completed)} / ${number(total)} 条` : statusTitle
@@ -594,44 +795,39 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
     </Popover>}
   </>
   function clearDraftReferences() {
+    if (submittingRef.current || heldSubmission) return
     onClearReferences()
-    textarea.current?.focus({ preventScroll: true })
+    composer.current?.focus()
   }
   const threadContentActive = panelOpen && !threadListOpen
-  const referenceControl = threadContentActive && references.length > 0 && <References references={references}
+  const referenceControl = references.length > 0 && <References references={references} locked={submissionLocked}
     onJump={(ids, targetId) => jump(ids, targetId, true)} onClear={clearDraftReferences}
     onRemove={onRestoreReferences && (id => {
+      if (submittingRef.current || heldSubmission) return
       const remaining = references.filter(range => range.id !== id)
       if (remaining.length) onRestoreReferences(remaining)
       else clearDraftReferences()
     })} />
-  const editor = <form className="conversation-composer" onSubmit={event => { event.preventDefault(); void send() }}>
-    <label htmlFor={draftId} className="visually-hidden">向 AI 提问</label>
-    <textarea id={draftId} ref={textarea} rows={2} value={draft} placeholder="输入消息…"
-      onChange={event => setDraft(event.target.value)} onKeyDown={event => {
-        if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); if (canSend) void send() }
-      }} />
-    <div className="conversation-composer-tools">
-      {!adapter?.models.length && onConfigureModels ? <button className="cherry-model-trigger" type="button" onClick={() => configureModels(false)}><Box aria-hidden="true" />配置模型</button> : <ModelSelector label="对话模型" models={adapter?.models ?? []} value={selectedModel?.id ?? ''} disabled={busy || modelSaving.conversation}
+  const composerToolbar = <>
+    {!adapter?.models.length && onConfigureModels ? <button className="cherry-model-trigger" type="button" onClick={() => configureModels(false)}><Box aria-hidden="true" />配置模型</button>
+      : <ModelSelector label="对话模型" models={adapter?.models ?? []} value={selectedModel?.id ?? ''} disabled={submissionLocked || modelSaving.conversation}
         describedBy={modelErrors.conversation ? `${panelId}-conversation-model-error` : undefined} onSelect={id => { void chooseModel('conversation', id) }} />}
-      {selectedModel && <ThinkingSelector levels={selectedModel.thinkingLevels} value={thinkingLevel} onSelect={setThinkingLevel} disabled={busy || modelSaving.conversation} />}
-      {references.length > 0 && !!adapter?.skills.length && <Select.Root value={skillId || 'default'} onValueChange={value => setSkillId(value === 'default' ? '' : value)} disabled={busy}>
-        <Select.Trigger aria-label="对话技能" className="cherry-model-trigger cherry-skill-trigger"><FileText aria-hidden="true" /><Select.Value /><Select.Icon><ChevronDown /></Select.Icon></Select.Trigger>
-        <Select.Portal><Select.Content className="cherry-skill-menu" position="popper" side="top" sideOffset={8} onEscapeKeyDown={event => event.stopPropagation()}><Select.Viewport>
-          {[{ id: 'default', label: '默认方式' }, ...adapter.skills].map(skill => <Select.Item className="cherry-skill-option" value={skill.id} key={skill.id}><Select.ItemText>{skill.label}</Select.ItemText><Select.ItemIndicator><Check /></Select.ItemIndicator></Select.Item>)}
-        </Select.Viewport></Select.Content></Select.Portal>
-      </Select.Root>}
-      <div className="conversation-send-tools">
-        {busy ? <button type="button" className="conversation-send" aria-label="停止回答" onClick={stopChat}><Square aria-hidden="true" /></button>
-          : <button type="submit" className="conversation-send" aria-label="发送给 AI" disabled={!canSend}>{threadCreating ? <LoaderCircle className="conversation-working" aria-hidden="true" /> : <ArrowUp aria-hidden="true" />}</button>}
-      </div>
-    </div>
-    {modelErrors.conversation && <p id={`${panelId}-conversation-model-error`} role="alert" className="conversation-error">{modelErrors.conversation}</p>}
-  </form>
+    {selectedModel && <ThinkingSelector levels={selectedModel.thinkingLevels} value={thinkingLevel} onSelect={setThinkingLevel} disabled={submissionLocked || modelSaving.conversation} />}
+    {references.length > 0 && !!adapter?.skills.length && <Select.Root value={skillId || 'default'} onValueChange={value => setSkillId(value === 'default' ? '' : value)} disabled={submissionLocked}>
+      <Select.Trigger aria-label="对话技能" className="cherry-model-trigger cherry-skill-trigger"><FileText aria-hidden="true" /><Select.Value /><Select.Icon><ChevronDown /></Select.Icon></Select.Trigger>
+      <Select.Portal><Select.Content className="cherry-skill-menu" position="popper" side="top" sideOffset={8} onEscapeKeyDown={event => event.stopPropagation()}><Select.Viewport>
+        {[{ id: 'default', label: '默认方式' }, ...adapter.skills].map(skill => <Select.Item className="cherry-skill-option" value={skill.id} key={skill.id}><Select.ItemText>{skill.label}</Select.ItemText><Select.ItemIndicator><Check /></Select.ItemIndicator></Select.Item>)}
+      </Select.Viewport></Select.Content></Select.Portal>
+    </Select.Root>}
+  </>
+  const editor = <CherryComposer ref={composer} scopeKey={composerScope} value={draft} onChange={setDraft}
+    onSend={text => send(text)} onStop={() => { void stopChat() }} running={busy}
+    sendDisabled={!canSend} disabled={restoring || threadListLoading || !!heldSubmission} onSubmittingChange={finishSubmitting}
+    toolbar={composerToolbar} references={threadContentActive ? referenceControl : undefined} />
   const chatControl = <button ref={chatAnchor} type="button" className="conversation-analysis-trigger conversation-chat-trigger" aria-expanded={panelOpen} aria-controls={panelId}
     aria-label="AI 对话" title="AI 对话" onClick={() => setPanelOpen(true)}><MessageCircle aria-hidden="true" /><span>AI 对话</span></button>
   return <div style={chatPane.style} className={`conversation-workspace${chatPane.dragging ? ' pane-resizing' : ''}${panelOpen ? ' has-ai-panel' : ''}`}>
-    <div ref={source} className="conversation-source" inert={panelOpen && narrow}>{children({ analysisControl, chatControl, composer: null, panelOpen })}</div>
+    <div ref={source} className="conversation-source" inert={panelOpen && narrow}>{children({ analysisControl, chatControl, composer: null, panelOpen, referencesLocked: submissionLocked })}</div>
     <aside ref={aside} id={panelId} className="conversation-ai-panel" aria-label="AI 对话" role="complementary"
       inert={!panelOpen} aria-hidden={!panelOpen} onKeyDown={event => {
         if (event.key === 'Escape') {
@@ -642,13 +838,13 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
       }}>
       {panelOpen && !narrow && chatPane.divider}
       <header className="conversation-ai-header"><button ref={historyAnchor} type="button" className="conversation-icon-button" aria-label={threadListOpen ? '收起对话列表' : '显示对话列表'} aria-expanded={threadListOpen} onClick={() => setThreadListOpen(value => !value)}><PanelLeft aria-hidden="true" /></button>
-        <h2>AI 对话</h2><button type="button" className="conversation-icon-button" aria-label="新建 AI 对话" title="新建 AI 对话" disabled={!adapter?.createThread || threadCreating || threadListLoading || restoring} onClick={() => { void newThread() }}><SquarePen aria-hidden="true" /></button>
+        <h2>AI 对话</h2><button type="button" className="conversation-icon-button" aria-label="新建 AI 对话" title="新建 AI 对话" disabled={!adapter?.createThread || threadCreating || threadListLoading || restoring || submissionLocked} onClick={() => { void newThread() }}><SquarePen aria-hidden="true" /></button>
         <button type="button" className="conversation-icon-button" aria-label="关闭 AI 对话" onClick={closePanel}><X aria-hidden="true" /></button></header>
       <div className="conversation-ai-body">
       {threadListOpen && <button type="button" className="conversation-thread-scrim" aria-label="关闭对话列表" tabIndex={-1} onClick={() => { setThreadListOpen(false); historyAnchor.current?.focus() }} />}
       {threadListOpen && <nav className="conversation-thread-list" aria-label="AI 对话列表">
         {threads.map(thread => <ManagedRow key={thread.id} item={thread} scope={`threads-${conversationId}`} active={thread.id === threadId}
-          disabled={threadCreating} arrange={adapter?.arrangeThread && (async change => {
+          disabled={threadCreating || submissionLocked} arrange={adapter?.arrangeThread && (async change => {
             await adapter.arrangeThread!(conversationId, change)
             const updated = await adapter.listThreads!(conversationId)
             if (alive.current) setThreads(updated)
@@ -658,9 +854,11 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
             const remaining = threads.filter(item => item.id !== thread.id)
             setThreads(items => items.filter(item => item.id !== thread.id))
             if (activeThread.current === thread.id) activateThread(remaining[0]?.id)
-            threadDrafts.current.delete(thread.id)
+            clearComposerDraft(draftScope(conversationId, thread.id))
+            clearComposerInputHistory(draftScope(conversationId, thread.id))
+            forgetScrollPosition(draftScope(conversationId, thread.id))
+            for (const [requestId, pending] of unconfirmedSubmissions) if (pending.request.conversationId === conversationId && pending.request.threadId === thread.id) writeSubmission(requestId)
             threadTurns.current.delete(thread.id)
-            threadScrolls.current.delete(thread.id)
             threadReferences.current.delete(thread.id)
           })} onSelect={() => {
             if (thread.id !== threadId) activateThread(thread.id)
@@ -672,31 +870,21 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
           <SquarePen aria-hidden="true" />开始新对话
         </button>}
       </nav>}
-      <div className="conversation-thread-content" inert={threadListOpen}>
+      <div className="conversation-thread-content" data-composer-stage="" inert={threadListOpen}>
       {!threadListOpen && threadListError && <div className="conversation-thread-error" role="alert"><p>{threadListError}</p><button type="button" className="conversation-text-button" onClick={() => setThreadListAttempt(value => value + 1)}>重新加载对话</button></div>}
-      <div ref={scroll} className="conversation-ai-timeline" role="log" aria-label="AI 对话记录" aria-live="polite" onScroll={() => {
-        if (scroll.current) atEnd.current = scroll.current.scrollHeight - scroll.current.scrollTop - scroll.current.clientHeight < 64
-      }}>
-        <div ref={transcript}>
-        {restoring && <p role="status" className="conversation-state-copy">正在恢复对话…</p>}
-        {restoreError && <p role="alert" className="conversation-error">{restoreError}</p>}
-        {!threadListOpen && !turns.length && !restoring && !threadListLoading && <div className="conversation-chat-empty">
-          <MessageCircle aria-hidden="true" /><strong>你想从这段聊天里了解什么？</strong><p>直接写下问题，或从原文选择想讨论的消息。</p>
-        </div>}
-        {turns.map(turn => <div className="conversation-turn" key={turn.request.requestId ?? turn.id}>
-          <div className="conversation-user-turn"><p>{turn.request.prompt}</p>{threadContentActive && <References references={turn.request.references} savedIds={turn.referenceIds} onJump={jump} />}</div>
-          <div className="conversation-assistant-turn"><div className="conversation-answer-label"><MessageCircle aria-hidden="true" /><strong title={[turnModel(turn).label, turnModel(turn).model].filter(Boolean).join(' | ')}>{turnModel(turn).label}</strong></div>
-            {turn.status === 'running' && !turn.text && <p className="conversation-waiting" role="status">正在回答…</p>}
-            {turn.text && <AnswerContent id={turn.request.requestId ?? String(turn.id)} text={turn.text} status={turn.status} />}
-            {turn.status === 'failed' && <div role="alert"><p className="conversation-error">{turn.error}</p><button type="button" className="conversation-text-button" disabled={busy} onClick={() => { void send(turn) }}>重试回答</button></div>}
-            {turn.status === 'stopped' && <p className="conversation-state-copy">已停止回答。</p>}
-            <div className="conversation-answer-footer"><AnswerActions text={turn.text} available={turn.status !== 'running'} />
-              {threadContentActive && <Usage usage={turn.usage} model={turnModel(turn)} />}</div>
-          </div>
-        </div>)}
-        </div>
+      <CherryMessages ref={messages} turns={turns} scopeKey={draftScope(conversationId, threadId)} running={busy || submissionLocked}
+        active={threadContentActive} loading={restoring || threadListLoading} error={restoreError}
+        onRetry={id => {
+          const turn = latestTurns.current.at(-1)
+          if (turn?.id === id && ['failed', 'stopped'].includes(turn.status) && !busy && !submissionLocked) void send('', turn)
+        }}
+        renderReferences={turn => <References references={turn.request.references} savedIds={turn.referenceIds} onJump={jump} />} />
+      <div className="conversation-panel-composer">
+        {(sendError || (heldSubmission && !submitting && !chatRun.current && !restoring)) && <p role="alert" className="conversation-error">{sendError || '发送状态待确认，请再次确认。'}{(pendingAcceptance || heldSubmission) && <button type="button" className="conversation-text-button"
+          disabled={confirmingAcceptance} onClick={() => { void confirmPendingAcceptance() }}>确认发送状态</button>}</p>}
+        {modelErrors.conversation && <p id={`${panelId}-conversation-model-error`} role="alert" className="conversation-error">{modelErrors.conversation}</p>}
+        {editor}
       </div>
-      {panelOpen && <div className="conversation-panel-composer">{referenceControl}{editor}</div>}
       </div></div>
     </aside>
   </div>
