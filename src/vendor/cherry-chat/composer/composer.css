@@ -1,0 +1,34 @@
+.cherry-chat-surface [data-composer-inputbar] {
+  --foreground-disabled: var(--muted-foreground);
+  border-style: solid;
+  background-color: var(--background);
+}
+
+.cherry-chat-surface .composer-tiptap {
+  min-height: var(--composer-editor-min-height);
+  padding: var(--composer-editor-padding);
+  font-size: var(--composer-editor-font-size);
+  line-height: var(--composer-editor-line-height);
+  overflow-wrap: anywhere;
+}
+
+.cherry-chat-surface .composer-tiptap p {
+  margin: 0;
+}
+
+.cherry-chat-surface .composer-tiptap p[data-placeholder]::before {
+  content: attr(data-placeholder);
+  float: inline-start;
+  height: 0;
+  color: var(--muted-foreground);
+  pointer-events: none;
+}
+
+.cherry-chat-surface [data-ui="chat.composer.action.pause"] {
+  color: var(--color-destructive);
+}
+
+.cherry-chat-surface [data-composer-expand-corner] button {
+  border-width: 0;
+  padding: 0;
+}

@@ -28,7 +28,7 @@ export type ConversationRequest = {
 export type RestoredConversationTurn = {
   id: string; requestId: string; prompt: string; referenceIds: string[]; modelId: string; thinkingLevel?: ThinkingLevel; skillId?: string
   text: string; state: AiState; usage?: GenerationUsage; error?: string
-  modelIdentity?: AiModelIdentity
+  modelIdentity?: AiModelIdentity; eventSequence?: number; attempt?: number
 }
 export type ConversationAiAdapter = {
   selectedModels?: Partial<Record<'analysis' | 'conversation', string>>
@@ -48,8 +48,10 @@ export type ConversationAiAdapter = {
   continueAnalysis?: (taskId: string, signal: AbortSignal, onProgress: (progress: AnalysisProgress) => void) => Promise<AnalysisResult>
   respond(request: ConversationRequest, options: {
     signal: AbortSignal
+    onAccepted?: (turn: RestoredConversationTurn) => void
+    onSnapshot?: (turn: RestoredConversationTurn) => void
     onText: (text: string) => void
-  }): Promise<{ text: string; usage?: GenerationUsage; modelIdentity?: AiModelIdentity }>
+  }): Promise<{ text: string; usage?: GenerationUsage; modelIdentity?: AiModelIdentity; turn?: RestoredConversationTurn }>
   analyze(request: { conversationId: string; modelId: string; thinkingLevel?: ThinkingLevel; preparationToken?: string; requestId?: string }, options: {
     signal: AbortSignal
     onProgress: (progress: AnalysisProgress) => void

@@ -1,4 +1,5 @@
 import { _electron as electron, expect, test } from '@playwright/test'
+import { chatEditor } from './chat-helpers.mjs'
 import { createServer } from 'node:http'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -75,7 +76,7 @@ test('核对同一问题的19条原文，跨页、失败重试和重启后保持
     for (const n of selectedNumbers) await page.getByRole('option', { name: `${n % 2 ? '本人' : '小林'}：${sourceMessages[n - 1]}`, exact: true }).click()
     await page.getByRole('button', { name: '选择消息', pressed: true }).click()
     await button('AI 对话').click()
-    const draft = page.getByRole('textbox', { name: '向 AI 提问' })
+    const draft = chatEditor(page)
     await draft.fill('帮我回顾这次搬家。')
     await button('发送给 AI').click()
     await expect(page.getByRole('log')).toContainText('一起安排了搬家', { timeout: 30000 })
@@ -86,7 +87,7 @@ test('核对同一问题的19条原文，跨页、失败重试和重启后保持
     await probe('probe.hide')
     await button('19 条引用').click()
     await expect(button('重试定位')).toBeVisible()
-    await expect(draft).toHaveValue('还想问小猫的事')
+    await expect(draft).toHaveText('还想问小猫的事')
     await shot('01-wide-retry')
     await probe('probe.restore')
     await button('重试定位').click()

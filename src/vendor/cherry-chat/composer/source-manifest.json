@@ -1,0 +1,133 @@
+{
+  "repository": "https://github.com/CherryHQ/cherry-studio",
+  "commit": "263667f7a99dfed736c939708a55deb435164820",
+  "license": "AGPL-3.0",
+  "files": [
+    {
+      "local": "src/vendor/cherry-chat/composer/ComposerCore.tsx",
+      "upstream": "src/renderer/components/composer/ComposerCore.tsx",
+      "upstreamSha256": "b3de7ee57c562e5620b56bcdb469d6922343838dc22631de4b3db67b582792a0",
+      "adaptation": "原样保留核心和覆盖层焦点状态。"
+    },
+    {
+      "local": "src/vendor/cherry-chat/composer/ComposerContext.ts",
+      "upstream": "src/renderer/components/composer/ComposerContext.ts",
+      "upstreamSha256": "0ec8a4d388d87d937d2181de9cb90d175ea2e091e5946c938c82e61f08d3f40b",
+      "adaptation": "原样保留输入层上下文。"
+    },
+    {
+      "local": "src/vendor/cherry-chat/composer/ComposerSurface.tsx",
+      "upstream": "src/renderer/components/composer/ComposerSurface.tsx",
+      "upstreamSha256": "73c243db9a618b088fc32a97e4b84a7dc13fe0fd81ff0d37a5b8e24a4be24a3c",
+      "adaptation": "保留延迟导入、空闲预热、临时输入、选区、组合输入结束后交接、键盘优先级与窄布局。模型、引用等控件持有焦点或指针按压时延后交接，并按文本框当前焦点决定是否交接焦点。移除语音绑定、面板延迟指令、历史消息编辑、排队、附件拖放、地区声明和偏好服务。粘贴只取纯文本。"
+    },
+    {
+      "local": "src/vendor/cherry-chat/composer/ComposerSurfaceRuntime.tsx",
+      "upstream": "src/renderer/components/composer/ComposerSurfaceRuntime.tsx",
+      "upstreamSha256": "24a192a7a49e193d029246c46616a11aed1282b352f2ce83a4df9bc52bb6e19e",
+      "adaptation": "保留基础文本运行时的真实 Tiptap 视图、编辑同步、序列化、动作、历史方向键、提交焦点恢复、编辑器尺寸、发送及停止布局。裁剪历史消息编辑、紧凑模式、发送队列、快速面板与建议、变量和其他令牌、附件文件、语音、地区声明、偏好与通知宿主。读取剪贴板前仅授权纯文本，禁用拖入内容。"
+    },
+    {
+      "local": "src/vendor/cherry-chat/composer/composerSchema.ts",
+      "upstream": "src/renderer/components/composer/composerSchema.ts",
+      "upstreamSha256": "fc001ee57fbeea47e82c7bdd450bbeabbcf142faef3f9b8e28f278f66bcfbd5d",
+      "adaptation": "原样保留文档、段落、文本、硬换行与撤销重做。"
+    },
+    {
+      "local": "src/vendor/cherry-chat/composer/composerPreset.ts",
+      "upstream": "src/renderer/components/composer/composerPreset.ts",
+      "upstreamSha256": "54f567fad610fc15a05a33872bb26a767a009aad189d609266217dc16f65b580",
+      "adaptation": "保留原文档扩展顺序、占位、撤销；去除排除的令牌及建议扩展。"
+    },
+    {
+      "local": "src/vendor/cherry-chat/composer/composerDraft.ts",
+      "upstream": "src/renderer/components/composer/composerDraft.ts",
+      "upstreamSha256": "4f9519b7ec2cf60fdd800a08c19db4926e80f963092b1cae52280c6166190002",
+      "adaptation": "取原无令牌文档序列化、反序列化分支；保留空格和换行。"
+    },
+    {
+      "local": "src/vendor/cherry-chat/composer/composerSizing.ts",
+      "upstream": "src/renderer/components/composer/composerSizing.ts",
+      "upstreamSha256": "4582c73258e2626af60d90c1c1519483dff1b7b7c6d40b84e5b0025d04f17537",
+      "adaptation": "原样保留行高算法。"
+    },
+    {
+      "local": "src/vendor/cherry-chat/composer/useComposerEditorFrameSizing.ts",
+      "upstream": "src/renderer/components/composer/useComposerEditorFrameSizing.ts",
+      "upstreamSha256": "d388c5ca5edf76c91ce0c7809545378b1edd63ceace5dd1f013795565b390ef3",
+      "adaptation": "导入路径适配；保留尺寸测量、展开收起、键盘和鼠标调整。"
+    },
+    {
+      "local": "src/vendor/cherry-chat/composer/useResizeDrag.ts",
+      "upstream": "src/renderer/hooks/useResizeDrag.ts",
+      "upstreamSha256": "a80a8e15953d6eee046a3f5e0cbfd73262b5586cc55095982cebf2951b1d839f",
+      "adaptation": "原样保留尺寸拖动手势。"
+    },
+    {
+      "local": "src/vendor/cherry-chat/composer/useTimer.ts",
+      "upstream": "src/renderer/hooks/useTimer.ts",
+      "upstreamSha256": "fa8aee457db787cdf97f919273108f3b949db25fb09305d696e7ce8c30aa3532",
+      "adaptation": "原样保留定时器生命周期。"
+    },
+    {
+      "local": "src/vendor/cherry-chat/composer/useRichTextEditorKernel.ts",
+      "upstream": "src/renderer/components/RichEditor/useRichTextEditorKernel.ts",
+      "upstreamSha256": "dce9da70b26c1b25ce74644c477d6b1f5a6094ba7b40527427b1316ce54db1e8",
+      "adaptation": "原样保留 Tiptap 编辑器生命周期、可编辑状态与事件设置。"
+    },
+    {
+      "local": "src/vendor/cherry-chat/composer/placeholder.ts",
+      "upstream": "src/renderer/components/RichEditor/extensions/placeholder.ts",
+      "upstreamSha256": "03fd9f032e6d12b90add194510a324133552c5cd7ac0526656a508ef5b306799",
+      "adaptation": "原样保留占位标记。"
+    },
+    {
+      "local": "src/vendor/cherry-chat/composer/editorSelection.ts",
+      "upstream": "src/renderer/components/composer/quickPanel/bridge.ts",
+      "upstreamSha256": "4c72a4412881e6ba596faf3db5fad108e9f01408ef3da68725fafa0381df88ff",
+      "adaptation": "取原文本偏移到编辑器位置的计算，用于延迟交接。"
+    },
+    {
+      "local": "src/vendor/cherry-chat/composer/plainTextTransfer.ts",
+      "upstream": "src/renderer/utils/input.ts",
+      "upstreamSha256": "22848b9c3c6659b91bea0992b7ec604f06e474cf45ece640d5e946007ffd61f8",
+      "adaptation": "固定 Enter 发送与 Shift+Enter 换行，保留修饰键严格匹配。新增纯文本剪贴板能力边界。"
+    },
+    {
+      "local": "src/vendor/cherry-chat/composer/inputHistoryNavigation.ts",
+      "upstream": "src/renderer/components/composer/inputHistoryNavigation.ts",
+      "upstreamSha256": "78a3450c0650db3f77591142a43ffe3a7ab8f3d7d447af565c394481da3895cf",
+      "adaptation": "原样保留方向、光标和选区的历史导航算法。"
+    },
+    {
+      "local": "src/vendor/cherry-chat/composer/useInputHistory.ts",
+      "upstream": "src/renderer/components/composer/useInputHistory.ts",
+      "upstreamSha256": "16fc7f0c9ae09d92ed8c24be4a5814248e97c94b1af23ffbafb9170af52f154e",
+      "adaptation": "保留索引、恢复草稿、去重及长度限制。替换全局持久键为按独立对话划分的内存存储。支持正式编号交接和删除对话时清理历史。"
+    },
+    {
+      "local": "src/vendor/cherry-chat/composer/chatDraftCache.ts",
+      "upstream": "src/renderer/components/composer/variants/chat/chatDraftCache.ts",
+      "upstreamSha256": "786b796bc1766160034f11eb5c66bf27f7cd85776cebd7546cb87ebc914932c0",
+      "adaptation": "保留键结构、读写对象的文本字段与订阅；替换缓存服务与持久期，移除未启用附件和工具的序列化字段。"
+    },
+    {
+      "local": "src/vendor/cherry-chat/composer/SendMessageButton.tsx",
+      "upstream": "src/renderer/components/SendMessageButton.tsx",
+      "upstreamSha256": "95ecb13d9582c73f8ea8618272e115cbd031a25e7c10861d567857c01979c12f",
+      "adaptation": "保留原图标字形、悬浮提示、禁用语义与指针提交焦点。使用 Whomi 文案与内联快捷键标签。"
+    },
+    {
+      "local": "src/components/conversation-ai/cherry/composer.tsx",
+      "upstream": "src/renderer/components/composer/variants/ChatComposer.tsx",
+      "upstreamSha256": "0c2897af643bd72d9de9b4ad78a7af576c61e2d8cb908bc102bf9be3f0018549",
+      "adaptation": "提取直接提交锁、受理后保存历史与清空草稿、历史预览恢复逻辑。Whomi 提供受理事件、停止、独立草稿、引用与工具栏。恢复期间暂存焦点请求，后续用户操作可取消。"
+    },
+    {
+      "local": "src/vendor/cherry-chat/composer/composer.css",
+      "upstream": null,
+      "upstreamSha256": null,
+      "adaptation": "Whomi 主题接线、占位与编辑器尺寸变量的样式规则。"
+    }
+  ]
+}

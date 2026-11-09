@@ -1,10 +1,14 @@
+import { clearFixtureDrafts, expectComposerText, pasteComposerText, persistedTurn } from '../../test/cherry-composer-helpers'
+import { ConversationTurnError } from '../../data/conversation-ai-client'
 import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { ConversationWorkspace } from './workspace'
 import type { ConversationAiAdapter } from './types'
 import type { ReferenceRange } from './selection'
+
+beforeEach(() => clearFixtureDrafts('example'))
 
 function adapter(): ConversationAiAdapter {
   return { models: [{ id: 'one', label: '同名模型', providerId: 'a', providerName: '示例服务 A', model: 'model-a' },
@@ -32,7 +36,7 @@ describe('Cherry 对话流程接入', () => {
     }
     render(<SkillFixture />)
     await user.click(screen.getByRole('button', { name: 'AI 对话' }))
-    await user.type(screen.getByRole('textbox'), '示例问题')
+    await pasteComposerText('示例问题')
     await user.click(screen.getByRole('button', { name: '发送给 AI' }))
     await screen.findByText('示例回答')
     await user.click(screen.getByRole('button', { name: '引用示例' }))
@@ -45,33 +49,40 @@ describe('Cherry 对话流程接入', () => {
   it('提交后交接草稿，回答完成不会清掉新输入的相同问题', async () => {
     const user = userEvent.setup(), client = adapter()
     let finish!: (value: { text: string }) => void
-    client.respond = () => new Promise(resolve => { finish = resolve })
+    client.respond = (request, { onAccepted }) => {
+      onAccepted?.(persistedTurn(request))
+      return new Promise(resolve => { finish = resolve })
+    }
     render(<Fixture client={client} />)
     await user.click(screen.getByRole('button', { name: 'AI 对话' }))
-    await user.type(screen.getByRole('textbox', { name: '向 AI 提问' }), '示例问题')
+    await pasteComposerText('示例问题')
     await user.click(screen.getByRole('button', { name: '发送给 AI' }))
-    expect(screen.getByRole('textbox', { name: '向 AI 提问' })).toHaveValue('')
-    await user.type(screen.getByRole('textbox', { name: '向 AI 提问' }), '示例问题')
+    await expectComposerText('')
+    await pasteComposerText('示例问题')
     await act(async () => finish({ text: '本轮回答' }))
-    expect(screen.getByRole('textbox', { name: '向 AI 提问' })).toHaveValue('示例问题')
+    await expectComposerText('示例问题')
     expect(screen.getByRole('log')).toHaveTextContent('本轮回答')
   })
 
   it('失败重试使用原请求快照，保留后续草稿且不重复提问', async () => {
     const user = userEvent.setup(), client = adapter()
     const requests: string[] = []
-    client.respond = async request => { requests.push(request.prompt); if (requests.length === 1) throw new Error('连接失败'); return { text: '重试成功' } }
+    client.respond = async request => {
+      requests.push(request.prompt)
+      if (requests.length === 1) throw new ConversationTurnError(persistedTurn(request, { state: 'failed', error: '连接失败' }))
+      return { text: '重试成功' }
+    }
     render(<Fixture client={client} />)
     await user.click(screen.getByRole('button', { name: 'AI 对话' }))
-    await user.type(screen.getByRole('textbox'), '第一条')
+    await pasteComposerText('第一条')
     await user.click(screen.getByRole('button', { name: '发送给 AI' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('连接失败')
-    expect(screen.getByRole('textbox')).toHaveValue('')
-    await user.type(screen.getByRole('textbox'), '第二条草稿')
-    await user.click(screen.getByRole('button', { name: '重试回答' }))
+    await expectComposerText('')
+    await pasteComposerText('第二条草稿')
+    await user.click(await within(screen.getByRole('log')).findByRole('button', { name: '重试回答' }))
     expect(await screen.findByText('重试成功')).toBeInTheDocument()
     expect(requests).toEqual(['第一条', '第一条'])
-    expect(screen.getByRole('textbox')).toHaveValue('第二条草稿')
+    await expectComposerText('第二条草稿')
     expect(within(screen.getByRole('log')).getAllByText('第一条')).toHaveLength(1)
   })
 
@@ -80,13 +91,14 @@ describe('Cherry 对话流程接入', () => {
     const references = [{ id: 'r', messages: [{ id: '9', conversationId: 'example', senderName: '示例成员', text: '引用正文' }] }] as unknown as ReferenceRange[]
     render(<Fixture client={client} initialReferences={references} />)
     await user.click(screen.getByRole('button', { name: 'AI 对话' }))
-    await user.type(screen.getByRole('textbox'), '引用这个问题')
+    await pasteComposerText('引用这个问题')
     await user.click(screen.getByRole('button', { name: '发送给 AI' }))
     await screen.findByText('示例回答')
+    const sentReference = await within(screen.getByRole('log')).findByRole('button', { name: '1 条引用' })
+    expect(sentReference).toBeVisible()
     expect(screen.getByRole('region', { name: '原文区域' })).toBeEmptyDOMElement()
     expect(screen.queryByText('不需要重复的会话名')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '清空全部引用' })).not.toBeInTheDocument()
-    expect(within(screen.getByRole('log')).getByRole('button', { name: '1 条引用' })).toBeInTheDocument()
   })
 
   it('模型菜单按服务商搜索与选择，同名模型仍有明确归属', async () => {
@@ -109,7 +121,7 @@ describe('Cherry 对话流程接入', () => {
       firstTokenMs: 9000, durationMs: 10000, outputTokensPerSecond: 10 } })
     render(<Fixture client={client} />)
     await user.click(screen.getByRole('button', { name: 'AI 对话' }))
-    await user.type(screen.getByRole('textbox'), '统计问题')
+    await pasteComposerText('统计问题')
     await user.click(screen.getByRole('button', { name: '发送给 AI' }))
     await user.click(await screen.findByRole('button', { name: /输出 100/ }))
     const card = screen.getByRole('region', { name: '生成统计' })

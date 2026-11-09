@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
+import type { RestoredConversationTurn } from '../components/conversation-ai/types'
 import type { AiApi, AiEvent, AiModel, AiTurn, AnalysisTask } from '../shared/ai-contract'
-import { createConversationAiClient } from './conversation-ai-client'
+import { createConversationAiClient, isConversationNotSubmitted } from './conversation-ai-client'
 import { defaultProcessing, type SettingsApi } from '../shared/settings-contract'
 
 const model: AiModel = { id: 'm', label: '模型', model: 'example', baseUrl: 'https://example.test/v1', contextWindow: 8192, maxTokens: 1024, version: 1, enabled: true, hasCredential: true }
@@ -10,6 +11,7 @@ function api() {
   const methods = { listModels: vi.fn(async () => [model, { ...model, id: 'disabled', enabled: false }]), listSkills: vi.fn(async () => []),
     openThread: vi.fn<AiApi['openThread']>(async () => ({ id: 'thread', conversationId: 'c', title: '示例对话', createdAtMs: 1, updatedAtMs: 1, turns: [] as AiTurn[] })),
     getThread: vi.fn<AiApi['getThread']>(async () => ({ id: 'thread', conversationId: 'c', title: '示例对话', createdAtMs: 1, updatedAtMs: 1, turns: [turn()] })), sendTurn: vi.fn<AiApi['sendTurn']>(async () => turn()), stopTurn: vi.fn(async () => turn('stopped', 3)),
+    retryTurn: vi.fn<AiApi['retryTurn']>(),
     onEvent: (listener: (event: AiEvent) => void) => { listeners.add(listener); return () => { listeners.delete(listener) } },
     prepareAnalysis: vi.fn(async () => ({ token: 'prepared', conversationId: 'c', title: '会话', selfName: '我', totalMessages: 8, analyzableMessages: 7, snapshotMaxId: '8', expiresAt: Date.now() + 10000, model })),
     confirmAnalysis: vi.fn(async (): Promise<AnalysisTask> => ({ id: 'task', conversationId: 'c', modelId: 'm', state: 'completed', analyzedMessages: 7, totalMessages: 7, skippedMessages: 1, usage: {}, valid: true, eventSequence: 1 })),
@@ -115,6 +117,331 @@ describe('正式会话 AI 适配器', () => {
     expect(text).toHaveBeenCalledWith('新片段')
     expect(text).not.toHaveBeenCalledWith('旧片段')
     expect(methods.stopTurn).toHaveBeenCalledWith('turn')
+  })
+  it('回执、补读和事件均在正文前交付原序号快照，过滤旧快照', async () => {
+    const { methods, client, emit } = api()
+    const initial = { ...turn('running', 1), text: '回执片段' }
+    const polled = { ...turn('running', 4), text: '补读片段' }
+    const finished = turn('completed', 8)
+    methods.sendTurn.mockResolvedValue(initial)
+    methods.getThread.mockResolvedValue({ ...await methods.openThread('c'), turns: [polled] })
+    const adapter = await createConversationAiClient(client)
+    const updates: unknown[] = []
+    const options = {
+      signal: new AbortController().signal,
+      onSnapshot: (snapshot: RestoredConversationTurn) => { updates.push(snapshot) },
+      onText: (text: string) => { updates.push(text) },
+    }
+    const pending = adapter.respond({ conversationId: 'c', requestId: 'request', modelId: 'm', prompt: '提问', references: [] }, options)
+    await vi.waitFor(() => expect(updates).toContain('补读片段'))
+    emit({ kind: 'turn', snapshot: { ...turn('running', 3), text: '旧片段' } })
+    emit({ kind: 'turn', snapshot: polled })
+    emit({ kind: 'turn', snapshot: finished })
+    await pending
+    expect(updates).toEqual([initial, '回执片段', polled, '补读片段', finished, '回答'])
+  })
+  it('收到排队快照时就通知受理，后续首段正文和完成事件不重复通知', async () => {
+    const { methods, client, emit } = api()
+    const queued = { ...turn('queued'), text: '' }
+    methods.sendTurn.mockResolvedValue(queued)
+    methods.getThread.mockResolvedValue({ ...await methods.openThread('c'), turns: [queued] })
+    const adapter = await createConversationAiClient(client)
+    const updates: string[] = []
+    const accepted = vi.fn(() => { updates.push('受理') })
+    const options = { signal: new AbortController().signal, onAccepted: accepted, onText: (text: string) => { if (text) updates.push(text) } }
+    const pending = adapter.respond({ conversationId: 'c', requestId: 'request', modelId: 'm', prompt: '提问', references: [] }, options)
+    await vi.waitFor(() => expect(methods.getThread).toHaveBeenCalled())
+    const beforeFirstText = [...updates]
+    emit({ kind: 'turn', snapshot: { ...turn('running', 2), text: '首段' } })
+    emit({ kind: 'turn', snapshot: turn('completed', 3) })
+    await pending
+    expect(beforeFirstText).toEqual(['受理'])
+    expect(updates).toEqual(['受理', '首段', '回答'])
+    expect(accepted).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ id: 'turn', requestId: 'request', state: 'queued', eventSequence: 1 }))
+  })
+  it.each(['completed', 'failed', 'stopped', 'interrupted'] as const)('重复编号收到 %s 快照时仍通知受理', async state => {
+    const { methods, client } = api()
+    const saved = { ...turn(state, 4), usage: { outputTokens: 18 } }
+    methods.sendTurn.mockResolvedValue(saved)
+    const adapter = await createConversationAiClient(client)
+    const updates: string[] = []
+    const accepted = vi.fn(() => { updates.push('受理') })
+    const options = { signal: new AbortController().signal, onAccepted: accepted, onText: () => { updates.push('正文') } }
+    const pending = adapter.respond({ conversationId: 'c', requestId: 'request', modelId: 'm', prompt: '提问', references: [] }, options)
+    if (state === 'completed') {
+      await expect(pending).resolves.toMatchObject({ text: '回答', usage: { outputTokens: 18 }, turn: { id: 'turn', eventSequence: 4 } })
+    } else {
+      await expect(pending).rejects.toMatchObject({ turn: { id: 'turn', state, eventSequence: 4 } })
+    }
+    expect(updates).toEqual(['受理', '正文'])
+    expect(accepted).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ id: 'turn', requestId: 'request', state, eventSequence: 4 }))
+  })
+  it('发送回执丢失时按请求编号找回已有轮次，只提交一次', async () => {
+    const { methods, client } = api()
+    methods.sendTurn.mockRejectedValue(new Error('未收到发送回执'))
+    methods.getThread.mockResolvedValue({ ...await methods.openThread('c'), turns: [
+      { ...turn(), requestId: 'earlier', id: 'earlier-turn' },
+      { ...turn('completed', 5), requestId: 'lost-reply', id: 'saved-turn', text: '已保存的回答' },
+    ] })
+    const adapter = await createConversationAiClient(client)
+    const onAccepted = vi.fn()
+    const options = { signal: new AbortController().signal, onAccepted, onText: vi.fn() }
+    await expect(adapter.respond({ conversationId: 'c', requestId: 'lost-reply', modelId: 'm', prompt: '提问', referenceIds: ['1', '1'], references: [] }, options))
+      .resolves.toMatchObject({ text: '已保存的回答', turn: { id: 'saved-turn', requestId: 'lost-reply', eventSequence: 5 } })
+    expect(onAccepted).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ id: 'saved-turn', requestId: 'lost-reply' }))
+    expect(methods.sendTurn).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ requestId: 'lost-reply', referenceIds: ['1'] }))
+    expect(methods.getThread).toHaveBeenCalledExactlyOnceWith('thread')
+  })
+  it.each([
+    ['模型', { modelId: 'missing-model' }, Object.assign(new Error('请选择可用模型。'), { code: 'INVALID_MODEL' })],
+    ['提问', { prompt: '另一条提问' }, new Error('未收到发送回执')],
+    ['引用顺序', { referenceIds: ['2', '1'] }, new Error('未收到发送回执')],
+    ['引用数量', { referenceIds: ['1'] }, new Error('未收到发送回执')],
+    ['技能', { skillId: 'other-skill' }, new Error('未收到发送回执')],
+    ['思考强度', { thinkingLevel: 'medium' as const }, new Error('未收到发送回执')],
+  ] as const)('同编号的已保存轮次与本次%s不同时保留发送错误', async (_field, changed, rejected) => {
+    const { methods, client } = api()
+    const saved = { ...turn(), referenceIds: ['1', '2'], skillId: 'review', thinkingLevel: 'high' as const }
+    methods.sendTurn.mockRejectedValue(rejected)
+    methods.getThread.mockResolvedValue({ ...await methods.openThread('c'), turns: [saved] })
+    const adapter = await createConversationAiClient(client)
+    const onAccepted = vi.fn()
+    const options = { signal: new AbortController().signal, onAccepted, onText: vi.fn() }
+    await expect(adapter.respond({ conversationId: 'c', requestId: 'request', prompt: '提问', modelId: 'm',
+      references: [], referenceIds: ['1', '2'], skillId: 'review', thinkingLevel: 'high', ...changed }, options)).rejects.toBe(rejected)
+    expect(onAccepted).not.toHaveBeenCalled()
+  })
+  it('核对后找不到本次请求时保留原发送错误，不通知受理', async () => {
+    const { methods, client } = api()
+    const rejected = Object.assign(new Error('请选择可用模型。'), { code: 'INVALID_MODEL' })
+    methods.sendTurn.mockRejectedValue(rejected)
+    const adapter = await createConversationAiClient(client)
+    const onAccepted = vi.fn()
+    const options = { signal: new AbortController().signal, onAccepted, onText: vi.fn() }
+    await expect(adapter.respond({ conversationId: 'c', requestId: 'missing', modelId: 'm', prompt: '提问', references: [] }, options)).rejects.toBe(rejected)
+    expect(onAccepted).not.toHaveBeenCalled()
+    expect(methods.getThread).toHaveBeenCalledExactlyOnceWith('thread')
+  })
+  it('发送和核对都失败时保留待确认编号，使用同一个请求对象重试不换号', async () => {
+    const { methods, client } = api()
+    methods.sendTurn.mockRejectedValueOnce(new Error('未收到发送回执'))
+      .mockImplementation(async input => ({ ...turn(), requestId: input.requestId }))
+    methods.getThread.mockRejectedValueOnce(new Error('读取失败'))
+    const adapter = await createConversationAiClient(client)
+    const onAccepted = vi.fn()
+    const options = { signal: new AbortController().signal, onAccepted, onText: vi.fn() }
+    const request = { conversationId: 'c', modelId: 'm', prompt: '提问', references: [] }
+    const pending = adapter.respond(request, options)
+    await expect(pending).rejects.toMatchObject({ code: 'CONVERSATION_ACCEPTANCE_PENDING', requestId: expect.any(String) })
+    expect(onAccepted).not.toHaveBeenCalled()
+    const [{ requestId }] = methods.sendTurn.mock.calls[0]
+    await expect(pending).rejects.toMatchObject({ requestId })
+    await expect(adapter.respond(request, options)).resolves.toMatchObject({ turn: { requestId } })
+    expect(methods.sendTurn.mock.calls.map(([input]) => input.requestId)).toEqual([requestId, requestId])
+  })
+  it.each([
+    ['显式停止', undefined, { code: 'CONVERSATION_ACCEPTANCE_PENDING', requestId: 'request', stopRequested: true }],
+    ['离页', 'detach', { name: 'AbortError' }],
+  ] as const)('发送回执丢失且回查也失败时区分%s', async (_action, reason, expected) => {
+    const { methods, client } = api()
+    const controller = new AbortController()
+    let rejectRead!: (error: Error) => void
+    methods.sendTurn.mockRejectedValue(new Error('未收到发送回执'))
+    methods.getThread.mockImplementation(() => new Promise((_resolve, reject) => { rejectRead = reject }))
+    const adapter = await createConversationAiClient(client)
+    const onAccepted = vi.fn()
+    const options = { signal: controller.signal, onAccepted, onText: vi.fn() }
+    const pending = adapter.respond({ conversationId: 'c', requestId: 'request', modelId: 'm', prompt: '提问', references: [] }, options)
+    await vi.waitFor(() => expect(methods.getThread).toHaveBeenCalled())
+    controller.abort(reason)
+    rejectRead(new Error('读取失败'))
+    await expect(pending).rejects.toMatchObject(expected)
+    expect(onAccepted).not.toHaveBeenCalled()
+    expect(methods.stopTurn).not.toHaveBeenCalled()
+  })
+  it.each([
+    ['等待回查', undefined, { code: 'CONVERSATION_ACCEPTANCE_PENDING', requestId: 'request', stopRequested: false }],
+    ['显式停止', 'stop', { code: 'CONVERSATION_ACCEPTANCE_PENDING', requestId: 'request', stopRequested: true }],
+    ['离页', 'detach', { name: 'AbortError' }],
+  ] as const)('回执丢失且保存快照只省略思考强度时处理%s', async (_action, reason, expected) => {
+    const { methods, client } = api()
+    const controller = new AbortController()
+    const savedThread = { ...await methods.openThread('c'), turns: [turn()] }
+    let returnThread!: (thread: typeof savedThread) => void
+    methods.sendTurn.mockRejectedValue(new Error('未收到发送回执'))
+    methods.getThread.mockImplementation(() => new Promise(resolve => { returnThread = resolve }))
+    const adapter = await createConversationAiClient(client)
+    const onAccepted = vi.fn()
+    const options = { signal: controller.signal, onAccepted, onText: vi.fn() }
+    const pending = adapter.respond({ conversationId: 'c', requestId: 'request', modelId: 'm', prompt: '提问',
+      thinkingLevel: 'high', referenceIds: ['1'], references: [] }, options)
+    await vi.waitFor(() => expect(methods.getThread).toHaveBeenCalled())
+    if (reason) controller.abort(reason)
+    returnThread(savedThread)
+    await expect(pending).rejects.toMatchObject(expected)
+    expect(onAccepted).not.toHaveBeenCalled()
+    expect(methods.stopTurn).not.toHaveBeenCalled()
+    expect(methods.sendTurn).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ requestId: 'request', thinkingLevel: 'high' }))
+  })
+  it('回查快照同时省略思考强度且引用不同仍保留原发送错误', async () => {
+    const { methods, client } = api()
+    const rejected = new Error('未收到发送回执')
+    methods.sendTurn.mockRejectedValue(rejected)
+    const adapter = await createConversationAiClient(client)
+    const onAccepted = vi.fn()
+    const options = { signal: new AbortController().signal, onAccepted, onText: vi.fn() }
+    await expect(adapter.respond({ conversationId: 'c', requestId: 'request', modelId: 'm', prompt: '提问',
+      thinkingLevel: 'high', referenceIds: ['2'], references: [] }, options)).rejects.toBe(rejected)
+    expect(onAccepted).not.toHaveBeenCalled()
+  })
+  it('重试只提交已有轮次编号，并返回保存的提问、引用和模型身份', async () => {
+    const { methods, client } = api()
+    const prior = { ...turn('failed', 2), modelIdentity: { id: 'm', version: 1, label: '原模型', model: 'example' } }
+    const retried = { ...prior, ...turn('completed', 6), attempt: 2 }
+    methods.getThread.mockResolvedValue({ ...await methods.openThread('c'), turns: [prior] })
+    methods.retryTurn.mockResolvedValue(retried)
+    const adapter = await createConversationAiClient(client)
+    const onAccepted = vi.fn()
+    const options = { signal: new AbortController().signal, onAccepted, onText: vi.fn() }
+    await expect(adapter.respond({ conversationId: 'c', turnId: 'turn', modelId: 'different', prompt: '新草稿', referenceIds: ['2'], references: [] }, options))
+      .resolves.toMatchObject({ turn: { id: 'turn', prompt: '提问', referenceIds: ['1'], modelIdentity: { label: '原模型' } } })
+    expect(onAccepted).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ id: 'turn', modelId: 'm', requestId: 'request' }))
+    expect(methods.retryTurn).toHaveBeenCalledExactlyOnceWith('turn')
+    expect(methods.sendTurn).not.toHaveBeenCalled()
+  })
+  it('重试回执丢失后从同一轮次恢复已完成的新尝试', async () => {
+    const { methods, client } = api()
+    const thread = await methods.openThread('c')
+    const prior = turn('failed', 2)
+    const completed = { ...turn('completed', 6), attempt: 2 }
+    methods.getThread.mockResolvedValueOnce({ ...thread, turns: [prior] }).mockResolvedValueOnce({ ...thread, turns: [completed] })
+    methods.retryTurn.mockRejectedValue(new Error('未收到重试回执'))
+    const adapter = await createConversationAiClient(client)
+    const onAccepted = vi.fn()
+    const options = { signal: new AbortController().signal, onAccepted, onText: vi.fn() }
+    await expect(adapter.respond({ conversationId: 'c', threadId: 'thread', turnId: 'turn', modelId: 'm', prompt: '提问', references: [] }, options))
+      .resolves.toMatchObject({ text: '回答', turn: { id: 'turn', requestId: 'request', state: 'completed', attempt: 2, eventSequence: 6 } })
+    expect(onAccepted).toHaveBeenCalledExactlyOnceWith(completed)
+    expect(methods.retryTurn).toHaveBeenCalledExactlyOnceWith('turn')
+    expect(methods.sendTurn).not.toHaveBeenCalled()
+  })
+  it.each([2, 3])('回查重试仍为旧尝试且事件序号为 %i 时保留待确认', async eventSequence => {
+    const { methods, client } = api()
+    const thread = await methods.openThread('c')
+    methods.getThread.mockResolvedValueOnce({ ...thread, turns: [turn('failed', 2)] })
+      .mockResolvedValueOnce({ ...thread, turns: [{ ...turn('failed', eventSequence), usage: { outputTokens: 8 } }] })
+    methods.retryTurn.mockRejectedValue(Object.assign(new Error('未能读取重试回执。'), { code: 'INVALID_RESPONSE' }))
+    const adapter = await createConversationAiClient(client)
+    const onAccepted = vi.fn()
+    const options = { signal: new AbortController().signal, onAccepted, onText: vi.fn() }
+    await expect(adapter.respond({ conversationId: 'c', threadId: 'thread', requestId: 'outdated-ui-id', turnId: 'turn', modelId: 'm', prompt: '提问', references: [] }, options))
+      .rejects.toMatchObject({ code: 'CONVERSATION_ACCEPTANCE_PENDING', requestId: 'request', stopRequested: false, retryBaseline: { attempt: 1, eventSequence: 2 } })
+    expect(onAccepted).not.toHaveBeenCalled()
+    expect(methods.retryTurn).toHaveBeenCalledExactlyOnceWith('turn')
+  })
+  it('重试被后端明确拒绝且回查仍为旧尝试时保留原错误', async () => {
+    const { methods, client } = api()
+    const thread = { ...await methods.openThread('c'), turns: [turn('failed', 2)] }
+    methods.getThread.mockResolvedValue(thread)
+    const rejected = Object.assign(new Error('模型配置已更新，请重新提问。'), { code: 'MODEL_CHANGED' })
+    methods.retryTurn.mockRejectedValue(rejected)
+    const adapter = await createConversationAiClient(client)
+    const onAccepted = vi.fn()
+    const options = { signal: new AbortController().signal, onAccepted, onText: vi.fn() }
+    await expect(adapter.respond({ conversationId: 'c', threadId: 'thread', turnId: 'turn', modelId: 'm', prompt: '提问', references: [] }, options)).rejects.toBe(rejected)
+    expect(onAccepted).not.toHaveBeenCalled()
+    expect(methods.getThread.mock.calls).toEqual([['thread'], ['thread']])
+  })
+  it.each([
+    ['MODEL_CHANGED', false],
+    ['INVALID_OWNER', true],
+    ['CONVERSATION_DELETING', true],
+  ] as const)('重试返回 %s 且回查失败时按错误发生阶段判断是否待确认', async (code, uncertain) => {
+    const { methods, client } = api()
+    const thread = { ...await methods.openThread('c'), turns: [turn('failed', 2)] }
+    methods.getThread.mockResolvedValueOnce(thread).mockRejectedValueOnce(new Error('读取失败'))
+    const rejected = Object.assign(new Error('无法重试。'), { code })
+    methods.retryTurn.mockRejectedValue(rejected)
+    const adapter = await createConversationAiClient(client)
+    const onAccepted = vi.fn()
+    const options = { signal: new AbortController().signal, onAccepted, onText: vi.fn() }
+    const pending = adapter.respond({ conversationId: 'c', threadId: 'thread', turnId: 'turn', modelId: 'm', prompt: '提问', references: [] }, options)
+    if (uncertain) await expect(pending).rejects.toMatchObject({ code: 'CONVERSATION_ACCEPTANCE_PENDING', requestId: 'request' })
+    else await expect(pending).rejects.toBe(rejected)
+    expect(isConversationNotSubmitted(rejected)).toBe(!uncertain)
+    expect(onAccepted).not.toHaveBeenCalled()
+    expect(methods.retryTurn).toHaveBeenCalledExactlyOnceWith('turn')
+  })
+  it.each([
+    ['显式停止', undefined, { code: 'CONVERSATION_ACCEPTANCE_PENDING', requestId: 'request', stopRequested: true, retryBaseline: { attempt: 1, eventSequence: 2 } }],
+    ['离页', 'detach', { name: 'AbortError' }],
+  ] as const)('重试回执和回查均失败时区分%s', async (_action, reason, expected) => {
+    const { methods, client } = api()
+    const controller = new AbortController()
+    const thread = { ...await methods.openThread('c'), turns: [turn('failed', 2)] }
+    let rejectRead!: (error: Error) => void
+    methods.getThread.mockResolvedValueOnce(thread)
+      .mockImplementationOnce(() => new Promise((_resolve, reject) => { rejectRead = reject }))
+    methods.retryTurn.mockRejectedValue(new Error('未收到重试回执'))
+    const adapter = await createConversationAiClient(client)
+    const onAccepted = vi.fn()
+    const options = { signal: controller.signal, onAccepted, onText: vi.fn() }
+    const pending = adapter.respond({ conversationId: 'c', threadId: 'thread', turnId: 'turn', modelId: 'm', prompt: '提问', references: [] }, options)
+    const outcome = pending.catch((error: unknown) => error)
+    await vi.waitFor(() => expect(methods.retryTurn).toHaveBeenCalled())
+    controller.abort(reason)
+    rejectRead?.(new Error('读取失败'))
+    expect(await outcome).toMatchObject(expected)
+    expect(onAccepted).not.toHaveBeenCalled()
+    expect(methods.stopTurn).not.toHaveBeenCalled()
+  })
+  it('重试前找不到原轮次时拒绝请求', async () => {
+    const { methods, client } = api()
+    methods.getThread.mockResolvedValue(await methods.openThread('c'))
+    const adapter = await createConversationAiClient(client)
+    await expect(adapter.respond({ conversationId: 'c', threadId: 'thread', turnId: 'missing-turn', modelId: 'm', prompt: '提问', references: [] },
+      { signal: new AbortController().signal, onText: vi.fn() })).rejects.toThrow()
+    expect(methods.retryTurn).not.toHaveBeenCalled()
+  })
+  it.each(['detach', 'stop'])('对话读取完成前取消 %s 时标记未提交', async reason => {
+    const { methods, client } = api()
+    const thread = await methods.openThread('c')
+    const controller = new AbortController()
+    let returnThread!: (value: typeof thread) => void
+    methods.getThread.mockImplementation(() => new Promise(resolve => { returnThread = resolve }))
+    const adapter = await createConversationAiClient(client)
+    const outcome = adapter.respond({ conversationId: 'c', threadId: 'thread', modelId: 'm', prompt: '提问', references: [] },
+      { signal: controller.signal, onText: vi.fn() }).catch((error: unknown) => error)
+    await vi.waitFor(() => expect(methods.getThread).toHaveBeenCalled())
+    controller.abort(reason)
+    returnThread(thread)
+    const error = await outcome
+    expect(error).toMatchObject({ name: 'AbortError' })
+    expect(isConversationNotSubmitted(error)).toBe(true)
+    expect(methods.sendTurn).not.toHaveBeenCalled()
+    expect(methods.retryTurn).not.toHaveBeenCalled()
+  })
+  it.each([
+    ['MODEL_CHANGED', true],
+    ['INVALID_OWNER', false],
+  ] as const)('重试提交后离页且收到 %s 时仅标记明确的入库前拒绝', async (code, notSubmitted) => {
+    const { methods, client } = api()
+    const controller = new AbortController()
+    methods.getThread.mockResolvedValue({ ...await methods.openThread('c'), turns: [turn('failed', 2)] })
+    let rejectRetry!: (error: Error) => void
+    methods.retryTurn.mockImplementation(() => new Promise((_resolve, reject) => { rejectRetry = reject }))
+    const adapter = await createConversationAiClient(client)
+    const outcome = adapter.respond({ conversationId: 'c', threadId: 'thread', turnId: 'turn', modelId: 'm', prompt: '提问', references: [] },
+      { signal: controller.signal, onText: vi.fn() }).catch((error: unknown) => error)
+    await vi.waitFor(() => expect(methods.retryTurn).toHaveBeenCalled())
+    controller.abort('detach')
+    const rejected = Object.assign(new Error('无法重试。'), { code })
+    rejectRetry(rejected)
+    const error = await outcome
+    if (notSubmitted) expect(error).toBe(rejected)
+    else expect(error).toMatchObject({ name: 'AbortError' })
+    expect(isConversationNotSubmitted(error)).toBe(notSubmitted)
+    expect(methods.stopTurn).not.toHaveBeenCalled()
   })
   it('离页只解除观察，不停止后台；已取消请求不会提交', async () => {
     const { methods, client } = api()

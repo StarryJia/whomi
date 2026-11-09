@@ -1,0 +1,94 @@
+{
+  "flavor": "built",
+  "seededRounds": 200,
+  "snapshots": {
+    "restored": {
+      "width": 1280,
+      "height": 800,
+      "top": 62975,
+      "scrollHeight": 63534,
+      "viewportHeight": 559,
+      "distance": 0,
+      "mountedGroups": 5
+    },
+    "firstGrowth": {
+      "width": 1280,
+      "height": 800,
+      "top": 64619,
+      "scrollHeight": 65178,
+      "viewportHeight": 559,
+      "distance": 0,
+      "mountedGroups": 9
+    },
+    "secondGrowth": {
+      "width": 1280,
+      "height": 800,
+      "top": 65716,
+      "scrollHeight": 66275,
+      "viewportHeight": 559,
+      "distance": 0,
+      "mountedGroups": 9
+    },
+    "narrowGrowth": {
+      "width": 960,
+      "height": 720,
+      "top": 66239,
+      "scrollHeight": 66718,
+      "viewportHeight": 479,
+      "distance": 0,
+      "mountedGroups": 1
+    },
+    "stopped": {
+      "width": 960,
+      "height": 720,
+      "top": 66490,
+      "scrollHeight": 66969,
+      "viewportHeight": 479,
+      "distance": 0,
+      "mountedGroups": 1
+    },
+    "idle": {
+      "width": 960,
+      "height": 720,
+      "top": 66490,
+      "scrollHeight": 66969,
+      "viewportHeight": 479,
+      "distance": 0,
+      "mountedGroups": 1
+    }
+  },
+  "errors": [],
+  "rendererUrl": "file:///D:/CodexData/worktrees/cherry-chat-migration/whomi/out/renderer/index.html",
+  "hidden": true,
+  "restoredRounds": 200,
+  "syntheticModelRequest": {
+    "model": "model-a15",
+    "messageCount": 2
+  },
+  "firstGrowth": {
+    "rounds": 201,
+    "state": "running",
+    "textLength": 840,
+    "requestId": "58d773ab-31e3-426f-bb39-aecc0445bb54"
+  },
+  "secondGrowth": {
+    "rounds": 201,
+    "state": "running",
+    "textLength": 1320,
+    "requestId": "58d773ab-31e3-426f-bb39-aecc0445bb54"
+  },
+  "narrowGrowth": {
+    "rounds": 201,
+    "state": "running",
+    "textLength": 1680,
+    "requestId": "58d773ab-31e3-426f-bb39-aecc0445bb54"
+  },
+  "stopped": {
+    "rounds": 201,
+    "state": "stopped",
+    "textLength": 1800,
+    "requestId": "58d773ab-31e3-426f-bb39-aecc0445bb54"
+  },
+  "idleMilliseconds": 3014,
+  "idleScrollDeltaPx": 0
+}

@@ -1,4 +1,5 @@
 import { test, expect, _electron as electron } from '@playwright/test'
+import { chatEditor } from './chat-helpers.mjs'
 import { createServer } from 'node:http'
 import { mkdtemp, writeFile, rm, mkdir } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -67,22 +68,32 @@ test('real Pi process persists analysis reports and dialogue through the isolate
     expect(await page.evaluate(id => window.whomi.ai.getReport(id), task.id)).toMatchObject({ format: 'memory-v4', events: [{ title: '约好通话' }] })
     const thread = await page.evaluate(() => window.whomi.ai.openThread('1'))
     await page.getByRole('button', { name: '选择消息', exact: true }).click()
-    await page.getByRole('option', { name: '本人：明晚九点我听你讲' }).click()
+    const reference = page.getByRole('option', { name: '本人：明晚九点我听你讲' })
+    await reference.click()
     await page.screenshot({ path: join(evidence, '00-selection-cancel.png') })
-    await page.getByRole('option', { name: '本人：明晚九点我听你讲' }).click()
-    await expect(page.locator('.message[aria-selected="true"]')).toHaveCount(0)
-    await page.getByRole('option', { name: '本人：明晚九点我听你讲' }).click()
-    await page.getByRole('button', { name: 'AI 对话', exact: true }).click()
-    await page.getByRole('textbox').fill('我做了什么？')
-    await page.getByRole('button', { name: '发送给 AI' }).click()
-    await expect(page.getByRole('textbox', { name: '向 AI 提问' })).toHaveValue('')
-    await expect(page.getByText('这段示例中，你约定了一个明确的时间。', { exact: true })).toBeVisible({ timeout: 30000 })
-    await expect.poll(async () => (await page.evaluate(id => window.whomi.ai.getThread(id), thread.id)).turns[0], { timeout: 30000 }).toMatchObject({ state: 'completed', referenceIds: ['1'], usage: { inputTokens: 20, outputTokens: 10 } })
+    const log = page.getByRole('log', { name: 'AI 对话记录' })
+    const answer = log.getByText('这段示例中，你约定了一个明确的时间。', { exact: true })
+    await test.step('clear and restore the selected reference', async () => {
+      await reference.click()
+      await expect(page.locator('.message[aria-selected="true"]')).toHaveCount(0)
+      await reference.click()
+      await expect(reference).toHaveAttribute('aria-selected', 'true')
+    })
+    await test.step('send the referenced question and observe acceptance', async () => {
+      await page.getByRole('button', { name: 'AI 对话', exact: true }).click()
+      await chatEditor(page).fill('我做了什么？')
+      await page.getByRole('button', { name: '发送给 AI' }).click()
+      await expect(chatEditor(page)).toHaveText('')
+    })
+    await test.step('check the displayed reply and saved turn', async () => {
+      await expect(answer).toBeInViewport({ timeout: 30000 })
+      await expect.poll(async () => (await page.evaluate(id => window.whomi.ai.getThread(id), thread.id)).turns[0], { timeout: 30000 }).toMatchObject({ state: 'completed', referenceIds: ['1'], usage: { inputTokens: 20, outputTokens: 10 } })
+    })
     await expect(page.getByText('在右侧继续对话', { exact: true })).toHaveCount(0)
     await expect(page.locator('.conversation-ai-header')).not.toContainText('虚构会话')
     await page.screenshot({ path: join(evidence, '02-conversation.png') })
-    await page.locator('.conversation-usage button').click()
-    await expect(page.getByRole('region', { name: '生成统计' })).toContainText('模型生成 TPS')
+    await log.getByRole('button', { name: /^输出 10 token\b/ }).click()
+    await expect(page.getByRole('region', { name: '生成统计' })).toContainText('模型生成速度')
     await expect(page.getByRole('region', { name: '生成统计' })).toContainText('example')
     await page.screenshot({ path: join(evidence, '03-token-statistics.png'), animations: 'disabled' })
     await page.keyboard.press('Escape')
@@ -90,20 +101,21 @@ test('real Pi process persists analysis reports and dialogue through the isolate
     await expect(page.getByRole('textbox', { name: '向 AI 提问' })).toBeVisible()
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
     await page.screenshot({ path: join(evidence, '04-conversation-narrow.png') })
-    await page.getByRole('textbox').fill('第一条对话的草稿')
+    await chatEditor(page).fill('第一条对话的草稿')
     await page.getByRole('button', { name: '新建 AI 对话' }).click()
-    await expect(page.getByRole('textbox')).toHaveValue('')
-    await expect(page.getByText('这段示例中，你约定了一个明确的时间。', { exact: true })).toHaveCount(0)
-    await page.getByRole('textbox').fill('独立对话的问题')
+    await expect(chatEditor(page)).toHaveText('')
+    await expect(answer).toHaveCount(0)
+    await chatEditor(page).fill('独立对话的问题')
     await page.getByRole('button', { name: '发送给 AI' }).click()
-    await expect(page.getByText('这段示例中，你约定了一个明确的时间。', { exact: true })).toBeVisible()
+    await expect(answer).toBeInViewport()
     const list = await page.evaluate(() => window.whomi.ai.listThreads('1'))
     expect(list).toHaveLength(2)
     expect(list.map(item => item.title)).toEqual(expect.arrayContaining(['我做了什么？', '独立对话的问题']))
     await page.getByRole('button', { name: '显示对话列表' }).click()
     await page.getByRole('navigation', { name: 'AI 对话列表' }).getByRole('button', { name: '我做了什么？', exact: true }).click()
-    await expect(page.getByRole('textbox')).toHaveValue('第一条对话的草稿')
-    await expect(page.getByRole('log')).not.toContainText('独立对话的问题')
+    await expect(chatEditor(page)).toHaveText('第一条对话的草稿')
+    await expect(log.getByText('我做了什么？', { exact: true })).toBeInViewport()
+    await expect(log).not.toContainText('独立对话的问题')
     for (const width of [1280, 960, 360]) {
       await application.evaluate(({ BrowserWindow }, width) => { const window = BrowserWindow.getAllWindows()[0]; window.setMinimumSize(320, 320); window.setSize(width, 800) }, width)
       const close = page.getByRole('button', { name: '关闭 AI 对话' })
@@ -113,15 +125,16 @@ test('real Pi process persists analysis reports and dialogue through the isolate
       await close.click()
       await expect(page.getByRole('textbox')).toHaveCount(0)
       await page.getByRole('button', { name: 'AI 对话', exact: true }).click()
-      await expect(page.getByRole('textbox')).toHaveValue('第一条对话的草稿')
+      await expect(chatEditor(page)).toHaveText('第一条对话的草稿')
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
       if (width === 360) {
-        await expect.poll(() => page.evaluate(() => {
-          const sidebar = document.querySelector('.sidebar').getBoundingClientRect()
-          const answer = document.querySelector('.conversation-answer-text').getBoundingClientRect()
-          const composer = document.querySelector('.conversation-composer').getBoundingClientRect()
-          return Math.min(answer.left, composer.left) - sidebar.right
-        })).toBeGreaterThanOrEqual(8)
+        const composer = page.locator('[data-composer-inputbar]')
+        await expect(answer).toBeInViewport()
+        await expect.poll(async () => {
+          const sidebarRight = await page.locator('.sidebar').evaluate(element => element.getBoundingClientRect().right)
+          const [body, input] = await Promise.all([answer.boundingBox(), composer.boundingBox()])
+          return Math.min(body.x, input.x) - sidebarRight
+        }).toBeGreaterThanOrEqual(8)
       }
       await page.screenshot({ path: join(evidence, `05-thread-${width}.png`), animations: 'disabled' })
       if (width === 1280) {

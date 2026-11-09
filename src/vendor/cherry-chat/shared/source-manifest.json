@@ -1,0 +1,77 @@
+{
+  "commit": "263667f7a99dfed736c939708a55deb435164820",
+  "files": [
+    {
+      "source": "packages/ui/src/components/primitives/button.tsx",
+      "target": "primitives/button.tsx",
+      "gitHash": "e2f8367b638ba7c403b9aea9ffcb29db279d304f",
+      "sha256": "10ae6d8c54d520bf6d6123b899fa9c30a2fa7aea7ba32293a0422cb28e413e1c"
+    },
+    {
+      "source": "packages/ui/src/components/primitives/scroll-area.tsx",
+      "target": "primitives/scroll-area.tsx",
+      "gitHash": "0f2a76ff839235fb62c2a119244897ee1e13f922",
+      "sha256": "17649cbc6c5dc55e3b1285596ced03e19baffd2be841ed7213b9ee7d012931aa"
+    },
+    {
+      "source": "packages/ui/src/components/primitives/tooltip.tsx",
+      "target": "primitives/tooltip.tsx",
+      "gitHash": "50d54eddde7e6ba6c86656eb0ff3137d85948f3a",
+      "sha256": "19eb32f6966d1d21857c3cb4d76cd57336f816ef8bdc8a3fad2800bfc9c4eb3b"
+    },
+    {
+      "source": "packages/ui/src/components/primitives/popover.tsx",
+      "target": "primitives/popover.tsx",
+      "gitHash": "384b3a7b76c456c63f5127fe0886563f1a366bd9",
+      "sha256": "2433791541a4c371991c2ef5d27167be2bb9b5327cd0ceed27d311259edc9cb4"
+    },
+    {
+      "source": "packages/ui/src/components/primitives/portal-container.tsx",
+      "target": "primitives/portal-container.tsx",
+      "gitHash": "34a59e0ea325e41f457a4a20a34f991cb948b1d4",
+      "sha256": "9592cbbf986622b5a8ed8aa18812dfe876e71e1e4784f09e4f22e8f74fc74b8e"
+    },
+    {
+      "source": "packages/ui/src/components/primitives/hover-card.tsx",
+      "target": "primitives/hover-card.tsx",
+      "gitHash": "b3e529b434640141603fc5a6b99361f0c47ef84a",
+      "sha256": "7beecbc120993b1419685f84190c24aaacf8097a67967ab1acd32262c5a6834f"
+    },
+    {
+      "source": "packages/ui/src/lib/utils.ts",
+      "target": "lib/utils.ts",
+      "gitHash": "d477ffd44a851297598c7aded4c1a03e4d697139",
+      "sha256": "a3b674591012387e04a06445d78d10a86b51f2e42ad3be68799feee495789313"
+    },
+    {
+      "source": "src/renderer/components/chat/layout/NarrowLayout.tsx",
+      "target": "layout/NarrowLayout.tsx",
+      "gitHash": "9ed21ed3adf2999cd5c9f7ad783b8763c0e215a5",
+      "sha256": "c5ccfb7cda07ffe372d0f5d76d4363db76a68f9746848c21460f46eb0c98b17c"
+    },
+    {
+      "source": "src/renderer/components/chat/layout/ChatLayoutModeContext.tsx",
+      "target": "layout/ChatLayoutModeContext.tsx",
+      "gitHash": "34eea51c3fe25725102702a916617807c360e602",
+      "sha256": "3ec1cd55a33edddda689f0ba71bb2dc4db8dd4c56ec7a807a710294a956d67b2"
+    },
+    {
+      "source": "src/renderer/assets/fonts/icon-fonts/iconfont.css",
+      "target": "fonts/iconfont.css",
+      "gitHash": "ae76c0026c1e739cecc58501565f9ac3d2be8844",
+      "sha256": "62c5751e9ac5fe282ad531ca85b49d7bd70370b53b6919132228b4d004ff9231"
+    },
+    {
+      "source": "src/renderer/assets/fonts/icon-fonts/iconfont.woff2",
+      "target": "fonts/iconfont.woff2",
+      "gitHash": "9581311b4c103e440b1920a6af57ee16cd09201c",
+      "sha256": "d22c1eae3f757e8e188d71d480b7075dc5d62a912468a9cfb100608787f3cb6f"
+    },
+    {
+      "source": "packages/ui/src/components/composites/flex/index.tsx",
+      "target": "composites/flex.tsx",
+      "gitHash": "9259fef0bc568967a3b2c025ba5b8b8a7dc30653",
+      "sha256": "2d1022c069094d35277f3592f7171eec61acdb9a3f70b0cc8fa29180d8bb8e2b"
+    }
+  ]
+}

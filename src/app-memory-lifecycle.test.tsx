@@ -5,6 +5,9 @@ import App from './App'
 import type { AiEvent, AnalysisTask } from './shared/ai-contract'
 import type { DesktopApi } from './shared/desktop-api'
 import type { ConversationAiAdapter } from './components/conversation-ai/types'
+import { clearFixtureDrafts, expectComposerText, pasteComposerText } from './test/cherry-composer-helpers'
+
+beforeEach(() => clearFixtureDrafts('1'))
 
 const memory: AnalysisTask = { id: '1', conversationId: '1', conversationTitle: '周末', modelId: 'm', state: 'completed',
   analyzedMessages: 2, totalMessages: 2, skippedMessages: 0, usage: {}, valid: true, eventSequence: 3,
@@ -79,13 +82,13 @@ it('更正本人后只撤回该会话的贡献并重读暂停任务，保留对�
   await user.click(await screen.findByRole('button', { name: '展开会话列表' }))
   await user.click(screen.getAllByRole('button', { name: '周末' })[0])
   await user.click(await screen.findByRole('button', { name: 'AI 对话' }))
-  await user.type(screen.getByRole('textbox', { name: '向 AI 提问' }), '等一等再发')
+  await pasteComposerText('等一等再发')
   await user.click(screen.getByRole('button', { name: '选择本人' }))
   await user.click(await screen.findByRole('radio', { name: '小华' }))
   await user.click(screen.getByRole('button', { name: '设为本人' }))
   await user.click(screen.getByRole('button', { name: '整理成记忆' }))
   expect(screen.queryByRole('button', { name: '继续生成' })).toBeNull()
-  expect(screen.getByRole('textbox', { name: '向 AI 提问' })).toHaveValue('等一等再发')
+  await expectComposerText('等一等再发')
   await user.click(screen.getByRole('button', { name: '个人总览' }))
   expect(screen.getByLabelText('你在不同关系中的表现')).toHaveTextContent('另一段关系')
   expect(screen.getByLabelText('你在不同关系中的表现')).not.toHaveTextContent('周末')

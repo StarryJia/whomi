@@ -7,6 +7,10 @@ files:
   - out/**
   - package.json
 extraResources:
+  - from: src/vendor/virtua-resize/LICENSE
+    to: licenses/virtua/LICENSE
+  - from: src/vendor/virtua-resize/UPSTREAM.md
+    to: licenses/virtua/UPSTREAM.md
   - from: LICENSE
     to: licenses/whomi/LICENSE
   - from: node_modules/jose/LICENSE.md
@@ -21,6 +25,18 @@ extraResources:
     to: licenses/cherry-markdown/LICENSE
   - from: src/vendor/cherry-markdown/UPSTREAM.md
     to: licenses/cherry-markdown/UPSTREAM.md
+  - from: src/vendor/cherry-chat/LICENSE
+    to: licenses/cherry-chat/LICENSE
+  - from: src/vendor/cherry-chat/shared/LICENSE
+    to: licenses/cherry-chat/shared/LICENSE
+  - from: src/vendor/cherry-chat/UPSTREAM.md
+    to: licenses/cherry-chat/UPSTREAM.md
+  - from: src/vendor/cherry-chat/composer/source-manifest.json
+    to: licenses/cherry-chat/composer/source-manifest.json
+  - from: src/vendor/cherry-chat/messages/source-manifest.json
+    to: licenses/cherry-chat/messages/source-manifest.json
+  - from: src/vendor/cherry-chat/shared/source-manifest.json
+    to: licenses/cherry-chat/shared/source-manifest.json
   - from: build/icon.png
     to: branding/icon.png
   - from: THIRD_PARTY_NOTICES.md

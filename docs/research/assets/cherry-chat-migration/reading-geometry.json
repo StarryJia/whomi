@@ -1,0 +1,74 @@
+{
+  "historyBefore": {
+    "key": "assistant1cba8b9e-d0f4-4902-a3c4-64007e56571e:user",
+    "anchorY": -553.5,
+    "top": 615,
+    "height": 1294,
+    "viewport": 559,
+    "distance": 120
+  },
+  "historyAfter": {
+    "key": "assistant1cba8b9e-d0f4-4902-a3c4-64007e56571e:user",
+    "anchorY": -553.5,
+    "top": 615,
+    "height": 1294,
+    "viewport": 515,
+    "distance": 164
+  },
+  "following": {
+    "key": "assistant39677a00-8736-439d-93c5-8dcc1e12e48e:user",
+    "anchorY": -2293.03125,
+    "top": 4269,
+    "height": 4828,
+    "viewport": 559,
+    "distance": 0
+  },
+  "up": {
+    "key": "assistant39677a00-8736-439d-93c5-8dcc1e12e48e:user",
+    "anchorY": -1454.03125,
+    "top": 3430,
+    "height": 5155,
+    "viewport": 559,
+    "distance": 1166
+  },
+  "growing": {
+    "key": "assistant39677a00-8736-439d-93c5-8dcc1e12e48e:user",
+    "anchorY": -1454.03125,
+    "top": 3430,
+    "height": 5351,
+    "viewport": 559,
+    "distance": 1362
+  },
+  "returned": {
+    "key": "assistant39677a00-8736-439d-93c5-8dcc1e12e48e:user",
+    "anchorY": -2961.03125,
+    "top": 4937,
+    "height": 5496,
+    "viewport": 559,
+    "distance": 0
+  },
+  "followedGrowth": {
+    "key": "assistant39677a00-8736-439d-93c5-8dcc1e12e48e:user",
+    "anchorY": -3330.03125,
+    "top": 5306,
+    "height": 5865,
+    "viewport": 559,
+    "distance": 0
+  },
+  "stoppedBefore": {
+    "key": "assistantb08aebfa-4644-4edc-a06d-9c366543b86c:user",
+    "anchorY": -117.78125,
+    "top": 14569,
+    "height": 15128,
+    "viewport": 559,
+    "distance": 0
+  },
+  "stoppedAfter": {
+    "key": "assistantb08aebfa-4644-4edc-a06d-9c366543b86c:user",
+    "anchorY": -117.78125,
+    "top": 14569,
+    "height": 15128,
+    "viewport": 559,
+    "distance": 0
+  }
+}

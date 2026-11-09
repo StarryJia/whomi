@@ -1,9 +1,12 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { clearFixtureDrafts, composerTextbox, expectComposerText, pasteComposerText } from '../../test/cherry-composer-helpers'
 import { ConversationReader } from '../conversations'
 import { createPreviewClient } from '../../data/preview-client'
 import type { ConversationAiAdapter, RestoredConversationTurn } from './types'
+
+beforeEach(() => clearFixtureDrafts('c', ['A', 'B', 'new']))
 
 const threads = ['A', 'B'].map(id => ({ id, conversationId: 'c', title: `对话 ${id}`, createdAtMs: 1, updatedAtMs: 1 }))
 const turn = (id: string): RestoredConversationTurn => ({
@@ -28,15 +31,18 @@ async function conversation() {
 }
 async function openPanel(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole('button', { name: 'AI 对话' }))
-  await screen.findByText('回答 A')
+  await visibleAnswer('回答 A')
 }
 async function switchToB(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole('button', { name: '显示对话列表' }))
   await user.click(screen.getByRole('button', { name: '对话 B' }))
-  await screen.findByText('回答 B')
+  await visibleAnswer('回答 B')
+}
+async function visibleAnswer(text: string) {
+  await waitFor(() => expect(screen.getByText(text)).toBeVisible())
 }
 async function viewSentReference(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(within(screen.getByRole('log')).getByRole('button', { name: '1 条引用' }))
+  await user.click(await within(screen.getByRole('log')).findByRole('button', { name: '1 条引用' }))
 }
 const marked = () => document.querySelectorAll('.message-reference-target')
 
@@ -50,8 +56,8 @@ describe('AI 对话结束与切换边界', () => {
     await user.click(screen.getByRole('button', { name: 'AI 对话' }))
     const newThread = screen.getByRole('button', { name: '新建 AI 对话' })
     await waitFor(() => expect(newThread).toBeEnabled())
-    const draft = screen.getByRole('textbox', { name: '向 AI 提问' })
-    await user.type(draft, '保留这个问题')
+    await pasteComposerText('保留这个问题')
+    const draft = await composerTextbox()
     await user.click(screen.getByRole('button', { name: '选择消息' }))
     await user.click(screen.getByRole('option', { name: '甲：第一条原文' }))
     await user.click(screen.getByRole('button', { name: '1 组引用' }))
@@ -62,7 +68,7 @@ describe('AI 对话结束与切换边界', () => {
 
     expect(marked()).toHaveLength(0)
     expect(client.createThread).not.toHaveBeenCalled()
-    expect(draft).toHaveValue('保留这个问题')
+    await expectComposerText('保留这个问题')
     expect(screen.getByRole('button', { name: '1 组引用' })).toBeVisible()
     await waitFor(() => expect(draft).toHaveFocus())
   })
@@ -78,7 +84,11 @@ describe('AI 对话结束与切换边界', () => {
       aiAdapter={client} onLocateMessageId={locate} />
     const view = render(reader(full.messages.slice(0, 1)))
     await openPanel(user)
-    const [first, second] = within(screen.getByRole('log')).getAllByRole('button', { name: '1 条引用' })
+    const [first, second] = await waitFor(() => {
+      const refs = within(screen.getByRole('log')).getAllByRole('button', { name: '1 条引用' })
+      expect(refs).toHaveLength(2)
+      return refs
+    })
     await user.click(first)
     expect(Array.from(marked(), element => element.getAttribute('data-message-id'))).toEqual(['1'])
 
@@ -110,7 +120,10 @@ describe('AI 对话结束与切换边界', () => {
       fireEvent.contextMenu(screen.getByRole('button', { name: '对话 A' }), { button: 2, clientX: 40, clientY: 80 })
       await user.click(screen.getByRole('menuitem', { name: '删除' }))
       await user.click(screen.getByRole('button', { name: '确认删除' }))
-      await screen.findByText('回答 B')
+      await waitFor(() => expect(within(screen.getByRole('navigation', { name: 'AI 对话列表' }))
+        .queryByRole('button', { name: '对话 A' })).not.toBeInTheDocument())
+      await user.click(screen.getByRole('button', { name: '收起对话列表' }))
+      await visibleAnswer('回答 B')
     }
     expect(marked()).toHaveLength(0)
     expect(screen.queryByRole('button', { name: '重试定位' })).not.toBeInTheDocument()
@@ -222,7 +235,7 @@ describe('AI 对话结束与切换边界', () => {
     const user = userEvent.setup()
     render(<ConversationReader conversation={await conversation()} aiAdapter={adapter()} />)
     await openPanel(user)
-    await user.type(screen.getByRole('textbox', { name: '向 AI 提问' }), '尚未发送的问题')
+    await pasteComposerText('尚未发送的问题')
     await user.click(screen.getByRole('button', { name: '选择消息' }))
     await user.click(screen.getByRole('option', { name: '甲：第一条原文' }))
     await user.click(screen.getByRole('button', { name: '1 组引用' }))
@@ -235,7 +248,7 @@ describe('AI 对话结束与切换边界', () => {
     expect(screen.queryByRole('region', { name: '引用预览' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '收起对话列表' }))
     expect(screen.getByRole('button', { name: '1 组引用' })).toHaveAttribute('aria-expanded', 'false')
-    expect(screen.getByRole('textbox', { name: '向 AI 提问' })).toHaveValue('尚未发送的问题')
+    await expectComposerText('尚未发送的问题')
   })
 
   it.each([false, true])('切换对话后不接受原对话的停止失败（再次返回原对话：%s）', async returnToA => {
@@ -252,11 +265,11 @@ describe('AI 对话结束与切换边界', () => {
     if (returnToA) {
       await user.click(screen.getByRole('button', { name: '显示对话列表' }))
       await user.click(screen.getByRole('button', { name: '对话 A' }))
-      await screen.findByText('回答 A')
+      await visibleAnswer('回答 A')
     }
     await act(async () => { fail(new Error('停止 A 失败，请重试。')) })
+    await visibleAnswer(returnToA ? '回答 A' : '回答 B')
     expect(screen.queryByText('停止 A 失败，请重试。')).not.toBeInTheDocument()
-    expect(screen.getByText(returnToA ? '回答 A' : '回答 B')).toBeVisible()
   })
 
   it('首次发送等待创建对话时关闭面板，创建完成继续发送但不重新打开面板', async () => {
@@ -266,7 +279,7 @@ describe('AI 对话结束与切换边界', () => {
     client.createThread = vi.fn(() => new Promise<Awaited<ReturnType<NonNullable<ConversationAiAdapter['createThread']>>>>(resolve => { finish = resolve }))
     render(<ConversationReader conversation={await conversation()} aiAdapter={client} />)
     await user.click(screen.getByRole('button', { name: 'AI 对话' }))
-    await user.type(screen.getByRole('textbox', { name: '向 AI 提问' }), '第一条问题')
+    await pasteComposerText('第一条问题')
     await user.click(screen.getByRole('button', { name: '发送给 AI' }))
     await user.click(screen.getByRole('button', { name: '关闭 AI 对话' }))
     await act(async () => { finish({ id: 'new', conversationId: 'c', title: '新对话', createdAtMs: 2, updatedAtMs: 2, turns: [] }) })

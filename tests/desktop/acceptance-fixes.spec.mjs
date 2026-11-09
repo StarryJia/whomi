@@ -1,4 +1,5 @@
 import { dismissIdentity } from './fixtures/identity.mjs'
+import { chatEditor } from './chat-helpers.mjs'
 import { test, expect, _electron as electron } from '@playwright/test'
 import { copyFile, mkdir, mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -50,7 +51,7 @@ test('active import remains recoverable and compact reply navigation preserves t
     await expect(page.locator('.message-text')).toHaveCount(100)
     await expect(page.getByText('[动画表情]', { exact: true })).toBeVisible()
     expect(await page.getByText(/消息类型：|文件缺失|文件未导入/).count()).toBe(0)
-    const draft = page.getByRole('textbox', { name: '向 AI 提问', exact: true })
+    const draft = chatEditor(page)
     await page.getByRole('button', { name: 'AI 对话', exact: true }).click()
     await draft.fill('引用跳转后保留的草稿')
     await page.getByRole('button', { name: '关闭 AI 对话' }).click()
@@ -67,21 +68,22 @@ test('active import remains recoverable and compact reply navigation preserves t
     await reply.scrollIntoViewIfNeeded()
     await page.screenshot({ path: join(evidence, '02-compact-reply.png'), animations: 'disabled' })
     await reply.click()
+    await expect(page.getByRole('button', { name: '选择消息', exact: true })).toHaveAttribute('aria-pressed', 'false')
     await expect(page.getByText('原消息：明晚一起练习。', { exact: true })).toBeVisible()
     await expect(page.locator('.message-reference-target .message-text')).toHaveText('原消息：明晚一起练习。')
     await page.getByRole('button', { name: 'AI 对话', exact: true }).click()
-    await expect(draft).toHaveValue('引用跳转后保留的草稿')
+    await expect(draft).toHaveText('引用跳转后保留的草稿')
     await page.getByRole('button', { name: '关闭 AI 对话' }).click()
     expect(await page.locator('.message[aria-selected="true"]').count()).toBe(0)
     await page.screenshot({ path: join(evidence, '03-original-located.png'), animations: 'disabled' })
     await page.getByRole('button', { name: '返回引用位置', exact: true }).click()
     await expect(short).toBeVisible()
     await page.getByRole('button', { name: 'AI 对话', exact: true }).click()
-    await expect(draft).toHaveValue('引用跳转后保留的草稿')
+    await expect(draft).toHaveText('引用跳转后保留的草稿')
     await page.getByRole('button', { name: '关闭 AI 对话' }).click()
     await expect(page.getByText('已定位相关交流，可继续阅读前后文。')).toHaveCount(0)
     await expect(page.getByText('引用范围起点', { exact: true })).toHaveCount(0)
-    await page.getByRole('button', { name: '选择消息', pressed: true }).click()
+    await expect(page.getByRole('button', { name: '选择消息', exact: true })).toHaveAttribute('aria-pressed', 'false')
     await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(960, 720))
     await reply.scrollIntoViewIfNeeded()
     await page.screenshot({ path: join(evidence, '04-compact-minimum-desktop.png'), animations: 'disabled' })

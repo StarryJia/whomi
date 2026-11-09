@@ -1,0 +1,399 @@
+{
+  "scenario": {
+    "rounds": 200,
+    "width": 1280,
+    "height": 800,
+    "typedText": "abcdefghijabcdefghijabcdefghijabcdefghijabcdefghij",
+    "wheelDeltaY": -600,
+    "idleMilliseconds": 3000,
+    "repetitions": 3
+  },
+  "environment": {
+    "platform": "win32",
+    "osRelease": "10.0.19045",
+    "architecture": "x64",
+    "cpu": "Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz",
+    "logicalProcessors": 12,
+    "memoryBytes": 17015619584,
+    "automationNode": "24.12.0",
+    "method": "Serial built renderers, fresh isolated databases, hidden Electron, Playwright keyboard and Chromium wheel input. Host timings include automation overhead."
+  },
+  "variants": {
+    "baseline": {
+      "source": "b6378890e14796e131c37a67ef432e7cf58298d9",
+      "bundle": "index-D1QYg9cY.js",
+      "sha256": "bf75721fd016e4ca3808f352b6a275511ab8aeb03d5c85e7d566210e82cdf698"
+    },
+    "migration": {
+      "source": "codex/cherry-chat-migration",
+      "bundle": "index-CuLMu8pG.js",
+      "sha256": "7f6276bd6db6fde0112d54794461e28adedfa3cba37288d9c858939311a8b7c6"
+    }
+  },
+  "timingSamples": [
+    {
+      "variant": "baseline",
+      "iteration": 1,
+      "host": {
+        "electron": "45.1.0",
+        "chromium": "156.0.8078.49",
+        "hidden": true,
+        "focused": false
+      },
+      "restoredRounds": 200,
+      "launchToFirstWindowMs": 852.2,
+      "panelToEditorReadyMs": 2276.7,
+      "panelToLatestHistoryVisibleMs": 2294.7,
+      "typeToVisibleMs": 1586.8,
+      "typing": {
+        "inputEvents": 50,
+        "text": "abcdefghijabcdefghijabcdefghijabcdefghijabcdefghij",
+        "rendererToLastInputMs": 795.6999999992549,
+        "rendererToVisibleFrameMs": 1580.2999999988824
+      }
+    },
+    {
+      "variant": "migration",
+      "iteration": 1,
+      "host": {
+        "electron": "45.1.0",
+        "chromium": "156.0.8078.49",
+        "hidden": true,
+        "focused": false
+      },
+      "restoredRounds": 200,
+      "launchToFirstWindowMs": 823.3,
+      "panelToEditorReadyMs": 2405.5,
+      "panelToLatestHistoryVisibleMs": 4273.6,
+      "typeToVisibleMs": 602.3,
+      "typing": {
+        "inputEvents": 50,
+        "text": "abcdefghijabcdefghijabcdefghijabcdefghijabcdefghij",
+        "rendererToLastInputMs": 239.39999999850988,
+        "rendererToVisibleFrameMs": 597.5
+      }
+    },
+    {
+      "variant": "baseline",
+      "iteration": 2,
+      "host": {
+        "electron": "45.1.0",
+        "chromium": "156.0.8078.49",
+        "hidden": true,
+        "focused": false
+      },
+      "restoredRounds": 200,
+      "launchToFirstWindowMs": 828.1,
+      "panelToEditorReadyMs": 2319,
+      "panelToLatestHistoryVisibleMs": 2335.3,
+      "typeToVisibleMs": 1522.6,
+      "typing": {
+        "inputEvents": 50,
+        "text": "abcdefghijabcdefghijabcdefghijabcdefghijabcdefghij",
+        "rendererToLastInputMs": 758.8000000007451,
+        "rendererToVisibleFrameMs": 1519.5999999996275
+      }
+    },
+    {
+      "variant": "migration",
+      "iteration": 2,
+      "host": {
+        "electron": "45.1.0",
+        "chromium": "156.0.8078.49",
+        "hidden": true,
+        "focused": false
+      },
+      "restoredRounds": 200,
+      "launchToFirstWindowMs": 885.8,
+      "panelToEditorReadyMs": 2911.4,
+      "panelToLatestHistoryVisibleMs": 4263.2,
+      "typeToVisibleMs": 442.1,
+      "typing": {
+        "inputEvents": 50,
+        "text": "abcdefghijabcdefghijabcdefghijabcdefghijabcdefghij",
+        "rendererToLastInputMs": 295.2999999988824,
+        "rendererToVisibleFrameMs": 437.5
+      }
+    },
+    {
+      "variant": "baseline",
+      "iteration": 3,
+      "host": {
+        "electron": "45.1.0",
+        "chromium": "156.0.8078.49",
+        "hidden": true,
+        "focused": false
+      },
+      "restoredRounds": 200,
+      "launchToFirstWindowMs": 887.1,
+      "panelToEditorReadyMs": 1929.2,
+      "panelToLatestHistoryVisibleMs": 1946.3,
+      "typeToVisibleMs": 868.3,
+      "typing": {
+        "inputEvents": 50,
+        "text": "abcdefghijabcdefghijabcdefghijabcdefghijabcdefghij",
+        "rendererToLastInputMs": 805.8000000007451,
+        "rendererToVisibleFrameMs": 863.4000000003725
+      }
+    },
+    {
+      "variant": "migration",
+      "iteration": 3,
+      "host": {
+        "electron": "45.1.0",
+        "chromium": "156.0.8078.49",
+        "hidden": true,
+        "focused": false
+      },
+      "restoredRounds": 200,
+      "launchToFirstWindowMs": 879.5,
+      "panelToEditorReadyMs": 1945.1,
+      "panelToLatestHistoryVisibleMs": 4323.5,
+      "typeToVisibleMs": 522.7,
+      "typing": {
+        "inputEvents": 50,
+        "text": "abcdefghijabcdefghijabcdefghijabcdefghijabcdefghij",
+        "rendererToLastInputMs": 232.2000000011176,
+        "rendererToVisibleFrameMs": 517.5
+      }
+    }
+  ],
+  "scrollingComparison": {
+    "completed": false,
+    "validBaselineSamples": [
+      {
+        "iteration": 1,
+        "wheelToMovementMs": 3954.7,
+        "beforeWheel": {
+          "top": 45273,
+          "scrollHeight": 45822,
+          "viewportHeight": 549,
+          "distanceToBottom": 0,
+          "mountedGroups": 200,
+          "anchorName": "示例历史问题 198",
+          "anchorY": -133.84375
+        },
+        "settled": {
+          "top": 44673,
+          "scrollHeight": 45822,
+          "viewportHeight": 549,
+          "distanceToBottom": 600,
+          "mountedGroups": 200,
+          "anchorName": "示例历史问题 196",
+          "anchorY": 8.09375
+        },
+        "idle": {
+          "top": 44673,
+          "scrollHeight": 45822,
+          "viewportHeight": 549,
+          "distanceToBottom": 600,
+          "mountedGroups": 200,
+          "anchorName": "示例历史问题 196",
+          "anchorY": 8.09375
+        },
+        "idleMilliseconds": 3001.6,
+        "idleScrollDeltaPx": 0,
+        "anchorIdleDeltaPx": 0
+      },
+      {
+        "iteration": 2,
+        "wheelToMovementMs": 3952.6,
+        "beforeWheel": {
+          "top": 45273,
+          "scrollHeight": 45822,
+          "viewportHeight": 549,
+          "distanceToBottom": 0,
+          "mountedGroups": 200,
+          "anchorName": "示例历史问题 198",
+          "anchorY": -133.84375
+        },
+        "settled": {
+          "top": 44673,
+          "scrollHeight": 45822,
+          "viewportHeight": 549,
+          "distanceToBottom": 600,
+          "mountedGroups": 200,
+          "anchorName": "示例历史问题 196",
+          "anchorY": 8.09375
+        },
+        "idle": {
+          "top": 44673,
+          "scrollHeight": 45822,
+          "viewportHeight": 549,
+          "distanceToBottom": 600,
+          "mountedGroups": 200,
+          "anchorName": "示例历史问题 196",
+          "anchorY": 8.09375
+        },
+        "idleMilliseconds": 3009.7,
+        "idleScrollDeltaPx": 0,
+        "anchorIdleDeltaPx": 0
+      },
+      {
+        "iteration": 3,
+        "wheelToMovementMs": 3934.4,
+        "beforeWheel": {
+          "top": 45273,
+          "scrollHeight": 45822,
+          "viewportHeight": 549,
+          "distanceToBottom": 0,
+          "mountedGroups": 200,
+          "anchorName": "示例历史问题 198",
+          "anchorY": -133.84375
+        },
+        "settled": {
+          "top": 44673,
+          "scrollHeight": 45822,
+          "viewportHeight": 549,
+          "distanceToBottom": 600,
+          "mountedGroups": 200,
+          "anchorName": "示例历史问题 196",
+          "anchorY": 8.09375
+        },
+        "idle": {
+          "top": 44673,
+          "scrollHeight": 45822,
+          "viewportHeight": 549,
+          "distanceToBottom": 600,
+          "mountedGroups": 200,
+          "anchorName": "示例历史问题 196",
+          "anchorY": 8.09375
+        },
+        "idleMilliseconds": 3011.9,
+        "idleScrollDeltaPx": 0,
+        "anchorIdleDeltaPx": 0
+      }
+    ],
+    "hiddenMigrationFirstAttempt": [
+      {
+        "iteration": 1,
+        "firstWheelMovement": {
+          "top": 62886,
+          "scrollHeight": 63445,
+          "viewportHeight": 559,
+          "distanceToBottom": 0,
+          "mountedGroups": 13,
+          "anchorName": "示例历史回答 198",
+          "anchorY": -66.875
+        },
+        "settled": {
+          "top": 62886,
+          "scrollHeight": 63445,
+          "viewportHeight": 559,
+          "distanceToBottom": 0,
+          "mountedGroups": 13,
+          "anchorName": "示例历史回答 198",
+          "anchorY": -66.875
+        },
+        "idle": {
+          "top": 61989,
+          "scrollHeight": 63445,
+          "viewportHeight": 559,
+          "distanceToBottom": 897,
+          "mountedGroups": 19,
+          "anchorName": "示例历史回答 195",
+          "anchorY": -137.65625
+        },
+        "failure": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\ntrue !== false\n"
+      },
+      {
+        "iteration": 2,
+        "firstWheelMovement": {
+          "top": 62886,
+          "scrollHeight": 63445,
+          "viewportHeight": 559,
+          "distanceToBottom": 0,
+          "mountedGroups": 13,
+          "anchorName": "示例历史回答 198",
+          "anchorY": -66.875
+        },
+        "settled": {
+          "top": 62886,
+          "scrollHeight": 63445,
+          "viewportHeight": 559,
+          "distanceToBottom": 0,
+          "mountedGroups": 13,
+          "anchorName": "示例历史回答 198",
+          "anchorY": -66.875
+        },
+        "idle": {
+          "top": 61989,
+          "scrollHeight": 63445,
+          "viewportHeight": 559,
+          "distanceToBottom": 897,
+          "mountedGroups": 19,
+          "anchorName": "示例历史回答 195",
+          "anchorY": -137.65625
+        },
+        "failure": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\ntrue !== false\n"
+      },
+      {
+        "iteration": 3,
+        "firstWheelMovement": {
+          "top": 62886,
+          "scrollHeight": 63445,
+          "viewportHeight": 559,
+          "distanceToBottom": 0,
+          "mountedGroups": 13,
+          "anchorName": "示例历史回答 198",
+          "anchorY": -66.875
+        },
+        "settled": {
+          "top": 62886,
+          "scrollHeight": 63445,
+          "viewportHeight": 559,
+          "distanceToBottom": 0,
+          "mountedGroups": 13,
+          "anchorName": "示例历史回答 198",
+          "anchorY": -66.875
+        },
+        "idle": {
+          "top": 61989,
+          "scrollHeight": 63445,
+          "viewportHeight": 559,
+          "distanceToBottom": 897,
+          "mountedGroups": 19,
+          "anchorName": "示例历史回答 195",
+          "anchorY": -137.65625
+        },
+        "failure": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\ntrue !== false\n"
+      }
+    ],
+    "hiddenMigrationRecheck": [
+      {
+        "iteration": 1,
+        "failure": "Error: expect(received).toBeGreaterThan(expected)\n\nExpected: > 60\nReceived:   0\n\nCall Log:\n- Timeout 10000ms exceeded while waiting on the predicate"
+      },
+      {
+        "iteration": 2,
+        "failure": "Error: expect(received).toBeGreaterThan(expected)\n\nExpected: > 60\nReceived:   0\n\nCall Log:\n- Timeout 10000ms exceeded while waiting on the predicate"
+      },
+      {
+        "iteration": 3,
+        "failure": "Error: expect(received).toBeGreaterThan(expected)\n\nExpected: > 60\nReceived:   0\n\nCall Log:\n- Timeout 10000ms exceeded while waiting on the predicate"
+      }
+    ],
+    "visibleInactiveWheelAttempt": [
+      {
+        "variant": "baseline",
+        "host": {
+          "electron": "45.1.0",
+          "chromium": "156.0.8078.49",
+          "hidden": false,
+          "focused": false
+        },
+        "failure": "TimeoutError: page.waitForFunction: Timeout 15000ms exceeded."
+      },
+      {
+        "variant": "migration",
+        "host": {
+          "electron": "45.1.0",
+          "chromium": "156.0.8078.49",
+          "hidden": false,
+          "focused": false
+        },
+        "failure": "TimeoutError: page.waitForFunction: Timeout 15000ms exceeded."
+      }
+    ]
+  }
+}

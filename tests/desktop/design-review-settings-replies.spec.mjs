@@ -1,4 +1,5 @@
 import { dismissIdentity } from './fixtures/identity.mjs'
+import { chatEditor } from './chat-helpers.mjs'
 import { test, expect, _electron as electron } from '@playwright/test'
 import { createServer } from 'node:http'
 import { copyFile, mkdir, mkdtemp, writeFile } from 'node:fs/promises'
@@ -76,6 +77,9 @@ test('settings use the provider model drawer and a neutral grouped number focus'
     await page.getByRole('button', { name: '关闭编辑模型', exact: true }).click()
     await expect.poll(() => page.evaluate(async () => (await window.whomi.settings.get()).models[0])).toMatchObject({ contextWindow: 8192, maxTokens: 1024 })
     await page.getByRole('button', { name: '消息处理', exact: true }).click()
+    const merge = page.getByRole('switch', { name: '合并连续发言', exact: true })
+    await expect(merge).toHaveAttribute('aria-checked', 'false')
+    await merge.click()
     const number = page.getByRole('spinbutton', { name: '合并时间窗口', exact: true })
     await number.click()
     expect(await number.evaluate(e => getComputedStyle(e).outlineStyle)).toBe('none')
@@ -129,7 +133,7 @@ test('SIWX reimport repairs an old quote and jumps across unloaded pages without
     await page.screenshot({ path: join(evidence, '08-quote-before.png') })
     await importSource()
     for (let index = 0; index < 6; index++) await page.getByRole('button', { name: '加载后文', exact: true }).click()
-    const draft = page.getByRole('textbox', { name: '向 AI 提问', exact: true })
+    const draft = chatEditor(page)
     await page.getByRole('button', { name: 'AI 对话', exact: true }).click()
     await draft.fill('保留这段虚构草稿')
     await page.getByRole('button', { name: '关闭 AI 对话' }).click()
@@ -143,7 +147,7 @@ test('SIWX reimport repairs an old quote and jumps across unloaded pages without
       return target.top >= reader.top && target.bottom <= reader.bottom
     })).toBe(true)
     await page.getByRole('button', { name: 'AI 对话', exact: true }).click()
-    await expect(draft).toHaveValue('保留这段虚构草稿')
+    await expect(draft).toHaveText('保留这段虚构草稿')
     await page.getByRole('button', { name: '关闭 AI 对话' }).click()
     await page.screenshot({ path: join(evidence, '09-quote-target-after.png') })
     await page.getByRole('button', { name: '返回引用位置', exact: true }).click()

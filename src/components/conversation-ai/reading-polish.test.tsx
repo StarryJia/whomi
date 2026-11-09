@@ -1,9 +1,13 @@
+import { clearFixtureDrafts, expectComposerText, pasteComposerText, persistedTurn } from '../../test/cherry-composer-helpers'
+import { ConversationTurnError } from '../../data/conversation-ai-client'
 import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ConversationWorkspace } from './workspace'
 import type { ConversationAiAdapter } from './types'
 import { AnswerContent } from './answer-content'
+
+beforeEach(() => clearFixtureDrafts('example'))
 
 const answer = '你提供了具体支持。\n\n### 发生了什么\n朋友担心准备不完。\n\n### 可以观察到的行为\n- 确认需要\n- 约定时间\n- 保留选择\n\n| 原文线索 | 有限观察 |\n| --- | --- |\n| 明晚九点 | 具体支持 |\n| 先听建议还是倾诉 | 尊重需要 |'
 function mount(respond: ConversationAiAdapter['respond'], overrides: Partial<ConversationAiAdapter> = {}) {
@@ -16,7 +20,7 @@ function mount(respond: ConversationAiAdapter['respond'], overrides: Partial<Con
 async function send() {
   const user = userEvent.setup()
   await user.click(screen.getByRole('button', { name: 'AI 对话' }))
-  await user.type(screen.getByRole('textbox', { name: '向 AI 提问' }), '这段示例里，我怎样回应了朋友？')
+  await pasteComposerText('这段示例里，我怎样回应了朋友？')
   await user.click(screen.getByRole('button', { name: '发送给 AI' }))
   return user
 }
@@ -39,7 +43,11 @@ describe('回答阅读排版', () => {
   })
   it('未闭合流式片段逐步补全，停止后保留已收到正文', async () => {
     let write!: (text: string) => void
-    mount((_request, options) => { write = options.onText; return new Promise(() => {}) })
+    mount((request, options) => {
+      options.onAccepted?.(persistedTurn(request))
+      write = options.onText
+      return new Promise(() => {})
+    })
     const user = await send()
     await act(async () => write('### 可以观察'))
     expect(screen.getByRole('log')).toHaveTextContent('可以观察')
@@ -70,14 +78,14 @@ describe('回答阅读排版', () => {
     expect(screen.getByRole('log')).toHaveTextContent('生成时名称')
     expect(screen.getByRole('log')).toHaveTextContent('未知模型')
     expect(screen.getByRole('log')).not.toHaveTextContent('模型甲')
-    await user.click(screen.getByRole('button', { name: /输出 100/ }))
+    await user.click(await screen.findByRole('button', { name: /输出 100/ }))
     expect(screen.getByRole('region', { name: '生成统计' })).toHaveTextContent('生成时名称')
     expect(screen.getByRole('region', { name: '生成统计' })).toHaveTextContent('old-a')
   })
   it('摘要和详情共用模型生成速度，缺少首次输出时间不伪造速度', async () => {
     mount(async () => ({ text: answer, usage: { outputTokens: 100, firstTokenMs: 9000, durationMs: 10000, outputTokensPerSecond: 10 } }))
     const user = await send()
-    const summary = screen.getByRole('button', { name: /输出 100/ })
+    const summary = await screen.findByRole('button', { name: /输出 100/ })
     expect(summary).toHaveTextContent('100 token/秒')
     await user.click(summary)
     const stats = screen.getByRole('region', { name: '生成统计' })
@@ -87,28 +95,33 @@ describe('回答阅读排版', () => {
   it('未知模型速度只显示已知输出', async () => {
     mount(async () => ({ text: answer, usage: { outputTokens: 100, durationMs: 10000, outputTokensPerSecond: 10 } }))
     await send()
-    expect(screen.getByRole('button', { name: /输出 100/ })).not.toHaveTextContent('token/秒')
+    expect(await screen.findByRole('button', { name: /输出 100/ })).not.toHaveTextContent('token/秒')
   })
   it('复制完整回答源文本，写入失败可重试且保留后续草稿', async () => {
     mount(async () => ({ text: answer }))
     const user = await send()
     const write = vi.spyOn(navigator.clipboard, 'writeText').mockRejectedValueOnce(new Error('denied')).mockResolvedValue(undefined)
-    await user.type(screen.getByRole('textbox'), '下一条草稿')
-    await user.click(screen.getByRole('button', { name: '复制回答' }))
+    await pasteComposerText('下一条草稿')
+    await user.click(await within(screen.getByRole('log')).findByRole('button', { name: '复制回答' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('复制失败')
     expect(screen.queryByRole('button', { name: '已复制' })).not.toBeInTheDocument()
     act(() => screen.getByRole('button', { name: '复制回答' }).focus())
     await user.keyboard('{Enter}')
     expect(write).toHaveBeenLastCalledWith(answer)
     expect(await screen.findByRole('status')).toHaveTextContent('已复制')
-    expect(screen.getByRole('textbox')).toHaveValue('下一条草稿')
+    await expectComposerText('下一条草稿')
   })
   it('部分失败保留已收到的文字并允许复制', async () => {
-    mount(async (_request, options) => { options.onText('已生成的部分回答'); throw new Error('连接中断，请重试。') })
+    mount(async (request, options) => {
+      options.onText('已生成的部分回答')
+      throw new ConversationTurnError(persistedTurn(request, {
+        state: 'failed', error: '连接中断，请重试。', text: '已生成的部分回答',
+      }))
+    })
     const user = await send()
     expect(await screen.findByRole('alert')).toHaveTextContent('连接中断')
     const write = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue(undefined)
-    await user.click(screen.getByRole('button', { name: '复制回答' }))
+    await user.click(await within(screen.getByRole('log')).findByRole('button', { name: '复制回答' }))
     expect(await screen.findByRole('status')).toHaveTextContent('已复制')
     expect(write).toHaveBeenCalledWith('已生成的部分回答')
     expect(screen.getByRole('log')).toHaveTextContent('已生成的部分回答')

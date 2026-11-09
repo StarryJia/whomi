@@ -1,0 +1,94 @@
+{
+  "flavor": "dev",
+  "seededRounds": 200,
+  "snapshots": {
+    "restored": {
+      "width": 1280,
+      "height": 800,
+      "top": 62975,
+      "scrollHeight": 63534,
+      "viewportHeight": 559,
+      "distance": 0,
+      "mountedGroups": 12
+    },
+    "firstGrowth": {
+      "width": 1280,
+      "height": 800,
+      "top": 64385,
+      "scrollHeight": 64944,
+      "viewportHeight": 559,
+      "distance": 0,
+      "mountedGroups": 13
+    },
+    "secondGrowth": {
+      "width": 1280,
+      "height": 800,
+      "top": 65482,
+      "scrollHeight": 66041,
+      "viewportHeight": 559,
+      "distance": 0,
+      "mountedGroups": 1
+    },
+    "narrowGrowth": {
+      "width": 960,
+      "height": 720,
+      "top": 66239,
+      "scrollHeight": 66718,
+      "viewportHeight": 479,
+      "distance": 0,
+      "mountedGroups": 1
+    },
+    "stopped": {
+      "width": 960,
+      "height": 720,
+      "top": 66490,
+      "scrollHeight": 66969,
+      "viewportHeight": 479,
+      "distance": 0,
+      "mountedGroups": 1
+    },
+    "idle": {
+      "width": 960,
+      "height": 720,
+      "top": 66490,
+      "scrollHeight": 66969,
+      "viewportHeight": 479,
+      "distance": 0,
+      "mountedGroups": 1
+    }
+  },
+  "errors": [],
+  "rendererUrl": "http://127.0.0.1:54707/",
+  "hidden": true,
+  "restoredRounds": 200,
+  "syntheticModelRequest": {
+    "model": "model-a15",
+    "messageCount": 2
+  },
+  "firstGrowth": {
+    "rounds": 201,
+    "state": "running",
+    "textLength": 600,
+    "requestId": "cd8bc07c-337e-4fed-ae1d-2487e4cf3589"
+  },
+  "secondGrowth": {
+    "rounds": 201,
+    "state": "running",
+    "textLength": 1200,
+    "requestId": "cd8bc07c-337e-4fed-ae1d-2487e4cf3589"
+  },
+  "narrowGrowth": {
+    "rounds": 201,
+    "state": "running",
+    "textLength": 1680,
+    "requestId": "cd8bc07c-337e-4fed-ae1d-2487e4cf3589"
+  },
+  "stopped": {
+    "rounds": 201,
+    "state": "stopped",
+    "textLength": 1800,
+    "requestId": "cd8bc07c-337e-4fed-ae1d-2487e4cf3589"
+  },
+  "idleMilliseconds": 3003,
+  "idleScrollDeltaPx": 0
+}

@@ -1,0 +1,3 @@
+
+> whomi@0.1.11 typecheck
+> tsc --noEmit && tsc -p tsconfig.electron.json
