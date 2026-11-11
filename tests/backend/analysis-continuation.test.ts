@@ -220,3 +220,64 @@ test('continuing a failed multi-step summary reuses its completed merge nodes', 
   expect(calls.slice(5)).toEqual(['merge-2', 'merge-3', 'merge-合'])
   expect(data.repository.getAnalysis(task.id).state).toBe('completed')
 })
+
+
+test.each(['MODEL_CONTEXT_LIMIT', 'length'])('shrinks only the failed source on %s and resumes its exact remaining fragment after reopening', async reason => {
+  const { data, path } = await fixture(false)
+  data.store.writer.prepare('UPDATE messages SET text=? WHERE id=2').run('b'.repeat(700) + 'c'.repeat(700))
+  const originalModel = data.repository.modelSecret('model').model
+  const seen: { id: string; text: string }[] = []
+  const note = (id: string) => ({ ...response, text: JSON.stringify({ events: [{ key: '搬家', text: '一起安排搬家。', evidenceMessageIds: [id], signals: [] }] }) })
+  const first = analysisService(data, async input => {
+    const message = JSON.parse(input.prompt).messages[0]
+    seen.push(message)
+    if (message.id === '2' && message.text.length > 700) {
+      if (reason === 'MODEL_CONTEXT_LIMIT') throw Object.assign(Error('synthetic capacity'), { code: reason, usage: { inputTokens: 3, outputTokens: 1000 } })
+      return { ...response, stopReason: 'length' as const, text: '{"events":[', usage: { inputTokens: 3, outputTokens: 1000 } }
+    }
+    if (message.id === '2' && message.text.startsWith('c')) throw Error('synthetic offline')
+    return note(message.id)
+  })
+  const task = await start(first)
+  await first.idle()
+  expect(data.repository.getAnalysis(task.id)).toMatchObject({ state: 'failed', analyzedMessages: 1 })
+  expect(seen.map(item => [item.id, item.text.length])).toEqual([['1',1400],['2',1400],['2',700],['2',700]])
+  expect(data.repository.analysisContext(task.id).batches).toHaveLength(2)
+  await first.close(); data.store.close()
+  const reopened = connection(path), resumedRequests: { id: string; text: string }[] = []
+  const resumed = analysisService(reopened, async input => {
+    const payload = JSON.parse(input.prompt)
+    if (payload.messages) { resumedRequests.push(...payload.messages); return note(payload.messages[0].id) }
+    return { ...response, text: JSON.stringify({ groups: [['搬家']], events: [{ key: '搬家', title: '搬家', text: '一起安排搬家。' }], relationship: '一起商量。', dimensionExplanations: { EI: null, SN: null, TF: null, JP: null } }) }
+  })
+  await resumed.continueAnalysis(task.id)
+  await resumed.idle()
+  expect(resumedRequests.map(item => [item.id, item.text])).toEqual([['2','c'.repeat(700)],['3','a'.repeat(1400)]])
+  expect(reopened.repository.getAnalysis(task.id)).toMatchObject({ state: 'completed', analyzedMessages: 3, totalMessages: 3 })
+  expect(reopened.repository.modelSecret('model').model).toEqual(originalModel)
+  expect(reopened.repository.getAnalysis(task.id).usage.outputTokens).toBeGreaterThanOrEqual(1000)
+})
+
+
+test('a large adaptive checkpoint persists beyond 32 KiB and can continue after reopening', async () => {
+  const { memoryRecovery, readMemoryCheckpoint } = await import('../../electron/main/memory-recovery')
+  const { data, path } = await fixture(false)
+  const prepared = await data.repository.prepareAnalysis({ conversationId: '1', modelId: 'model' })
+  const task = await data.repository.confirmAnalysis({ token: prepared.token, requestId: 'large-checkpoint' })
+  const nodes = Object.fromEntries(Array.from({ length: 1300 }, (_, i) => ['source:' + i, { index: i }]))
+  const state = { format: 'memory-adaptive-v1' as const, layout: 'source-layout-v1:0', sourceBudget: 4000, sourceCount: 1300, nextIndex: 1300, legacyEnd: -1, nodes }
+  const checkpoint = JSON.stringify(state)
+  expect(checkpoint.length).toBeGreaterThan(32768)
+  await data.repository.saveAnalysis(task.id, { checkpoint, state: 'stopped' })
+  data.store.close()
+  const reopened = connection(path)
+  await reopened.repository.resumeAnalysis(task.id)
+  const restored = readMemoryCheckpoint(reopened.repository.analysisContext(task.id).checkpoint)!
+  const recovery = memoryRecovery(restored, async checkpoint => { await reopened.repository.saveAnalysis(task.id, { checkpoint }) })
+  await recovery.split('source:1299')
+  const node = await recovery.node('source:1299/0')
+  expect(node.index).toBe(1300)
+  const after = readMemoryCheckpoint(reopened.repository.analysisContext(task.id).checkpoint)!
+  expect(after.nodes['source:1299'].split).toBe(true)
+  expect(after.nodes['source:0'].index).toBe(0)
+})

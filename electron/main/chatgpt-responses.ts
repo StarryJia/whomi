@@ -47,10 +47,11 @@ export function createChatgptRunner(accessToken: (accountId: string, signal: Abo
         signal.throwIfAborted()
         if (event.type === 'response.output_text.delta') {
           if (event.delta) { firstTokenMs ??= Date.now() - startedAt; text += event.delta; onText(text) }
-        } else if (event.type === 'response.completed' && event.response.status === 'completed' && text.trim()) {
+        } else if ((event.type === 'response.completed' && event.response.status === 'completed' && text.trim()) ||
+          (event.type === 'response.incomplete' && event.response.incomplete_details?.reason === 'max_output_tokens')) {
           const completedAt = Date.now(), durationMs = completedAt - startedAt
           const usage = event.response.usage, cached = usage?.input_tokens_details?.cached_tokens ?? 0
-          return { text, checkpoint: '', usage: { startedAt, completedAt, durationMs, firstTokenMs,
+          return { ...(event.type === 'response.incomplete' ? { stopReason: 'length' as const } : {}), text, checkpoint: '', usage: { startedAt, completedAt, durationMs, firstTokenMs,
             ...(usage ? { totalInputTokens: usage.input_tokens, inputTokens: Math.max(0, usage.input_tokens - cached),
               cacheReadTokens: cached, outputTokens: usage.output_tokens, outputTokensPerSecond: usage.output_tokens / Math.max(.001, durationMs / 1000) } : { incomplete: true }) } }
         } else if (event.type === 'response.failed') {

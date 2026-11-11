@@ -11,6 +11,7 @@ import { ANALYSIS_PROMPT_VERSION, LEGACY_ANALYSIS_VERSION, LEGACY_MEMORY_VERSION
 import type { MemoryNotes } from '../data/ai/memory-notes'
 import type { SavedReport } from '../../src/shared/memory'
 import { generateMemory } from './memory-generation'
+import { memoryBudget, memoryRecovery, readMemoryCheckpoint } from './memory-recovery'
 import { memorySourcePrompt, memoryMergePrompt, memoryFinalPrompt } from '../data/ai/memory-notes'
 import { scoredSourcePrompt, scoredMergePrompt, scoredFinalPrompt } from '../data/ai/memory-scoring'
 import { analysisBudget, capacityError, planAnalysis, promptBudget, type AnalysisStage } from './analysis-packing'
@@ -22,7 +23,7 @@ type Batch<T = AiReport> = { index: number; messageIds: string[]; report: T; usa
 type AnalysisContext<T = AiReport> = { systemPrompts?: PromptValues; task: AnalysisTask; promptVersion: string; model: AiModel; selfFingerprint: string; messages: SourceMessage[]; batches: Batch<T>[]; checkpoint: string | null }
 type TurnContext = { systemPrompt?: string; turn: AiTurn; conversationId: string; model: AiModel; selfFingerprint: string; references: SourceMessage[]; history: { role: 'user' | 'assistant'; text: string; references?: SourceMessage[] }[]; profile: SavedReport | null; skill: { id: string; version: string; content: string } | null; checkpoint: string | null }
 export type RuntimeInput = { thinkingLevel?: ThinkingLevel; key: string; model: AiModel; apiKey?: string; systemPrompt: string; prompt: string; history?: { role: 'user' | 'assistant'; text: string }[]; checkpoint?: string | null }
-export type RuntimeResult = { text: string; usage: AiUsage; checkpoint: string }
+export type RuntimeResult = { stopReason?: 'length'; text: string; usage: AiUsage; checkpoint: string }
 export type RuntimeRunner = { run(input: RuntimeInput, options: { signal: AbortSignal; onText: (text: string) => void }): Promise<RuntimeResult> }
 export type AiServiceOptions = { storage(method: string, args: unknown[]): Promise<unknown>; runtime: RuntimeRunner; secrets: { encrypt(value: string): string; decrypt(value: string): string }; changed?: (event: AiEvent) => void;
   processing?: (conversationId: string) => Promise<{ settings: ProcessingSettings; members: ProcessingMember[] }>;
@@ -111,6 +112,7 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
     try {
       const result = await options.runtime.run(input, { signal, onText })
       await storage('recordUsage', { ...identity, usage: result.usage })
+      if (result.stopReason === 'length') throw new BoundaryError('MODEL_OUTPUT_LIMIT', stage ? '生成内容超出输出上限，请继续生成或选择更大输出长度的模型。' : '回答未完成，请重试或选择更大输出长度的模型。')
       return result
     } catch (error) {
       const usage = (error as { usage?: AiUsage })?.usage
@@ -152,18 +154,28 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
       const prompts = explained ? memoryPrompts(initial.systemPrompts) : undefined
       const sourceSystem = memory ? (explained ? prompts!.source : scored ? scoredSourcePrompt : memorySourcePrompt) : analysisSystem
       const emptyPayload = memory ? { messages: [], knownEvents: [] } : { self: initial.selfFingerprint, messages: [] }
-      const sourceBudget = promptBudget(initial.model, sourceSystem)
-      const { plan, checkpoint, legacySummary } = planAnalysis(initial, processor, sourceBudget, emptyPayload)
-      await saveAnalysis(id, { state: 'running', error: undefined, checkpoint })
+      const recovered = memory ? readMemoryCheckpoint(initial.checkpoint) : undefined
+      const inputBudget = promptBudget(initial.model, sourceSystem)
+      const sourceBudget = recovered?.sourceBudget ?? (memory && !initial.checkpoint && !initial.batches.length ? memoryBudget(initial.model, inputBudget) : inputBudget)
+      const planning = recovered ? { ...initial, checkpoint: recovered.layout, batches: initial.batches.filter(batch => batch.index < recovered.sourceCount) } : initial
+      const { plan, checkpoint, legacySummary } = planAnalysis(planning, processor, sourceBudget, emptyPayload)
+      const recovery = memory ? memoryRecovery(recovered ?? {
+        format: 'memory-adaptive-v1', layout: checkpoint, sourceBudget, sourceCount: plan.length,
+        outputBudget: !initial.checkpoint && !initial.batches.length ? memoryBudget(initial.model, Infinity) : undefined,
+        nextIndex: Math.max(plan.length, ...initial.batches.map(batch => batch.index + 1)),
+        legacyEnd: Math.max(-1, ...initial.batches.map(batch => batch.index)), nodes: {},
+      }, async checkpoint => { await saveAnalysis(id, { checkpoint }) }) : undefined
+      await saveAnalysis(id, { state: 'running', error: undefined, checkpoint: recovery ? JSON.stringify(recovery.state) : checkpoint })
       if (!plan.length) throw new BoundaryError('NO_ANALYZABLE_MESSAGES', '没有可分析的消息，请调整消息处理设置。')
       if (memory) {
         const mergeCapacity = promptBudget(initial.model, prompts?.merge ?? (scored ? scoredMergePrompt : memoryMergePrompt))
         const finalCapacity = promptBudget(initial.model, prompts?.final ?? (scored ? scoredFinalPrompt : memoryFinalPrompt))
         // 旧任务的归并节点按当时的共同预算编号，续跑须保持同一分组。
         const oldBudget = legacySummary ? analysisBudget(initial.model) : Math.min(mergeCapacity, finalCapacity)
-        const budget = initial.systemPrompts ? finalCapacity : oldBudget
-        const mergeBudget = initial.systemPrompts ? mergeCapacity : oldBudget
-        const report = await generateMemory({ plan, saved: initial.batches as Batch<MemoryNotes>[], source: initial.messages, budget, mergeBudget, sourceBudget, clean: processor?.data, signal, scored, explained, prompts,
+        const outputBudget = recovery?.state.outputBudget ?? Infinity
+        const budget = Math.min(initial.systemPrompts ? finalCapacity : oldBudget, outputBudget)
+        const mergeBudget = Math.min(initial.systemPrompts ? mergeCapacity : oldBudget, outputBudget)
+        const report = await generateMemory({ recovery, plan, saved: initial.batches as Batch<MemoryNotes>[], source: initial.messages, budget, mergeBudget, sourceBudget, clean: processor?.data, signal, scored, explained, prompts,
           summarizing: async () => { await saveAnalysis(id, { state: 'summarizing' }) },
           request: (index, systemPrompt, payload, stage) => schedule(0, async () => {
             const { model } = await storage<AnalysisContext>('analysisContext', id)

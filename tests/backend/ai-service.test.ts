@@ -269,3 +269,16 @@ test('connection testing rejects an input limit too small for its test prompt be
   await expect(service.testModel(model.id)).rejects.toMatchObject({ code: 'CONTEXT_TOO_LARGE', action: expect.stringContaining('最大输入长度') })
   expect(requests).toBe(0)
 })
+
+
+test.each(['半句', ''])('length-limited dialogue remains failed and retryable without committing a checkpoint: %s', async text => {
+  const state = turnStorage()
+  const service = createAiService({ storage: state.storage, runtime: { run: async (_input, options) => {
+    options.onText(text)
+    return { text, stopReason: 'length', usage: { outputTokens: 1000 }, checkpoint: 'must-not-commit' }
+  } }, secrets: { encrypt: String, decrypt: String } })
+  await service.sendTurn({ threadId: '1', requestId: 'request', prompt: '问题', referenceIds: [], modelId: 'm' })
+  await service.idle()
+  expect(state.turn).toMatchObject({ state: 'failed', text })
+  expect(state.turn).not.toHaveProperty('checkpoint', 'must-not-commit')
+})
