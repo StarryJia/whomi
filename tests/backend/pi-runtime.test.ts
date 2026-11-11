@@ -173,4 +173,13 @@ describe('Pi runtime over a controlled OpenAI compatible service', () => {
     await expect(new PiRuntime(directory).run(input(model), options())).rejects.toMatchObject({ code: 'MODEL_REQUEST_FAILED', usage: { inputTokens: 8, outputTokens: 2 } })
     expect(requests).toHaveLength(1)
   }, 20000)
+  it('marks length-limited output explicitly while retaining partial text and actual usage', async () => {
+    answer = response => {
+      response.writeHead(200, { 'Content-Type': 'text/event-stream' })
+      response.end(`data: ${JSON.stringify({ id: 'example', choices: [{ index: 0, delta: { content: '{"events":[' }, finish_reason: 'length' }], usage: { prompt_tokens: 500, completion_tokens: 1000, total_tokens: 1500 } })}\n\ndata: [DONE]\n\n`)
+    }
+    const result = await new PiRuntime(directory).run(input(model), options())
+    expect(result).toMatchObject({ stopReason: 'length', text: '{"events":[', usage: { totalInputTokens: 500, outputTokens: 1000 } })
+  }, 20000)
+
 })

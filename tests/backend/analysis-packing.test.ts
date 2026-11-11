@@ -91,7 +91,7 @@ test('old memory summary checkpoints retain their node indices without requestin
   expect(merges).toEqual(['2','3'])
 })
 
-test.each([['source','原文分片'],['merge','事件归并'],['final','文稿撰写']])('service input rejection identifies the %s stage and does not repeat the request', async (stage, label) => {
+test.each([['source','原文分片'],['merge','事件归并'],['final','文稿撰写']])('service input rejection identifies the %s stage and bounds capacity retries', async (stage, label) => {
   const source = messages(3).map(item => ({ ...item, text: 'a'.repeat(1400) }))
   let rejected = 0
   const result = await run(source, [], { ...model, maxInputTokens: 4000 }, false, input => {
@@ -104,7 +104,8 @@ test.each([['source','原文分片'],['merge','事件归并'],['final','文稿�
     }
     return undefined
   })
-  expect(rejected).toBe(1)
+  expect(rejected).toBeGreaterThanOrEqual(1)
+  expect(rejected).toBeLessThanOrEqual(9)
   expect(result.task).toMatchObject({state:'failed',error: expect.stringContaining(label)})
   expect(result.task.error).toContain('模型服务')
   expect(result.task.error).not.toContain('untrusted')
@@ -116,4 +117,65 @@ test('a missing member identifier cannot borrow the preceding author identity th
     source[0], { ...source[1], senderName: source[0].senderName, memberId: null },
   ])
   expect(processed.map(item => [item.isSelf, item.sourceIds])).toEqual([[true,['1']],[false,['2']]])
+})
+
+
+test('a lower output limit reduces initial memory batches even with the same large input window', async () => {
+  const source = messages(400)
+  const large = await run(source, [], { ...model, maxTokens: 8192 })
+  const small = await run(source, [], { ...model, maxTokens: 1024 })
+  expect(small.task.state).toBe('completed')
+  expect(Math.max(...small.requests.map(batch => batch.length))).toBeLessThan(Math.max(...large.requests.map(batch => batch.length)))
+  expect(small.covered.size).toBe(400)
+})
+
+
+test('merge and manuscript material also respect the output-derived budget on new tasks', async () => {
+  const merges: number[] = [], finals: number[] = []
+  const result = await run(messages(400), [], { ...model, maxTokens: 512 }, false, input => {
+    const payload = JSON.parse(input.prompt)
+    if (payload.messages) {
+      const id = payload.messages[0].id
+      return { events: [{ key: id, text: 'a'.repeat(500), evidenceMessageIds: [id], signals: [] }] }
+    }
+    if (input.systemPrompt.includes('压缩共同事件')) {
+      merges.push(Buffer.byteLength(input.prompt))
+      return { groups: payload.events.map((event: {key: string}) => [event.key]), events: payload.events.map((event: {key: string}) => ({ key: event.key, text: '短' })) }
+    }
+    finals.push(Buffer.byteLength(input.prompt))
+    return { groups: payload.events.map((event: {key: string}) => [event.key]), events: [{ key: payload.events[0].key, title: '示例', text: '共同安排。' }], relationship: '一起商量。' }
+  })
+  expect(result.task.state).toBe('completed')
+  expect(merges.length).toBeGreaterThan(0)
+  expect(Math.max(...merges, ...finals)).toBeLessThanOrEqual(2048)
+})
+
+
+test('capacity splitting a merged message sends only identifiers for the text present in each child', async () => {
+  const source = messages(2).map((item, i) => ({ ...item, memberId: '1', senderName: '甲', isSelf: true, text: (i ? 'B' : 'A').repeat(200) }))
+  const accepted: { text: string; ids: string[] }[] = []
+  const result = await run(source, [], model, true, input => {
+    const payload = JSON.parse(input.prompt)
+    if (!payload.messages) return undefined
+    if (payload.messages[0].text.length > 220) throw Object.assign(Error('synthetic capacity'), { code: 'MODEL_CONTEXT_LIMIT' })
+    for (const item of payload.messages) {
+      accepted.push({ text: item.text, ids: item.sourceIds })
+      const expected = [...(item.text.includes('A') ? ['1'] : []), ...(item.text.includes('B') ? ['2'] : [])]
+      expect(item.sourceIds).toEqual(expected)
+    }
+    return { events: [{ key: '示例', text: '共同安排。', evidenceMessageIds: payload.messages[0].sourceIds, signals: [] }] }
+  })
+  expect(result.task.state).toBe('completed')
+  expect(accepted.map(item => item.ids)).toEqual([['1'], ['2']])
+  expect(accepted.map(item => item.text).join('')).toBe('A'.repeat(200) + '\n' + 'B'.repeat(200))
+  expect([...result.covered]).toEqual(['1', '2'])
+})
+
+
+test('merging prepared external messages never mutates their source identifier arrays', () => {
+  const processor = createMessageProcessor({ ...defaultProcessing, anonymize: false, merge: true }, [])
+  const source = messages(2).map(item => ({ ...item, memberId: '1', senderName: '甲', isSelf: true, sourceIds: [item.id] }))
+  const merged = processor.merge(source)
+  expect(merged).toHaveLength(1)
+  expect(source.map(item => item.sourceIds)).toEqual([['1'], ['2']])
 })

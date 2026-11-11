@@ -71,3 +71,12 @@ test('local action errors survive a streaming callback failure',async()=>{
   const runner = createChatgptRunner(async ()=>'synthetic',async()=>stream([{type:'response.output_text.delta',delta:'一'}]))
   await expect(runner.run(input,{signal:new AbortController().signal,onText:()=>{throw local}})).rejects.toBe(local)
 })
+
+
+test('explicit output exhaustion remains distinguishable from other incomplete responses with usage intact', async () => {
+  const runner = createChatgptRunner(async () => 'synthetic', async () => stream([
+    { type: 'response.output_text.delta', delta: '{"events":[' },
+    { type: 'response.incomplete', response: { status: 'incomplete', incomplete_details: { reason: 'max_output_tokens' }, usage: { input_tokens: 500, output_tokens: 512, input_tokens_details: { cached_tokens: 497 } } } },
+  ]))
+  await expect(runner.run(input, { signal: new AbortController().signal, onText() {} })).resolves.toMatchObject({ stopReason: 'length', usage: { totalInputTokens: 500, inputTokens: 3, outputTokens: 512 } })
+})

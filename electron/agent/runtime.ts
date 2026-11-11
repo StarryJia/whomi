@@ -133,7 +133,7 @@ export class PiRuntime {
       const sessionFile = manager.getSessionFile()
       const leafId = manager.getLeafId()
       if (!sessionFile || !leafId) throw failure('SESSION_SAVE_FAILED', '请重试保存对话。')
-      return { text: text || session.getLastAssistantText() || '', usage, checkpoint: JSON.stringify({ sessionFile, leafId }) }
+      return { ...(stopReason === 'length' ? { stopReason: 'length' as const } : {}), text: text || session.getLastAssistantText() || '', usage, checkpoint: JSON.stringify({ sessionFile, leafId }) }
     } catch (error) {
       throw Object.assign(error instanceof Error ? error : failure('MODEL_REQUEST_FAILED', '请检查模型服务后重试。'), { usage: usageSnapshot() })
     } finally {

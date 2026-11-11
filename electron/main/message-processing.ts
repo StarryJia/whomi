@@ -1,6 +1,22 @@
 import type { ProcessingSettings } from '../../src/shared/settings-contract'
 
 export type ProcessingMessage = { id: string; senderName: string; text: string; kind: string; memberId?: string | null; sentAtMs?: number | null; sourceIds?: string[]; isSelf?: boolean }
+type SourceSpan = { id: string; start: number; end: number }
+// 原文边界只供本机缩片使用，不进入模型请求或持久化的正文。
+const sourceSpans = new WeakMap<object, SourceSpan[]>()
+export function sliceProcessingMessage<T extends ProcessingMessage>(message: T, start: number, end = message.text.length): T {
+  const result = { ...message, text: message.text.slice(start, end), ...(message.sourceIds ? { sourceIds: [...message.sourceIds] } : {}) }
+  const spans = sourceSpans.get(message)
+  if (!spans) return result
+  const selected = spans.filter(span => span.start === span.end
+    ? span.start >= start && (span.start < end || end === message.text.length && span.start === end)
+    : span.end > start && span.start < end)
+  sourceSpans.set(result, selected.map(span => ({ id: span.id, start: Math.max(start, span.start) - start, end: Math.min(end, span.end) - start })))
+  result.sourceIds = [...new Set(selected.map(span => span.id))]
+  result.id = result.sourceIds[0] ?? message.id
+  return result
+}
+
 export type ProcessingMember = { id: string; displayName: string }
 function luhn(value: string) {
   let sum = 0
@@ -100,6 +116,7 @@ export function createMessageProcessor(settings: ProcessingSettings, members: re
       if (settings.denoise && (!original.text.trim() || (original.kind === 'system' && /^\[(系统消息|系统占位|空消息)\]$/.test(original.text.trim())))) continue
       const item = { ...original, sourceIds: original.sourceIds ?? [original.id], text: text(settings.clean ? cleanCard(original.text) : original.text),
         senderName: settings.anonymize ? original.memberId ? `U${original.memberId}` : nicknames.get(original.senderName) ?? '成员' : text(original.senderName) }
+      sourceSpans.set(item, item.sourceIds.map(id => ({ id, start: 0, end: item.text.length })))
       result.push(item)
     }
     return result
@@ -115,9 +132,13 @@ export function createMessageProcessor(settings: ProcessingSettings, members: re
         : !!item.memberId && previous?.memberId === item.memberId && previous?.isSelf === item.isSelf
       if (previous && sameSender && item.kind === 'text' && previous.kind === 'text' && bytes + cost <= maxBytes &&
         item.sentAtMs != null && previous.sentAtMs != null && item.sentAtMs >= previous.sentAtMs && item.sentAtMs - previous.sentAtMs <= settings.mergeSeconds * 1000) {
+        const offset = previous.text.length + 1
+        const before = sourceSpans.get(previous), after = sourceSpans.get(item)
+        if (before && after) sourceSpans.set(previous, [...before, ...after.map(span => ({ ...span, start: span.start + offset, end: span.end + offset }))])
+        else sourceSpans.delete(previous)
         previous.text += `\n${item.text}`; previous.sourceIds.push(...item.sourceIds); previous.sentAtMs = item.sentAtMs
         bytes += cost
-      } else { result.push({ ...item, sourceIds: [...item.sourceIds] }); bytes = cost }
+      } else { result.push(sliceProcessingMessage(item, 0)); bytes = cost }
     }
     return result
   }

@@ -201,7 +201,7 @@ export function createAiRepository(store: Store, write: WriterQueue) {
     fields(patch, ['state', 'error', 'usage', 'checkpoint', ...(turn ? ['text'] : [])])
     if (patch.state !== undefined && !states.has(patch.state)) fail('INVALID_STATE')
     if (patch.error !== undefined && (typeof patch.error !== 'string' || patch.error.length > 4096)) fail('INVALID_ARGUMENT')
-    if (patch.checkpoint !== undefined && patch.checkpoint !== null && !text(patch.checkpoint, 32768)) fail('INVALID_ARGUMENT')
+    if (patch.checkpoint !== undefined && patch.checkpoint !== null && !text(patch.checkpoint, turn ? 32768 : 16 * 1024 * 1024)) fail('INVALID_ARGUMENT')
     if (patch.usage !== undefined) usage(patch.usage)
   }
   const repository = {

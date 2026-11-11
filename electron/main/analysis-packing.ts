@@ -1,7 +1,7 @@
 import type { AiModel } from '../../src/shared/ai-contract'
 import { BoundaryError } from '../../src/shared/desktop-validation'
 import { resolveModelLimits } from '../../src/shared/model-limits'
-import type { createMessageProcessor, ProcessingMessage } from './message-processing'
+import { sliceProcessingMessage, type createMessageProcessor, type ProcessingMessage } from './message-processing'
 
 export type SourceMessage = ProcessingMessage & { isSelf: boolean }
 type SourceBatch = { index: number; items: SourceMessage[]; messageIds: string[] }
@@ -61,7 +61,7 @@ function pack(messages: SourceMessage[], space: number, start: number): SourceBa
     let offset = 0
     do {
       let end = Math.min(message.text.length, offset + space)
-      const fragment = (stop: number) => ({ ...message, text: message.text.slice(offset, stop) })
+      const fragment = (stop: number) => sliceProcessingMessage(message, offset, stop)
       if (Buffer.byteLength(JSON.stringify(fragment(end))) > space) {
         let low = offset, high = end
         while (low < high) {
@@ -119,7 +119,7 @@ export function planAnalysis(input: { model: AiModel; messages: SourceMessage[];
       remaining = remaining.flatMap(item => {
         if (!consumed || !groupIds.has(item.id)) return [item]
         if (consumed < item.text.length) {
-          const suffix = { ...item, text: item.text.slice(consumed) }
+          const suffix = sliceProcessingMessage(item, consumed)
           consumed = 0
           return [suffix]
         }

@@ -28,10 +28,10 @@ export function cherryAccountRunner(provider: CherrySubscription, access: (id: s
       text += delta
       onText(text)
     }
-    function finish(inputTokens?: number,outputTokens?: number): RuntimeResult {
-      if (!text.trim()) throw new BoundaryError('ACCOUNT_INCOMPLETE','未收到完整回答，请重试。')
+    function finish(inputTokens?: number,outputTokens?: number, limited = false): RuntimeResult {
+      if (!text.trim() && !limited) throw new BoundaryError('ACCOUNT_INCOMPLETE','未收到完整回答，请重试。')
       const completedAt=Date.now(),durationMs=completedAt-startedAt
-      return {text,checkpoint:'',usage:{startedAt,completedAt,durationMs,firstTokenMs,
+      return {...(limited ? {stopReason:'length' as const} : {}),text,checkpoint:'',usage:{startedAt,completedAt,durationMs,firstTokenMs,
         ...(inputTokens !== undefined && outputTokens !== undefined ? {inputTokens,totalInputTokens:inputTokens,outputTokens,outputTokensPerSecond:outputTokens/Math.max(.001,durationMs/1000)} : {incomplete:true})}}
     }
     try {
@@ -41,20 +41,21 @@ export function cherryAccountRunner(provider: CherrySubscription, access: (id: s
         for await (const event of events) {
           if (event.type==='response.output_text.delta') append(event.delta)
           else if (event.type==='response.completed' && event.response.status==='completed') return finish(event.response.usage?.input_tokens,event.response.usage?.output_tokens)
+          else if (event.type==='response.incomplete' && event.response.incomplete_details?.reason==='max_output_tokens') return finish(event.response.usage?.input_tokens,event.response.usage?.output_tokens,true)
           else if ((event.type==='response.failed' && isContextLimitCode(event.response.error?.code)) || (event.type==='error' && isContextLimitCode(event.code))) throw modelContextLimit()
           else if (event.type==='response.failed' || event.type==='response.incomplete' || event.type==='error') break
         }
       } else {
         const events = await client.chat.completions.create({model:model.model,stream:true,stream_options:{include_usage:true},
           messages:[{role:'system',content:input.systemPrompt},...messages]},{signal})
-        let complete=false, usage: OpenAI.CompletionUsage | null | undefined
+        let complete=false, limited=false, usage: OpenAI.CompletionUsage | null | undefined
         for await (const event of events) {
           const choice=event.choices[0]
           if (choice?.delta?.content) append(choice.delta.content)
-          if (choice?.finish_reason) complete=choice.finish_reason==='stop'
+          if (choice?.finish_reason) { complete=choice.finish_reason==='stop'; limited=choice.finish_reason==='length' }
           usage=event.usage ?? usage
         }
-        if (complete && !signal.aborted) return finish(usage?.prompt_tokens,usage?.completion_tokens)
+        if ((complete || limited) && !signal.aborted) return finish(usage?.prompt_tokens,usage?.completion_tokens,limited)
       }
     } catch(error) {
       if (signal.aborted) throw signal.reason
