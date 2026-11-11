@@ -1,0 +1,3701 @@
+{
+  "revision": "hongloumeng-v1",
+  "fictional": true,
+  "format": {
+    "name": "ChatLab JSON",
+    "version": "0.0.2"
+  },
+  "source": {
+    "path": "docs/designs/whomi-hongloumeng-demo-dialogues.md",
+    "sha256": "17aaf0817a5a2b8214720ea40bfdfa5a48d4899bd06dc218f666171c91a58491"
+  },
+  "self": {
+    "name": "贾宝玉",
+    "platformId": "whomi-fiction-hongloumeng-jiabaoyu"
+  },
+  "timeline": {
+    "fictional": true,
+    "timezone": "Asia/Shanghai",
+    "messageIntervalSeconds": 45,
+    "note": "日期仅用于按剧本总顺序排序，不是原著日期。27 个片段不等于 27 个独立事件；日期和片段数均不能用来统计独立事件。"
+  },
+  "totals": {
+    "conversations": 3,
+    "segments": 27,
+    "messages": 560
+  },
+  "files": [
+    {
+      "path": "conversations/lindaiyu.chatlab.json",
+      "sha256": "55ec6d041162dddc7763a63ab8e7d22d5f283cf4804fbe469259cd2e8b6cfb8b",
+      "peer": {
+        "name": "林黛玉",
+        "platformId": "whomi-fiction-hongloumeng-lindaiyu"
+      },
+      "conversationId": "whomi-fiction-hongloumeng-jiabaoyu-lindaiyu",
+      "messages": 195,
+      "selfMessages": 95,
+      "peerMessages": 100,
+      "segments": [
+        {
+          "sourceId": "黛01",
+          "title": "落花往哪里去",
+          "totalOrder": 7,
+          "sourceHeadingLine": 9,
+          "sourceContextLine": 11,
+          "fictionalStart": "2026-01-20T14:00:00+08:00",
+          "messages": [
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai01-001",
+              "messageIndex": 0,
+              "sourceLine": 13,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai01-002",
+              "messageIndex": 1,
+              "sourceLine": 15,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai01-003",
+              "messageIndex": 2,
+              "sourceLine": 17,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai01-004",
+              "messageIndex": 3,
+              "sourceLine": 19,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai01-005",
+              "messageIndex": 4,
+              "sourceLine": 21,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai01-006",
+              "messageIndex": 5,
+              "sourceLine": 23,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai01-007",
+              "messageIndex": 6,
+              "sourceLine": 25,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai01-008",
+              "messageIndex": 7,
+              "sourceLine": 27,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai01-009",
+              "messageIndex": 8,
+              "sourceLine": 29,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai01-010",
+              "messageIndex": 9,
+              "sourceLine": 31,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai01-011",
+              "messageIndex": 10,
+              "sourceLine": 33,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai01-012",
+              "messageIndex": 11,
+              "sourceLine": 35,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai01-013",
+              "messageIndex": 12,
+              "sourceLine": 37,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai01-014",
+              "messageIndex": 13,
+              "sourceLine": 39,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai01-015",
+              "messageIndex": 14,
+              "sourceLine": 41,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai01-016",
+              "messageIndex": 15,
+              "sourceLine": 43,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai01-017",
+              "messageIndex": 16,
+              "sourceLine": 45,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai01-018",
+              "messageIndex": 17,
+              "sourceLine": 47,
+              "sourceSpeaker": "黛玉"
+            }
+          ]
+        },
+        {
+          "sourceId": "黛02",
+          "title": "那几页书",
+          "totalOrder": 8,
+          "sourceHeadingLine": 49,
+          "sourceContextLine": 51,
+          "fictionalStart": "2026-01-20T14:30:00+08:00",
+          "messages": [
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai02-001",
+              "messageIndex": 18,
+              "sourceLine": 53,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai02-002",
+              "messageIndex": 19,
+              "sourceLine": 55,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai02-003",
+              "messageIndex": 20,
+              "sourceLine": 57,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai02-004",
+              "messageIndex": 21,
+              "sourceLine": 59,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai02-005",
+              "messageIndex": 22,
+              "sourceLine": 61,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai02-006",
+              "messageIndex": 23,
+              "sourceLine": 63,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai02-007",
+              "messageIndex": 24,
+              "sourceLine": 65,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai02-008",
+              "messageIndex": 25,
+              "sourceLine": 67,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai02-009",
+              "messageIndex": 26,
+              "sourceLine": 69,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai02-010",
+              "messageIndex": 27,
+              "sourceLine": 71,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai02-011",
+              "messageIndex": 28,
+              "sourceLine": 73,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai02-012",
+              "messageIndex": 29,
+              "sourceLine": 75,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai02-013",
+              "messageIndex": 30,
+              "sourceLine": 77,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai02-014",
+              "messageIndex": 31,
+              "sourceLine": 79,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai02-015",
+              "messageIndex": 32,
+              "sourceLine": 81,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai02-016",
+              "messageIndex": 33,
+              "sourceLine": 83,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai02-017",
+              "messageIndex": 34,
+              "sourceLine": 85,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai02-018",
+              "messageIndex": 35,
+              "sourceLine": 87,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai02-019",
+              "messageIndex": 36,
+              "sourceLine": 89,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai02-020",
+              "messageIndex": 37,
+              "sourceLine": 91,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai02-021",
+              "messageIndex": 38,
+              "sourceLine": 93,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai02-022",
+              "messageIndex": 39,
+              "sourceLine": 95,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai02-023",
+              "messageIndex": 40,
+              "sourceLine": 97,
+              "sourceSpeaker": "黛玉"
+            }
+          ]
+        },
+        {
+          "sourceId": "黛03",
+          "title": "书页里的一片花",
+          "totalOrder": 9,
+          "sourceHeadingLine": 99,
+          "sourceContextLine": 101,
+          "fictionalStart": "2026-01-22T16:00:00+08:00",
+          "messages": [
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai03-001",
+              "messageIndex": 41,
+              "sourceLine": 103,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai03-002",
+              "messageIndex": 42,
+              "sourceLine": 105,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai03-003",
+              "messageIndex": 43,
+              "sourceLine": 107,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai03-004",
+              "messageIndex": 44,
+              "sourceLine": 109,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai03-005",
+              "messageIndex": 45,
+              "sourceLine": 111,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai03-006",
+              "messageIndex": 46,
+              "sourceLine": 113,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai03-007",
+              "messageIndex": 47,
+              "sourceLine": 115,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai03-008",
+              "messageIndex": 48,
+              "sourceLine": 117,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai03-009",
+              "messageIndex": 49,
+              "sourceLine": 119,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai03-010",
+              "messageIndex": 50,
+              "sourceLine": 121,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai03-011",
+              "messageIndex": 51,
+              "sourceLine": 123,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai03-012",
+              "messageIndex": 52,
+              "sourceLine": 125,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai03-013",
+              "messageIndex": 53,
+              "sourceLine": 127,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai03-014",
+              "messageIndex": 54,
+              "sourceLine": 129,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai03-015",
+              "messageIndex": 55,
+              "sourceLine": 131,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai03-016",
+              "messageIndex": 56,
+              "sourceLine": 133,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai03-017",
+              "messageIndex": 57,
+              "sourceLine": 135,
+              "sourceSpeaker": "黛玉"
+            }
+          ]
+        },
+        {
+          "sourceId": "黛04",
+          "title": "那道没开的门",
+          "totalOrder": 11,
+          "sourceHeadingLine": 137,
+          "sourceContextLine": 139,
+          "fictionalStart": "2026-02-02T10:00:00+08:00",
+          "messages": [
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai04-001",
+              "messageIndex": 58,
+              "sourceLine": 141,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai04-002",
+              "messageIndex": 59,
+              "sourceLine": 143,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai04-003",
+              "messageIndex": 60,
+              "sourceLine": 145,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai04-004",
+              "messageIndex": 61,
+              "sourceLine": 147,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai04-005",
+              "messageIndex": 62,
+              "sourceLine": 149,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai04-006",
+              "messageIndex": 63,
+              "sourceLine": 151,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai04-007",
+              "messageIndex": 64,
+              "sourceLine": 153,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai04-008",
+              "messageIndex": 65,
+              "sourceLine": 155,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai04-009",
+              "messageIndex": 66,
+              "sourceLine": 157,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai04-010",
+              "messageIndex": 67,
+              "sourceLine": 159,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai04-011",
+              "messageIndex": 68,
+              "sourceLine": 161,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai04-012",
+              "messageIndex": 69,
+              "sourceLine": 163,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai04-013",
+              "messageIndex": 70,
+              "sourceLine": 165,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai04-014",
+              "messageIndex": 71,
+              "sourceLine": 167,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai04-015",
+              "messageIndex": 72,
+              "sourceLine": 169,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai04-016",
+              "messageIndex": 73,
+              "sourceLine": 171,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai04-017",
+              "messageIndex": 74,
+              "sourceLine": 173,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai04-018",
+              "messageIndex": 75,
+              "sourceLine": 175,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai04-019",
+              "messageIndex": 76,
+              "sourceLine": 177,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai04-020",
+              "messageIndex": 77,
+              "sourceLine": 179,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai04-021",
+              "messageIndex": 78,
+              "sourceLine": 181,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai04-022",
+              "messageIndex": 79,
+              "sourceLine": 183,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai04-023",
+              "messageIndex": 80,
+              "sourceLine": 185,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai04-024",
+              "messageIndex": 81,
+              "sourceLine": 187,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai04-025",
+              "messageIndex": 82,
+              "sourceLine": 189,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai04-026",
+              "messageIndex": 83,
+              "sourceLine": 191,
+              "sourceSpeaker": "黛玉"
+            }
+          ]
+        },
+        {
+          "sourceId": "黛05",
+          "title": "过一会儿就好了",
+          "totalOrder": 13,
+          "sourceHeadingLine": 193,
+          "sourceContextLine": 195,
+          "fictionalStart": "2026-02-02T13:00:00+08:00",
+          "messages": [
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai05-001",
+              "messageIndex": 84,
+              "sourceLine": 197,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai05-002",
+              "messageIndex": 85,
+              "sourceLine": 199,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai05-003",
+              "messageIndex": 86,
+              "sourceLine": 201,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai05-004",
+              "messageIndex": 87,
+              "sourceLine": 203,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai05-005",
+              "messageIndex": 88,
+              "sourceLine": 205,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai05-006",
+              "messageIndex": 89,
+              "sourceLine": 207,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai05-007",
+              "messageIndex": 90,
+              "sourceLine": 209,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai05-008",
+              "messageIndex": 91,
+              "sourceLine": 211,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai05-009",
+              "messageIndex": 92,
+              "sourceLine": 213,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai05-010",
+              "messageIndex": 93,
+              "sourceLine": 215,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai05-011",
+              "messageIndex": 94,
+              "sourceLine": 217,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai05-012",
+              "messageIndex": 95,
+              "sourceLine": 219,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai05-013",
+              "messageIndex": 96,
+              "sourceLine": 221,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai05-014",
+              "messageIndex": 97,
+              "sourceLine": 223,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai05-015",
+              "messageIndex": 98,
+              "sourceLine": 225,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai05-016",
+              "messageIndex": 99,
+              "sourceLine": 227,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai05-017",
+              "messageIndex": 100,
+              "sourceLine": 229,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai05-018",
+              "messageIndex": 101,
+              "sourceLine": 231,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai05-019",
+              "messageIndex": 102,
+              "sourceLine": 233,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai05-020",
+              "messageIndex": 103,
+              "sourceLine": 235,
+              "sourceSpeaker": "黛玉"
+            }
+          ]
+        },
+        {
+          "sourceId": "黛06",
+          "title": "你放心",
+          "totalOrder": 16,
+          "sourceHeadingLine": 237,
+          "sourceContextLine": 239,
+          "fictionalStart": "2026-02-08T14:00:00+08:00",
+          "messages": [
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai06-001",
+              "messageIndex": 104,
+              "sourceLine": 241,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai06-002",
+              "messageIndex": 105,
+              "sourceLine": 243,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai06-003",
+              "messageIndex": 106,
+              "sourceLine": 245,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai06-004",
+              "messageIndex": 107,
+              "sourceLine": 247,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai06-005",
+              "messageIndex": 108,
+              "sourceLine": 249,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai06-006",
+              "messageIndex": 109,
+              "sourceLine": 251,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai06-007",
+              "messageIndex": 110,
+              "sourceLine": 253,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai06-008",
+              "messageIndex": 111,
+              "sourceLine": 255,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai06-009",
+              "messageIndex": 112,
+              "sourceLine": 257,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai06-010",
+              "messageIndex": 113,
+              "sourceLine": 259,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai06-011",
+              "messageIndex": 114,
+              "sourceLine": 261,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai06-012",
+              "messageIndex": 115,
+              "sourceLine": 263,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai06-013",
+              "messageIndex": 116,
+              "sourceLine": 265,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai06-014",
+              "messageIndex": 117,
+              "sourceLine": 267,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai06-015",
+              "messageIndex": 118,
+              "sourceLine": 269,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai06-016",
+              "messageIndex": 119,
+              "sourceLine": 271,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai06-017",
+              "messageIndex": 120,
+              "sourceLine": 273,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai06-018",
+              "messageIndex": 121,
+              "sourceLine": 275,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai06-019",
+              "messageIndex": 122,
+              "sourceLine": 277,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai06-020",
+              "messageIndex": 123,
+              "sourceLine": 279,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai06-021",
+              "messageIndex": 124,
+              "sourceLine": 281,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai06-022",
+              "messageIndex": 125,
+              "sourceLine": 283,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai06-023",
+              "messageIndex": 126,
+              "sourceLine": 285,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai06-024",
+              "messageIndex": 127,
+              "sourceLine": 287,
+              "sourceSpeaker": "黛玉"
+            }
+          ]
+        },
+        {
+          "sourceId": "黛07",
+          "title": "说是不疼",
+          "totalOrder": 20,
+          "sourceHeadingLine": 289,
+          "sourceContextLine": 291,
+          "fictionalStart": "2026-02-10T15:00:00+08:00",
+          "messages": [
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai07-001",
+              "messageIndex": 128,
+              "sourceLine": 293,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai07-002",
+              "messageIndex": 129,
+              "sourceLine": 295,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai07-003",
+              "messageIndex": 130,
+              "sourceLine": 297,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai07-004",
+              "messageIndex": 131,
+              "sourceLine": 299,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai07-005",
+              "messageIndex": 132,
+              "sourceLine": 301,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai07-006",
+              "messageIndex": 133,
+              "sourceLine": 303,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai07-007",
+              "messageIndex": 134,
+              "sourceLine": 305,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai07-008",
+              "messageIndex": 135,
+              "sourceLine": 307,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai07-009",
+              "messageIndex": 136,
+              "sourceLine": 309,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai07-010",
+              "messageIndex": 137,
+              "sourceLine": 311,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai07-011",
+              "messageIndex": 138,
+              "sourceLine": 313,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai07-012",
+              "messageIndex": 139,
+              "sourceLine": 315,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai07-013",
+              "messageIndex": 140,
+              "sourceLine": 317,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai07-014",
+              "messageIndex": 141,
+              "sourceLine": 319,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai07-015",
+              "messageIndex": 142,
+              "sourceLine": 321,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai07-016",
+              "messageIndex": 143,
+              "sourceLine": 323,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai07-017",
+              "messageIndex": 144,
+              "sourceLine": 325,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai07-018",
+              "messageIndex": 145,
+              "sourceLine": 327,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai07-019",
+              "messageIndex": 146,
+              "sourceLine": 329,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai07-020",
+              "messageIndex": 147,
+              "sourceLine": 331,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai07-021",
+              "messageIndex": 148,
+              "sourceLine": 333,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai07-022",
+              "messageIndex": 149,
+              "sourceLine": 335,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai07-023",
+              "messageIndex": 150,
+              "sourceLine": 337,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai07-024",
+              "messageIndex": 151,
+              "sourceLine": 339,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai07-025",
+              "messageIndex": 152,
+              "sourceLine": 341,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai07-026",
+              "messageIndex": 153,
+              "sourceLine": 343,
+              "sourceSpeaker": "黛玉"
+            }
+          ]
+        },
+        {
+          "sourceId": "黛08",
+          "title": "两方旧帕",
+          "totalOrder": 22,
+          "sourceHeadingLine": 345,
+          "sourceContextLine": 347,
+          "fictionalStart": "2026-02-10T19:30:00+08:00",
+          "messages": [
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai08-001",
+              "messageIndex": 154,
+              "sourceLine": 349,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai08-002",
+              "messageIndex": 155,
+              "sourceLine": 351,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai08-003",
+              "messageIndex": 156,
+              "sourceLine": 353,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai08-004",
+              "messageIndex": 157,
+              "sourceLine": 355,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai08-005",
+              "messageIndex": 158,
+              "sourceLine": 357,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai08-006",
+              "messageIndex": 159,
+              "sourceLine": 359,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai08-007",
+              "messageIndex": 160,
+              "sourceLine": 361,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai08-008",
+              "messageIndex": 161,
+              "sourceLine": 363,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai08-009",
+              "messageIndex": 162,
+              "sourceLine": 365,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai08-010",
+              "messageIndex": 163,
+              "sourceLine": 367,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai08-011",
+              "messageIndex": 164,
+              "sourceLine": 369,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai08-012",
+              "messageIndex": 165,
+              "sourceLine": 371,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai08-013",
+              "messageIndex": 166,
+              "sourceLine": 373,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai08-014",
+              "messageIndex": 167,
+              "sourceLine": 375,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai08-015",
+              "messageIndex": 168,
+              "sourceLine": 377,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai08-016",
+              "messageIndex": 169,
+              "sourceLine": 379,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai08-017",
+              "messageIndex": 170,
+              "sourceLine": 381,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai08-018",
+              "messageIndex": 171,
+              "sourceLine": 383,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai08-019",
+              "messageIndex": 172,
+              "sourceLine": 385,
+              "sourceSpeaker": "黛玉"
+            }
+          ]
+        },
+        {
+          "sourceId": "黛09",
+          "title": "人已经来了",
+          "totalOrder": 26,
+          "sourceHeadingLine": 387,
+          "sourceContextLine": 389,
+          "fictionalStart": "2026-02-11T15:00:00+08:00",
+          "messages": [
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai09-001",
+              "messageIndex": 173,
+              "sourceLine": 391,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai09-002",
+              "messageIndex": 174,
+              "sourceLine": 393,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai09-003",
+              "messageIndex": 175,
+              "sourceLine": 395,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai09-004",
+              "messageIndex": 176,
+              "sourceLine": 397,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai09-005",
+              "messageIndex": 177,
+              "sourceLine": 399,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai09-006",
+              "messageIndex": 178,
+              "sourceLine": 401,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai09-007",
+              "messageIndex": 179,
+              "sourceLine": 403,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai09-008",
+              "messageIndex": 180,
+              "sourceLine": 405,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai09-009",
+              "messageIndex": 181,
+              "sourceLine": 407,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai09-010",
+              "messageIndex": 182,
+              "sourceLine": 409,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai09-011",
+              "messageIndex": 183,
+              "sourceLine": 411,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai09-012",
+              "messageIndex": 184,
+              "sourceLine": 413,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai09-013",
+              "messageIndex": 185,
+              "sourceLine": 415,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai09-014",
+              "messageIndex": 186,
+              "sourceLine": 417,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai09-015",
+              "messageIndex": 187,
+              "sourceLine": 419,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai09-016",
+              "messageIndex": 188,
+              "sourceLine": 421,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai09-017",
+              "messageIndex": 189,
+              "sourceLine": 423,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai09-018",
+              "messageIndex": 190,
+              "sourceLine": 425,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai09-019",
+              "messageIndex": 191,
+              "sourceLine": 427,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai09-020",
+              "messageIndex": 192,
+              "sourceLine": 429,
+              "sourceSpeaker": "黛玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai09-021",
+              "messageIndex": 193,
+              "sourceLine": 431,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-dai09-022",
+              "messageIndex": 194,
+              "sourceLine": 433,
+              "sourceSpeaker": "黛玉"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "conversations/xuebaochai.chatlab.json",
+      "sha256": "117825b0d01cf7b2318a3e4865a793d1da5bcbe54edb7af4daed8c72aa6fcf55",
+      "peer": {
+        "name": "薛宝钗",
+        "platformId": "whomi-fiction-hongloumeng-xuebaochai"
+      },
+      "conversationId": "whomi-fiction-hongloumeng-jiabaoyu-xuebaochai",
+      "messages": 155,
+      "selfMessages": 77,
+      "peerMessages": 78,
+      "segments": [
+        {
+          "sourceId": "钗01",
+          "title": "热闹里的一句词",
+          "totalOrder": 5,
+          "sourceHeadingLine": 437,
+          "sourceContextLine": 439,
+          "fictionalStart": "2026-01-10T13:00:00+08:00",
+          "messages": [
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai01-001",
+              "messageIndex": 0,
+              "sourceLine": 441,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai01-002",
+              "messageIndex": 1,
+              "sourceLine": 443,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai01-003",
+              "messageIndex": 2,
+              "sourceLine": 445,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai01-004",
+              "messageIndex": 3,
+              "sourceLine": 447,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai01-005",
+              "messageIndex": 4,
+              "sourceLine": 449,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai01-006",
+              "messageIndex": 5,
+              "sourceLine": 451,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai01-007",
+              "messageIndex": 6,
+              "sourceLine": 453,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai01-008",
+              "messageIndex": 7,
+              "sourceLine": 455,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai01-009",
+              "messageIndex": 8,
+              "sourceLine": 457,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai01-010",
+              "messageIndex": 9,
+              "sourceLine": 459,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai01-011",
+              "messageIndex": 10,
+              "sourceLine": 461,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai01-012",
+              "messageIndex": 11,
+              "sourceLine": 463,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai01-013",
+              "messageIndex": 12,
+              "sourceLine": 465,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai01-014",
+              "messageIndex": 13,
+              "sourceLine": 467,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai01-015",
+              "messageIndex": 14,
+              "sourceLine": 469,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai01-016",
+              "messageIndex": 15,
+              "sourceLine": 471,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai01-017",
+              "messageIndex": 16,
+              "sourceLine": 473,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai01-018",
+              "messageIndex": 17,
+              "sourceLine": 475,
+              "sourceSpeaker": "宝钗"
+            }
+          ]
+        },
+        {
+          "sourceId": "钗02",
+          "title": "夹在书里的字",
+          "totalOrder": 6,
+          "sourceHeadingLine": 477,
+          "sourceContextLine": 479,
+          "fictionalStart": "2026-01-12T10:00:00+08:00",
+          "messages": [
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai02-001",
+              "messageIndex": 18,
+              "sourceLine": 481,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai02-002",
+              "messageIndex": 19,
+              "sourceLine": 483,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai02-003",
+              "messageIndex": 20,
+              "sourceLine": 485,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai02-004",
+              "messageIndex": 21,
+              "sourceLine": 487,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai02-005",
+              "messageIndex": 22,
+              "sourceLine": 489,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai02-006",
+              "messageIndex": 23,
+              "sourceLine": 491,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai02-007",
+              "messageIndex": 24,
+              "sourceLine": 493,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai02-008",
+              "messageIndex": 25,
+              "sourceLine": 495,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai02-009",
+              "messageIndex": 26,
+              "sourceLine": 497,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai02-010",
+              "messageIndex": 27,
+              "sourceLine": 499,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai02-011",
+              "messageIndex": 28,
+              "sourceLine": 501,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai02-012",
+              "messageIndex": 29,
+              "sourceLine": 503,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai02-013",
+              "messageIndex": 30,
+              "sourceLine": 505,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai02-014",
+              "messageIndex": 31,
+              "sourceLine": 507,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai02-015",
+              "messageIndex": 32,
+              "sourceLine": 509,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai02-016",
+              "messageIndex": 33,
+              "sourceLine": 511,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai02-017",
+              "messageIndex": 34,
+              "sourceLine": 513,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai02-018",
+              "messageIndex": 35,
+              "sourceLine": 515,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai02-019",
+              "messageIndex": 36,
+              "sourceLine": 517,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai02-020",
+              "messageIndex": 37,
+              "sourceLine": 519,
+              "sourceSpeaker": "宝钗"
+            }
+          ]
+        },
+        {
+          "sourceId": "钗03",
+          "title": "你怎么不替我说一句",
+          "totalOrder": 12,
+          "sourceHeadingLine": 521,
+          "sourceContextLine": 523,
+          "fictionalStart": "2026-02-02T11:30:00+08:00",
+          "messages": [
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai03-001",
+              "messageIndex": 38,
+              "sourceLine": 525,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai03-002",
+              "messageIndex": 39,
+              "sourceLine": 527,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai03-003",
+              "messageIndex": 40,
+              "sourceLine": 529,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai03-004",
+              "messageIndex": 41,
+              "sourceLine": 531,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai03-005",
+              "messageIndex": 42,
+              "sourceLine": 533,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai03-006",
+              "messageIndex": 43,
+              "sourceLine": 535,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai03-007",
+              "messageIndex": 44,
+              "sourceLine": 537,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai03-008",
+              "messageIndex": 45,
+              "sourceLine": 539,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai03-009",
+              "messageIndex": 46,
+              "sourceLine": 541,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai03-010",
+              "messageIndex": 47,
+              "sourceLine": 543,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai03-011",
+              "messageIndex": 48,
+              "sourceLine": 545,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai03-012",
+              "messageIndex": 49,
+              "sourceLine": 547,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai03-013",
+              "messageIndex": 50,
+              "sourceLine": 549,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai03-014",
+              "messageIndex": 51,
+              "sourceLine": 551,
+              "sourceSpeaker": "宝钗"
+            }
+          ]
+        },
+        {
+          "sourceId": "钗04",
+          "title": "没等说完",
+          "totalOrder": 14,
+          "sourceHeadingLine": 553,
+          "sourceContextLine": 555,
+          "fictionalStart": "2026-02-05T10:00:00+08:00",
+          "messages": [
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai04-001",
+              "messageIndex": 52,
+              "sourceLine": 557,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai04-002",
+              "messageIndex": 53,
+              "sourceLine": 559,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai04-003",
+              "messageIndex": 54,
+              "sourceLine": 561,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai04-004",
+              "messageIndex": 55,
+              "sourceLine": 563,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai04-005",
+              "messageIndex": 56,
+              "sourceLine": 565,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai04-006",
+              "messageIndex": 57,
+              "sourceLine": 567,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai04-007",
+              "messageIndex": 58,
+              "sourceLine": 569,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai04-008",
+              "messageIndex": 59,
+              "sourceLine": 571,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai04-009",
+              "messageIndex": 60,
+              "sourceLine": 573,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai04-010",
+              "messageIndex": 61,
+              "sourceLine": 575,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai04-011",
+              "messageIndex": 62,
+              "sourceLine": 577,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai04-012",
+              "messageIndex": 63,
+              "sourceLine": 579,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai04-013",
+              "messageIndex": 64,
+              "sourceLine": 581,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai04-014",
+              "messageIndex": 65,
+              "sourceLine": 583,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai04-015",
+              "messageIndex": 66,
+              "sourceLine": 585,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai04-016",
+              "messageIndex": 67,
+              "sourceLine": 587,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai04-017",
+              "messageIndex": 68,
+              "sourceLine": 589,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai04-018",
+              "messageIndex": 69,
+              "sourceLine": 591,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai04-019",
+              "messageIndex": 70,
+              "sourceLine": 593,
+              "sourceSpeaker": "宝钗"
+            }
+          ]
+        },
+        {
+          "sourceId": "钗05",
+          "title": "曲子还抄不抄",
+          "totalOrder": 15,
+          "sourceHeadingLine": 595,
+          "sourceContextLine": 597,
+          "fictionalStart": "2026-02-06T10:00:00+08:00",
+          "messages": [
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai05-001",
+              "messageIndex": 71,
+              "sourceLine": 599,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai05-002",
+              "messageIndex": 72,
+              "sourceLine": 601,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai05-003",
+              "messageIndex": 73,
+              "sourceLine": 603,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai05-004",
+              "messageIndex": 74,
+              "sourceLine": 605,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai05-005",
+              "messageIndex": 75,
+              "sourceLine": 607,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai05-006",
+              "messageIndex": 76,
+              "sourceLine": 609,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai05-007",
+              "messageIndex": 77,
+              "sourceLine": 611,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai05-008",
+              "messageIndex": 78,
+              "sourceLine": 613,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai05-009",
+              "messageIndex": 79,
+              "sourceLine": 615,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai05-010",
+              "messageIndex": 80,
+              "sourceLine": 617,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai05-011",
+              "messageIndex": 81,
+              "sourceLine": 619,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai05-012",
+              "messageIndex": 82,
+              "sourceLine": 621,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai05-013",
+              "messageIndex": 83,
+              "sourceLine": 623,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai05-014",
+              "messageIndex": 84,
+              "sourceLine": 625,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai05-015",
+              "messageIndex": 85,
+              "sourceLine": 627,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai05-016",
+              "messageIndex": 86,
+              "sourceLine": 629,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai05-017",
+              "messageIndex": 87,
+              "sourceLine": 631,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai05-018",
+              "messageIndex": 88,
+              "sourceLine": 633,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai05-019",
+              "messageIndex": 89,
+              "sourceLine": 635,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai05-020",
+              "messageIndex": 90,
+              "sourceLine": 637,
+              "sourceSpeaker": "宝钗"
+            }
+          ]
+        },
+        {
+          "sourceId": "钗06",
+          "title": "药送到了，话没有说完",
+          "totalOrder": 19,
+          "sourceHeadingLine": 639,
+          "sourceContextLine": 641,
+          "fictionalStart": "2026-02-10T14:30:00+08:00",
+          "messages": [
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai06-001",
+              "messageIndex": 91,
+              "sourceLine": 643,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai06-002",
+              "messageIndex": 92,
+              "sourceLine": 645,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai06-003",
+              "messageIndex": 93,
+              "sourceLine": 647,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai06-004",
+              "messageIndex": 94,
+              "sourceLine": 649,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai06-005",
+              "messageIndex": 95,
+              "sourceLine": 651,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai06-006",
+              "messageIndex": 96,
+              "sourceLine": 653,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai06-007",
+              "messageIndex": 97,
+              "sourceLine": 655,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai06-008",
+              "messageIndex": 98,
+              "sourceLine": 657,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai06-009",
+              "messageIndex": 99,
+              "sourceLine": 659,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai06-010",
+              "messageIndex": 100,
+              "sourceLine": 661,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai06-011",
+              "messageIndex": 101,
+              "sourceLine": 663,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai06-012",
+              "messageIndex": 102,
+              "sourceLine": 665,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai06-013",
+              "messageIndex": 103,
+              "sourceLine": 667,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai06-014",
+              "messageIndex": 104,
+              "sourceLine": 669,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai06-015",
+              "messageIndex": 105,
+              "sourceLine": 671,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai06-016",
+              "messageIndex": 106,
+              "sourceLine": 673,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai06-017",
+              "messageIndex": 107,
+              "sourceLine": 675,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai06-018",
+              "messageIndex": 108,
+              "sourceLine": 677,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai06-019",
+              "messageIndex": 109,
+              "sourceLine": 679,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai06-020",
+              "messageIndex": 110,
+              "sourceLine": 681,
+              "sourceSpeaker": "宝钗"
+            }
+          ]
+        },
+        {
+          "sourceId": "钗07",
+          "title": "不是来查你的",
+          "totalOrder": 23,
+          "sourceHeadingLine": 683,
+          "sourceContextLine": 685,
+          "fictionalStart": "2026-02-11T10:00:00+08:00",
+          "messages": [
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai07-001",
+              "messageIndex": 111,
+              "sourceLine": 687,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai07-002",
+              "messageIndex": 112,
+              "sourceLine": 689,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai07-003",
+              "messageIndex": 113,
+              "sourceLine": 691,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai07-004",
+              "messageIndex": 114,
+              "sourceLine": 693,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai07-005",
+              "messageIndex": 115,
+              "sourceLine": 695,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai07-006",
+              "messageIndex": 116,
+              "sourceLine": 697,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai07-007",
+              "messageIndex": 117,
+              "sourceLine": 699,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai07-008",
+              "messageIndex": 118,
+              "sourceLine": 701,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai07-009",
+              "messageIndex": 119,
+              "sourceLine": 703,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai07-010",
+              "messageIndex": 120,
+              "sourceLine": 705,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai07-011",
+              "messageIndex": 121,
+              "sourceLine": 707,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai07-012",
+              "messageIndex": 122,
+              "sourceLine": 709,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai07-013",
+              "messageIndex": 123,
+              "sourceLine": 711,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai07-014",
+              "messageIndex": 124,
+              "sourceLine": 713,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai07-015",
+              "messageIndex": 125,
+              "sourceLine": 715,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai07-016",
+              "messageIndex": 126,
+              "sourceLine": 717,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai07-017",
+              "messageIndex": 127,
+              "sourceLine": 719,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai07-018",
+              "messageIndex": 128,
+              "sourceLine": 721,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai07-019",
+              "messageIndex": 129,
+              "sourceLine": 723,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai07-020",
+              "messageIndex": 130,
+              "sourceLine": 725,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai07-021",
+              "messageIndex": 131,
+              "sourceLine": 727,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai07-022",
+              "messageIndex": 132,
+              "sourceLine": 729,
+              "sourceSpeaker": "宝钗"
+            }
+          ]
+        },
+        {
+          "sourceId": "钗08",
+          "title": "玉的络子",
+          "totalOrder": 24,
+          "sourceHeadingLine": 731,
+          "sourceContextLine": 733,
+          "fictionalStart": "2026-02-11T11:00:00+08:00",
+          "messages": [
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai08-001",
+              "messageIndex": 133,
+              "sourceLine": 735,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai08-002",
+              "messageIndex": 134,
+              "sourceLine": 737,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai08-003",
+              "messageIndex": 135,
+              "sourceLine": 739,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai08-004",
+              "messageIndex": 136,
+              "sourceLine": 741,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai08-005",
+              "messageIndex": 137,
+              "sourceLine": 743,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai08-006",
+              "messageIndex": 138,
+              "sourceLine": 745,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai08-007",
+              "messageIndex": 139,
+              "sourceLine": 747,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai08-008",
+              "messageIndex": 140,
+              "sourceLine": 749,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai08-009",
+              "messageIndex": 141,
+              "sourceLine": 751,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai08-010",
+              "messageIndex": 142,
+              "sourceLine": 753,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai08-011",
+              "messageIndex": 143,
+              "sourceLine": 755,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai08-012",
+              "messageIndex": 144,
+              "sourceLine": 757,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai08-013",
+              "messageIndex": 145,
+              "sourceLine": 759,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai08-014",
+              "messageIndex": 146,
+              "sourceLine": 761,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai08-015",
+              "messageIndex": 147,
+              "sourceLine": 763,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai08-016",
+              "messageIndex": 148,
+              "sourceLine": 765,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai08-017",
+              "messageIndex": 149,
+              "sourceLine": 767,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai08-018",
+              "messageIndex": 150,
+              "sourceLine": 769,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai08-019",
+              "messageIndex": 151,
+              "sourceLine": 771,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai08-020",
+              "messageIndex": 152,
+              "sourceLine": 773,
+              "sourceSpeaker": "宝钗"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai08-021",
+              "messageIndex": 153,
+              "sourceLine": 775,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-chai08-022",
+              "messageIndex": 154,
+              "sourceLine": 777,
+              "sourceSpeaker": "宝钗"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "conversations/xiren.chatlab.json",
+      "sha256": "4c01d77a4e2bb7cb8746addd1209838b4a00e63ba91a5fcfdd6aaeb6fd6e8802",
+      "peer": {
+        "name": "袭人",
+        "platformId": "whomi-fiction-hongloumeng-xiren"
+      },
+      "conversationId": "whomi-fiction-hongloumeng-jiabaoyu-xiren",
+      "messages": 210,
+      "selfMessages": 103,
+      "peerMessages": 107,
+      "segments": [
+        {
+          "sourceId": "袭01",
+          "title": "回家去",
+          "totalOrder": 1,
+          "sourceHeadingLine": 781,
+          "sourceContextLine": 783,
+          "fictionalStart": "2026-01-01T10:00:00+08:00",
+          "messages": [
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi01-001",
+              "messageIndex": 0,
+              "sourceLine": 785,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi01-002",
+              "messageIndex": 1,
+              "sourceLine": 787,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi01-003",
+              "messageIndex": 2,
+              "sourceLine": 789,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi01-004",
+              "messageIndex": 3,
+              "sourceLine": 791,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi01-005",
+              "messageIndex": 4,
+              "sourceLine": 793,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi01-006",
+              "messageIndex": 5,
+              "sourceLine": 795,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi01-007",
+              "messageIndex": 6,
+              "sourceLine": 797,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi01-008",
+              "messageIndex": 7,
+              "sourceLine": 799,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi01-009",
+              "messageIndex": 8,
+              "sourceLine": 801,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi01-010",
+              "messageIndex": 9,
+              "sourceLine": 803,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi01-011",
+              "messageIndex": 10,
+              "sourceLine": 805,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi01-012",
+              "messageIndex": 11,
+              "sourceLine": 807,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi01-013",
+              "messageIndex": 12,
+              "sourceLine": 809,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi01-014",
+              "messageIndex": 13,
+              "sourceLine": 811,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi01-015",
+              "messageIndex": 14,
+              "sourceLine": 813,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi01-016",
+              "messageIndex": 15,
+              "sourceLine": 815,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi01-017",
+              "messageIndex": 16,
+              "sourceLine": 817,
+              "sourceSpeaker": "袭人"
+            }
+          ]
+        },
+        {
+          "sourceId": "袭02",
+          "title": "留给谁的酥酪",
+          "totalOrder": 2,
+          "sourceHeadingLine": 819,
+          "sourceContextLine": 821,
+          "fictionalStart": "2026-01-01T20:00:00+08:00",
+          "messages": [
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi02-001",
+              "messageIndex": 17,
+              "sourceLine": 823,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi02-002",
+              "messageIndex": 18,
+              "sourceLine": 825,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi02-003",
+              "messageIndex": 19,
+              "sourceLine": 827,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi02-004",
+              "messageIndex": 20,
+              "sourceLine": 829,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi02-005",
+              "messageIndex": 21,
+              "sourceLine": 831,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi02-006",
+              "messageIndex": 22,
+              "sourceLine": 833,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi02-007",
+              "messageIndex": 23,
+              "sourceLine": 835,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi02-008",
+              "messageIndex": 24,
+              "sourceLine": 837,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi02-009",
+              "messageIndex": 25,
+              "sourceLine": 839,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi02-010",
+              "messageIndex": 26,
+              "sourceLine": 841,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi02-011",
+              "messageIndex": 27,
+              "sourceLine": 843,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi02-012",
+              "messageIndex": 28,
+              "sourceLine": 845,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi02-013",
+              "messageIndex": 29,
+              "sourceLine": 847,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi02-014",
+              "messageIndex": 30,
+              "sourceLine": 849,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi02-015",
+              "messageIndex": 31,
+              "sourceLine": 851,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi02-016",
+              "messageIndex": 32,
+              "sourceLine": 853,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi02-017",
+              "messageIndex": 33,
+              "sourceLine": 855,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi02-018",
+              "messageIndex": 34,
+              "sourceLine": 857,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi02-019",
+              "messageIndex": 35,
+              "sourceLine": 859,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi02-020",
+              "messageIndex": 36,
+              "sourceLine": 861,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi02-021",
+              "messageIndex": 37,
+              "sourceLine": 863,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi02-022",
+              "messageIndex": 38,
+              "sourceLine": 865,
+              "sourceSpeaker": "袭人"
+            }
+          ]
+        },
+        {
+          "sourceId": "袭03",
+          "title": "你们都要走",
+          "totalOrder": 3,
+          "sourceHeadingLine": 867,
+          "sourceContextLine": 869,
+          "fictionalStart": "2026-01-01T20:30:00+08:00",
+          "messages": [
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi03-001",
+              "messageIndex": 39,
+              "sourceLine": 871,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi03-002",
+              "messageIndex": 40,
+              "sourceLine": 873,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi03-003",
+              "messageIndex": 41,
+              "sourceLine": 875,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi03-004",
+              "messageIndex": 42,
+              "sourceLine": 877,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi03-005",
+              "messageIndex": 43,
+              "sourceLine": 879,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi03-006",
+              "messageIndex": 44,
+              "sourceLine": 881,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi03-007",
+              "messageIndex": 45,
+              "sourceLine": 883,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi03-008",
+              "messageIndex": 46,
+              "sourceLine": 885,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi03-009",
+              "messageIndex": 47,
+              "sourceLine": 887,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi03-010",
+              "messageIndex": 48,
+              "sourceLine": 889,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi03-011",
+              "messageIndex": 49,
+              "sourceLine": 891,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi03-012",
+              "messageIndex": 50,
+              "sourceLine": 893,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi03-013",
+              "messageIndex": 51,
+              "sourceLine": 895,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi03-014",
+              "messageIndex": 52,
+              "sourceLine": 897,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi03-015",
+              "messageIndex": 53,
+              "sourceLine": 899,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi03-016",
+              "messageIndex": 54,
+              "sourceLine": 901,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi03-017",
+              "messageIndex": 55,
+              "sourceLine": 903,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi03-018",
+              "messageIndex": 56,
+              "sourceLine": 905,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi03-019",
+              "messageIndex": 57,
+              "sourceLine": 907,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi03-020",
+              "messageIndex": 58,
+              "sourceLine": 909,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi03-021",
+              "messageIndex": 59,
+              "sourceLine": 911,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi03-022",
+              "messageIndex": 60,
+              "sourceLine": 913,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi03-023",
+              "messageIndex": 61,
+              "sourceLine": 915,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi03-024",
+              "messageIndex": 62,
+              "sourceLine": 917,
+              "sourceSpeaker": "袭人"
+            }
+          ]
+        },
+        {
+          "sourceId": "袭04",
+          "title": "应下来的话",
+          "totalOrder": 4,
+          "sourceHeadingLine": 919,
+          "sourceContextLine": 921,
+          "fictionalStart": "2026-01-01T21:00:00+08:00",
+          "messages": [
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi04-001",
+              "messageIndex": 63,
+              "sourceLine": 923,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi04-002",
+              "messageIndex": 64,
+              "sourceLine": 925,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi04-003",
+              "messageIndex": 65,
+              "sourceLine": 927,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi04-004",
+              "messageIndex": 66,
+              "sourceLine": 929,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi04-005",
+              "messageIndex": 67,
+              "sourceLine": 931,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi04-006",
+              "messageIndex": 68,
+              "sourceLine": 933,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi04-007",
+              "messageIndex": 69,
+              "sourceLine": 935,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi04-008",
+              "messageIndex": 70,
+              "sourceLine": 937,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi04-009",
+              "messageIndex": 71,
+              "sourceLine": 939,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi04-010",
+              "messageIndex": 72,
+              "sourceLine": 941,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi04-011",
+              "messageIndex": 73,
+              "sourceLine": 943,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi04-012",
+              "messageIndex": 74,
+              "sourceLine": 945,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi04-013",
+              "messageIndex": 75,
+              "sourceLine": 947,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi04-014",
+              "messageIndex": 76,
+              "sourceLine": 949,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi04-015",
+              "messageIndex": 77,
+              "sourceLine": 951,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi04-016",
+              "messageIndex": 78,
+              "sourceLine": 953,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi04-017",
+              "messageIndex": 79,
+              "sourceLine": 955,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi04-018",
+              "messageIndex": 80,
+              "sourceLine": 957,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi04-019",
+              "messageIndex": 81,
+              "sourceLine": 959,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi04-020",
+              "messageIndex": 82,
+              "sourceLine": 961,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi04-021",
+              "messageIndex": 83,
+              "sourceLine": 963,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi04-022",
+              "messageIndex": 84,
+              "sourceLine": 965,
+              "sourceSpeaker": "袭人"
+            }
+          ]
+        },
+        {
+          "sourceId": "袭05",
+          "title": "一声老爷叫",
+          "totalOrder": 10,
+          "sourceHeadingLine": 967,
+          "sourceContextLine": 969,
+          "fictionalStart": "2026-02-01T18:00:00+08:00",
+          "messages": [
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi05-001",
+              "messageIndex": 85,
+              "sourceLine": 971,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi05-002",
+              "messageIndex": 86,
+              "sourceLine": 973,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi05-003",
+              "messageIndex": 87,
+              "sourceLine": 975,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi05-004",
+              "messageIndex": 88,
+              "sourceLine": 977,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi05-005",
+              "messageIndex": 89,
+              "sourceLine": 979,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi05-006",
+              "messageIndex": 90,
+              "sourceLine": 981,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi05-007",
+              "messageIndex": 91,
+              "sourceLine": 983,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi05-008",
+              "messageIndex": 92,
+              "sourceLine": 985,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi05-009",
+              "messageIndex": 93,
+              "sourceLine": 987,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi05-010",
+              "messageIndex": 94,
+              "sourceLine": 989,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi05-011",
+              "messageIndex": 95,
+              "sourceLine": 991,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi05-012",
+              "messageIndex": 96,
+              "sourceLine": 993,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi05-013",
+              "messageIndex": 97,
+              "sourceLine": 995,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi05-014",
+              "messageIndex": 98,
+              "sourceLine": 997,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi05-015",
+              "messageIndex": 99,
+              "sourceLine": 999,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi05-016",
+              "messageIndex": 100,
+              "sourceLine": 1001,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi05-017",
+              "messageIndex": 101,
+              "sourceLine": 1003,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi05-018",
+              "messageIndex": 102,
+              "sourceLine": 1005,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi05-019",
+              "messageIndex": 103,
+              "sourceLine": 1007,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi05-020",
+              "messageIndex": 104,
+              "sourceLine": 1009,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi05-021",
+              "messageIndex": 105,
+              "sourceLine": 1011,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi05-022",
+              "messageIndex": 106,
+              "sourceLine": 1013,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi05-023",
+              "messageIndex": 107,
+              "sourceLine": 1015,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi05-024",
+              "messageIndex": 108,
+              "sourceLine": 1017,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi05-025",
+              "messageIndex": 109,
+              "sourceLine": 1019,
+              "sourceSpeaker": "袭人"
+            }
+          ]
+        },
+        {
+          "sourceId": "袭06",
+          "title": "扇子送到手里",
+          "totalOrder": 17,
+          "sourceHeadingLine": 1021,
+          "sourceContextLine": 1023,
+          "fictionalStart": "2026-02-08T14:30:00+08:00",
+          "messages": [
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi06-001",
+              "messageIndex": 110,
+              "sourceLine": 1025,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi06-002",
+              "messageIndex": 111,
+              "sourceLine": 1027,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi06-003",
+              "messageIndex": 112,
+              "sourceLine": 1029,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi06-004",
+              "messageIndex": 113,
+              "sourceLine": 1031,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi06-005",
+              "messageIndex": 114,
+              "sourceLine": 1033,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi06-006",
+              "messageIndex": 115,
+              "sourceLine": 1035,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi06-007",
+              "messageIndex": 116,
+              "sourceLine": 1037,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi06-008",
+              "messageIndex": 117,
+              "sourceLine": 1039,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi06-009",
+              "messageIndex": 118,
+              "sourceLine": 1041,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi06-010",
+              "messageIndex": 119,
+              "sourceLine": 1043,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi06-011",
+              "messageIndex": 120,
+              "sourceLine": 1045,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi06-012",
+              "messageIndex": 121,
+              "sourceLine": 1047,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi06-013",
+              "messageIndex": 122,
+              "sourceLine": 1049,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi06-014",
+              "messageIndex": 123,
+              "sourceLine": 1051,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi06-015",
+              "messageIndex": 124,
+              "sourceLine": 1053,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi06-016",
+              "messageIndex": 125,
+              "sourceLine": 1055,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi06-017",
+              "messageIndex": 126,
+              "sourceLine": 1057,
+              "sourceSpeaker": "袭人"
+            }
+          ]
+        },
+        {
+          "sourceId": "袭07",
+          "title": "真疼的时候",
+          "totalOrder": 18,
+          "sourceHeadingLine": 1059,
+          "sourceContextLine": 1061,
+          "fictionalStart": "2026-02-10T14:00:00+08:00",
+          "messages": [
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi07-001",
+              "messageIndex": 127,
+              "sourceLine": 1063,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi07-002",
+              "messageIndex": 128,
+              "sourceLine": 1065,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi07-003",
+              "messageIndex": 129,
+              "sourceLine": 1067,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi07-004",
+              "messageIndex": 130,
+              "sourceLine": 1069,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi07-005",
+              "messageIndex": 131,
+              "sourceLine": 1071,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi07-006",
+              "messageIndex": 132,
+              "sourceLine": 1073,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi07-007",
+              "messageIndex": 133,
+              "sourceLine": 1075,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi07-008",
+              "messageIndex": 134,
+              "sourceLine": 1077,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi07-009",
+              "messageIndex": 135,
+              "sourceLine": 1079,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi07-010",
+              "messageIndex": 136,
+              "sourceLine": 1081,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi07-011",
+              "messageIndex": 137,
+              "sourceLine": 1083,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi07-012",
+              "messageIndex": 138,
+              "sourceLine": 1085,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi07-013",
+              "messageIndex": 139,
+              "sourceLine": 1087,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi07-014",
+              "messageIndex": 140,
+              "sourceLine": 1089,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi07-015",
+              "messageIndex": 141,
+              "sourceLine": 1091,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi07-016",
+              "messageIndex": 142,
+              "sourceLine": 1093,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi07-017",
+              "messageIndex": 143,
+              "sourceLine": 1095,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi07-018",
+              "messageIndex": 144,
+              "sourceLine": 1097,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi07-019",
+              "messageIndex": 145,
+              "sourceLine": 1099,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi07-020",
+              "messageIndex": 146,
+              "sourceLine": 1101,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi07-021",
+              "messageIndex": 147,
+              "sourceLine": 1103,
+              "sourceSpeaker": "袭人"
+            }
+          ]
+        },
+        {
+          "sourceId": "袭08",
+          "title": "香露与借书",
+          "totalOrder": 21,
+          "sourceHeadingLine": 1105,
+          "sourceContextLine": 1107,
+          "fictionalStart": "2026-02-10T19:00:00+08:00",
+          "messages": [
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi08-001",
+              "messageIndex": 148,
+              "sourceLine": 1109,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi08-002",
+              "messageIndex": 149,
+              "sourceLine": 1111,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi08-003",
+              "messageIndex": 150,
+              "sourceLine": 1113,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi08-004",
+              "messageIndex": 151,
+              "sourceLine": 1115,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi08-005",
+              "messageIndex": 152,
+              "sourceLine": 1117,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi08-006",
+              "messageIndex": 153,
+              "sourceLine": 1119,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi08-007",
+              "messageIndex": 154,
+              "sourceLine": 1121,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi08-008",
+              "messageIndex": 155,
+              "sourceLine": 1123,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi08-009",
+              "messageIndex": 156,
+              "sourceLine": 1125,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi08-010",
+              "messageIndex": 157,
+              "sourceLine": 1127,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi08-011",
+              "messageIndex": 158,
+              "sourceLine": 1129,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi08-012",
+              "messageIndex": 159,
+              "sourceLine": 1131,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi08-013",
+              "messageIndex": 160,
+              "sourceLine": 1133,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi08-014",
+              "messageIndex": 161,
+              "sourceLine": 1135,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi08-015",
+              "messageIndex": 162,
+              "sourceLine": 1137,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi08-016",
+              "messageIndex": 163,
+              "sourceLine": 1139,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi08-017",
+              "messageIndex": 164,
+              "sourceLine": 1141,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi08-018",
+              "messageIndex": 165,
+              "sourceLine": 1143,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi08-019",
+              "messageIndex": 166,
+              "sourceLine": 1145,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi08-020",
+              "messageIndex": 167,
+              "sourceLine": 1147,
+              "sourceSpeaker": "袭人"
+            }
+          ]
+        },
+        {
+          "sourceId": "袭09",
+          "title": "先吃这口饭",
+          "totalOrder": 25,
+          "sourceHeadingLine": 1149,
+          "sourceContextLine": 1151,
+          "fictionalStart": "2026-02-11T12:00:00+08:00",
+          "messages": [
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi09-001",
+              "messageIndex": 168,
+              "sourceLine": 1153,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi09-002",
+              "messageIndex": 169,
+              "sourceLine": 1155,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi09-003",
+              "messageIndex": 170,
+              "sourceLine": 1157,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi09-004",
+              "messageIndex": 171,
+              "sourceLine": 1159,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi09-005",
+              "messageIndex": 172,
+              "sourceLine": 1161,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi09-006",
+              "messageIndex": 173,
+              "sourceLine": 1163,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi09-007",
+              "messageIndex": 174,
+              "sourceLine": 1165,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi09-008",
+              "messageIndex": 175,
+              "sourceLine": 1167,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi09-009",
+              "messageIndex": 176,
+              "sourceLine": 1169,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi09-010",
+              "messageIndex": 177,
+              "sourceLine": 1171,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi09-011",
+              "messageIndex": 178,
+              "sourceLine": 1173,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi09-012",
+              "messageIndex": 179,
+              "sourceLine": 1175,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi09-013",
+              "messageIndex": 180,
+              "sourceLine": 1177,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi09-014",
+              "messageIndex": 181,
+              "sourceLine": 1179,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi09-015",
+              "messageIndex": 182,
+              "sourceLine": 1181,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi09-016",
+              "messageIndex": 183,
+              "sourceLine": 1183,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi09-017",
+              "messageIndex": 184,
+              "sourceLine": 1185,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi09-018",
+              "messageIndex": 185,
+              "sourceLine": 1187,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi09-019",
+              "messageIndex": 186,
+              "sourceLine": 1189,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi09-020",
+              "messageIndex": 187,
+              "sourceLine": 1191,
+              "sourceSpeaker": "宝玉"
+            }
+          ]
+        },
+        {
+          "sourceId": "袭10",
+          "title": "灯还亮着",
+          "totalOrder": 27,
+          "sourceHeadingLine": 1193,
+          "sourceContextLine": 1195,
+          "fictionalStart": "2026-02-11T21:00:00+08:00",
+          "messages": [
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi10-001",
+              "messageIndex": 188,
+              "sourceLine": 1197,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi10-002",
+              "messageIndex": 189,
+              "sourceLine": 1199,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi10-003",
+              "messageIndex": 190,
+              "sourceLine": 1201,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi10-004",
+              "messageIndex": 191,
+              "sourceLine": 1203,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi10-005",
+              "messageIndex": 192,
+              "sourceLine": 1205,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi10-006",
+              "messageIndex": 193,
+              "sourceLine": 1207,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi10-007",
+              "messageIndex": 194,
+              "sourceLine": 1209,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi10-008",
+              "messageIndex": 195,
+              "sourceLine": 1211,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi10-009",
+              "messageIndex": 196,
+              "sourceLine": 1213,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi10-010",
+              "messageIndex": 197,
+              "sourceLine": 1215,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi10-011",
+              "messageIndex": 198,
+              "sourceLine": 1217,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi10-012",
+              "messageIndex": 199,
+              "sourceLine": 1219,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi10-013",
+              "messageIndex": 200,
+              "sourceLine": 1221,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi10-014",
+              "messageIndex": 201,
+              "sourceLine": 1223,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi10-015",
+              "messageIndex": 202,
+              "sourceLine": 1225,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi10-016",
+              "messageIndex": 203,
+              "sourceLine": 1227,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi10-017",
+              "messageIndex": 204,
+              "sourceLine": 1229,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi10-018",
+              "messageIndex": 205,
+              "sourceLine": 1231,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi10-019",
+              "messageIndex": 206,
+              "sourceLine": 1233,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi10-020",
+              "messageIndex": 207,
+              "sourceLine": 1235,
+              "sourceSpeaker": "宝玉"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi10-021",
+              "messageIndex": 208,
+              "sourceLine": 1237,
+              "sourceSpeaker": "袭人"
+            },
+            {
+              "platformMessageId": "whomi-hongloumeng-v1-xi10-022",
+              "messageIndex": 209,
+              "sourceLine": 1239,
+              "sourceSpeaker": "宝玉"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

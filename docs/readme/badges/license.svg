@@ -1,9 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="116" height="22" viewBox="0 0 116 22" role="img" aria-labelledby="title">
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="28" viewBox="0 0 128 28" role="img" aria-labelledby="title">
   <title id="title">License AGPL-3.0</title>
-  <path fill="#454c54" d="M0 0h52v22H0z"/>
-  <path fill="#664a86" d="M52 0h64v22h-64z"/>
-  <g fill="#fff" text-anchor="middle" font-family="Segoe UI, -apple-system, Microsoft YaHei, sans-serif" font-size="12" font-weight="600">
-    <text x="26" y="15">License</text>
-    <text x="84" y="15">AGPL-3.0</text>
+  <rect x="0.5" y="0.5" width="127" height="27" rx="7" fill="#f3f0f9" stroke="#e3dbef"/>
+  <g font-family="Segoe UI, -apple-system, Microsoft YaHei, sans-serif" font-size="12">
+    <text x="12" y="18.5" fill="#76658c">License</text>
+    <text x="65" y="18.5" fill="#5e4876" font-weight="600">AGPL-3.0</text>
   </g>
 </svg>

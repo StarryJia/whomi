@@ -1,0 +1,1704 @@
+{
+  "chatlab": {
+    "version": "0.0.2"
+  },
+  "meta": {
+    "name": "袭人",
+    "platform": "telegram",
+    "type": "private",
+    "groupId": "whomi-fiction-hongloumeng-jiabaoyu-xiren",
+    "ownerId": "whomi-fiction-hongloumeng-jiabaoyu"
+  },
+  "members": [
+    {
+      "platformId": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉"
+    },
+    {
+      "platformId": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人"
+    }
+  ],
+  "messages": [
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1767232800,
+      "type": 0,
+      "content": "我妈接我来了，晚上回来。你有什么要找的，先问晴雯她们。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi01-001"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1767232845,
+      "type": 0,
+      "content": "这就走？我才想起有个东西要给你看。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi01-002"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1767232890,
+      "type": 0,
+      "content": "等回来再看吧。我妈在外头等着呢。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi01-003"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1767232935,
+      "type": 0,
+      "content": "什么东西这样要紧，才过来就要把你接走。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi01-004"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1767232980,
+      "type": 0,
+      "content": "回家吃顿年茶，也要先有个要紧的事？",
+      "platformMessageId": "whomi-hongloumeng-v1-xi01-005"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1767233025,
+      "type": 0,
+      "content": "我不是这个意思。你多早回来？",
+      "platformMessageId": "whomi-hongloumeng-v1-xi01-006"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1767233070,
+      "type": 0,
+      "content": "吃过晚饭。你别一会儿就遣人去接。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi01-007"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1767233115,
+      "type": 0,
+      "content": "要是晚了，路上冷。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi01-008"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1767233160,
+      "type": 0,
+      "content": "我哥哥送我，不用你操心这个。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi01-009"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1767233205,
+      "type": 0,
+      "content": "你穿这件去？另一件不是新做的。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi01-010"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1767233250,
+      "type": 0,
+      "content": "去自己家，又不是去见客。这件也好好的。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi01-011"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1767233295,
+      "type": 0,
+      "content": "新做的给家里人看看也好。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi01-012"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1767233340,
+      "type": 0,
+      "content": "你倒比我要回家的人还忙。我已穿好了，就这么去。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi01-013"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1767233385,
+      "type": 0,
+      "content": "好，你去吧。见了你妈，替我问好。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi01-014"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1767233430,
+      "type": 0,
+      "content": "知道了。你自己的饭别又等人催。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi01-015"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1767233475,
+      "type": 0,
+      "content": "你不在，谁催我。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi01-016"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1767233520,
+      "type": 0,
+      "content": "屋里这么多人，倒叫你说成一个也没有了。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi01-017"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1767268800,
+      "type": 0,
+      "content": "那碗酥酪，不是说好留给你的吗？",
+      "platformMessageId": "whomi-hongloumeng-v1-xi02-001"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1767268845,
+      "type": 0,
+      "content": "李奶奶吃了就吃了，别再问了。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi02-002"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1767268890,
+      "type": 0,
+      "content": "她要吃，另给她一碗就是，偏来动你的。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi02-003"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1767268935,
+      "type": 0,
+      "content": "我今儿不想吃。前回吃了，肚子就不舒服。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi02-004"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1767268980,
+      "type": 0,
+      "content": "你前回明明说好。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi02-005"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1767269025,
+      "type": 0,
+      "content": "嘴里觉得好，肚子就一定受得住？",
+      "platformMessageId": "whomi-hongloumeng-v1-xi02-006"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1767269070,
+      "type": 0,
+      "content": "真不想吃？",
+      "platformMessageId": "whomi-hongloumeng-v1-xi02-007"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1767269115,
+      "type": 0,
+      "content": "倒想吃两个栗子。你替我剥了吧。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi02-008"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1767269160,
+      "type": 0,
+      "content": "那你坐着，我叫她们拿来。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi02-009"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1767269205,
+      "type": 0,
+      "content": "就在灯边。你剥着，我先去铺床。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi02-010"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1767269250,
+      "type": 0,
+      "content": "连吃两个栗子也没空坐下？",
+      "platformMessageId": "whomi-hongloumeng-v1-xi02-011"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1767269295,
+      "type": 0,
+      "content": "你不在时还好。你一回来，这屋里哪件事不用问我。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi02-012"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1767269340,
+      "type": 0,
+      "content": "我一回来倒烦着你了？",
+      "platformMessageId": "whomi-hongloumeng-v1-xi02-013"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1767269385,
+      "type": 0,
+      "content": "没烦着。你先剥着，等我回来还能吃上。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi02-014"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1767269430,
+      "type": 0,
+      "content": "我还说替你留了一碗好东西，谁知连一口也没留住。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi02-015"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1767269475,
+      "type": 0,
+      "content": "栗子仁给我留着，壳可别都放到枕头边。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi02-016"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1767269520,
+      "type": 0,
+      "content": "我拿纸垫着了。这个碎了，我吃。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi02-017"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1767269565,
+      "type": 0,
+      "content": "碎不碎都一样，别挑上半日。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi02-018"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1767269610,
+      "type": 0,
+      "content": "给你的，自然挑好的。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi02-019"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1767269655,
+      "type": 0,
+      "content": "那你慢慢挑。被角先让一让，压在你胳膊底下了。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi02-020"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1767269700,
+      "type": 0,
+      "content": "铺好了就来吃，别又去忙别的。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi02-021"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1767269745,
+      "type": 0,
+      "content": "还说酥酪呢，这会儿又管起栗子来了。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi02-022"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1767270600,
+      "type": 0,
+      "content": "你今儿家里那个穿红的，是你什么人？",
+      "platformMessageId": "whomi-hongloumeng-v1-xi03-001"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1767270645,
+      "type": 0,
+      "content": "我姨妹。你问过一回，又忘了。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi03-002"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1767270690,
+      "type": 0,
+      "content": "没忘。我想着她那样好，若也常在这里，倒热闹。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi03-003"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1767270735,
+      "type": 0,
+      "content": "她在自己家也过得好，为什么都要到这里来。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi03-004"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1767270780,
+      "type": 0,
+      "content": "不过说大家在一处好，并没有别的意思。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi03-005"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1767270825,
+      "type": 0,
+      "content": "她明年就出嫁了。等我回去了，也未必能常见着。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi03-006"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1767270870,
+      "type": 0,
+      "content": "等你回去？你不是才回来？",
+      "platformMessageId": "whomi-hongloumeng-v1-xi03-007"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1767270915,
+      "type": 0,
+      "content": "我是说回家去住。我妈和哥哥商量着，往后来赎我。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi03-008"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1767270960,
+      "type": 0,
+      "content": "怎么好好的，忽然要赎你？",
+      "platformMessageId": "whomi-hongloumeng-v1-xi03-009"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1767271005,
+      "type": 0,
+      "content": "我家里的人都在外头。只我一个长远留在这里，也不是必定的。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi03-010"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1767271050,
+      "type": 0,
+      "content": "你在这里有什么不好？",
+      "platformMessageId": "whomi-hongloumeng-v1-xi03-011"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1767271095,
+      "type": 0,
+      "content": "我说不好了？家里人要接我，也不全是为好不好。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi03-012"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1767271140,
+      "type": 0,
+      "content": "老太太未必肯放。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi03-013"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1767271185,
+      "type": 0,
+      "content": "我又不是少了就没人服侍你。做得好，本来也是我的差事。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi03-014"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1767271230,
+      "type": 0,
+      "content": "多给你妈些银子，再同她好好说，总能留。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi03-015"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1767271275,
+      "type": 0,
+      "content": "你拿了银子去，我妈还能说什么。倒叫我怎么回去见她？",
+      "platformMessageId": "whomi-hongloumeng-v1-xi03-016"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1767271320,
+      "type": 0,
+      "content": "我只想着把你留下，你倒说得像我欺负人。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi03-017"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1767271365,
+      "type": 0,
+      "content": "我还没同家里说完呢。你先别去。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi03-018"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1767271410,
+      "type": 0,
+      "content": "那你自己呢？也一心要走？",
+      "platformMessageId": "whomi-hongloumeng-v1-xi03-019"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1767271455,
+      "type": 0,
+      "content": "人总有要散的时候，哪有一直这样陪着的。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi03-020"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1767271500,
+      "type": 0,
+      "content": "你们都说这话。到末了，倒只剩我一个。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi03-021"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1767271545,
+      "type": 0,
+      "content": "又说这样的气话。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi03-022"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1767271590,
+      "type": 0,
+      "content": "你既说定了，我还说什么。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi03-023"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1767271635,
+      "type": 0,
+      "content": "栗子放下吧，别攥碎了。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi03-024"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1767272400,
+      "type": 0,
+      "content": "你怎么又过来了？不是都说完了。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi04-001"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1767272445,
+      "type": 0,
+      "content": "方才那样一躺，被子也不盖。又得起来替你收拾。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi04-002"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1767272490,
+      "type": 0,
+      "content": "你既要走，就让我自己去吧。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi04-003"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1767272535,
+      "type": 0,
+      "content": "我眼下还在这里，你先把这副样子做给谁看。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi04-004"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1767272580,
+      "type": 0,
+      "content": "那你究竟有没有留下的余地？",
+      "platformMessageId": "whomi-hongloumeng-v1-xi04-005"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1767272625,
+      "type": 0,
+      "content": "你若真想留我，先听我几句话。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi04-006"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1767272670,
+      "type": 0,
+      "content": "你说。多少句我也听。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi04-007"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1767272715,
+      "type": 0,
+      "content": "别答应得这样快。头一件，以后那些散了、没了、再不要见人的话，少说。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi04-008"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1767272760,
+      "type": 0,
+      "content": "我一时急了，说说也不行？",
+      "platformMessageId": "whomi-hongloumeng-v1-xi04-009"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1767272805,
+      "type": 0,
+      "content": "你说过就算了，听的人还得跟着悬半日心。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi04-010"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1767272850,
+      "type": 0,
+      "content": "好，不说。还有呢？",
+      "platformMessageId": "whomi-hongloumeng-v1-xi04-011"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1767272895,
+      "type": 0,
+      "content": "人前说起读书上进，你就算不爱听，也别张口便骂。老太太疼你，老爷可不只当玩话。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi04-012"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1767272940,
+      "type": 0,
+      "content": "连你也劝我去奔那个前程？",
+      "platformMessageId": "whomi-hongloumeng-v1-xi04-013"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1767272985,
+      "type": 0,
+      "content": "我叫你先别把祸往自己身上招。心里愿意读哪一本，我替你想得来？",
+      "platformMessageId": "whomi-hongloumeng-v1-xi04-014"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1767273030,
+      "type": 0,
+      "content": "只要不是逼我天天听那些人讲，我应你。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi04-015"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1767273075,
+      "type": 0,
+      "content": "还有平日拿人取笑的那些举动，也收着些。别只图自己一时高兴。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi04-016"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1767273120,
+      "type": 0,
+      "content": "都应。你不能等我应了，又说别的。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi04-017"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1767273165,
+      "type": 0,
+      "content": "先把这几件记住。不是今夜说了好，明早便忘。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi04-018"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1767273210,
+      "type": 0,
+      "content": "那你家里来接呢？",
+      "platformMessageId": "whomi-hongloumeng-v1-xi04-019"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1767273255,
+      "type": 0,
+      "content": "我自去说。你别又抢着替我拿银子作主。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi04-020"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1767273300,
+      "type": 0,
+      "content": "这回听你的。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi04-021"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1767273345,
+      "type": 0,
+      "content": "躺好吧。那一包栗子明儿再收，今夜别又吃个没完。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi04-022"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1769940000,
+      "type": 0,
+      "content": "回来了？老爷叫你去，到底为什么？",
+      "platformMessageId": "whomi-hongloumeng-v1-xi05-001"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1769940045,
+      "type": 0,
+      "content": "哪里有什么老爷。是薛大哥哥想叫我快些出去，拿这话唬我。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi05-002"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1769940090,
+      "type": 0,
+      "content": "连这个也拿来玩笑。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi05-003"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1769940135,
+      "type": 0,
+      "content": "我一出门，看见他在那儿笑，才知道白怕了。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi05-004"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1769940180,
+      "type": 0,
+      "content": "你倒笑得出来。出去时脸都变了，问一句也顾不上答。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi05-005"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1769940225,
+      "type": 0,
+      "content": "我当真以为又有什么事，哪里还想得起别的。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi05-006"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1769940270,
+      "type": 0,
+      "content": "你没想起，屋里还等着信呢。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi05-007"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1769940315,
+      "type": 0,
+      "content": "他备了些难得的吃食，拉住我就走。后来一坐下，便忘了。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi05-008"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1769940360,
+      "type": 0,
+      "content": "倒是吃食一来，什么都不怕了。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi05-009"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1769940405,
+      "type": 0,
+      "content": "这会儿不是好好的回来了么。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi05-010"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1769940450,
+      "type": 0,
+      "content": "是，幸而好好的。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi05-011"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1769940495,
+      "type": 0,
+      "content": "你又不高兴？",
+      "platformMessageId": "whomi-hongloumeng-v1-xi05-012"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1769940540,
+      "type": 0,
+      "content": "我先把你这件衣裳收起来。饭还用不用留？",
+      "platformMessageId": "whomi-hongloumeng-v1-xi05-013"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1769940585,
+      "type": 0,
+      "content": "留些清淡的，方才没正经吃多少。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi05-014"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1769940630,
+      "type": 0,
+      "content": "坐了半日，回来又说没吃多少。你出去到底忙什么去了。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi05-015"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1769940675,
+      "type": 0,
+      "content": "听他们说话。给你留的东西，我叫小厮带回来了。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi05-016"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1769940720,
+      "type": 0,
+      "content": "你方才说的果子？拿来我看看。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi05-017"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1769940765,
+      "type": 0,
+      "content": "在那边纸包里。你尝一个。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi05-018"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1769940810,
+      "type": 0,
+      "content": "这个倒好，甜得不腻。哪里来的？",
+      "platformMessageId": "whomi-hongloumeng-v1-xi05-019"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1769940855,
+      "type": 0,
+      "content": "薛大哥哥那边的。我尝着好，就叫包了些。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi05-020"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1769940900,
+      "type": 0,
+      "content": "这一包先给我留着。我妈也爱吃这个，下回去带给她。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi05-021"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1769940945,
+      "type": 0,
+      "content": "给你妈的另备，这些你先吃。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi05-022"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1769940990,
+      "type": 0,
+      "content": "还够呢。你先洗脸，别又倒在床上。我把这个收好。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi05-023"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1769941035,
+      "type": 0,
+      "content": "我只坐一会儿。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi05-024"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1769941080,
+      "type": 0,
+      "content": "你哪回一开始不是只坐一会儿。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi05-025"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1770532200,
+      "type": 0,
+      "content": "你方才把我当成谁了？",
+      "platformMessageId": "whomi-hongloumeng-v1-xi06-001"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770532245,
+      "type": 0,
+      "content": "你什么时候来的？",
+      "platformMessageId": "whomi-hongloumeng-v1-xi06-002"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1770532290,
+      "type": 0,
+      "content": "来给你送扇子。站了这一会儿，你连人都没看清。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi06-003"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770532335,
+      "type": 0,
+      "content": "我只顾想着方才的事，以为还是林妹妹。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi06-004"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1770532380,
+      "type": 0,
+      "content": "方才你拉着我，说连做梦都忘不了我。那些话，是说给林姑娘的？",
+      "platformMessageId": "whomi-hongloumeng-v1-xi06-005"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770532425,
+      "type": 0,
+      "content": "你听见多少？",
+      "platformMessageId": "whomi-hongloumeng-v1-xi06-006"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1770532470,
+      "type": 0,
+      "content": "该听的、不该听的，倒都撞在耳朵里了。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi06-007"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770532515,
+      "type": 0,
+      "content": "别学给她听，也别同旁人说。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi06-008"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1770532560,
+      "type": 0,
+      "content": "我又不是替你传话来的。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi06-009"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770532605,
+      "type": 0,
+      "content": "一时走了神。方才说着话，她忽然就走了。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi06-010"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1770532650,
+      "type": 0,
+      "content": "她走了，你便把送扇子的当成她。幸而这回是我。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi06-011"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770532695,
+      "type": 0,
+      "content": "你不用说得这样重。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi06-012"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1770532740,
+      "type": 0,
+      "content": "那我不说。扇子拿着，别一会儿又忘在哪儿，叫人到处找。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi06-013"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770532785,
+      "type": 0,
+      "content": "你来时，可看见林妹妹往哪边去了？",
+      "platformMessageId": "whomi-hongloumeng-v1-xi06-014"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1770532830,
+      "type": 0,
+      "content": "没看见。你又问回去了。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi06-015"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770532875,
+      "type": 0,
+      "content": "我不问了。你也歇一歇，跑得额上都是汗。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi06-016"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1770532920,
+      "type": 0,
+      "content": "等把屋里的东西收好再歇。你自己先把汗擦了。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi06-017"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1770703200,
+      "type": 0,
+      "content": "你先别动，我把衣裳松一松。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi07-001"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770703245,
+      "type": 0,
+      "content": "慢些。碰着那里了。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi07-002"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1770703290,
+      "type": 0,
+      "content": "已经这样轻了。怎么下得了这么重的手。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi07-003"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770703335,
+      "type": 0,
+      "content": "别看了，盖上吧。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi07-004"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1770703380,
+      "type": 0,
+      "content": "盖上就算没看见？这一片都青了。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi07-005"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770703425,
+      "type": 0,
+      "content": "你再说，我也没法叫它立时好。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi07-006"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1770703470,
+      "type": 0,
+      "content": "我不是同你讨好法子。早先劝你的话，你但凡记得些，也不至到这一步。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi07-007"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770703515,
+      "type": 0,
+      "content": "这时候还提那个。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi07-008"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1770703560,
+      "type": 0,
+      "content": "我看见了，哪里忍得住。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi07-009"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770703605,
+      "type": 0,
+      "content": "你先帮我把这里垫一垫。这样躺着疼。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi07-010"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1770703650,
+      "type": 0,
+      "content": "这边高一点？",
+      "platformMessageId": "whomi-hongloumeng-v1-xi07-011"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770703695,
+      "type": 0,
+      "content": "再低些。好了，先别动。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi07-012"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1770703740,
+      "type": 0,
+      "content": "还要什么，你一气说完，省得又起又落。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi07-013"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770703785,
+      "type": 0,
+      "content": "没有。你坐一会儿，方才一直在忙。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi07-014"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1770703830,
+      "type": 0,
+      "content": "我还得看看外头药送来了没有。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi07-015"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770703875,
+      "type": 0,
+      "content": "你眼睛怎么也红了。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi07-016"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1770703920,
+      "type": 0,
+      "content": "你这模样回来，谁还顾得上好好洗脸。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi07-017"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770703965,
+      "type": 0,
+      "content": "倒把你们都惊着了。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi07-018"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1770704010,
+      "type": 0,
+      "content": "你知道就好。别一会儿好些，又拿不当事。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi07-019"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770704055,
+      "type": 0,
+      "content": "这会儿总闹不了。你去吧，别叫人都围着我。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi07-020"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1770704100,
+      "type": 0,
+      "content": "我就在外头。有事叫一声，别自己硬撑。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi07-021"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770721200,
+      "type": 0,
+      "content": "太太叫你去了这么久，说什么？",
+      "platformMessageId": "whomi-hongloumeng-v1-xi08-001"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1770721245,
+      "type": 0,
+      "content": "问你疼得怎么样，吃了些什么。给了两瓶香露，叫好生收着。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi08-002"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770721290,
+      "type": 0,
+      "content": "太太是不是还生气？",
+      "platformMessageId": "whomi-hongloumeng-v1-xi08-003"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1770721335,
+      "type": 0,
+      "content": "只管问你的伤。你先别想那些。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi08-004"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770721380,
+      "type": 0,
+      "content": "这瓶是什么？",
+      "platformMessageId": "whomi-hongloumeng-v1-xi08-005"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1770721425,
+      "type": 0,
+      "content": "木樨清露，那一瓶是玫瑰的。别拿起来摇，我才放稳。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi08-006"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770721470,
+      "type": 0,
+      "content": "就看看。你也闻闻，倒不像先前那样腻。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi08-007"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1770721515,
+      "type": 0,
+      "content": "闻见了。我拿到里面收好，免得一会儿又碰翻。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi08-008"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770721560,
+      "type": 0,
+      "content": "你回来得正好，还要烦你去宝姐姐那里一趟。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi08-009"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1770721605,
+      "type": 0,
+      "content": "她才送了药回来，你又有什么事。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi08-010"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770721650,
+      "type": 0,
+      "content": "替我借本书。我躺着没事，想看看。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi08-011"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1770721695,
+      "type": 0,
+      "content": "哪一本？",
+      "platformMessageId": "whomi-hongloumeng-v1-xi08-012"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770721740,
+      "type": 0,
+      "content": "你去了替我问问，她那里有的，拿一本来就好。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi08-013"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1770721785,
+      "type": 0,
+      "content": "床边堆着这些，倒都不能看了？",
+      "platformMessageId": "whomi-hongloumeng-v1-xi08-014"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770721830,
+      "type": 0,
+      "content": "看过了，想换一本。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi08-015"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1770721875,
+      "type": 0,
+      "content": "那你安稳躺着，别趁人出去又要坐起来。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi08-016"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770721920,
+      "type": 0,
+      "content": "知道。你不用赶着回来。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi08-017"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1770721965,
+      "type": 0,
+      "content": "旁人等书，倒是催着快去快回。你又不急了。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi08-018"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770722010,
+      "type": 0,
+      "content": "她若正忙，难道还催她找不成。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi08-019"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1770722055,
+      "type": 0,
+      "content": "我去问。茶就在手边，够不着叫晴雯。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi08-020"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1770782400,
+      "type": 0,
+      "content": "太太才叫人送了两碗菜来，说是给我的。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi09-001"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770782445,
+      "type": 0,
+      "content": "想是今日菜多，给你们大家尝尝。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi09-002"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1770782490,
+      "type": 0,
+      "content": "不是。特意说了我的名字，也不叫过去磕头。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi09-003"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770782535,
+      "type": 0,
+      "content": "那就吃吧。何苦捧着碗，只顾猜。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi09-004"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1770782580,
+      "type": 0,
+      "content": "从前没有过，心里怪不自在的。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi09-005"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770782625,
+      "type": 0,
+      "content": "尝着好不好，倒比猜这个容易。你先放下，烫不烫？",
+      "platformMessageId": "whomi-hongloumeng-v1-xi09-006"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1770782670,
+      "type": 0,
+      "content": "不烫，刚端进来的。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi09-007"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770782715,
+      "type": 0,
+      "content": "对了，莺儿那边要金线，你知道放在哪儿？",
+      "platformMessageId": "whomi-hongloumeng-v1-xi09-008"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1770782760,
+      "type": 0,
+      "content": "我洗了手就去拿。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi09-009"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770782805,
+      "type": 0,
+      "content": "不是催你。宝姐姐才说了，等你把饭吃了。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi09-010"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1770782850,
+      "type": 0,
+      "content": "她倒替我说在前头了。你这一声叫，我还当又等不得。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi09-011"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770782895,
+      "type": 0,
+      "content": "这回等得。线在那里又不会跑。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi09-012"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1770782940,
+      "type": 0,
+      "content": "那你也别把莺儿留得太晚。人家还得回去服侍姑娘。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi09-013"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770782985,
+      "type": 0,
+      "content": "只做玉上这一样，旁的先不做。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi09-014"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1770783030,
+      "type": 0,
+      "content": "你能记住才好。方才还要一样一个。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi09-015"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770783075,
+      "type": 0,
+      "content": "我看着新鲜，多问了几句。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi09-016"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1770783120,
+      "type": 0,
+      "content": "你问一句，人家就得停下手来答一句。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi09-017"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770783165,
+      "type": 0,
+      "content": "好，我不问了。你把那口吃了再说我。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi09-018"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1770783210,
+      "type": 0,
+      "content": "吃着呢。你别一直看，我倒吃不下去了。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi09-019"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770783255,
+      "type": 0,
+      "content": "我看络子去。吃完了再拿，不急。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi09-020"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1770814800,
+      "type": 0,
+      "content": "书收起来吧，灯都添过一回油了。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi10-001"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770814845,
+      "type": 0,
+      "content": "还有两页。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi10-002"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1770814890,
+      "type": 0,
+      "content": "方才就说两页。林姑娘走时，你也是这样说的。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi10-003"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770814935,
+      "type": 0,
+      "content": "我又从前头翻了一遍。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi10-004"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1770814980,
+      "type": 0,
+      "content": "知道你会翻。今夜先放下，明日书也不会跑。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi10-005"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770815025,
+      "type": 0,
+      "content": "你先睡，我自己收。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi10-006"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1770815070,
+      "type": 0,
+      "content": "你自己能收，就把压在被子上的那一本也拿开。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi10-007"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770815115,
+      "type": 0,
+      "content": "拿开了。你瞧，这回不用你找。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi10-008"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1770815160,
+      "type": 0,
+      "content": "是，今夜省了一件。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi10-009"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770815205,
+      "type": 0,
+      "content": "你笑什么。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi10-010"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1770815250,
+      "type": 0,
+      "content": "笑你做这么一件，还要叫我瞧着。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi10-011"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770815295,
+      "type": 0,
+      "content": "我原是想让你少忙。那块包书的绢呢？",
+      "platformMessageId": "whomi-hongloumeng-v1-xi10-012"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1770815340,
+      "type": 0,
+      "content": "你右手边抽屉里。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi10-013"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770815385,
+      "type": 0,
+      "content": "没有啊。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi10-014"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1770815430,
+      "type": 0,
+      "content": "下面。不是放在眼前，就叫没有。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi10-015"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770815475,
+      "type": 0,
+      "content": "找见了。你别起来，我够得着。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi10-016"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1770815520,
+      "type": 0,
+      "content": "那我就不过去了。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi10-017"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770815565,
+      "type": 0,
+      "content": "好，今夜再没事了。你去歇着。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi10-018"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1770815610,
+      "type": 0,
+      "content": "若又想起什么呢？",
+      "platformMessageId": "whomi-hongloumeng-v1-xi10-019"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770815655,
+      "type": 0,
+      "content": "先留到明早。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi10-020"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xiren",
+      "accountName": "袭人",
+      "timestamp": 1770815700,
+      "type": 0,
+      "content": "那灯灭了？",
+      "platformMessageId": "whomi-hongloumeng-v1-xi10-021"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770815745,
+      "type": 0,
+      "content": "灭吧。",
+      "platformMessageId": "whomi-hongloumeng-v1-xi10-022"
+    }
+  ]
+}

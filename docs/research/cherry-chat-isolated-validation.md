@@ -2,13 +2,13 @@
 
 2026-11-08。关联 [003 · AI 对话模块对齐 Cherry](../planning/ideas/003-cherry-chat-alignment.md)。用户明确批准约 1–2 小时的隔离验证；本轮没有正式迁入产品页面，也没有扩大附件、工具或材料访问范围。
 
-本文保留隔离研究阶段的结果。原型文件仍在 `D:/University/github/whomi/prototypes/cherry-chat-alignment`，下方原型链接指向该研究工作区；未将原型代码带入正式开发工作区。正式迁入后的结果见[产品验收记录](cherry-chat-migration-acceptance.md)。
+本文保留隔离研究阶段的结果。2026-11-09，研究原型已移到仓库外，见[本机归档说明](D:/CodexData/visualizations/2026/11/08/01a1bae2-ec18-76e1-afb5-596e02eaa1f7/whomi-research-archive-20261109/README.md)。下方原型源码与试验文件的链接仅用于访问本机归档，不随仓库分发；本报告中的验证记录与截图仍保留在仓库。正式迁入后的结果见[产品验收记录](cherry-chat-migration-acceptance.md)。
 
 **结论：已验证的输入核心、消息列表及滚动模块可以接入现有 Whomi 后端。** 桌面流程 9 项操作断言、来源校验及原型构建通过；严格运行诊断未通过，捕获到 61 条尺寸观察器通知。独立诊断未观察到停止或完成后的持续通知、静置抖动或阅读位置漂移。这里证明的是有限范围内可以复用，没有证明整套 Cherry 聊天工作区可以直接替换，也没有交付正式产品功能。
 
 ## 验证对象与证据边界
 
-固定 Cherry 提交为 `263667f7a99dfed736c939708a55deb435164820`。原型在 `prototypes/cherry-chat-alignment`，使用独立依赖清单和本机合成数据。已有未提交文档改动保持原样；正式 `src`、`electron`、根 `package.json` 及锁文件未修改。
+固定 Cherry 提交为 `263667f7a99dfed736c939708a55deb435164820`。研究时原型位于 `prototypes/cherry-chat-alignment`，使用独立依赖清单和本机合成数据；该目录现已归档。已有未提交文档改动保持原样；正式 `src`、`electron`、根 `package.json` 及锁文件未修改。
 
 | 层次 | 实际运行内容 | 本轮不能推出的结论 |
 |---|---|---|
@@ -18,13 +18,13 @@
 | 正文 | Whomi 已迁入的 Cherry MarkdownCore 与既有分块适配 | 未证明升级或整体迁入能修复模型输出中的不规范加粗语法 |
 | 数据与生成 | 正式 Whomi 客户端、会话服务、数据仓库、SQLite、PiRuntime，经本机服务生成合成回答 | 未调用真实云模型，合成用量不是性能或计费结论；未验收正式 Electron 跨进程通信 |
 
-共核对 65 个复用文件：输入器 49 个、列表与滚动 10 个、共用控件 6 个。原输入与滚动逻辑没有重写；导入路径适配保留清单，65 个缓存原文件与固定提交的 Git 对象一致。[可复查脚本](D:/University/github/whomi/prototypes/cherry-chat-alignment/verify-source.mjs) · [输入器清单](D:/University/github/whomi/prototypes/cherry-chat-alignment/composer/source-manifest.json) · [列表清单](D:/University/github/whomi/prototypes/cherry-chat-alignment/messages/source-hashes.json)
+共核对 65 个复用文件：输入器 49 个、列表与滚动 10 个、共用控件 6 个。原输入与滚动逻辑没有重写；导入路径适配保留清单，65 个缓存原文件与固定提交的 Git 对象一致。[可复查脚本](D:/CodexData/visualizations/2026/11/08/01a1bae2-ec18-76e1-afb5-596e02eaa1f7/whomi-research-archive-20261109/cherry-chat-alignment/verify-source.mjs) · [输入器清单](D:/CodexData/visualizations/2026/11/08/01a1bae2-ec18-76e1-afb5-596e02eaa1f7/whomi-research-archive-20261109/cherry-chat-alignment/composer/source-manifest.json) · [列表清单](D:/CodexData/visualizations/2026/11/08/01a1bae2-ec18-76e1-afb5-596e02eaa1f7/whomi-research-archive-20261109/cherry-chat-alignment/messages/source-hashes.json)
 
 ## 已取得的运行证据
 
-后端连续场景已通过正式客户端到本机 Pi 调用的完整链路：生成、停止保留部分文本、失败后原轮次重试、关闭并重新打开数据库、拒绝跨会话引用和不开放模型配置写入。失败重试沿用同一轮编号，尝试次数变为 2，没有新增重复提问。[后端验证](D:/University/github/whomi/prototypes/cherry-chat-alignment/backend/probe.test.ts)
+后端连续场景已通过正式客户端到本机 Pi 调用的完整链路：生成、停止保留部分文本、失败后原轮次重试、关闭并重新打开数据库、拒绝跨会话引用和不开放模型配置写入。失败重试沿用同一轮编号，尝试次数变为 2，没有新增重复提问。[后端验证](D:/CodexData/visualizations/2026/11/08/01a1bae2-ec18-76e1-afb5-596e02eaa1f7/whomi-research-archive-20261109/cherry-chat-alignment/backend/probe.test.ts)
 
-原列表独立核查中，同一轮合成文字从 744 增到 816 个字符，内容高度从 5254 增到 5335 像素，向上阅读的位置保持在 3885。停止后等待 800 毫秒，文本和位置都未变化，仍处于阅读状态；点击原回底按钮后恢复跟随，距底部为 0。960×720 窗口未出现页面横向溢出。[几何与状态记录](D:/University/github/whomi/prototypes/cherry-chat-alignment/messages/evidence/reading-stop.json) · [阅读期间内容增长](D:/University/github/whomi/prototypes/cherry-chat-alignment/messages/evidence/reading-during-growth.png) · [停止后保留阅读位置](D:/University/github/whomi/prototypes/cherry-chat-alignment/messages/evidence/stopped-while-reading.png)
+原列表独立核查中，同一轮合成文字从 744 增到 816 个字符，内容高度从 5254 增到 5335 像素，向上阅读的位置保持在 3885。停止后等待 800 毫秒，文本和位置都未变化，仍处于阅读状态；点击原回底按钮后恢复跟随，距底部为 0。960×720 窗口未出现页面横向溢出。[几何与状态记录](D:/CodexData/visualizations/2026/11/08/01a1bae2-ec18-76e1-afb5-596e02eaa1f7/whomi-research-archive-20261109/cherry-chat-alignment/messages/evidence/reading-stop.json) · [阅读期间内容增长](D:/CodexData/visualizations/2026/11/08/01a1bae2-ec18-76e1-afb5-596e02eaa1f7/whomi-research-archive-20261109/cherry-chat-alignment/messages/evidence/reading-during-growth.png) · [停止后保留阅读位置](D:/CodexData/visualizations/2026/11/08/01a1bae2-ec18-76e1-afb5-596e02eaa1f7/whomi-research-archive-20261109/cherry-chat-alignment/messages/evidence/stopped-while-reading.png)
 
 最终桌面复跑于北京时间 2026-11-08 19:32 完成，9 项操作断言通过，另 1 项严格运行诊断未通过，脚本以非零状态退出。窗口由隐藏改为非激活显示，使用真实鼠标与键盘操作；组合输入例外，使用合成浏览器事件。主执行者复核了运行记录、断言及关键截图。完整证据见[最终运行记录](assets/cherry-chat-alignment/verification.json)和[来源校验结果](assets/cherry-chat-alignment/source-verification.json)。
 
@@ -42,7 +42,7 @@
 
 早期报告仅监听 Playwright 页面错误，未捕获浏览器原生窗口错误通知。主执行者从 Vite 日志发现缺口后，补充了导航前的窗口错误和未处理拒绝捕获，没有屏蔽通知。最终复跑捕获 61 条 `ResizeObserver loop completed with undelivered notifications.`，因此严格的零运行错误断言失败；其中初始加载 1 条、正常生成 25 条、滚动与跟随场景 9 条、失败重试场景 26 条，未捕获其他错误类型。
 
-独立尺寸诊断另捕获 47 条同类通知，均在内容增长期间；完成、停止及窄窗口后分别静置 2.5 秒，新增通知与观察器回调均为 0。上滚阅读时内容高度 2686→2965 像素，位置保持 1478，停止后也未漂移。每条通知同帧都有虚拟列表库 virtua 的尺寸回调；这能说明时间相关性，尚不能证明唯一原因。virtua 0.49.1 的[官方说明](https://github.com/inokawa/virtua/blob/0.49.1/README.md#what-is-resizeobserver-loop-completed-with-undelivered-notifications-error)列有该现象，本次没有修改原核心或过滤日志使检查通过。[独立诊断记录](D:/University/github/whomi/prototypes/cherry-chat-alignment/messages/evidence/resize-observers.json)及[核查边界](D:/University/github/whomi/prototypes/cherry-chat-alignment/messages/README.md)保留详细数据；这些有限样本不代表所有尺寸变化场景都没有影响。
+独立尺寸诊断另捕获 47 条同类通知，均在内容增长期间；完成、停止及窄窗口后分别静置 2.5 秒，新增通知与观察器回调均为 0。上滚阅读时内容高度 2686→2965 像素，位置保持 1478，停止后也未漂移。每条通知同帧都有虚拟列表库 virtua 的尺寸回调；这能说明时间相关性，尚不能证明唯一原因。virtua 0.49.1 的[官方说明](https://github.com/inokawa/virtua/blob/0.49.1/README.md#what-is-resizeobserver-loop-completed-with-undelivered-notifications-error)列有该现象，本次没有修改原核心或过滤日志使检查通过。[独立诊断记录](D:/CodexData/visualizations/2026/11/08/01a1bae2-ec18-76e1-afb5-596e02eaa1f7/whomi-research-archive-20261109/cherry-chat-alignment/messages/evidence/resize-observers.json)及[核查边界](D:/CodexData/visualizations/2026/11/08/01a1bae2-ec18-76e1-afb5-596e02eaa1f7/whomi-research-archive-20261109/cherry-chat-alignment/messages/README.md)保留详细数据；这些有限样本不代表所有尺寸变化场景都没有影响。
 
 最终复跑的控制台错误与页面外网请求计数均为 0，请求监听在页面导航前建立，没有拦截网络。后台模型端点固定为 127.0.0.1；本次未进行系统级流量审计。
 
@@ -62,7 +62,7 @@
 | 程序定位表格与跟随冲突 | 流式列表仍在跟随时，脚本要求程序滚入指定元素；源逻辑会继续回底 | 测试应先通过真实鼠标滚动进入阅读状态，再检查目标内容可见 |
 | 严格运行诊断失败 | 原生窗口错误通道捕获到尺寸观察器通知；独立采样未发现静置后的持续循环或位置漂移 | 保留未通过状态和原始通知，正式迁入时覆盖更多内容尺寸及长会话场景 |
 
-滚轮诊断保存了输入前后的滚动位置和捕获事件。隐藏时滚轮与滚动事件均为 0，显示后真实滚轮到达且原跟随状态转为关闭；没有为通过测试修改上游滚动逻辑。[诊断记录](D:/University/github/whomi/prototypes/cherry-chat-alignment/messages/evidence/wheel-diagnostic.json)
+滚轮诊断保存了输入前后的滚动位置和捕获事件。隐藏时滚轮与滚动事件均为 0，显示后真实滚轮到达且原跟随状态转为关闭；没有为通过测试修改上游滚动逻辑。[诊断记录](D:/CodexData/visualizations/2026/11/08/01a1bae2-ec18-76e1-afb5-596e02eaa1f7/whomi-research-archive-20261109/cherry-chat-alignment/messages/evidence/wheel-diagnostic.json)
 
 ## 采用建议与剩余范围
 
@@ -72,6 +72,6 @@
 
 原型构建通过，但入口压缩后约 1.09 MB、输入器延迟加载块约 450 KB，构建仍提示大分块。这些是原型构建大小，不是正式安装包增量或启动性能结论；正式迁入时需保留按需加载并重新衡量实际成本。上游后续升级仍须复核宿主接口、依赖版本与这些操作流程。
 
-后续已按用户请求形成[正式迁入方案第 1 版候选](../designs/whomi-cherry-chat-migration-v1.md)，列出原模块、Whomi 接入、剩余问题和验收范围，仍待用户确认。本次隔离验证与方案编写不包含正式开工、不创建开发工单、不提交或推送，也不发布应用。
+隔离验证结束时，已按用户请求形成[正式迁入方案第 1 版候选](../designs/whomi-cherry-chat-migration-v1.md)，列出原模块、Whomi 接入、剩余问题和验收范围，当时尚待用户确认。该研究阶段不包含正式开发或发布；后续开工授权、实现与合并进展见[003 主记录](../planning/ideas/003-cherry-chat-alignment.md)。
 
-运行入口与数据说明见[原型说明](D:/University/github/whomi/prototypes/cherry-chat-alignment/README.md)。临时资料只含合成消息；后台绑定 127.0.0.1，不需要真实密钥。组合输入验证使用浏览器合成事件，真实 Windows 输入法候选窗操作仍未验证。
+运行入口与数据说明见[原型说明](D:/CodexData/visualizations/2026/11/08/01a1bae2-ec18-76e1-afb5-596e02eaa1f7/whomi-research-archive-20261109/cherry-chat-alignment/README.md)。临时资料只含合成消息；后台绑定 127.0.0.1，不需要真实密钥。组合输入验证使用浏览器合成事件，真实 Windows 输入法候选窗操作仍未验证。

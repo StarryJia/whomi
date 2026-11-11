@@ -1,0 +1,32 @@
+{
+  "checkedAt": "2026-11-05T15:14:39.062Z",
+  "restartPersistence": true,
+  "counts": [
+    195,
+    155,
+    210
+  ],
+  "completedTaskIds": [
+    "15",
+    "14",
+    "13"
+  ],
+  "narrowContentBounds": {
+    "x": 247,
+    "y": 97,
+    "width": 960,
+    "height": 760
+  },
+  "referenceIds": [
+    "59701",
+    "59702",
+    "59703",
+    "59704",
+    "59705",
+    "59706",
+    "59707",
+    "59708"
+  ],
+  "referenceNavigationMatches": true,
+  "overviewIncludesEarlierLvbu": true
+}

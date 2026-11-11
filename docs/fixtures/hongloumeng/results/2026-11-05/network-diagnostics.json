@@ -1,0 +1,22 @@
+{
+  "checkedAt": "2026-11-05T15:02:34.670Z",
+  "checks": [
+    {
+      "name": "global-fetch",
+      "status": 200,
+      "issuerValid": true,
+      "endpointsValid": true,
+      "elapsedMs": 2009
+    },
+    {
+      "name": "electron-net-fetch",
+      "status": 200,
+      "issuerValid": true,
+      "endpointsValid": true,
+      "elapsedMs": 1535
+    }
+  ],
+  "account": {
+    "state": "connected"
+  }
+}

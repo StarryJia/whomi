@@ -1,0 +1,1264 @@
+{
+  "chatlab": {
+    "version": "0.0.2"
+  },
+  "meta": {
+    "name": "薛宝钗",
+    "platform": "telegram",
+    "type": "private",
+    "groupId": "whomi-fiction-hongloumeng-jiabaoyu-xuebaochai",
+    "ownerId": "whomi-fiction-hongloumeng-jiabaoyu"
+  },
+  "members": [
+    {
+      "platformId": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉"
+    },
+    {
+      "platformId": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗"
+    }
+  ],
+  "messages": [
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1768021200,
+      "type": 0,
+      "content": "姐姐怎么又点一出这样热闹的？才锣鼓响了半天。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai01-001"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1768021245,
+      "type": 0,
+      "content": "你连唱的是什么都没听完，先嫌上了。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai01-002"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1768021290,
+      "type": 0,
+      "content": "老太太喜欢，我知道。可今日是姐姐的生日。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai01-003"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1768021335,
+      "type": 0,
+      "content": "老太太替我摆了酒戏，大家看得高兴不好么？",
+      "platformMessageId": "whomi-hongloumeng-v1-chai01-004"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1768021380,
+      "type": 0,
+      "content": "那姐姐自己爱听什么？",
+      "platformMessageId": "whomi-hongloumeng-v1-chai01-005"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1768021425,
+      "type": 0,
+      "content": "这出我也爱听。你只听见响，就把里头好的都漏过去了。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai01-006"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1768021470,
+      "type": 0,
+      "content": "哪一句好？",
+      "platformMessageId": "whomi-hongloumeng-v1-chai01-007"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1768021515,
+      "type": 0,
+      "content": "那支《寄生草》。前面热闹，到这里却一下收住了。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai01-008"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1768021560,
+      "type": 0,
+      "content": "我方才正同人说话，没听清。姐姐再说一遍。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai01-009"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1768021605,
+      "type": 0,
+      "content": "原来是你没听，倒来问我为何点。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai01-010"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1768021650,
+      "type": 0,
+      "content": "是我不是。好姐姐，说给我听听。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai01-011"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1768021695,
+      "type": 0,
+      "content": "赤条条来去无牵挂。你把前后的意思连起来想，才有味道。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai01-012"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1768021740,
+      "type": 0,
+      "content": "这句好。人若真能这样，倒省了多少事。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai01-013"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1768021785,
+      "type": 0,
+      "content": "戏里唱一句容易。你方才还嫌人家走得太快，没来得及问一句话呢。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai01-014"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1768021830,
+      "type": 0,
+      "content": "姐姐倒什么都瞧见了。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai01-015"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1768021875,
+      "type": 0,
+      "content": "坐得这样近，想不听也难。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai01-016"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1768021920,
+      "type": 0,
+      "content": "这支曲子我回去找来，细细看一遍。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai01-017"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1768021965,
+      "type": 0,
+      "content": "先把眼前的听完。台上还唱着呢。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai01-018"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1768183200,
+      "type": 0,
+      "content": "姐姐要的字，我写好了。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai02-001"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1768183245,
+      "type": 0,
+      "content": "我妈是要夹在书里看的，你没写得比书还大吧？",
+      "platformMessageId": "whomi-hongloumeng-v1-chai02-002"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1768183290,
+      "type": 0,
+      "content": "我照着书页裁的。右边还想补一枝兰花。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai02-003"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1768183335,
+      "type": 0,
+      "content": "先拿来我看看。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai02-004"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1768183380,
+      "type": 0,
+      "content": "这一笔写得怎么样？我写了三张，才留下这一张。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai02-005"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1768183425,
+      "type": 0,
+      "content": "这一笔是好。下面这一行，少了个字。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai02-006"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1768183470,
+      "type": 0,
+      "content": "哪里？",
+      "platformMessageId": "whomi-hongloumeng-v1-chai02-007"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1768183515,
+      "type": 0,
+      "content": "你从头读一遍。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai02-008"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1768183560,
+      "type": 0,
+      "content": "真少了。好好的一张，又得重写。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai02-009"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1768183605,
+      "type": 0,
+      "content": "不急，我妈也没催你今日交。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai02-010"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1768183650,
+      "type": 0,
+      "content": "我许了今日的，哪能就这样送去。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai02-011"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1768183695,
+      "type": 0,
+      "content": "那就重写，兰花先省下来。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai02-012"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1768183740,
+      "type": 0,
+      "content": "姐姐只管缺的这个字，我写得好的倒不看了。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai02-013"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1768183785,
+      "type": 0,
+      "content": "不是说过这一笔好了？你要听几遍才够。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai02-014"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1768183830,
+      "type": 0,
+      "content": "好歹再说一遍，我才有兴头写。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai02-015"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1768183875,
+      "type": 0,
+      "content": "字写得好。若抄全了，就更好了。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai02-016"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1768183920,
+      "type": 0,
+      "content": "姐姐夸人，总要带上一句。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai02-017"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1768183965,
+      "type": 0,
+      "content": "不然我妈看到少字，来问我，可要说是我催坏了你的兴头？",
+      "platformMessageId": "whomi-hongloumeng-v1-chai02-018"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1768184010,
+      "type": 0,
+      "content": "我重写就是。旧的别扔，我留着看那一笔。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai02-019"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1768184055,
+      "type": 0,
+      "content": "给你放在旁边。墨还湿，别压上去。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai02-020"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770003000,
+      "type": 0,
+      "content": "方才我说薛大哥哥寻过那方子，姐姐怎么就说不知道？",
+      "platformMessageId": "whomi-hongloumeng-v1-chai03-001"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770003045,
+      "type": 0,
+      "content": "我没听他同我说，自然不知道。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai03-002"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770003090,
+      "type": 0,
+      "content": "凤姐姐后来都说了，他真去寻过珍珠。可见不是我编的。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai03-003"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770003135,
+      "type": 0,
+      "content": "凤姐姐亲眼见过，问她正好。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai03-004"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770003180,
+      "type": 0,
+      "content": "我先问的姐姐。你只说一句有这回事，也不至于满屋都当我撒谎。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai03-005"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770003225,
+      "type": 0,
+      "content": "我若为了替你说话，把不知道的说成知道，姨娘再问下去，我答什么？",
+      "platformMessageId": "whomi-hongloumeng-v1-chai03-006"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770003270,
+      "type": 0,
+      "content": "罢了，我不说了。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai03-007"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770003315,
+      "type": 0,
+      "content": "你又不自在。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai03-008"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770003360,
+      "type": 0,
+      "content": "人前被笑了一回，还不许我恼一会儿？",
+      "platformMessageId": "whomi-hongloumeng-v1-chai03-009"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770003405,
+      "type": 0,
+      "content": "许你恼。只是别把我说不知道，也算成存心笑你。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai03-010"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770003450,
+      "type": 0,
+      "content": "姐姐当真一点也没听他说过？",
+      "platformMessageId": "whomi-hongloumeng-v1-chai03-011"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770003495,
+      "type": 0,
+      "content": "当真。听过的事，我何苦瞒你。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai03-012"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770003540,
+      "type": 0,
+      "content": "我还当姐姐也同她们一起笑我。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai03-013"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770003585,
+      "type": 0,
+      "content": "我可没笑。你自己想想。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai03-014"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770256800,
+      "type": 0,
+      "content": "我方才话还没说完，你怎么就走了？",
+      "platformMessageId": "whomi-hongloumeng-v1-chai04-001"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770256845,
+      "type": 0,
+      "content": "屋里闷，出去透一透。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai04-002"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770256890,
+      "type": 0,
+      "content": "窗就在旁边，也没见你要开。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai04-003"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770256935,
+      "type": 0,
+      "content": "姐姐知道我不爱听，还偏说这些。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai04-004"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770256980,
+      "type": 0,
+      "content": "不过叫你见长辈时，好好应答几句。难道也委屈了你？",
+      "platformMessageId": "whomi-hongloumeng-v1-chai04-005"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770257025,
+      "type": 0,
+      "content": "今日好好应答，明日便要我去听他们谈什么前程。总有下一件。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai04-006"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770257070,
+      "type": 0,
+      "content": "人渐渐大了，这些来往总躲不开。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai04-007"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770257115,
+      "type": 0,
+      "content": "姐姐今日来，是专为劝我这个？",
+      "platformMessageId": "whomi-hongloumeng-v1-chai04-008"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770257160,
+      "type": 0,
+      "content": "原只随口说起。你这样问，倒像我没别的话同你说了。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai04-009"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770257205,
+      "type": 0,
+      "content": "那说别的。上回那支曲子，我又找到一段好的。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai04-010"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770257250,
+      "type": 0,
+      "content": "你一碰着不爱听的，便把戏文搬出来。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai04-011"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770257295,
+      "type": 0,
+      "content": "戏文我愿意同姐姐说。这些话，别人已经说得够多了。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai04-012"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770257340,
+      "type": 0,
+      "content": "所以我便该住口了？",
+      "platformMessageId": "whomi-hongloumeng-v1-chai04-013"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770257385,
+      "type": 0,
+      "content": "我不是说姐姐不该来。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai04-014"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770257430,
+      "type": 0,
+      "content": "我也没问我该不该来。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai04-015"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770257475,
+      "type": 0,
+      "content": "我不想同姐姐争。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai04-016"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770257520,
+      "type": 0,
+      "content": "那就先不说。别再站起来就走，倒叫留下的人不知还该坐多久。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai04-017"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770257565,
+      "type": 0,
+      "content": "姐姐还坐一会儿吧。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai04-018"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770257610,
+      "type": 0,
+      "content": "我妈那里还有事。今日先回去了。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai04-019"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770343200,
+      "type": 0,
+      "content": "姐姐来了？",
+      "platformMessageId": "whomi-hongloumeng-v1-chai05-001"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770343245,
+      "type": 0,
+      "content": "莺儿说借来的花样在你这里，我来取。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai05-002"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770343290,
+      "type": 0,
+      "content": "我还当姐姐昨日恼了，今日不来了。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai05-003"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770343335,
+      "type": 0,
+      "content": "花样是别人等着要的，总不能也跟着你我赌气。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai05-004"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770343380,
+      "type": 0,
+      "content": "我昨日并没同姐姐赌气。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai05-005"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770343425,
+      "type": 0,
+      "content": "那便更好。东西在哪儿？",
+      "platformMessageId": "whomi-hongloumeng-v1-chai05-006"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770343470,
+      "type": 0,
+      "content": "桌角那个匣子里。我替你拿。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai05-007"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770343515,
+      "type": 0,
+      "content": "别把里头裁好的纸都带出来，叠了半日的。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai05-008"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770343560,
+      "type": 0,
+      "content": "就是这一张。昨日说的曲子，姐姐还要不要看？",
+      "platformMessageId": "whomi-hongloumeng-v1-chai05-009"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770343605,
+      "type": 0,
+      "content": "你抄好了？",
+      "platformMessageId": "whomi-hongloumeng-v1-chai05-010"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770343650,
+      "type": 0,
+      "content": "还没有。以为姐姐不肯要了。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai05-011"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770343695,
+      "type": 0,
+      "content": "你懒得抄，倒寻了个现成的缘故。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai05-012"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770343740,
+      "type": 0,
+      "content": "我现在就抄。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai05-013"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770343785,
+      "type": 0,
+      "content": "不必赶着。先把字看全，上次那一个字，可别又漏了。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai05-014"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770343830,
+      "type": 0,
+      "content": "那张我不是重写过，送给姨妈了么？",
+      "platformMessageId": "whomi-hongloumeng-v1-chai05-015"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770343875,
+      "type": 0,
+      "content": "收到了。我妈说字看着清楚，叫我谢你。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai05-016"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770343920,
+      "type": 0,
+      "content": "姐姐怎么到这会儿才说。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai05-017"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770343965,
+      "type": 0,
+      "content": "进门才说两句，便忙着问我生不生气，哪里轮得到说这个。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai05-018"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770344010,
+      "type": 0,
+      "content": "那我今日把曲子抄好，等姐姐来拿。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai05-019"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770344055,
+      "type": 0,
+      "content": "我叫莺儿顺路来取。你不必为等我，把别的事又搁下。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai05-020"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770705000,
+      "type": 0,
+      "content": "姐姐回去了？方才药送来，还没好好谢你。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai06-001"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770705045,
+      "type": 0,
+      "content": "已经交代袭人了。你别只顾说话，静静养着。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai06-002"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770705090,
+      "type": 0,
+      "content": "方才说到薛大哥哥，姐姐别放在心上。也不知是谁乱猜的。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai06-003"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770705135,
+      "type": 0,
+      "content": "我哥哥是什么性子，我还不知道？你不用替他一概担保。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai06-004"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770705180,
+      "type": 0,
+      "content": "我是不愿你听了难受。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai06-005"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770705225,
+      "type": 0,
+      "content": "你伤还疼着，倒惦记这句话。我知道你的好意。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai06-006"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770705270,
+      "type": 0,
+      "content": "那你刚才怎么又劝起我来？",
+      "platformMessageId": "whomi-hongloumeng-v1-chai06-007"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770705315,
+      "type": 0,
+      "content": "正因为看你伤成这样，才忍不住多说一句。你明知道家里不许，还要同那些人来往。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai06-008"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770705360,
+      "type": 0,
+      "content": "可我不能一挨打，就说往后不认得他们了。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai06-009"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770705405,
+      "type": 0,
+      "content": "你倒一句也不肯让。吃了这么大的亏，也不想想以后？",
+      "platformMessageId": "whomi-hongloumeng-v1-chai06-010"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770705450,
+      "type": 0,
+      "content": "旁的我可以听。这个我应承了姐姐，回头做不到，岂不是又哄你。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai06-011"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770705495,
+      "type": 0,
+      "content": "罢了，这时候不跟你争。伤先养好，余下的慢慢想。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai06-012"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770705540,
+      "type": 0,
+      "content": "姐姐是真疼我，我知道。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai06-013"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770705585,
+      "type": 0,
+      "content": "叫你好好养伤，你倒只拣这一句听。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai06-014"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770705630,
+      "type": 0,
+      "content": "我都听见了。只怕我说了不肯，姐姐又要恼。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai06-015"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770705675,
+      "type": 0,
+      "content": "你还肯直说，总比嘴上样样答应好。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai06-016"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770705720,
+      "type": 0,
+      "content": "那你明天还来不来？",
+      "platformMessageId": "whomi-hongloumeng-v1-chai06-017"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770705765,
+      "type": 0,
+      "content": "明日来。药别搁着，我要问袭人的。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai06-018"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770705810,
+      "type": 0,
+      "content": "我等姐姐。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai06-019"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770705855,
+      "type": 0,
+      "content": "不许为等人硬撑着。睡得着就睡。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai06-020"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770775200,
+      "type": 0,
+      "content": "药用了。姐姐还没问，我先告诉你。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai07-001"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770775245,
+      "type": 0,
+      "content": "我才进门，你倒先交代起来。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai07-002"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770775290,
+      "type": 0,
+      "content": "不是说了要问袭人？省得她再来回说一遍。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai07-003"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770775335,
+      "type": 0,
+      "content": "她说你昨夜睡了一阵。今日坐着，可比昨日安稳些？",
+      "platformMessageId": "whomi-hongloumeng-v1-chai07-004"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770775380,
+      "type": 0,
+      "content": "好多了。就是她们这里不叫动，那里也不叫去。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai07-005"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770775425,
+      "type": 0,
+      "content": "昨儿还起不来，今日便急了。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai07-006"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770775470,
+      "type": 0,
+      "content": "日日躺着，姐姐也躺不住。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai07-007"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770775515,
+      "type": 0,
+      "content": "我若躺不住，也得先能站稳才算。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai07-008"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770775560,
+      "type": 0,
+      "content": "又来了。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai07-009"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770775605,
+      "type": 0,
+      "content": "好，我不说。你方才看什么？",
+      "platformMessageId": "whomi-hongloumeng-v1-chai07-010"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770775650,
+      "type": 0,
+      "content": "旧日抄的曲子。就是许了给姐姐、一直没送去的。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai07-011"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770775695,
+      "type": 0,
+      "content": "我当你早忘了。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai07-012"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770775740,
+      "type": 0,
+      "content": "写了一半，后来事一多，就搁住了。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai07-013"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770775785,
+      "type": 0,
+      "content": "那就等好了再写，没人这会儿来催你的字。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai07-014"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770775830,
+      "type": 0,
+      "content": "姐姐今日倒样样宽待我。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai07-015"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770775875,
+      "type": 0,
+      "content": "昨日那样子，把人唬了一跳，今日还要同你讨账不成。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai07-016"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770775920,
+      "type": 0,
+      "content": "姐姐坐近一点，那边隔着屏风，说话还得抬声。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai07-017"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770775965,
+      "type": 0,
+      "content": "我就在这儿坐。把手边那页拿来，抄到了哪一句？",
+      "platformMessageId": "whomi-hongloumeng-v1-chai07-018"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770776010,
+      "type": 0,
+      "content": "抄到赤条条来去无牵挂。我单留一行，姐姐看好不好？",
+      "platformMessageId": "whomi-hongloumeng-v1-chai07-019"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770776055,
+      "type": 0,
+      "content": "把前头的也留着。我爱的是一路唱到这里，忽然这么一句；拆开来，倒少了意思。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai07-020"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770776100,
+      "type": 0,
+      "content": "那我先念前头。那天只顾这一句，前头真没记住。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai07-021"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770776145,
+      "type": 0,
+      "content": "拿近些，我同你看。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai07-022"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770778800,
+      "type": 0,
+      "content": "姐姐来看，莺儿打的这半截，果然比外头买的好。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai08-001"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770778845,
+      "type": 0,
+      "content": "你要拿它络什么？",
+      "platformMessageId": "whomi-hongloumeng-v1-chai08-002"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770778890,
+      "type": 0,
+      "content": "还没定。我才知道有这么多样，恨不得一样做一个。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai08-003"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770778935,
+      "type": 0,
+      "content": "那要她坐在这里做到几时？先挑一样要紧的。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai08-004"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770778980,
+      "type": 0,
+      "content": "姐姐替我挑。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai08-005"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770779025,
+      "type": 0,
+      "content": "你那块玉不是日日带着？不如先把玉络上。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai08-006"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770779070,
+      "type": 0,
+      "content": "倒把它忘了。用大红的如何？",
+      "platformMessageId": "whomi-hongloumeng-v1-chai08-007"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770779115,
+      "type": 0,
+      "content": "红的同玉上的颜色犯了，挤在一处，反看不清。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai08-008"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770779160,
+      "type": 0,
+      "content": "那黑的？",
+      "platformMessageId": "whomi-hongloumeng-v1-chai08-009"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770779205,
+      "type": 0,
+      "content": "单用黑的又暗。拿金线配着黑珠儿线试试。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai08-010"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770779250,
+      "type": 0,
+      "content": "姐姐一说，我就想见是什么样了。我叫袭人取。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai08-011"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770779295,
+      "type": 0,
+      "content": "让她先吃饭，线等一会儿不妨事。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai08-012"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770779340,
+      "type": 0,
+      "content": "那等她吃完。金的镶在黑的边上？",
+      "platformMessageId": "whomi-hongloumeng-v1-chai08-013"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770779385,
+      "type": 0,
+      "content": "也不单镶个边。让莺儿把两色拈在一起，看她怎么配。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai08-014"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770779430,
+      "type": 0,
+      "content": "这样想来，果然亮些，又不显得闹。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai08-015"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770779475,
+      "type": 0,
+      "content": "等线拿来了，先放在玉边上看看。还得做出来才见分晓。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai08-016"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770779520,
+      "type": 0,
+      "content": "姐姐总不肯把话说满。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai08-017"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770779565,
+      "type": 0,
+      "content": "东西还没做完，便让你夸到头了，做成了还有什么可说。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai08-018"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770779610,
+      "type": 0,
+      "content": "那姐姐等做完了再走。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai08-019"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770779655,
+      "type": 0,
+      "content": "我哥哥叫人来了，不能总让人等。做完你自己先看。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai08-020"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770779700,
+      "type": 0,
+      "content": "明儿拿给姐姐看。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai08-021"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-xuebaochai",
+      "accountName": "薛宝钗",
+      "timestamp": 1770779745,
+      "type": 0,
+      "content": "好。我也想看看这两色配成什么样。",
+      "platformMessageId": "whomi-hongloumeng-v1-chai08-022"
+    }
+  ]
+}

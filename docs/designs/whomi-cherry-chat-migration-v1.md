@@ -2,7 +2,7 @@
 
 2026-11-08。关联 [003 · AI 对话模块对齐 Cherry](../planning/ideas/003-cherry-chat-alignment.md)。
 
-**状态：用户已确认第 1 版并授权开始开发，实施中。** 用户在本方案交付后明确回复「可以，开始开发吧」。下文范围和验收条件是本轮开发依据，不是已经实现或通过的检查；运行通知例外、发布与推送仍未获授权。执行见[开发计划](../superpowers/plans/2026-11-08-cherry-chat-migration.md)。
+**状态：待验收；第 1 版实现已于 2026-11-09 通过[合并请求 #7](https://github.com/StarryJia/whomi/pull/7)合入 `main`。** 用户在本方案交付后明确回复「可以，开始开发吧」。下文保留已确认的范围与验收条件；实际完成项和遗留项见[产品验收记录](../research/cherry-chat-migration-acceptance.md)，合并不代表人工验收通过。执行过程见[开发计划](../superpowers/plans/2026-11-08-cherry-chat-migration.md)。
 
 ## 1. 目标与选型
 

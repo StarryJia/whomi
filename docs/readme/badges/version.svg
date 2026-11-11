@@ -1,9 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="108" height="22" viewBox="0 0 108 22" role="img" aria-labelledby="title">
+<svg xmlns="http://www.w3.org/2000/svg" width="110" height="28" viewBox="0 0 110 28" role="img" aria-labelledby="title">
   <title id="title">Version v0.1.11</title>
-  <path fill="#454c54" d="M0 0h54v22H0z"/>
-  <path fill="#af401c" d="M54 0h54v22h-54z"/>
-  <g fill="#fff" text-anchor="middle" font-family="Segoe UI, -apple-system, Microsoft YaHei, sans-serif" font-size="12" font-weight="600">
-    <text x="27" y="15">Version</text>
-    <text x="81" y="15">v0.1.11</text>
+  <rect x="0.5" y="0.5" width="109" height="27" rx="7" fill="#fff3e9" stroke="#f1dccb"/>
+  <g font-family="Segoe UI, -apple-system, Microsoft YaHei, sans-serif" font-size="12">
+    <text x="12" y="18.5" fill="#806047">Version</text>
+    <text x="65" y="18.5" fill="#764d2c" font-weight="600">v0.1.11</text>
   </g>
 </svg>

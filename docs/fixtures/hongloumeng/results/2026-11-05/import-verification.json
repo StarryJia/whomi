@@ -1,0 +1,111 @@
+{
+  "checkedAt": "2026-11-05T15:05:20.332Z",
+  "version": "0.1.11",
+  "checks": [
+    {
+      "name": "取消文件选择",
+      "passed": true,
+      "savedMessages": 0
+    },
+    {
+      "name": "林黛玉导入",
+      "conversationId": "11",
+      "output": "导入完成。\n\n林黛玉\n\n已保存 195 条消息。\n\n打开会话\n继续导入",
+      "passed": true
+    },
+    {
+      "name": "林黛玉重复导入",
+      "output": "导入完成。\n\n林黛玉\n\n新增 0 条消息，重复 195 条。\n\n打开会话\n继续导入",
+      "passed": true
+    },
+    {
+      "name": "薛宝钗导入",
+      "conversationId": "12",
+      "output": "导入完成。\n\n薛宝钗\n\n已保存 155 条消息。\n\n打开会话\n继续导入",
+      "passed": true
+    },
+    {
+      "name": "薛宝钗重复导入",
+      "output": "导入完成。\n\n薛宝钗\n\n新增 0 条消息，重复 155 条。\n\n打开会话\n继续导入",
+      "passed": true
+    },
+    {
+      "name": "袭人导入",
+      "conversationId": "13",
+      "output": "导入完成。\n\n袭人\n\n已保存 210 条消息。\n\n打开会话\n继续导入",
+      "passed": true
+    },
+    {
+      "name": "袭人重复导入",
+      "output": "导入完成。\n\n袭人\n\n新增 0 条消息，重复 210 条。\n\n打开会话\n继续导入",
+      "passed": true
+    }
+  ],
+  "conversations": [
+    {
+      "title": "林黛玉",
+      "conversationId": "11",
+      "messageCount": 195,
+      "selfMessageCount": 95,
+      "inputSha256": "55ec6d041162dddc7763a63ab8e7d22d5f283cf4804fbe469259cd2e8b6cfb8b",
+      "members": [
+        {
+          "id": "21",
+          "displayName": "贾宝玉",
+          "selfHint": true,
+          "confirmedSelf": true
+        },
+        {
+          "id": "22",
+          "displayName": "林黛玉",
+          "selfHint": null,
+          "confirmedSelf": false
+        }
+      ]
+    },
+    {
+      "title": "薛宝钗",
+      "conversationId": "12",
+      "messageCount": 155,
+      "selfMessageCount": 77,
+      "inputSha256": "117825b0d01cf7b2318a3e4865a793d1da5bcbe54edb7af4daed8c72aa6fcf55",
+      "members": [
+        {
+          "id": "23",
+          "displayName": "贾宝玉",
+          "selfHint": true,
+          "confirmedSelf": true
+        },
+        {
+          "id": "24",
+          "displayName": "薛宝钗",
+          "selfHint": null,
+          "confirmedSelf": false
+        }
+      ]
+    },
+    {
+      "title": "袭人",
+      "conversationId": "13",
+      "messageCount": 210,
+      "selfMessageCount": 103,
+      "inputSha256": "4c01d77a4e2bb7cb8746addd1209838b4a00e63ba91a5fcfdd6aaeb6fd6e8802",
+      "members": [
+        {
+          "id": "25",
+          "displayName": "袭人",
+          "selfHint": null,
+          "confirmedSelf": false
+        },
+        {
+          "id": "26",
+          "displayName": "贾宝玉",
+          "selfHint": true,
+          "confirmedSelf": true
+        }
+      ]
+    }
+  ],
+  "existingConversationsUnchanged": true,
+  "totalMessages": 560
+}

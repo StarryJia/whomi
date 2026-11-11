@@ -1,5 +1,7 @@
 # Whomi 产品上下文
 
+后续想法与规划方法见[产品规划与想法池](docs/planning/README.md)。其中待评估内容不代表已有能力或已承诺排期。
+
 2026-11-02，桌面「设置 → 系统提示词」可分别编辑「AI 对话」「记忆取材」「记忆归并」「记忆成稿」。保存后，下一轮对话和新启动的记忆任务各自采用对应文本，先前的轮次重试和记忆续跑仍沿用原指令。操作示例与截图见[系统提示词](docs/designs/whomi-system-prompts.md)。
 
 2026-11-01：记忆仓库采用按会话收展的 B 方案，详情与示例见[记忆仓库](docs/designs/whomi-memory-library.md)。Hello 在启动时预读本地数据，点击直接进入[个人总览](docs/designs/whomi-overview-entry.md)；[问一问](docs/designs/whomi-clarification-implementation.md)共用问题栏、卡片和对话输入框。模型选择按能力提供思考强度；套餐使用与管理留在账号设置。

@@ -6,19 +6,7 @@
 
 ## 从源码启动
 
-以下步骤已在 64 位 Windows 的 PowerShell 中验证。
-
-1. 安装 Node.js。项目使用 Node.js 24.12.0 和包管理工具 npm 11.6.2 验证。
-2. 在仓库首页选择 **Code → Download ZIP**，解压后在包含 `package.json` 的目录打开 PowerShell。
-3. 依次执行以下命令。最后一条会打开 Whomi 的桌面窗口。
-
-```powershell
-npm.cmd ci
-npm.cmd run native:electron
-npm.cmd run desktop:dev
-```
-
-如果安装时提示找不到 Python 或 C++ 编译器，安装 Python 和 Visual Studio Build Tools 的「使用 C++ 的桌面开发」组件，再重试失败的命令。
+环境准备与启动命令见 [README 的源码启动章节](../README.md#源码启动)。
 
 ## 先试一段虚构聊天
 
@@ -28,7 +16,7 @@ npm.cmd run desktop:dev
 
 ![正式版重复导入貂蝉会话，新增 0 条、重复 62 条](readme/screenshots/sample-import.png)
 
-要看吕布在不同关系里的表现，再导入[董卓](fixtures/lvbu/conversations/dongzhuo.chatlab.json)和[高顺](fixtures/lvbu/conversations/gaoshun.chatlab.json)的会话，同样选「吕布」为本人。在三段会话中分别点「整理成记忆」，完成后到「记忆仓库」查看。要复现首页截图的最终材料，再分别导入[第二轮的两个补充文件](fixtures/lvbu/round-2/README.md)，重新整理董卓、高顺两段会话，打开「个人总览」。
+要看吕布在不同关系里的表现，再导入[董卓](fixtures/lvbu/conversations/dongzhuo.chatlab.json)和[高顺](fixtures/lvbu/conversations/gaoshun.chatlab.json)的会话，同样选「吕布」为本人。在三段会话中分别点「整理成记忆」，完成后到「记忆仓库」查看。要复现示例个人总览的材料，再分别导入[第二轮的两个补充文件](fixtures/lvbu/round-2/README.md)，重新整理董卓、高顺两段会话，打开「个人总览」。
 
 ## 试一次引用提问
 
@@ -42,7 +30,9 @@ npm.cmd run desktop:dev
 
 回答留意到貂蝉的两句话：「让我自己同他说」是在争取自己开口，「外头冷，去茶铺坐」则是在照顾等她的人。点问题下的「8 条引用」，可以回到左侧原话，看看你是否也这样读。[查看实际问答截图](readme/screenshots/conversation-question.png)。
 
-提问时，模型服务会收到问题、所选引用和相关对话历史。如果当前会话已有有效的记忆成稿，也会带上其中的内容。整理记忆时，发送的是确认范围内的聊天材料。使用云端模型前，可以在「设置 → 消息处理」启用昵称匿名化和数据脱敏，选择要替换的邮箱、手机号等信息。规则可能漏掉正文中能识别身份的细节。
+提问时，模型服务会收到问题、所选引用和相关对话历史。如果当前会话已有有效的记忆成稿，也会带上其中的内容。整理记忆以确认页核对时当前会话中已导入的全部可分析消息为范围。例如，只导入这份虚构聊天文件时，即使选中了八句原文，整理记忆仍会处理会话中的 62 条消息。
+
+昵称匿名化和数据脱敏默认开启，可在「设置 → 消息处理」调整。具体发送范围、替换方式和限制见 [README 的数据处理边界](../README.md#数据处理边界)。
 
 ![消息隐私设置](readme/screenshots/message-privacy.png)
 

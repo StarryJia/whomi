@@ -1,0 +1,1584 @@
+{
+  "chatlab": {
+    "version": "0.0.2"
+  },
+  "meta": {
+    "name": "林黛玉",
+    "platform": "telegram",
+    "type": "private",
+    "groupId": "whomi-fiction-hongloumeng-jiabaoyu-lindaiyu",
+    "ownerId": "whomi-fiction-hongloumeng-jiabaoyu"
+  },
+  "members": [
+    {
+      "platformId": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉"
+    },
+    {
+      "platformId": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉"
+    }
+  ],
+  "messages": [
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1768888800,
+      "type": 0,
+      "content": "你拿着这些做什么？还带了个锄头。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai01-001"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1768888845,
+      "type": 0,
+      "content": "收花。你倒省事，一兜全倒进水里了。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai01-002"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1768888890,
+      "type": 0,
+      "content": "总比落在地上叫人踩了好。你看，顺着水就走了。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai01-003"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1768888935,
+      "type": 0,
+      "content": "走到哪里去？",
+      "platformMessageId": "whomi-hongloumeng-v1-dai01-004"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1768888980,
+      "type": 0,
+      "content": "出了园子，自然往下流。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai01-005"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1768889025,
+      "type": 0,
+      "content": "园里这段水干净，外头呢？流到脏地方，还不是一样糟蹋了。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai01-006"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1768889070,
+      "type": 0,
+      "content": "我只想着别叫人踩，倒没想到外头。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai01-007"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1768889115,
+      "type": 0,
+      "content": "那边有我收花的地方。埋下去，土也干净。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai01-008"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1768889160,
+      "type": 0,
+      "content": "什么时候弄的？你怎么也没叫我。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai01-009"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1768889205,
+      "type": 0,
+      "content": "这也要报给你知道？",
+      "platformMessageId": "whomi-hongloumeng-v1-dai01-010"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1768889250,
+      "type": 0,
+      "content": "我可以帮你挖。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai01-011"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1768889295,
+      "type": 0,
+      "content": "已经挖好了。眼前的花还没捡完，你先顾这一处吧。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai01-012"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1768889340,
+      "type": 0,
+      "content": "这些沾了土的，也要？",
+      "platformMessageId": "whomi-hongloumeng-v1-dai01-013"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1768889385,
+      "type": 0,
+      "content": "拍一拍就是。你别一伸脚，又踩下去一片。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai01-014"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1768889430,
+      "type": 0,
+      "content": "你看着我，倒比看花还紧。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai01-015"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1768889475,
+      "type": 0,
+      "content": "花又不会专往花上踩。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai01-016"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1768889520,
+      "type": 0,
+      "content": "好，我站住。袋子给我拿着。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai01-017"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1768889565,
+      "type": 0,
+      "content": "拿稳了。这回别又说水里好。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai01-018"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1768890600,
+      "type": 0,
+      "content": "你方才藏到身后的，是什么书？",
+      "platformMessageId": "whomi-hongloumeng-v1-dai02-001"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1768890645,
+      "type": 0,
+      "content": "没什么，你不看的。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai02-002"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1768890690,
+      "type": 0,
+      "content": "你倒替我看过了。拿来。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai02-003"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1768890735,
+      "type": 0,
+      "content": "先说好，看了不许告诉别人。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai02-004"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1768890780,
+      "type": 0,
+      "content": "连书名都不肯说，先同我讲起条件来了。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai02-005"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1768890825,
+      "type": 0,
+      "content": "是《西厢记》。写得真好，你看几页就知道了。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai02-006"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1768890870,
+      "type": 0,
+      "content": "把花放下再递。满手都是花灰。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai02-007"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1768890915,
+      "type": 0,
+      "content": "这一段我才看过。好不好？",
+      "platformMessageId": "whomi-hongloumeng-v1-dai02-008"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1768890960,
+      "type": 0,
+      "content": "你让我看完。才读两行，就问了三遍。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai02-009"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1768891005,
+      "type": 0,
+      "content": "我不过急着听你说。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai02-010"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1768891050,
+      "type": 0,
+      "content": "这几句倒真写得好。话像随口说的，意思都在里头。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai02-011"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1768891095,
+      "type": 0,
+      "content": "我说什么来着。你若是书里那位小姐——",
+      "platformMessageId": "whomi-hongloumeng-v1-dai02-012"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1768891140,
+      "type": 0,
+      "content": "你又拿我比什么？",
+      "platformMessageId": "whomi-hongloumeng-v1-dai02-013"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1768891185,
+      "type": 0,
+      "content": "我是说，你也这样会说话。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai02-014"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1768891230,
+      "type": 0,
+      "content": "书写得好，你只管看。拿我同你凑一对，就不是看书了。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai02-015"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1768891275,
+      "type": 0,
+      "content": "好妹妹，是我说错了。你别把书还我，我不说了。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai02-016"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1768891320,
+      "type": 0,
+      "content": "怕我不看，还是怕我去告诉人？",
+      "platformMessageId": "whomi-hongloumeng-v1-dai02-017"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1768891365,
+      "type": 0,
+      "content": "都怕。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai02-018"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1768891410,
+      "type": 0,
+      "content": "这倒肯说实话。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai02-019"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1768891455,
+      "type": 0,
+      "content": "那还生不生气？",
+      "platformMessageId": "whomi-hongloumeng-v1-dai02-020"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1768891500,
+      "type": 0,
+      "content": "花还没收完，你倒把这一件正事忘了。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai02-021"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1768891545,
+      "type": 0,
+      "content": "我拿袋子，你把书给我收好。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai02-022"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1768891590,
+      "type": 0,
+      "content": "书先放我这里，我还没看完。花我同你收。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai02-023"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1769068800,
+      "type": 0,
+      "content": "你的书里夹着一片花。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai03-001"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1769068845,
+      "type": 0,
+      "content": "没收干净的？",
+      "platformMessageId": "whomi-hongloumeng-v1-dai03-002"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1769068890,
+      "type": 0,
+      "content": "都压平了。方才翻到，差点碎在手里。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai03-003"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1769068935,
+      "type": 0,
+      "content": "那先别动，我拿回来。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai03-004"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1769068980,
+      "type": 0,
+      "content": "你倒忽然又惜花了。那天一兜往水里倒的时候，怎么不见你这样。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai03-005"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1769069025,
+      "type": 0,
+      "content": "让你说过一回，还不许我记得？",
+      "platformMessageId": "whomi-hongloumeng-v1-dai03-006"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1769069070,
+      "type": 0,
+      "content": "你记性若都用在正地方，倒省得人操心。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai03-007"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1769069115,
+      "type": 0,
+      "content": "你也来这一句。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai03-008"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1769069160,
+      "type": 0,
+      "content": "我说别折书角。你想到哪里去了？",
+      "platformMessageId": "whomi-hongloumeng-v1-dai03-009"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1769069205,
+      "type": 0,
+      "content": "我还当你又要劝我放下这书。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai03-010"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1769069250,
+      "type": 0,
+      "content": "我自己还没看完，劝你做什么。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai03-011"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1769069295,
+      "type": 0,
+      "content": "那你留着，我不急。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai03-012"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1769069340,
+      "type": 0,
+      "content": "方才还说来拿。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai03-013"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1769069385,
+      "type": 0,
+      "content": "拿那片花。书留下。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai03-014"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1769069430,
+      "type": 0,
+      "content": "花也夹着吧。你一来一去，倒真要把它捏碎了。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai03-015"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1769069475,
+      "type": 0,
+      "content": "那我等你看完。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai03-016"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1769069520,
+      "type": 0,
+      "content": "这回总算容人把一句看完了。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai03-017"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1769997600,
+      "type": 0,
+      "content": "你今早怎么见了我就走？",
+      "platformMessageId": "whomi-hongloumeng-v1-dai04-001"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1769997645,
+      "type": 0,
+      "content": "不走做什么，再等着吃一次闭门羹？",
+      "platformMessageId": "whomi-hongloumeng-v1-dai04-002"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1769997690,
+      "type": 0,
+      "content": "什么闭门羹？",
+      "platformMessageId": "whomi-hongloumeng-v1-dai04-003"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1769997735,
+      "type": 0,
+      "content": "昨晚我到你那里，门里说你吩咐了，谁来也不开。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai04-004"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1769997780,
+      "type": 0,
+      "content": "我什么时候说过？我连你来过都不知道。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai04-005"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1769997825,
+      "type": 0,
+      "content": "你屋里正说笑，哪里顾得上门外。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai04-006"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1769997870,
+      "type": 0,
+      "content": "宝姐姐来坐了一会儿。可我要是知道你来了——",
+      "platformMessageId": "whomi-hongloumeng-v1-dai04-007"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1769997915,
+      "type": 0,
+      "content": "原来还得先问是谁。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai04-008"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1769997960,
+      "type": 0,
+      "content": "我不是这个意思。从前有什么好的，我哪一回不是先想着你？如今有了事，你倒一句也不问我。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai04-009"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1769998005,
+      "type": 0,
+      "content": "我昨晚倒想问。隔着一道门，问谁去？",
+      "platformMessageId": "whomi-hongloumeng-v1-dai04-010"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1769998050,
+      "type": 0,
+      "content": "我回去问问，看是谁说了这话。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai04-011"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1769998095,
+      "type": 0,
+      "content": "你又去闹她。她一口咬定是你的话，我还得同她对质不成？",
+      "platformMessageId": "whomi-hongloumeng-v1-dai04-012"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1769998140,
+      "type": 0,
+      "content": "总不能让你白受了委屈。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai04-013"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1769998185,
+      "type": 0,
+      "content": "你先别忙着替我出气。昨晚我站在外头，你是真不知道？",
+      "platformMessageId": "whomi-hongloumeng-v1-dai04-014"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1769998230,
+      "type": 0,
+      "content": "真不知道。我要有意不见你——",
+      "platformMessageId": "whomi-hongloumeng-v1-dai04-015"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1769998275,
+      "type": 0,
+      "content": "又来了。说没有就是没有，好好的起什么誓。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai04-016"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1769998320,
+      "type": 0,
+      "content": "那你现在肯信我了？",
+      "platformMessageId": "whomi-hongloumeng-v1-dai04-017"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1769998365,
+      "type": 0,
+      "content": "我若还当你有意的，这会儿也不跟你说了。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai04-018"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1769998410,
+      "type": 0,
+      "content": "你昨晚来，是有什么事？",
+      "platformMessageId": "whomi-hongloumeng-v1-dai04-019"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1769998455,
+      "type": 0,
+      "content": "听说老爷叫你去了，半日没个信。我原想看看你回来没有。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai04-020"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1769998500,
+      "type": 0,
+      "content": "哪里是老爷。是薛大哥哥借了这话，把我叫出去吃东西。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai04-021"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1769998545,
+      "type": 0,
+      "content": "原来你在外头过得好好的，倒叫别人白担了半天心。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai04-022"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1769998590,
+      "type": 0,
+      "content": "我也受了好一阵惊吓，回来才笑自己。你若早问——",
+      "platformMessageId": "whomi-hongloumeng-v1-dai04-023"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1769998635,
+      "type": 0,
+      "content": "又是我该早问。门倒不必早开。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai04-024"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1769998680,
+      "type": 0,
+      "content": "是，是，我不说这个了。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai04-025"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1769998725,
+      "type": 0,
+      "content": "你只记着，下回宝姐姐来了，可别也关在外头。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai04-026"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770008400,
+      "type": 0,
+      "content": "你才吃完饭，怎么又低着头裁东西？仔细一会儿头疼。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai05-001"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770008445,
+      "type": 0,
+      "content": "理它呢，过一会儿就好了。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai05-002"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770008490,
+      "type": 0,
+      "content": "头疼也能这样等过去？",
+      "platformMessageId": "whomi-hongloumeng-v1-dai05-003"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770008535,
+      "type": 0,
+      "content": "你不是这样说我的？",
+      "platformMessageId": "whomi-hongloumeng-v1-dai05-004"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770008580,
+      "type": 0,
+      "content": "谁把那句话告诉你了？",
+      "platformMessageId": "whomi-hongloumeng-v1-dai05-005"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770008625,
+      "type": 0,
+      "content": "你既在人前说，又怕人传？",
+      "platformMessageId": "whomi-hongloumeng-v1-dai05-006"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770008670,
+      "type": 0,
+      "content": "我是被你丢在那儿，一时说的气话。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai05-007"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770008715,
+      "type": 0,
+      "content": "我走了，你便吃你的饭，何苦连我几时消气也替我算好了。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai05-008"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770008760,
+      "type": 0,
+      "content": "我哪有心思只顾吃饭。才吃完就来找你了。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai05-009"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770008805,
+      "type": 0,
+      "content": "那也不耽误你说，横竖我自己会好。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai05-010"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770008850,
+      "type": 0,
+      "content": "那句话不算。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai05-011"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770008895,
+      "type": 0,
+      "content": "出口的时候倒很便当。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai05-012"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770008940,
+      "type": 0,
+      "content": "你让我坐一会儿。站在这里，说什么你都不肯听。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai05-013"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770008985,
+      "type": 0,
+      "content": "椅子又没拦着你。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai05-014"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770009030,
+      "type": 0,
+      "content": "这裁的是谁的？",
+      "platformMessageId": "whomi-hongloumeng-v1-dai05-015"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770009075,
+      "type": 0,
+      "content": "还没裁完，你便先问归谁。与你不相干。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai05-016"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770009120,
+      "type": 0,
+      "content": "我不讨。我只替你拿着这一角，别歪了。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai05-017"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770009165,
+      "type": 0,
+      "content": "那就拿住，别又拉到你那边去。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai05-018"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770009210,
+      "type": 0,
+      "content": "这里？",
+      "platformMessageId": "whomi-hongloumeng-v1-dai05-019"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770009255,
+      "type": 0,
+      "content": "嗯。剪子过来了，手往旁边些。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai05-020"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770530400,
+      "type": 0,
+      "content": "才在那边看见你，怎么一转眼又走了？",
+      "platformMessageId": "whomi-hongloumeng-v1-dai06-001"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770530445,
+      "type": 0,
+      "content": "我来得不巧。你们正说正经事呢。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai06-002"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770530490,
+      "type": 0,
+      "content": "什么正经事，不过又劝我出去见这个见那个。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai06-003"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770530535,
+      "type": 0,
+      "content": "你不爱听，也不必把人一句话堵回去。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai06-004"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770530580,
+      "type": 0,
+      "content": "她们总当我肯听一回，就肯照着做了。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai06-005"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770530625,
+      "type": 0,
+      "content": "我听见你说我的话了。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai06-006"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770530670,
+      "type": 0,
+      "content": "哪句？",
+      "platformMessageId": "whomi-hongloumeng-v1-dai06-007"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770530715,
+      "type": 0,
+      "content": "说我不拿那些话劝你。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai06-008"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770530760,
+      "type": 0,
+      "content": "本来就是。你若也这样，我才真没处说话了。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai06-009"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770530805,
+      "type": 0,
+      "content": "我不过没劝，你倒替我当众作起证来。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai06-010"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770530850,
+      "type": 0,
+      "content": "我说的是实话。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai06-011"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770530895,
+      "type": 0,
+      "content": "实话也有不必当着大家说的。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai06-012"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770530940,
+      "type": 0,
+      "content": "你又怕什么？",
+      "platformMessageId": "whomi-hongloumeng-v1-dai06-013"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770530985,
+      "type": 0,
+      "content": "别人怎么说，你自然不放在心上。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai06-014"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770531030,
+      "type": 0,
+      "content": "你放心。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai06-015"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770531075,
+      "type": 0,
+      "content": "放什么心？你倒说得便宜。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai06-016"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770531120,
+      "type": 0,
+      "content": "你明明知道，还偏问我。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai06-017"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770531165,
+      "type": 0,
+      "content": "你自己不肯说明白，倒怪我问。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai06-018"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770531210,
+      "type": 0,
+      "content": "我若同别人也是一样，何必一见你不说话，就追了这一路。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai06-019"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770531255,
+      "type": 0,
+      "content": "你别在这里说了。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai06-020"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770531300,
+      "type": 0,
+      "content": "怎么，方才要我说，这会儿又不许。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai06-021"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770531345,
+      "type": 0,
+      "content": "有人过来了。你只当大家都听不见么？",
+      "platformMessageId": "whomi-hongloumeng-v1-dai06-022"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770531390,
+      "type": 0,
+      "content": "那我送你回去。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai06-023"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770531435,
+      "type": 0,
+      "content": "不用。把额上的汗擦了再走。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai06-024"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770706800,
+      "type": 0,
+      "content": "你怎么这时候过来了？地上还热着，走这一路做什么。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai07-001"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770706845,
+      "type": 0,
+      "content": "我不来，就听他们各说各的？",
+      "platformMessageId": "whomi-hongloumeng-v1-dai07-002"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770706890,
+      "type": 0,
+      "content": "他们说得重。我并不怎么疼。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai07-003"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770706935,
+      "type": 0,
+      "content": "那你起来给我看看。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai07-004"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770706980,
+      "type": 0,
+      "content": "这会儿躺惯了，起来有些不方便。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai07-005"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770707025,
+      "type": 0,
+      "content": "才一动就叫出声，还说不疼。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai07-006"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770707070,
+      "type": 0,
+      "content": "那是故意叫他们听的，好传到老爷那里去。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai07-007"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770707115,
+      "type": 0,
+      "content": "你还哄我。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai07-008"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770707160,
+      "type": 0,
+      "content": "你先别哭。你眼睛已经这样了，再哭，回去又要难受。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai07-009"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770707205,
+      "type": 0,
+      "content": "你从此改了吧。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai07-010"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770707250,
+      "type": 0,
+      "content": "你别这样哭，我看着比身上还难受。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai07-011"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770707295,
+      "type": 0,
+      "content": "我看着你这样，还能说什么。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai07-012"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770707340,
+      "type": 0,
+      "content": "为他们挨这几下，我也不后悔。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai07-013"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770707385,
+      "type": 0,
+      "content": "你自然不后悔。叫我站在这里看着，我又能替你挨哪一下？",
+      "platformMessageId": "whomi-hongloumeng-v1-dai07-014"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770707430,
+      "type": 0,
+      "content": "我这不是还好好的。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai07-015"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770707475,
+      "type": 0,
+      "content": "你再说一句好好的试试。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai07-016"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770707520,
+      "type": 0,
+      "content": "好，不说。你坐近些，我不动了。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai07-017"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770707565,
+      "type": 0,
+      "content": "这被子是不是压着伤处？",
+      "platformMessageId": "whomi-hongloumeng-v1-dai07-018"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770707610,
+      "type": 0,
+      "content": "不妨事，你别碰。才放稳的。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai07-019"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770707655,
+      "type": 0,
+      "content": "那就这样躺着。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai07-020"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770707700,
+      "type": 0,
+      "content": "外头是谁来了？",
+      "platformMessageId": "whomi-hongloumeng-v1-dai07-021"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770707745,
+      "type": 0,
+      "content": "听着像凤姐姐。我从后面走。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai07-022"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770707790,
+      "type": 0,
+      "content": "她来了，你躲什么？",
+      "platformMessageId": "whomi-hongloumeng-v1-dai07-023"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770707835,
+      "type": 0,
+      "content": "你看看我的眼睛，还嫌不够给她取笑的？",
+      "platformMessageId": "whomi-hongloumeng-v1-dai07-024"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770707880,
+      "type": 0,
+      "content": "那你慢些。帘子后头有门槛。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai07-025"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770707925,
+      "type": 0,
+      "content": "知道。你别又撑起来看。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai07-026"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770723000,
+      "type": 0,
+      "content": "晴雯送的东西，我收下了。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai08-001"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770723045,
+      "type": 0,
+      "content": "她走了没有？",
+      "platformMessageId": "whomi-hongloumeng-v1-dai08-002"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770723090,
+      "type": 0,
+      "content": "走了。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai08-003"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770723135,
+      "type": 0,
+      "content": "她来时也奇怪，问我是不是要帕子。我并没向你讨过。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai08-004"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770723180,
+      "type": 0,
+      "content": "我临时叫她带的，没向她多说。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai08-005"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770723225,
+      "type": 0,
+      "content": "别人送东西，都挑新的。你倒会省事，从手边拿两条旧的来。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai08-006"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770723270,
+      "type": 0,
+      "content": "我没另挑新的。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai08-007"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770723315,
+      "type": 0,
+      "content": "看出来了。倒不必特意说。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai08-008"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770723360,
+      "type": 0,
+      "content": "那就好。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai08-009"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770723405,
+      "type": 0,
+      "content": "还叫她特特地跑一趟。若被人问起来，算怎么回事。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai08-010"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770723450,
+      "type": 0,
+      "content": "她可拿给旁人看了？",
+      "platformMessageId": "whomi-hongloumeng-v1-dai08-011"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770723495,
+      "type": 0,
+      "content": "我哪里知道她一路见过谁。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai08-012"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770723540,
+      "type": 0,
+      "content": "她问你时，你怎么说？",
+      "platformMessageId": "whomi-hongloumeng-v1-dai08-013"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770723585,
+      "type": 0,
+      "content": "我让她放下。她问不明白，也就去了。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai08-014"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770723630,
+      "type": 0,
+      "content": "那帕子——",
+      "platformMessageId": "whomi-hongloumeng-v1-dai08-015"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770723675,
+      "type": 0,
+      "content": "我收着了。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai08-016"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770723720,
+      "type": 0,
+      "content": "你睡吧。别再叫她来问。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai08-017"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770723765,
+      "type": 0,
+      "content": "你也早些睡。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai08-018"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770723810,
+      "type": 0,
+      "content": "知道了。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai08-019"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770793200,
+      "type": 0,
+      "content": "我才叫人给你送果子，你倒已经来了。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai09-001"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770793245,
+      "type": 0,
+      "content": "原来非等你的果子到了，我才能来。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai09-002"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770793290,
+      "type": 0,
+      "content": "我是说巧，不是拦你。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai09-003"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770793335,
+      "type": 0,
+      "content": "门这回开着，我便进来了。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai09-004"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770793380,
+      "type": 0,
+      "content": "你打算拿那一晚说多久？",
+      "platformMessageId": "whomi-hongloumeng-v1-dai09-005"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770793425,
+      "type": 0,
+      "content": "说一回，你便记一回，倒省得忘了。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai09-006"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770793470,
+      "type": 0,
+      "content": "已经忘不了了。你坐哪边？",
+      "platformMessageId": "whomi-hongloumeng-v1-dai09-007"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770793515,
+      "type": 0,
+      "content": "你别挪。我坐这里，照得见书。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai09-008"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770793560,
+      "type": 0,
+      "content": "你把那本书也带来了？",
+      "platformMessageId": "whomi-hongloumeng-v1-dai09-009"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770793605,
+      "type": 0,
+      "content": "看完了，还你。省得你又借书来问我。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai09-010"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770793650,
+      "type": 0,
+      "content": "那片花还在不在？",
+      "platformMessageId": "whomi-hongloumeng-v1-dai09-011"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770793695,
+      "type": 0,
+      "content": "你自己翻。轻一点，别一回来便抖掉了。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai09-012"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770793740,
+      "type": 0,
+      "content": "真还在。比先前淡了。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai09-013"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770793785,
+      "type": 0,
+      "content": "放了这些日子，还指望它长在枝头一样？",
+      "platformMessageId": "whomi-hongloumeng-v1-dai09-014"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770793830,
+      "type": 0,
+      "content": "我把这一页留着。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai09-015"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770793875,
+      "type": 0,
+      "content": "书页本来就在，你又打算撕下来不成。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai09-016"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770793920,
+      "type": 0,
+      "content": "你知道我不是这个意思。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai09-017"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770793965,
+      "type": 0,
+      "content": "知道。你只管把书拿稳了。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai09-018"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770794010,
+      "type": 0,
+      "content": "这一段我念给你听？",
+      "platformMessageId": "whomi-hongloumeng-v1-dai09-019"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770794055,
+      "type": 0,
+      "content": "正经念书。别又念着念着，拿我说笑。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai09-020"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-jiabaoyu",
+      "accountName": "贾宝玉",
+      "timestamp": 1770794100,
+      "type": 0,
+      "content": "这回不说笑。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai09-021"
+    },
+    {
+      "sender": "whomi-fiction-hongloumeng-lindaiyu",
+      "accountName": "林黛玉",
+      "timestamp": 1770794145,
+      "type": 0,
+      "content": "嗯。你念吧。",
+      "platformMessageId": "whomi-hongloumeng-v1-dai09-022"
+    }
+  ]
+}
