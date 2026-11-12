@@ -32,7 +32,11 @@
 
 ## 视觉证据
 
+![修改前大窗口：详情贴左](assets/model-settings-layout/desktop-before.png)
+
 ![大窗口：右侧详情居中](assets/model-settings-layout/desktop.png)
+
+![修改前窄窗口](assets/model-settings-layout/narrow-before.png)
 
 ![窄窗口：同一内容列收缩并换行](assets/model-settings-layout/narrow.png)
 
