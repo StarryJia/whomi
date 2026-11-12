@@ -90,6 +90,6 @@
 @media(max-width:720px) { .cherry-settings .ms-detail { padding:16px; } .cherry-settings .ms-model-row { flex-wrap:nowrap; } .cherry-settings .settings-model-actions { flex-wrap:nowrap; } .cherry-health { max-width:56px; overflow:hidden; text-overflow:ellipsis; } }
 @media(prefers-reduced-motion:reduce) { .cherry-panel { animation:none; } }
 
-.ms-detail-body { inline-size: min(100%, 768px); }
+.ms-detail-body { inline-size: min(100%, 768px); margin-inline: auto; }
 .ms-filter-empty { display: grid; justify-items: center; gap: 8px; padding: 28px 16px; color: var(--text-muted); text-align: center; }
 .ms-filter-empty p { margin: 0; }
