@@ -2,7 +2,7 @@ import { afterEach, expect, test } from 'vitest'
 import { openStore } from '../../electron/data/db/open'
 import { createAiRepository } from '../../electron/data/ai/repository'
 import { createSettingsRepository } from '../../electron/data/settings/repository'
-import { temporaryStore } from './helpers'
+import { temporaryStore, useLegacyAnalysisFixture } from './helpers'
 import { defaultProcessing, presetAccountId } from '../../src/shared/settings-contract'
 import { purgeConversation } from '../../electron/data/db/purge'
 
@@ -178,6 +178,7 @@ test('running work blocks changes and failed writes retain every linked model an
 
 test('analysis processing is pinned per task and removed with its conversation', async () => {
   const { settings, ai, store } = await setup()
+  useLegacyAnalysisFixture(store)
   const provider = await settings.saveProvider(providerInput), model = await settings.saveModel({ ...modelInput, providerId: provider.id })
   store.writer.exec(`INSERT INTO conversations(id,title,kind,created_at_ms) VALUES(1,'示例','direct',0);
     INSERT INTO source_conversations(id,conversation_id,platform,namespace) VALUES(1,1,'example','one');

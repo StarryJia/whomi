@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto'
 import { openStore } from '../../electron/data/db/open'
 import { createSettingsRepository } from '../../electron/data/settings/repository'
 import { createAiRepository } from '../../electron/data/ai/repository'
-import { temporaryStore } from './helpers'
+import { removeInsightSchemaForMigrationTest, temporaryStore, useLegacyAnalysisFixture } from './helpers'
 import { createAiService } from '../../electron/main/ai-service'
 import { defaultPrompts } from '../../src/shared/system-prompts'
 
@@ -29,7 +29,7 @@ async function setup() {
 test('提示词逐项保存、拒绝空值和超限，恢复默认并在重启后保留', async () => {
   const { temp, store, settings, write } = await setup()
   const defaults = settings.getPrompts()
-  expect(Object.keys(defaults)).toEqual(['dialogue', 'memorySource', 'memoryMerge', 'memoryFinal'])
+  expect(Object.keys(defaults).sort()).toEqual(['dialogue', 'insightChecking', 'insightReading', 'insightWriting', 'memoryFinal', 'memoryMerge', 'memorySource'])
   await settings.savePrompt('dialogue', '用具体情境回答。')
   await settings.savePrompt('memoryFinal', '保留我的表达方式。')
   await expect(settings.savePrompt('dialogue', '  ')).rejects.toThrow()
@@ -46,6 +46,7 @@ test('提示词逐项保存、拒绝空值和超限，恢复默认并在重启�
 
 test('记忆任务创建时冻结提示词，续跑和重启不会读取后来的设置', async () => {
   const { temp, store, settings, ai, write } = await setup()
+  useLegacyAnalysisFixture(store)
   await settings.savePrompt('memorySource', '取材甲')
   const preparation = await ai.prepareAnalysis({ conversationId: '1', modelId: 'm' })
   const task = await ai.confirmAnalysis({ token: preparation.token, requestId: 'one' })
@@ -54,6 +55,7 @@ test('记忆任务创建时冻结提示词，续跑和重启不会读取后来�
   expect(ai.analysisContext(task.id).systemPrompts?.memorySource).toBe('取材甲')
   store.close()
   const reopened = openStore(temp.path); cleanup.push(() => reopened.close())
+  useLegacyAnalysisFixture(reopened)
   const restored = createAiRepository(reopened, write)
   await restored.resumeAnalysis(task.id)
   expect(restored.analysisContext(task.id).systemPrompts?.memorySource).toBe('取材甲')
@@ -80,6 +82,7 @@ test('对话修改提示词后不复用旧上下文，失败重试仍使用原�
 
 test('升级已有资料库后可按旧断点继续对话，旧记忆任务不使用新配置', async () => {
   const { store, temp, ai, write } = await setup()
+  useLegacyAnalysisFixture(store)
   const thread = await ai.createThread('1')
   const prior = await ai.createTurn({ threadId: thread.id, requestId: 'before', modelId: 'm', prompt: '原问题', referenceIds: [] })
   const { selfFingerprint, model } = ai.turnContext(prior.id)
@@ -87,6 +90,7 @@ test('升级已有资料库后可按旧断点继续对话，旧记忆任务不�
   await ai.saveTurn(prior.id, { state: 'completed', text: '原回答', checkpoint: oldKey })
   const prep = await ai.prepareAnalysis({ conversationId: '1', modelId: 'm' })
   const task = await ai.confirmAnalysis({ token: prep.token, requestId: 'old-task' })
+  removeInsightSchemaForMigrationTest(store)
   store.writer.exec('ALTER TABLE ai_analysis_tasks DROP COLUMN prompt_snapshot; ALTER TABLE ai_turns DROP COLUMN system_prompt; PRAGMA user_version=7')
   store.close()
   const reopened = openStore(temp.path); cleanup.push(() => reopened.close())
@@ -109,7 +113,8 @@ test('升级已有资料库后可按旧断点继续对话，旧记忆任务不�
 })
 
 test('保存的对话和记忆提示词进入模型请求，连接检测保持固定指令', async () => {
-  const { settings, ai } = await setup()
+  const { settings, ai, store } = await setup()
+  useLegacyAnalysisFixture(store)
   const requests: { systemPrompt: string; prompt: string }[] = []
   const service = createAiService({
     storage: async (method, args) => (ai[method as keyof typeof ai] as (...values: any[]) => unknown)(...args),

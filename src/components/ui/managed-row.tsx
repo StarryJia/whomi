@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import * as ContextMenu from '@radix-ui/react-context-menu'
-import { Pin, PinOff, Trash2 } from 'lucide-react'
+import { Pencil, Pin, PinOff, Trash2 } from 'lucide-react'
 import type { ListArrangement } from '../../shared/desktop-api'
 
 export function ReaderDialog({ children, busy, onDismiss, returnFocus, labelledBy }: {
@@ -35,8 +35,9 @@ export function actionError(error: unknown) {
   return '操作失败，请重试。'
 }
 
-export function DeleteListItem({ title, thread, memory, onDelete, onDismiss, returnFocus }: {
+export function DeleteListItem({ title, thread, memory, description, onDelete, onDismiss, returnFocus }: {
   title: string; thread?: boolean; memory?: boolean; onDelete: () => Promise<void> | void; onDismiss: () => void
+  description?: { heading: string; content: ReactNode }
   returnFocus: RefObject<HTMLButtonElement | null>
 }) {
   const [busy, setBusy] = useState(false)
@@ -50,11 +51,11 @@ export function DeleteListItem({ title, thread, memory, onDelete, onDismiss, ret
   return <ReaderDialog busy={busy} onDismiss={onDismiss} returnFocus={returnFocus} labelledBy="delete-modal-title">
     <div className="reader-modal-overlay" onClick={e => { if (e.target === e.currentTarget && !busy) onDismiss() }}>
       <div className="reader-modal-card">
-        <h2 id="delete-modal-title">{memory ? '删除记忆' : thread ? '删除 AI 对话' : '删除会话'}</h2>
-        <p className="reader-modal-description">{memory ? `将删除「${title}」及其整理进度，保留原始聊天和其他记忆。` : thread ? `将删除「${title}」的全部提问与回答。` : `将删除「${title}」的原文、成员、本人设置、关联 AI 对话和记忆成稿。`}此操作无法撤销。</p>
+        <h2 id="delete-modal-title">{description?.heading ?? (memory ? '删除记忆' : thread ? '删除 AI 对话' : '删除会话')}</h2>
+        {description?.content ?? <p className="reader-modal-description">{memory ? `将删除「${title}」及其整理进度，保留原始聊天和其他记忆。` : thread ? `将删除「${title}」的全部提问与回答。` : `将删除「${title}」的原文、成员、本人设置、关联 AI 对话和记忆成稿。`}此操作无法撤销。</p>}
         {error && <p className="import-error" role="alert">{error}</p>}
         <div className="reader-modal-footer">
-          <button type="button" className="reader-modal-btn" disabled={busy} onClick={onDismiss}>取消</button>
+          <button type="button" className="reader-modal-btn" disabled={busy} onClick={onDismiss} autoFocus>取消</button>
           <button type="button" className="reader-modal-btn reader-modal-btn-danger" disabled={busy} onClick={() => void remove()}>{busy ? '正在删除…' : '确认删除'}</button>
         </div>
       </div>
@@ -63,12 +64,15 @@ export function DeleteListItem({ title, thread, memory, onDelete, onDismiss, ret
 }
 
 type Row = { id: string; title: string; pinned?: boolean }
-export function ManagedRow({ item, scope, className, active, disabled, children, onSelect, arrange, remove, memory, expanded, controls, hasPopup }: {
+export function ManagedRow({ item, scope, className, active, disabled, children, onSelect, arrange, remove, rename, deleteDescription, memory, expanded, controls, hasPopup }: {
   item: Row; scope: string; className?: string; active: boolean; disabled?: boolean; children: ReactNode
   onSelect: () => void; arrange?: (change: ListArrangement) => Promise<void>; remove?: () => Promise<void>
   memory?: boolean; expanded?: boolean; controls?: string; hasPopup?: 'dialog'
+  rename?: () => void
+  deleteDescription?: Parameters<typeof DeleteListItem>[0]['description']
 }) {
   const button = useRef<HTMLButtonElement>(null)
+  const renaming = useRef(false)
   const [deleting, setDeleting] = useState(false)
   const [pending, setPending] = useState(false)
   const [failure, setFailure] = useState<{ change: ListArrangement; message: string }>()
@@ -87,7 +91,7 @@ export function ManagedRow({ item, scope, className, active, disabled, children,
     aria-current={active || undefined} data-list-id={item.id} data-pinned={!!item.pinned} data-drop-over={dropOver || undefined}
     disabled={disabled || pending} draggable={!!arrange && !pending} onClick={onSelect}
     onKeyDown={event => {
-      if ((!arrange && !remove) || !(event.key === 'ContextMenu' || event.key === 'F10' && event.shiftKey)) return
+      if ((!arrange && !remove && !rename) || !(event.key === 'ContextMenu' || event.key === 'F10' && event.shiftKey)) return
       event.preventDefault()
       const bounds = event.currentTarget.getBoundingClientRect()
       event.currentTarget.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: bounds.left + Math.min(bounds.width / 2, 180), clientY: bounds.bottom }))
@@ -104,24 +108,26 @@ export function ManagedRow({ item, scope, className, active, disabled, children,
       const placement = source.compareDocumentPosition(target) & Node.DOCUMENT_POSITION_FOLLOWING ? 'after' : 'before'
       event.preventDefault(); void save({ id, targetId: item.id, placement })
     }}>{children}{item.pinned && <Pin className="list-item-pin" size={14} aria-label="已置顶" />}</button>
-  if (!arrange && !remove) return row
+  if (!arrange && !remove && !rename) return row
   return <>
     <ContextMenu.Root><ContextMenu.Trigger asChild>{row}</ContextMenu.Trigger>
       <ContextMenu.Portal><ContextMenu.Content className="cherry-context-menu"
         onCloseAutoFocus={event => {
           event.preventDefault()
+          if (renaming.current) { renaming.current = false; return }
           requestAnimationFrame(() => {
             if (!document.activeElement?.closest('dialog[open]')) button.current?.focus({ preventScroll: true })
           })
         }}
         onPointerUpCapture={event => { if (event.button === 2) { event.preventDefault(); event.stopPropagation() } }}
         onEscapeKeyDown={event => event.stopPropagation()}>
+        {rename && <ContextMenu.Item className="cherry-menu-item" onSelect={() => { renaming.current = true; rename() }}><Pencil size={14} />重命名</ContextMenu.Item>}
         {arrange && <ContextMenu.Item className="cherry-menu-item" onSelect={() => void save({ id: item.id, pinned: !item.pinned })}>
           {item.pinned ? <PinOff size={14} /> : <Pin size={14} />}{item.pinned ? '取消置顶' : '置顶'}</ContextMenu.Item>}
         {remove && <ContextMenu.Item className="cherry-menu-item" data-destructive="true" onSelect={() => setDeleting(true)}><Trash2 size={14} />删除</ContextMenu.Item>}
       </ContextMenu.Content></ContextMenu.Portal>
     </ContextMenu.Root>
     {failure && <div role="alert" className="conversation-list-error">{failure.message}<button type="button" onClick={() => void save(failure.change)}>重试</button></div>}
-    {deleting && remove && <DeleteListItem title={item.title} thread={scope !== 'conversations'} memory={memory} returnFocus={button} onDismiss={() => setDeleting(false)} onDelete={remove} />}
+    {deleting && remove && <DeleteListItem title={item.title} thread={scope !== 'conversations'} memory={memory} description={deleteDescription} returnFocus={button} onDismiss={() => setDeleting(false)} onDelete={remove} />}
   </>
 }

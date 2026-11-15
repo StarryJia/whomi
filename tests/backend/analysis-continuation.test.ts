@@ -4,7 +4,7 @@ import { openStore } from '../../electron/data/db/open'
 import { createAiRepository } from '../../electron/data/ai/repository'
 import { createSettingsRepository } from '../../electron/data/settings/repository'
 import { createAiService, type RuntimeRunner } from '../../electron/main/ai-service'
-import { temporaryStore } from './helpers'
+import { temporaryStore, useLegacyAnalysisFixture } from './helpers'
 import { currentMemoryContributions } from '../../src/shared/memory'
 
 const cleanups: (() => void)[] = []
@@ -17,11 +17,10 @@ function connection(path: string) {
   return { store, repository: createAiRepository(store, write), settings: createSettingsRepository(store, write) }
 }
 
-async function fixture(legacy: 'conversation-analysis-v1' | 'conversation-memory-v2' | 'conversation-memory-v3' | 'conversation-memory-v4' | false = 'conversation-analysis-v1') {
+async function fixture(version: Parameters<typeof useLegacyAnalysisFixture>[1] = 'conversation-analysis-v1') {
   const temp = temporaryStore(); cleanups.push(temp.cleanup)
   const data = connection(temp.path)
-  if (legacy) data.store.writer.exec(`CREATE TEMP TRIGGER old_analysis AFTER INSERT ON ai_analysis_tasks BEGIN
-    UPDATE ai_analysis_tasks SET prompt_version='${legacy}' WHERE id=NEW.id; END`)
+  useLegacyAnalysisFixture(data.store, version)
   data.store.writer.exec(`INSERT INTO conversations(id,title,kind,created_at_ms) VALUES(1,'合成会话','direct',0);
     INSERT INTO source_conversations(id,conversation_id,platform,namespace) VALUES(1,1,'test','test');
     INSERT INTO memberships(id,conversation_id,source_conversation_id,source_key,display_name) VALUES(1,1,1,'self','本人');
@@ -47,8 +46,8 @@ function requestKind(prompt: string): string {
 }
 const response = { text: JSON.stringify({ summary: '合成观察', observations: [], limitations: '仅限样例' }), usage: { inputTokens: 10, outputTokens: 2 }, checkpoint: 'fixture' }
 
-test('a new manuscript merges the first and third moving fragments and only admits supported dimensions', async () => {
-  const { data } = await fixture(false)
+test('a v4 manuscript merges the first and third moving fragments and only admits supported dimensions', async () => {
+  const { data } = await fixture('conversation-memory-v4')
   const requests: string[] = []
   const dims = { EI: null, SN: null, TF: null, JP: null }
   const service = analysisService(data, async input => {
@@ -115,7 +114,7 @@ test.each(['conversation-memory-v2', 'conversation-memory-v3', 'conversation-mem
 })
 
 test('a v4 task saves contextual explanations from self signals and restores the same manuscript after restart', async () => {
-  const { data, path } = await fixture(false)
+  const { data, path } = await fixture('conversation-memory-v4')
   const contexts = ['搬家前我先订货车。', '看展前我先订票。', '试讲前我先写提纲。']
   for (let i = 0; i < contexts.length; i++) data.store.writer.prepare('UPDATE messages SET text=? WHERE id=?').run(contexts[i] + '补充。'.repeat(450), i + 1)
   const service = analysisService(data, async input => {
@@ -223,7 +222,7 @@ test('continuing a failed multi-step summary reuses its completed merge nodes', 
 
 
 test.each(['MODEL_CONTEXT_LIMIT', 'length'])('shrinks only the failed source on %s and resumes its exact remaining fragment after reopening', async reason => {
-  const { data, path } = await fixture(false)
+  const { data, path } = await fixture('conversation-memory-v4')
   data.store.writer.prepare('UPDATE messages SET text=? WHERE id=2').run('b'.repeat(700) + 'c'.repeat(700))
   const originalModel = data.repository.modelSecret('model').model
   const seen: { id: string; text: string }[] = []
@@ -261,7 +260,7 @@ test.each(['MODEL_CONTEXT_LIMIT', 'length'])('shrinks only the failed source on 
 
 test('a large adaptive checkpoint persists beyond 32 KiB and can continue after reopening', async () => {
   const { memoryRecovery, readMemoryCheckpoint } = await import('../../electron/main/memory-recovery')
-  const { data, path } = await fixture(false)
+  const { data, path } = await fixture('conversation-memory-v4')
   const prepared = await data.repository.prepareAnalysis({ conversationId: '1', modelId: 'model' })
   const task = await data.repository.confirmAnalysis({ token: prepared.token, requestId: 'large-checkpoint' })
   const nodes = Object.fromEntries(Array.from({ length: 1300 }, (_, i) => ['source:' + i, { index: i }]))

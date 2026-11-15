@@ -40,6 +40,7 @@ export function createChatgptRunner(accessToken: (accountId: string, signal: Abo
       const mapped = level && model.thinkingLevels === undefined ? (await reasoningCapabilities(model))?.model?.thinkingLevelMap?.[level] : undefined
       const stream = await client.responses.create({
         ...(level && mapped !== null ? { reasoning: { effort: (mapped ?? (level === 'off' ? 'none' : level)) as 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' } } : {}),
+        ...(input.outputTokenLimit === undefined ? {} : { max_output_tokens: input.outputTokenLimit }),
         model: model.model, store: false, stream: true, instructions: input.systemPrompt,
         input: [...(input.history ?? []).map(item => ({ role: item.role, content: item.text })), { role: 'user', content: input.prompt }],
       }, { signal })
@@ -50,10 +51,13 @@ export function createChatgptRunner(accessToken: (accountId: string, signal: Abo
         } else if ((event.type === 'response.completed' && event.response.status === 'completed' && text.trim()) ||
           (event.type === 'response.incomplete' && event.response.incomplete_details?.reason === 'max_output_tokens')) {
           const completedAt = Date.now(), durationMs = completedAt - startedAt
-          const usage = event.response.usage, cached = usage?.input_tokens_details?.cached_tokens ?? 0
+          const usage = event.response.usage
+          const inputTokens = usage?.input_tokens, outputTokens = usage?.output_tokens
+          const cached = usage?.input_tokens_details?.cached_tokens
           return { ...(event.type === 'response.incomplete' ? { stopReason: 'length' as const } : {}), text, checkpoint: '', usage: { startedAt, completedAt, durationMs, firstTokenMs,
-            ...(usage ? { totalInputTokens: usage.input_tokens, inputTokens: Math.max(0, usage.input_tokens - cached),
-              cacheReadTokens: cached, outputTokens: usage.output_tokens, outputTokensPerSecond: usage.output_tokens / Math.max(.001, durationMs / 1000) } : { incomplete: true }) } }
+            ...(inputTokens === undefined ? {} : { totalInputTokens: inputTokens, inputTokens: Math.max(0, inputTokens - (cached ?? 0)), cacheReadTokens: cached ?? 0 }),
+            ...(outputTokens === undefined ? {} : { outputTokens, outputTokensPerSecond: outputTokens / Math.max(.001, durationMs / 1000) }),
+            ...(inputTokens === undefined || outputTokens === undefined ? { incomplete: true } : {}) } }
         } else if (event.type === 'response.failed') {
           throw planError(event.response.error?.code)
         } else if (event.type === 'error') {

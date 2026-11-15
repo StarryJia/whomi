@@ -32,11 +32,14 @@ export function cherryAccountRunner(provider: CherrySubscription, access: (id: s
       if (!text.trim() && !limited) throw new BoundaryError('ACCOUNT_INCOMPLETE','未收到完整回答，请重试。')
       const completedAt=Date.now(),durationMs=completedAt-startedAt
       return {...(limited ? {stopReason:'length' as const} : {}),text,checkpoint:'',usage:{startedAt,completedAt,durationMs,firstTokenMs,
-        ...(inputTokens !== undefined && outputTokens !== undefined ? {inputTokens,totalInputTokens:inputTokens,outputTokens,outputTokensPerSecond:outputTokens/Math.max(.001,durationMs/1000)} : {incomplete:true})}}
+        ...(inputTokens === undefined ? {} : {inputTokens,totalInputTokens:inputTokens}),
+        ...(outputTokens === undefined ? {} : {outputTokens,outputTokensPerSecond:outputTokens/Math.max(.001,durationMs/1000)}),
+        ...(inputTokens === undefined || outputTokens === undefined ? {incomplete:true} : {})}}
     }
     try {
       if (isGrok) {
         const events = await client.responses.create({model:model.model,stream:true,store:false,instructions:input.systemPrompt,
+          ...(input.outputTokenLimit === undefined ? {} : { max_output_tokens: input.outputTokenLimit }),
           input:messages,include:['reasoning.encrypted_content']},{signal})
         for await (const event of events) {
           if (event.type==='response.output_text.delta') append(event.delta)
@@ -47,6 +50,7 @@ export function cherryAccountRunner(provider: CherrySubscription, access: (id: s
         }
       } else {
         const events = await client.chat.completions.create({model:model.model,stream:true,stream_options:{include_usage:true},
+          ...(input.outputTokenLimit === undefined ? {} : { max_completion_tokens: input.outputTokenLimit }),
           messages:[{role:'system',content:input.systemPrompt},...messages]},{signal})
         let complete=false, limited=false, usage: OpenAI.CompletionUsage | null | undefined
         for await (const event of events) {

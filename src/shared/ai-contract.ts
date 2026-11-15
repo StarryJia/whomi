@@ -2,6 +2,7 @@ import type { ThinkingLevel } from './thinking'
 import type { SubscriptionProviderId } from './chatgpt-plan'
 import type { ModelProtocol } from './model-protocol'
 import type { SavedReport } from './memory'
+import type { InsightCitationInput, InsightCitationWindow, InsightScope, InsightScopeInput, InsightScopePreview } from './conversation-insights'
 
 export type AiUsage = { inputTokens?: number; totalInputTokens?: number; outputTokens?: number; cacheReadTokens?: number; cacheWriteTokens?: number; outputTokensPerSecond?: number; firstTokenMs?: number; durationMs?: number; startedAt?: number; completedAt?: number; incomplete?: boolean }
 export type AiModel = { thinkingLevels?: ThinkingLevel[]; planProvider?: SubscriptionProviderId; planAccount?: string; id: string; label: string; model: string; baseUrl: string; protocol?: ModelProtocol; contextWindow: number | null; maxTokens: number | null; maxInputTokens?: number | null; version: number; enabled: boolean; hasCredential: boolean }
@@ -10,8 +11,9 @@ export type AiSkill = { id: string; label: string; version: string }
 export type AiState = 'queued' | 'running' | 'summarizing' | 'completed' | 'stopped' | 'failed' | 'interrupted'
 export type AiObservation = { text: string; evidenceMessageIds: string[]; limitations: string }
 export type AiReport = { summary: string; observations: AiObservation[]; limitations: string }
-export type AnalysisPreparation = { thinkingLevel?: ThinkingLevel; token: string; conversationId: string; title: string; selfName: string; totalMessages: number; analyzableMessages: number; snapshotMaxId: string; expiresAt: number; model: AiModel }
-export type AnalysisTask = { thinkingLevel?: ThinkingLevel; id: string; conversationId: string; conversationTitle?: string; counterpartName?: string; modelId: string; modelIdentity?: AiModelIdentity; createdAtMs?: number | null; completedAtMs?: number | null; sourceStartTimeMs?: number | null; sourceEndTimeMs?: number | null; pinned?: boolean; state: AiState; analyzedMessages: number; totalMessages: number; skippedMessages: number; usage: AiUsage; error?: string; report?: SavedReport; valid: boolean; eventSequence: number }
+export type PrepareAnalysisInput = InsightScopeInput & { modelId: string; thinkingLevel?: ThinkingLevel }
+export type AnalysisPreparation = { thinkingLevel?: ThinkingLevel; token: string; conversationId: string; title: string; selfName: string; scope?: InsightScope; timezone?: string; totalMessages: number; analyzableMessages: number; snapshotMaxId: string; expiresAt: number; model: AiModel }
+export type AnalysisTask = { thinkingLevel?: ThinkingLevel; id: string; conversationId: string; conversationTitle?: string; counterpartName?: string; title?: string; scope?: InsightScope; insightContentRevision?: string; insightSelfFingerprint?: string; elapsedMs?: number; modelId: string; modelIdentity?: AiModelIdentity; createdAtMs?: number | null; completedAtMs?: number | null; sourceStartTimeMs?: number | null; sourceEndTimeMs?: number | null; pinned?: boolean; state: AiState; analyzedMessages: number; totalMessages: number; skippedMessages: number; usage: AiUsage; error?: string; report?: SavedReport; valid: boolean; eventSequence: number }
 export type AiModelIdentity = Pick<AiModel, 'id' | 'version' | 'label' | 'model'>
 export type AiTurn = { thinkingLevel?: ThinkingLevel; id: string; threadId: string; requestId: string; prompt: string; referenceIds: string[]; modelId: string; modelIdentity?: AiModelIdentity; skillId?: string; text: string; state: AiState; attempt: number; usage: AiUsage; error?: string; eventSequence: number }
 export type AiThreadSummary = { pinned?: boolean; id: string; conversationId: string; title: string; createdAtMs: number; updatedAtMs: number }
@@ -22,15 +24,18 @@ export type AiMethods = {
   saveModel(input: SaveAiModel): Promise<AiModel>
   testModel(modelId: string): Promise<void>
   listSkills(): Promise<AiSkill[]>
-  prepareAnalysis(input: { conversationId: string; modelId: string; thinkingLevel?: ThinkingLevel }): Promise<AnalysisPreparation>
+  previewInsightScope(input: InsightScopeInput): Promise<InsightScopePreview>
+  prepareAnalysis(input: PrepareAnalysisInput): Promise<AnalysisPreparation>
   confirmAnalysis(input: { token: string; requestId: string }): Promise<AnalysisTask>
   getAnalysis(taskId: string): Promise<AnalysisTask>
   listAnalyses(conversationId?: string): Promise<AnalysisTask[]>
   arrangeAnalysis(change: import('./desktop-api').ListArrangement): Promise<void>
+  renameAnalysis(input: { taskId: string; title: string }): Promise<AnalysisTask>
   deleteAnalysis(taskId: string): Promise<void>
   stopAnalysis(taskId: string): Promise<AnalysisTask>
   continueAnalysis(taskId: string): Promise<AnalysisTask>
   getReport(taskId: string): Promise<SavedReport>
+  readInsightCitation(input: InsightCitationInput): Promise<InsightCitationWindow>
   openThread(conversationId: string): Promise<AiThread>
   listThreads(conversationId: string): Promise<AiThreadSummary[]>
   createThread(conversationId: string): Promise<AiThread>

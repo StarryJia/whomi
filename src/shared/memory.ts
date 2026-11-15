@@ -1,4 +1,5 @@
 import type { AiReport, AnalysisTask } from './ai-contract'
+import type { InsightReport } from './conversation-insights'
 
 export type MemoryDimensions = { EI: 'E' | 'I' | null; SN: 'S' | 'N' | null; TF: 'T' | 'F' | null; JP: 'J' | 'P' | null }
 export type EventVotes = Record<keyof MemoryDimensions, [number, number]>
@@ -7,7 +8,7 @@ export type ScoredMemory = Manuscript & { format: 'memory-v3'; eventVotes: Event
 export type DimensionExplanations = Record<keyof MemoryDimensions, { text: string; evidenceMessageIds: string[] } | null>
 export type ExplainedMemory = Manuscript & { format: 'memory-v4'; eventVotes: EventVotes; dimensionExplanations: DimensionExplanations }
 export type MemoryReport = (Manuscript & { format: 'memory-v2' }) | ScoredMemory | ExplainedMemory
-export type SavedReport = AiReport | MemoryReport
+export type SavedReport = AiReport | MemoryReport | InsightReport
 export const dimensionKeys = ['EI', 'SN', 'TF', 'JP'] as const
 
 export function isMemoryReport(report: SavedReport | undefined): report is MemoryReport {

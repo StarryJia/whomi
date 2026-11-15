@@ -1,0 +1,260 @@
+
+> whomi@0.1.11 test
+> vitest run --reporter=dot
+
+
+ RUN  v5.0.5 D:/University/github/whomi
+
+stderr | src/components/conversation-ai/workspace-refinements.test.tsx > 会话工作区的明确入口和独立对话 > 首次创建对话较慢时保留本次问题，受理后开放下一条草稿
+An update to ConversationWorkspace inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to ScopedCherryComposer inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to ConversationWorkspace inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to ConversationWorkspace inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to ForwardRef(ScrollArea) inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to ForwardRef(ScrollArea) inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to ForwardRef(ScrollArea) inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to ForwardRef(ScrollArea) inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to ForwardRef(ScrollArea) inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to Presence inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to ForwardRef(ScrollArea) inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to Popper inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to Presence inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to Popper inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to Presence inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to ForwardRef(ScrollArea) inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+·································································x·············································································x···········x····················x································x··········································x···················································································································································································································································································································································
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/clarification-navigation.test.tsx > 问一问与情景阅读往返 > 回顾原文定位整段范围，返回同题仍保留自己回答草稿
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ src/clarification-navigation.test.tsx:35:3
+     33|
+     34| describe('问一问与情景阅读往返', () => {
+     35|   it('回顾原文定位整段范围，返回同题仍保留自己回答草稿', async () => {
+       |   ^
+     36|     const user = userEvent.setup()
+     37|     render(<App conversations={conversations} clarificationQuestion={q…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  src/overview-navigation.test.tsx > 总览导航与原文范围 > 第 12000 条来源异步定位一次，跨页范围只高亮当前窗口
+Error: Test timed out in 15000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ src/overview-navigation.test.tsx:26:3
+     24|
+     25| describe('总览导航与原文范围', () => {
+     26|   it('第 12000 条来源异步定位一次，跨页范围只高亮当前窗口', async () => {
+       |   ^
+     27|     const user = userEvent.setup()
+     28|     const large = [{ id: 'large', title: '虚构分页会话', messages: Array.fro…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+ FAIL  src/components/conversation-ai/lifecycle-boundaries.test.tsx > AI 对话结束与切换边界 > 键盘打开对话列表时关闭待发送引用预览，返回后保留引用和草稿
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ src/components/conversation-ai/lifecycle-boundaries.test.tsx:234:3
+    232|   })
+    233|
+    234|   it('键盘打开对话列表时关闭待发送引用预览，返回后保留引用和草稿', async () => {
+       |   ^
+    235|     const user = userEvent.setup()
+    236|     render(<ConversationReader conversation={await conversation()} aiA…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯
+
+ FAIL  src/components/conversation-ai/reader-selection.test.tsx > 阅读与消息选择模式 > 按组移除同步原文，删除最后一组或清空全部后可继续写同一草稿
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ src/components/conversation-ai/reader-selection.test.tsx:258:3
+    256|   })
+    257|
+    258|   it('按组移除同步原文，删除最后一组或清空全部后可继续写同一草稿', async () => {
+       |   ^
+    259|     const user = userEvent.setup()
+    260|     const client = createPreviewClient([{ id: 'c', title: '逐组核对', mess…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/6]⎯
+
+ FAIL  src/components/settings/cherry-settings.test.tsx > ChatGPT 仅首次连接提示套餐用量，退出失败仍保留真实账户
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ src/components/settings/cherry-settings.test.tsx:324:1
+    322| })
+    323|
+    324| test('ChatGPT 仅首次连接提示套餐用量，退出失败仍保留真实账户', async () => {
+       | ^
+    325|   let connected = false, refuseLogout = true
+    326|   const status = () => connected ? { state: 'connected' as const, emai…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/6]⎯
+
+ FAIL  src/components/settings/settings-page.test.tsx > 正式设置 > 检测失败可重试，运行中模型移除需明确停止
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ src/components/settings/settings-page.test.tsx:261:3
+    259|   })
+    260|
+    261|   it('检测失败可重试，运行中模型移除需明确停止', async () => {
+       |   ^
+    262|     const { api, user } = setup(true, true)
+    263|     vi.mocked(api.testModel).mockRejectedValueOnce(new Error('请检查模型标识后…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/6]⎯
+
+
+ Test Files  6 failed | 53 passed (59)
+      Tests  6 failed | 586 passed (592)
+   Start at  18:52:51
+   Duration  115.87s (tests 47%, environment 35%, import 11%, setup 5%, transform 1%)
+
+Environment  jsdom was created 59 times · 421.41s total, 35% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments

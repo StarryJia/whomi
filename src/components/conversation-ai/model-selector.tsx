@@ -11,6 +11,7 @@ export type { ThinkingLevel } from '../../shared/thinking'
 export type ModelOption = { id: string; label: string; model?: string; version?: number; providerId?: string; providerName?: string; providerImage?: string; group?: string; thinkingLevels?: readonly ThinkingLevel[] }
 
 const thinkingLabels: Record<ThinkingLevel, string> = { off: '关闭', minimal: '最低', low: '低', medium: '中', high: '高', xhigh: '更高', max: '最高' }
+export const thinkingLevelLabel = (level?: ThinkingLevel) => level ? thinkingLabels[level] : '默认'
 export function ThinkingSelector({ levels, value, onSelect, disabled }: { levels?: readonly ThinkingLevel[]; value?: ThinkingLevel; onSelect: (level: ThinkingLevel | undefined) => void; disabled?: boolean }) {
   const [open, setOpen] = useState(false)
   const owner = useContext(ConversationPopoverOwner)

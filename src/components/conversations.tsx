@@ -39,7 +39,7 @@ function Initial({ name }: { name: string }) {
   return <span className="conversation-avatar" aria-hidden="true">{[...name.trim()][0] || '·'}</span>
 }
 
-export function ConversationNavigation({ wide, conversations, activeId, onSelect, onImport, hasMore, loading, error, onLoadMore, onRefresh, arrange, remove }: {
+export function ConversationNavigation({ wide, conversations, activeId, onSelect, onImport, hasMore, loading, error, onLoadMore, onRefresh, arrange, remove, openRequest = 0 }: {
   wide: boolean
   conversations: readonly { id: string; title: string; pinned?: boolean }[]
   arrange?: (change: ListArrangement) => Promise<void>
@@ -52,14 +52,23 @@ export function ConversationNavigation({ wide, conversations, activeId, onSelect
   error?: string
   onLoadMore?: () => void
   onRefresh?: () => void
+  openRequest?: number
 }) {
   const [expanded, setExpanded] = useState(false)
+  const toggle = useRef<HTMLButtonElement>(null)
+  const previousRequest = useRef(openRequest)
+  useEffect(() => {
+    if (previousRequest.current === openRequest) return
+    previousRequest.current = openRequest
+    setExpanded(true)
+    toggle.current?.focus()
+  }, [openRequest])
   const toggleLabel = expanded ? '收起会话列表' : '展开会话列表'
   return (
     <section className="conversation-navigation" aria-label="会话">
       <div className={clsx('conversation-toolbar', wide && 'conversation-menu-wide')} role="group" aria-label="会话菜单">
         <Tooltip content={toggleLabel}>
-          <button className="nav-control conversation-toggle" type="button" aria-label={toggleLabel}
+          <button ref={toggle} className="nav-control conversation-toggle" type="button" aria-label={toggleLabel}
             aria-expanded={expanded} aria-controls="conversation-list" onClick={() => setExpanded(!expanded)}>
             <span className="control-icon"><ChevronRight className={clsx('drawer-chevron', expanded && 'is-expanded')} aria-hidden="true" /></span>
             <span className="control-label" aria-hidden="true">会话</span>
@@ -112,7 +121,7 @@ const messageKinds: Record<MessageView['kind'], string> = {
 type QuoteJump = { targetId: string; originId?: string; referenceIds?: readonly string[]; pending?: boolean }
 
 export function ConversationReader({ conversation, initialAnalysisTaskId, openAnalysisOnEntry, range, sourceStatus, onReturn, returnLabel = '返回个人总览',
-  beforeCursor, afterCursor, onBefore, onAfter, loading, error, onRetry, messageCount, aiAdapter,
+  beforeCursor, afterCursor, onBefore, onAfter, loading, error, onRetry, messageCount, sourceStartTimeMs, sourceEndTimeMs, aiAdapter,
   onLocateMessageId, api, onSelfChanged, onConfigureModels, onOpenMemory }: {
   initialAnalysisTaskId?: string
   openAnalysisOnEntry?: boolean
@@ -130,6 +139,8 @@ export function ConversationReader({ conversation, initialAnalysisTaskId, openAn
   onRetry?: () => void
   preview?: boolean
   messageCount?: number
+  sourceStartTimeMs?: number | null
+  sourceEndTimeMs?: number | null
   aiAdapter?: ConversationAiAdapter
   onLocateMessageId?: (messageId: string) => Promise<boolean>
   api?: Pick<DesktopApi, 'listMembers' | 'confirmSelf'>
@@ -158,6 +169,9 @@ export function ConversationReader({ conversation, initialAnalysisTaskId, openAn
   const tabStopId = conversation.messages.some(item => item.id === focusedMessageId) ? focusedMessageId : firstMessage
 
   const selfButton = useRef<HTMLButtonElement>(null)
+  const selfReturnFocus = useRef<HTMLButtonElement>(null)
+  const [selfOrigin, setSelfOrigin] = useState<'reader' | 'insight'>('reader')
+  const [confirmedSelf, setConfirmedSelf] = useState<string | null>(null)
 
   const [selfModalOpen, setSelfModalOpen] = useState(false)
   const [members, setMembers] = useState<MemberView[]>([])
@@ -189,10 +203,12 @@ export function ConversationReader({ conversation, initialAnalysisTaskId, openAn
       if (sequence !== selfRequest.current) return
       const confirmed = list.find(member => member.confirmedSelf)
       setMembers(list)
+      setConfirmedSelf(confirmed?.id ?? null)
       setSelectedMemberId(confirmed?.id ?? null)
       if (onEntry && !confirmed) setSelfModalOpen(true)
     } catch (err) {
       if (sequence !== selfRequest.current) return
+      setConfirmedSelf(null)
       setSelfError(actionError(err))
       setSelfReadFailed(true)
       setSelfModalOpen(true)
@@ -202,6 +218,9 @@ export function ConversationReader({ conversation, initialAnalysisTaskId, openAn
   }
 
   useEffect(() => {
+    setConfirmedSelf(null)
+    setSelfOrigin('reader')
+    selfReturnFocus.current = selfButton.current
     setSelfModalOpen(false)
     setShowSelfHint(false)
     if (api?.listMembers) void readMembers(true)
@@ -223,7 +242,7 @@ export function ConversationReader({ conversation, initialAnalysisTaskId, openAn
     ++selfRequest.current
     const guide = !members.some(member => member.confirmedSelf)
     const finish = () => { setSelfModalOpen(false); setShowSelfHint(guide) }
-    const card = selfCard.current, target = selfButton.current?.getBoundingClientRect()
+    const card = selfCard.current, target = selfReturnFocus.current?.getBoundingClientRect()
     if (!guide || !card?.animate || !target || window.matchMedia('(prefers-reduced-motion: reduce)').matches) { finish(); return }
     const start = card.getBoundingClientRect()
     const dx = target.left + target.width / 2 - start.left - start.width / 2
@@ -242,6 +261,8 @@ export function ConversationReader({ conversation, initialAnalysisTaskId, openAn
       if (api?.confirmSelf) {
         await api.confirmSelf(conversation.id, memberId)
       }
+      setConfirmedSelf(memberId)
+      setMembers(current => current.map(member => ({ ...member, confirmedSelf: member.id === memberId })))
       setSelfModalOpen(false)
       setIdentityRevision(revision => revision + 1)
       await onSelfChanged?.()
@@ -250,6 +271,16 @@ export function ConversationReader({ conversation, initialAnalysisTaskId, openAn
     } finally {
       setSelfSaving(false)
     }
+  }
+
+  function approveAnalysisEntry(trigger: HTMLButtonElement) {
+    if (!api?.listMembers || (confirmedSelf && !selfLoading && !selfReadFailed && !selfSaving)) return true
+    selfReturnFocus.current = trigger
+    setSelfOrigin('insight')
+    setShowSelfHint(false)
+    setSelfModalOpen(true)
+    if (!selfLoading && !selfReadFailed && !members.length) void readMembers(false)
+    return false
   }
 
   useLayoutEffect(() => {
@@ -379,6 +410,7 @@ export function ConversationReader({ conversation, initialAnalysisTaskId, openAn
   }
 
   return <ConversationWorkspace initialAnalysisTaskId={initialAnalysisTaskId} openAnalysisOnEntry={openAnalysisOnEntry} onConfigureModels={onConfigureModels} onOpenAnalysisResult={onOpenMemory} conversationId={conversation.id} identityRevision={identityRevision} title={conversation.title} messageCount={messageCount}
+    sourceStartTimeMs={sourceStartTimeMs} sourceEndTimeMs={sourceEndTimeMs} approveAnalysisEntry={approveAnalysisEntry}
     references={selection.references} onClearReferences={selection.clear} onRestoreReferences={selection.restore}
     onEndReferenceView={endReferenceView}
     onJumpReference={(ids, targetId = ids[0], pending) => { if (targetId) void navigateQuote({ targetId, referenceIds: ids, pending }) }} adapter={aiAdapter}>
@@ -403,7 +435,12 @@ export function ConversationReader({ conversation, initialAnalysisTaskId, openAn
           {chatControl}
           <div className="reader-identity-entry">
             <button ref={selfButton} className="reader-identity-toggle" type="button" aria-label="选择本人"
-              title="选择本人" aria-haspopup="dialog" aria-expanded={selfModalOpen} onClick={() => { setShowSelfHint(false); void readMembers(false) }}>
+              title="选择本人" aria-haspopup="dialog" aria-expanded={selfModalOpen} onClick={() => {
+                selfReturnFocus.current = selfButton.current
+                setSelfOrigin('reader')
+                setShowSelfHint(false)
+                void readMembers(false)
+              }}>
               <UserRound aria-hidden="true" />
             </button>
             {showSelfHint && <span role="status" className="reader-identity-hint">可在这里选择本人</span>}
@@ -465,11 +502,11 @@ export function ConversationReader({ conversation, initialAnalysisTaskId, openAn
     </div>
     {composer}
     {selfModalOpen && (
-      <ReaderDialog busy={selfSaving} onDismiss={dismissIdentity} returnFocus={selfButton} labelledBy="self-modal-title">
+      <ReaderDialog busy={selfSaving} onDismiss={dismissIdentity} returnFocus={selfReturnFocus} labelledBy="self-modal-title">
       <div className="reader-modal-overlay" role="presentation" onClick={e => { if (e.target === e.currentTarget) dismissIdentity() }}>
         <div className="reader-modal-card" ref={selfCard}>
           <h2 id="self-modal-title">选择本人</h2>
-          <p className="reader-modal-description">这段聊天里，哪位是你？</p>
+          <p className="reader-modal-description">{selfOrigin === 'insight' ? '请先选择本人，再开始会话洞察。' : '这段聊天里，哪位是你？'}</p>
           {selfError && <p className="import-error" role="alert">{selfError} {selfReadFailed && <button type="button" className="reader-modal-btn" onClick={() => void readMembers(false)}>重新读取成员</button>}</p>}
           <div className="reader-modal-body" role="radiogroup" aria-label="成员列表">
             {selfLoading ? <p className="reader-modal-empty">正在读取成员…</p> : selfReadFailed ? null : !members.length ? <p className="reader-modal-empty">该会话暂无成员。</p> : (

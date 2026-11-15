@@ -1,0 +1,9 @@
+
+Running 2 tests using 1 worker
+
+(node:28800) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 1 tests\desktop\conversation-insights.spec.mjs:14:1 › isolated Electron resumes a scoped insight, retries writing, and preserves exact citations through rename and deletion (9.1s)
+  ok 2 tests\desktop\insight-ui.spec.mjs:349:1 › real Electron preserves long report reading position and fits an 80-character title at 960 by 640 (10.2s)
+
+  2 passed (20.7s)

@@ -11,6 +11,16 @@ export function purgeThread(db: Database, threadId: bigint) {
   db.prepare('DELETE FROM ai_threads WHERE id=?').run(threadId)
 }
 
+export function purgeAnalysis(db: Database, taskId: bigint) {
+  db.prepare('DELETE FROM ai_analysis_batches WHERE task_id=?').run(taskId)
+  db.prepare('DELETE FROM ai_analysis_coverage WHERE task_id=?').run(taskId)
+  db.prepare('DELETE FROM ai_reports WHERE task_id=?').run(taskId)
+  db.prepare("DELETE FROM ai_request_usage WHERE owner_kind='analysis' AND owner_id=?").run(taskId)
+  const preparation = db.prepare('SELECT preparation_token FROM ai_analysis_tasks WHERE id=?').get(taskId) as { preparation_token: string }
+  db.prepare('DELETE FROM ai_analysis_tasks WHERE id=?').run(taskId)
+  db.prepare('DELETE FROM ai_preparations WHERE token=?').run(preparation.preparation_token)
+}
+
 /**
  * 物理级联删除会话及其全部关联数据。
  */
@@ -31,21 +41,7 @@ export function purgeConversation(store: Store, conversationId: string): void {
     // 2. 清理 AI 分析任务及报告、用量（若表存在）
     if (tableExists(db, 'ai_analysis_tasks')) {
       const tasks = db.prepare('SELECT id FROM ai_analysis_tasks WHERE conversation_id=?').all(id) as { id: bigint }[]
-      for (const task of tasks) {
-        if (tableExists(db, 'ai_analysis_batches')) {
-          db.prepare('DELETE FROM ai_analysis_batches WHERE task_id=?').run(task.id)
-        }
-        if (tableExists(db, 'ai_analysis_coverage')) {
-          db.prepare('DELETE FROM ai_analysis_coverage WHERE task_id=?').run(task.id)
-        }
-        if (tableExists(db, 'ai_reports')) {
-          db.prepare('DELETE FROM ai_reports WHERE task_id=?').run(task.id)
-        }
-        if (tableExists(db, 'ai_request_usage')) {
-          db.prepare("DELETE FROM ai_request_usage WHERE owner_kind='analysis' AND owner_id=?").run(task.id)
-        }
-      }
-      db.prepare('DELETE FROM ai_analysis_tasks WHERE conversation_id=?').run(id)
+      for (const task of tasks) purgeAnalysis(db, task.id)
     }
     if (tableExists(db, 'ai_preparations')) {
       db.prepare('DELETE FROM ai_preparations WHERE conversation_id=?').run(id)

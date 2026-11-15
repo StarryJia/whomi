@@ -17,12 +17,17 @@ import { scoredSourcePrompt, scoredMergePrompt, scoredFinalPrompt } from '../dat
 import { analysisBudget, capacityError, planAnalysis, promptBudget, type AnalysisStage } from './analysis-packing'
 import { createMessageProcessor, type ProcessingMember, type ProcessingMessage } from './message-processing'
 import type { ProcessingSettings } from '../../src/shared/settings-contract'
+import type { InsightSnapshot, InsightSourceMessage } from '../../src/shared/conversation-insights'
+import { generateInsight } from './insight-generation'
+import { defaultInsightPrompts, INSIGHT_PROMPT_VERSION, type InsightPrompts } from '../data/ai/insight-prompts'
+import type { InsightCheckpoint } from './insight-checkpoint'
+import { defaultInsightRunLimits } from './insight-policy'
 
 type SourceMessage = ProcessingMessage & { isSelf: boolean }
 type Batch<T = AiReport> = { index: number; messageIds: string[]; report: T; usage: AiUsage }
-type AnalysisContext<T = AiReport> = { systemPrompts?: PromptValues; task: AnalysisTask; promptVersion: string; model: AiModel; selfFingerprint: string; messages: SourceMessage[]; batches: Batch<T>[]; checkpoint: string | null }
+type AnalysisContext<T = AiReport> = { snapshot?: InsightSnapshot; systemPrompts?: PromptValues; task: AnalysisTask; promptVersion: string; model: AiModel; selfFingerprint: string; messages: SourceMessage[]; batches: Batch<T>[]; checkpoint: string | null }
 type TurnContext = { systemPrompt?: string; turn: AiTurn; conversationId: string; model: AiModel; selfFingerprint: string; references: SourceMessage[]; history: { role: 'user' | 'assistant'; text: string; references?: SourceMessage[] }[]; profile: SavedReport | null; skill: { id: string; version: string; content: string } | null; checkpoint: string | null }
-export type RuntimeInput = { thinkingLevel?: ThinkingLevel; key: string; model: AiModel; apiKey?: string; systemPrompt: string; prompt: string; history?: { role: 'user' | 'assistant'; text: string }[]; checkpoint?: string | null }
+export type RuntimeInput = { thinkingLevel?: ThinkingLevel; key: string; model: AiModel; apiKey?: string; systemPrompt: string; prompt: string; history?: { role: 'user' | 'assistant'; text: string }[]; checkpoint?: string | null; outputTokenLimit?: number }
 export type RuntimeResult = { stopReason?: 'length'; text: string; usage: AiUsage; checkpoint: string }
 export type RuntimeRunner = { run(input: RuntimeInput, options: { signal: AbortSignal; onText: (text: string) => void }): Promise<RuntimeResult> }
 export type AiServiceOptions = { storage(method: string, args: unknown[]): Promise<unknown>; runtime: RuntimeRunner; secrets: { encrypt(value: string): string; decrypt(value: string): string }; changed?: (event: AiEvent) => void;
@@ -96,15 +101,11 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
     if (secret.model.version !== model.version) throw new BoundaryError('MODEL_CHANGED', '模型配置已更新，请重新确认。')
     return secret.encryptedKey ? options.secrets.decrypt(secret.encryptedKey) : undefined
   }
-  async function runModel(ownerKind: 'analysis' | 'turn', ownerId: string, requestId: string, input: RuntimeInput, signal: AbortSignal, onText: (text: string) => void, stage?: AnalysisStage) {
+  async function runTrackedModel(ownerKind: 'analysis' | 'turn', ownerId: string, requestId: string, input: RuntimeInput, signal: AbortSignal, onText: (text: string) => void) {
     if (signal.aborted) throw new DOMException('已停止', 'AbortError')
     if (input.thinkingLevel) {
       const { model: current } = await storage<{ model: AiModel }>('modelSecret', input.model.id)
       if (!await acceptedThinking(current, input.thinkingLevel) || !await acceptedThinking(input.model, input.thinkingLevel)) throw new BoundaryError('INVALID_MODEL', '请重新选择模型和思考强度。')
-    }
-    try { assertInputFits(input) } catch (error) {
-      if (stage && error instanceof BoundaryError && error.code === 'CONTEXT_TOO_LARGE') throw capacityError(stage)
-      throw error
     }
     const identity = { ownerKind, ownerId, requestId }
     await storage('recordUsage', { ...identity, usage: { incomplete: true } })
@@ -112,11 +113,21 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
     try {
       const result = await options.runtime.run(input, { signal, onText })
       await storage('recordUsage', { ...identity, usage: result.usage })
-      if (result.stopReason === 'length') throw new BoundaryError('MODEL_OUTPUT_LIMIT', stage ? '生成内容超出输出上限，请继续生成或选择更大输出长度的模型。' : '回答未完成，请重试或选择更大输出长度的模型。')
       return result
     } catch (error) {
       const usage = (error as { usage?: AiUsage })?.usage
       if (usage) await storage('recordUsage', { ...identity, usage: { ...usage, incomplete: true } })
+      throw error
+    }
+  }
+  async function runModel(ownerKind: 'analysis' | 'turn', ownerId: string, requestId: string, input: RuntimeInput, signal: AbortSignal, onText: (text: string) => void, stage?: AnalysisStage) {
+    try {
+      assertInputFits(input)
+      const result = await runTrackedModel(ownerKind, ownerId, requestId, input, signal, onText)
+      if (result.stopReason === 'length') throw new BoundaryError('MODEL_OUTPUT_LIMIT', stage ? '生成内容超出输出上限，请继续生成或选择更大输出长度的模型。' : '回答未完成，请重试或选择更大输出长度的模型。')
+      return result
+    } catch (error) {
+      if (stage && error instanceof BoundaryError && error.code === 'CONTEXT_TOO_LARGE') throw capacityError(stage)
       if (stage && !signal.aborted && (error as {code?: string})?.code === 'MODEL_CONTEXT_LIMIT') throw capacityError(stage, true)
       throw error
     }
@@ -148,6 +159,36 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
       const initial = await storage<AnalysisContext<AiReport | MemoryNotes>>('analysisContext', id)
       const processor = resumeProcessor ?? await analysisProcessor(id, initial.task.conversationId)
       if (signal.aborted) return
+      if (initial.promptVersion === INSIGHT_PROMPT_VERSION) {
+        if (!initial.snapshot) throw new BoundaryError('INVALID_INSIGHT_SNAPSHOT', '洞察来源无法读取，请重新生成。')
+        const values = initial.systemPrompts
+        const prompts: InsightPrompts = values ? { version: INSIGHT_PROMPT_VERSION, reading: values.insightReading, checking: values.insightChecking, writing: values.insightWriting } : defaultInsightPrompts
+        const checkpoint: InsightCheckpoint | null = initial.checkpoint ? JSON.parse(initial.checkpoint) : null
+        await saveAnalysis(id, { state: 'running', error: undefined })
+        const report = await generateInsight({ snapshot: initial.snapshot, conversationId: initial.task.conversationId, model: initial.model,
+          prompts, limits: defaultInsightRunLimits, checkpoint, thinkingLevel: initial.task.thinkingLevel }, {
+          signal, onText: () => {},
+          read: async messageIds => {
+            const sources = await storage<InsightSourceMessage[]>('readInsightSources', { taskId: id, messageIds })
+            return sources.map(({ memberId, ...source }) => {
+              const protectedSource = processor?.prepare([{ ...source, memberId, kind: 'text' }])[0]
+              return protectedSource ? { ...source, text: protectedSource.text, senderName: protectedSource.senderName } : source
+            })
+          },
+          saveCheckpoint: async state => {
+            const snapshot = await storage<AnalysisTask>('saveInsightCheckpoint', id, JSON.stringify(state), state.coveredMessageIds, state.elapsedMs)
+            publish({ kind: 'analysis', snapshot })
+          },
+          run: (input, runtimeOptions) => schedule(0, async () => {
+            await storage('analysisContext', id)
+            return runTrackedModel('analysis', id, randomUUID(), { ...input, apiKey: await modelSecret(initial.model) }, runtimeOptions.signal, runtimeOptions.onText)
+          }, runtimeOptions.signal),
+        })
+        signal.throwIfAborted()
+        const snapshot = await storage<AnalysisTask>('completeAnalysis', id, report)
+        publish({ kind: 'analysis', snapshot })
+        return
+      }
       const memory = [LEGACY_MEMORY_VERSION, LEGACY_SCORED_MEMORY_VERSION, ANALYSIS_PROMPT_VERSION].includes(initial.promptVersion)
       const explained = initial.promptVersion === ANALYSIS_PROMPT_VERSION
       const scored = explained || initial.promptVersion === LEGACY_SCORED_MEMORY_VERSION
@@ -317,6 +358,13 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
     listSkills: () => storage('listSkills'), prepareAnalysis: input => control(async () => { available(input.conversationId); const { model } = await storage<{ model: AiModel }>('modelSecret', input.modelId); return storage('prepareAnalysis', { ...input, thinkingLevel: await acceptedThinking(model, input.thinkingLevel) }) }),
     confirmAnalysis: input => control(async () => { const task = await storage<AnalysisTask>('confirmAnalysis', input); available(task.conversationId); if (task.state === 'queued') launch(`analysis:${task.id}`, task.conversationId, signal => executeAnalysis(task.id, signal), task.modelId); return task }),
     getAnalysis: id => storage('getAnalysis', id), listAnalyses: id => storage('listAnalyses', id), getReport: id => storage('getReport', id),
+    previewInsightScope: input => storage('previewInsightScope', input),
+    readInsightCitation: input => storage('readInsightCitation', input),
+    renameAnalysis: input => control(async () => {
+      const snapshot = await storage<AnalysisTask>('renameAnalysis', input)
+      publish({ kind: 'analysis', snapshot })
+      return snapshot
+    }),
     arrangeAnalysis: change => control(async () => {
       await storage('arrangeAnalysis', change)
       const snapshot = await storage<AnalysisTask>('getAnalysis', change.id)
@@ -332,7 +380,14 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
       await storage('deleteAnalysis', id)
       publish({ kind: 'analysis-deleted', taskId: id, conversationId: task.conversationId })
     }),
-    stopAnalysis: id => control(async () => { active.get(`analysis:${id}`)?.abort.abort(); return saveAnalysis(id, { state: 'stopped' }) }),
+    stopAnalysis: id => control(async () => {
+      const task = await storage<AnalysisTask>('getAnalysis', id)
+      const running = active.get(`analysis:${id}`)
+      running?.abort.abort()
+      // 洞察的取消回执先写入断点，避免恢复时把暂停时间计入请求耗时。
+      if (task.scope) await running?.task.catch(() => {})
+      return saveAnalysis(id, { state: 'stopped' })
+    }),
     continueAnalysis: id => control(async () => {
       const current = await storage<AnalysisTask>('getAnalysis', id)
       available(current.conversationId)

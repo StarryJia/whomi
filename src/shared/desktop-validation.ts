@@ -31,7 +31,8 @@ const messageFields = { ordinal: count, senderKind, senderName: text, sentAtMs: 
 const message = object({ ...messageFields, id: localId, conversationId: localId, memberId: nullable(localId), isSelf: bool, timeBucket: oneOf(0, 1), sortTime: integer, reply: nullable(object({ ...parsedReplyFields, targetMessageId: nullable(localId), state: oneOf('unresolved', 'resolved') })) })
 const position = object({ id: localId, timeBucket: oneOf(0, 1), sortTime: integer })
 const messagePage = object({ items: array(message, 200), beforeCursor: nullable(cursor), afterCursor: nullable(cursor), snapshotMaxId: zeroId })
-const sourceWindow: Check = value => object({ status: oneOf('unavailable') })(value) || object({ status: oneOf('available'), conversationId: localId, startMessageId: localId, endMessageId: localId, start: position, end: position, page: messagePage, rangeEndCursor: cursor })(value)
+export const availableSourceWindowFields = { status: oneOf('available'), conversationId: localId, startMessageId: localId, endMessageId: localId, start: position, end: position, page: messagePage, rangeEndCursor: cursor }
+const sourceWindow: Check = value => object({ status: oneOf('unavailable') })(value) || object(availableSourceWindowFields)(value)
 const counts = object({ seen: count, validRecords: count, invalidRecords: count })
 const issue = object({ code: key, severity: oneOf('warning', 'blocking'), candidateId: text, ordinal: optional(count), action: text })
 const member = object({ sourceKey: text, displayName: text, stableAccountKey: nullable(text), selfHint: nullable(bool) })
