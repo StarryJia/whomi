@@ -1,6 +1,6 @@
 # 对话洞察与后续功能工单目录
 
-更新：2026-11-15。用户已授权将已确认设计和需求整理到对应工单，检查遗漏与冲突后发布。首期七类主要界面已有图；产品实现尚未开始。本目录记录工单范围和发布映射，图稿状态以[设计清点表](../../../designs/conversation-insights/design-inventory.md)为准。
+更新：2026-11-15。已按用户授权完成需求与设计核对，十张工单已发布，真实编号见文末。首期七类主要界面已有图；产品实现尚未开始。本目录记录工单范围和发布映射，图稿状态以[设计清点表](../../../designs/conversation-insights/design-inventory.md)为准。
 
 ## 工单清单
 
@@ -35,4 +35,21 @@
 
 ## 发布记录
 
-待本轮创建后回填真实工单链接及验证结果。
+2026-11-15 已发布十张工单，并将正文中的依赖替换为真实编号。设计与文档固定版本为 [00f3fa5](https://github.com/StarryJia/whomi/commit/00f3fa577d599873b2c5b3b537da2384882eecf6)，保存在 codex/conversation-insights 分支。
+
+| GitHub工单 | 规划编号 | 标题 |
+|---|---|---|
+| [#10](https://github.com/StarryJia/whomi/issues/10) | I00 | 对话洞察：用可回查的分析替代独立回忆散文 |
+| [#11](https://github.com/StarryJia/whomi/issues/11) | I01 | 对话洞察：落实已确认设计与界面验收基线 |
+| [#12](https://github.com/StarryJia/whomi/issues/12) | I02 | 对话洞察：保存分析范围、报告与来源，并联动个人总览 |
+| [#13](https://github.com/StarryJia/whomi/issues/13) | I03 | 对话洞察：按模型容量动态分批并保留日期和关联上下文 |
+| [#14](https://github.com/StarryJia/whomi/issues/14) | I04 | 对话洞察：实现有证据、可修正且有预算约束的阅读分析 |
+| [#15](https://github.com/StarryJia/whomi/issues/15) | I05 | 对话洞察：实现会话内启动、进度、报告管理与阅读 |
+| [#16](https://github.com/StarryJia/whomi/issues/16) | I06 | 对话洞察：在聊天弹窗回看引用并切换片段 |
+| [#17](https://github.com/StarryJia/whomi/issues/17) | I07 | 对话洞察：验证分析质量、完整界面流程及新旧数据兼容 |
+| [#18](https://github.com/StarryJia/whomi/issues/18) | Q00 | 问一问：明确业务流程、资料检索与页面实施计划 |
+| [#19](https://github.com/StarryJia/whomi/issues/19) | H00 | 心事屋：明确独立交流、资料复用与页面实施计划 |
+
+发布前修正了过期设计状态、历史图适用边界、结构化文本回读与原生工具依赖冲突，并补齐跨段材料范围、预算去重、本人入口拦截及报告增删与总览的联动要求。检查通过：23份文档、281条相对链接及锚点、14张有效设计覆盖、六份界面工单的必用技能。14张固定版本图片均返回成功响应及PNG类型；发布后逐份读取核对十张工单标题、正文、依赖编号和开放状态。
+
+实施待办仍保留：名称长度及保存中行为、失败行返回目标、总览聚合契约、真实运行和模型质量验证。它们已分配到对应工单，不是遗漏的需求或待补新页面。本轮仅发布文档与工单，没有修改产品代码、创建合并请求或运行付费模型试验。
