@@ -1,0 +1,29 @@
+{
+  "kind": "offline-source-order-migration",
+  "networkCalls": 0,
+  "basis": "closed checkpoint copied in memory only; runner stops before any network operation",
+  "exactSorted139EntriesPreserved": true,
+  "sourceMappingPreserved": true,
+  "originalRawNotesUnchanged": true,
+  "originalChecksRetainedExceptObsoleteNavigation": true,
+  "factsVersionBefore": 1,
+  "factsVersionAfter": 2,
+  "callsReservedBefore": 28,
+  "callsReservedAfterMigration": 28,
+  "simulatedNextReservation": 29,
+  "compressionRepairsBefore": 1,
+  "compressionRepairsAfterMigration": 1,
+  "writingRepairsBefore": 0,
+  "writingRepairsAfterMigration": 0,
+  "attemptsUnchangedAtMigration": true,
+  "limitsUnchanged": true,
+  "elapsedAtLeastPrior": true,
+  "firstCompression": {
+    "entryCount": 16,
+    "facts": 12,
+    "unknowns": 4,
+    "inputEstimate": 6418,
+    "repair": true
+  },
+  "originalsUnchanged": true
+}

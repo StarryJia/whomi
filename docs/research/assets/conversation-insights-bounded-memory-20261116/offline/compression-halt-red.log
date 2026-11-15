@@ -1,0 +1,25 @@
+✖ invalid compression output or insufficient capacity stops later trial phases (61.3987ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 196.555
+
+✖ failing tests:
+
+test at tests\quality\insight-comparison.test.mjs:472:1
+✖ invalid compression output or insufficient capacity stops later trial phases (61.3987ms)
+  AssertionError [ERR_ASSERTION]: Missing expected exception.
+      at TestContext.<anonymous> (file:///D:/University/github/whomi/tests/quality/insight-comparison.test.mjs:483:12)
+      at async Test.run (node:internal/test_runner/test:1113:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:358:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: { code: 'TRIAL_HALTED' },
+    operator: 'throws',
+    diff: 'simple'
+  }

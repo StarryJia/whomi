@@ -1,0 +1,101 @@
+{
+  "kind": "offline-net-progress-response-projection",
+  "networkCalls": 0,
+  "trialRecoveryPerformed": false,
+  "checkpointCallsUnchanged": 34,
+  "cases": [
+    {
+      "response": "13",
+      "sourceAndCoverageValid": true,
+      "inputFactBytes": 2694,
+      "outputFactBytes": 2210,
+      "strictlyShrinks": true,
+      "decreaseFraction": 0.17965850037119524,
+      "inputSources": [
+        "15",
+        "16",
+        "17",
+        "18",
+        "19",
+        "20",
+        "21",
+        "22",
+        "23",
+        "24",
+        "25",
+        "26",
+        "27",
+        "28"
+      ],
+      "outputSources": [
+        "15",
+        "16",
+        "17",
+        "18",
+        "19",
+        "20",
+        "21",
+        "22",
+        "23",
+        "24",
+        "25",
+        "26",
+        "27",
+        "28"
+      ]
+    },
+    {
+      "response": "14",
+      "sourceAndCoverageValid": true,
+      "inputFactBytes": 2694,
+      "outputFactBytes": 2192,
+      "strictlyShrinks": true,
+      "decreaseFraction": 0.18634001484780993,
+      "inputSources": [
+        "15",
+        "16",
+        "17",
+        "18",
+        "19",
+        "20",
+        "21",
+        "22",
+        "23",
+        "24",
+        "25",
+        "26",
+        "27",
+        "28"
+      ],
+      "outputSources": [
+        "15",
+        "16",
+        "17",
+        "18",
+        "19",
+        "20",
+        "21",
+        "22",
+        "23",
+        "24",
+        "25",
+        "26",
+        "27",
+        "28"
+      ]
+    }
+  ],
+  "originalHashes": {
+    "checkpoint.json": "992f250c28a6b0de0b1dca5fe54227dfdc1a82d46d6d4022eafb5486bdf7a675",
+    "request-13.json": "5884866e0cfe945b14a47645fb40cd5b81d04e10158fddae464732603e8042a0",
+    "response-13.txt": "1f8b268a941c03d16d2a4477b4f71bd4451814f506aa4efb9b17559b11cfba2c",
+    "request-14.json": "4c6bcb6ff774a921d8ae51e63eee82f63916212cce17f3fe9cb57b8ac28ec1fc",
+    "response-14.txt": "4f9d0333ccc0313423545dfcf5bdbf9a2b4013efa4b9059617dbbd47cf35bbd5"
+  },
+  "originalsUnchanged": true,
+  "productHashes": {
+    "electron/main/insight-generation.ts": "c9370d157f14463ce11a0b97d76286221c6d0575d8a0ed52b92f4a22c9767907",
+    "tests/backend/insight-generation.test.ts": "5db6b084db6fbde4d9def25ef0cd127add4368fb3e164f75abac08782b00b2ae",
+    "tests/backend/fixtures/insight-compression-net-progress.json": "175d2e3ef63ab23baa28a6db84cb0de8f7bb9eea2f3ba3301b9f972665f61396"
+  }
+}

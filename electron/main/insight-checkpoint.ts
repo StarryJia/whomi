@@ -14,9 +14,13 @@ export type InsightRunLimits = {
 }
 
 export type InsightNote = { text: string; sourceIds: string[] }
+export type InsightMemoryFact = InsightNote & { kind: 'fact' | 'unknown' }
 export type InsightEvidenceNote = { sourceId: string; quote: string; text: string }
-type InsightNavigationNode = InsightNote & { children: number[] }
-export type InsightNavigation = { nodes: InsightNavigationNode[]; roots: number[]; cursor: number; nextRoots: number[]; repairs: number }
+type InsightNavigationNode = InsightNote & { children: number[]; facts?: InsightMemoryFact[] }
+export type InsightNavigation = {
+  nodes: InsightNavigationNode[]; roots: number[]; cursor: number; nextRoots: number[]; repairs: number
+  factsVersion?: 1 | 2; reconciled?: boolean
+}
 export type InsightNavigationRequest = { id: number; offset: number }
 export type InsightCandidate = { observation: string; supportingIds: string[]; reason?: string }
 export type InsightFinding = {

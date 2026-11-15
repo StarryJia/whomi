@@ -1,0 +1,334 @@
+{
+  "kind": "offline-bounded-trial-preflight",
+  "assessmentDate": "2026-11-16",
+  "networkCalls": 0,
+  "modelCalls": 0,
+  "productCodeChanged": false,
+  "status": "capacity-estimate-only",
+  "semanticSuccessVerified": false,
+  "purpose": "为新独立轮次评估调用、输入、输出与有效耗时预算；不是模型理解质量验收。",
+  "proposedLimits": {
+    "perTaskCalls": 50,
+    "globalActualRequests": 104,
+    "inputEstimateLimit": 7000,
+    "effectiveInputLimit": 6744,
+    "perRequestOutputLimit": 3000,
+    "perTaskInputTokens": 400000,
+    "perTaskOutputTokens": 40000,
+    "perTaskActiveElapsedMs": 1200000,
+    "maxChecks": 8,
+    "maxRoundsPerCheck": 4
+  },
+  "scope": {
+    "model": "chatgptPRO / gpt-6.1-sol",
+    "materials": [
+      "shared-workload",
+      "conditional-reschedule"
+    ],
+    "messagesPerMaterial": 120,
+    "priorFailedRunRequests": 22,
+    "priorRunSeparate": true,
+    "priorRunBudgetsUnchanged": true
+  },
+  "materialHashes": {
+    "shared-workload": "6f63b461c034eacaebc473ea5637bef13119aae59e286fa1d449347d9c6af756",
+    "conditional-reschedule": "907c6b680d1acc0e4c021e7ae6c26393d1fd144c9c6f45d6ee4a47b316640b2d"
+  },
+  "packingEstimate": {
+    "method": "调用现有packInsightSources和countInsightInput，对冻结原文仅计算打包；不执行运行库，不生成或提交模型响应。",
+    "emptyReadingInput": 2809,
+    "availableInput": 6744,
+    "spareInput": 3935,
+    "memoryReserveFraction": 0.2,
+    "candidateReserveFraction": 0.25,
+    "assumptions": [
+      "首批后存在历史笔记，因此预留背景空间。",
+      "无候选场景不预留候选空间；压力场景假设首批后始终至少有一个候选。",
+      "不模拟模型是否实际产生候选，也不预测每条笔记的语义。"
+    ],
+    "cases": [
+      {
+        "name": "shared-workload",
+        "noCandidateBatches": 17,
+        "continuousCandidateAfterFirstBatches": 24,
+        "noCandidateBatchSizes": [
+          9,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          6
+        ],
+        "continuousCandidateBatchSizes": [
+          9,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          4,
+          5,
+          5,
+          5,
+          5,
+          5,
+          2
+        ]
+      },
+      {
+        "name": "conditional-reschedule",
+        "noCandidateBatches": 17,
+        "continuousCandidateAfterFirstBatches": 24,
+        "noCandidateBatchSizes": [
+          9,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          6
+        ],
+        "continuousCandidateBatchSizes": [
+          9,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          4,
+          5,
+          5,
+          5,
+          2
+        ]
+      }
+    ]
+  },
+  "retainedNoteMeasurements": [
+    {
+      "case": "shared-workload",
+      "round": "previous-long-comparison",
+      "entries": 134,
+      "textCharacters": 8779,
+      "textUtf8Bytes": 25285,
+      "memoryJsonBytes": 32130,
+      "sourceReferences": 260,
+      "uniqueSources": 119
+    },
+    {
+      "case": "conditional-reschedule",
+      "round": "previous-long-comparison",
+      "entries": 140,
+      "textCharacters": 9246,
+      "textUtf8Bytes": 26362,
+      "memoryJsonBytes": 33475,
+      "sourceReferences": 265,
+      "uniqueSources": 120
+    },
+    {
+      "case": "shared-workload",
+      "round": "memory-preservation-failed",
+      "entries": 142,
+      "facts": 102,
+      "unknowns": 40,
+      "textCharacters": 9940,
+      "textUtf8Bytes": 28704,
+      "memoryJsonBytes": 35708,
+      "sourceReferences": 234,
+      "uniqueSources": 120
+    }
+  ],
+  "observedSuccessfulReading": {
+    "case": "shared-workload",
+    "successfulBatches": 18,
+    "outputTokens": 17047,
+    "activeRequestElapsedMs": 350277,
+    "activeRequestElapsedSecondsRounded": 350.3,
+    "derivation": {
+      "allReadingRequests": 20,
+      "allReadingOutputTokens": 19659,
+      "allReadingElapsedMs": 394960,
+      "excludedFailedRequests": [
+        {
+          "phase": "shared-workload-reading",
+          "call": 3,
+          "outputTokens": 1263,
+          "elapsedMs": 21319
+        },
+        {
+          "phase": "shared-workload-reading-resume",
+          "call": 10,
+          "outputTokens": 1349,
+          "elapsedMs": 23364
+        }
+      ]
+    },
+    "note": "失败请求仍计入旧轮总账；这里只为估算新轮无同类故障时的阅读成本而单列成功请求。"
+  },
+  "observedCompression": {
+    "case": "shared-workload",
+    "requests": 2,
+    "outputTokens": 2948,
+    "activeRequestElapsedMs": 41403,
+    "responseUtf8Bytes": 9151,
+    "outputTextUtf8Bytes": 6776,
+    "outputs": [
+      {
+        "phase": "shared-workload-reading-resume-2",
+        "call": 8,
+        "outputTokens": 1249,
+        "elapsedMs": 18128,
+        "responseBytes": 3858,
+        "textBytes": 3135
+      },
+      {
+        "phase": "shared-workload-reading-resume-2",
+        "call": 9,
+        "outputTokens": 1699,
+        "elapsedMs": 23275,
+        "responseBytes": 5293,
+        "textBytes": 3641
+      }
+    ],
+    "note": "第二次输出被旧分类校验拒绝；这里仅使用实际服务用量与文本长度，不将它当语义通过结果。"
+  },
+  "estimatedCalls": {
+    "reading": [
+      17,
+      24
+    ],
+    "compression": [
+      15,
+      20
+    ],
+    "writing": 1,
+    "totalBeforeCheckingOrRepairs": [
+      33,
+      45
+    ],
+    "remainingWithin50": [
+      5,
+      17
+    ],
+    "assumptions": [
+      "压缩实现提供明确体积目标，并且模型实际达到约60%的逐层收缩。",
+      "约5层压缩是按现存笔记规模及相关条目合并的容量假设；层数不等于请求数。",
+      "后层条目数量、来源重复、模型格式错误及自然核查次数尚未知。"
+    ],
+    "guarantee": false
+  },
+  "estimatedOutput": {
+    "empiricalOutputTokensPerTextByte": 0.43506493506493504,
+    "assumedTextRetentionPerLayer": 0.6,
+    "assumedLayers": 5,
+    "cumulativeTextMultiplier": 1.38336,
+    "sharedInitialTextBytes": 28704,
+    "sharedCumulativeOutputTextBytesEstimate": 39707.96544,
+    "sharedCompressionOutputTokensEstimate": 17276,
+    "writingOutputTokensAssumption": 1100,
+    "sharedReadingOutputTokensReference": 17047,
+    "sharedTotalBeforeCheckingOrRepairsEstimate": 35423,
+    "remainingWithin40000Estimate": 4577,
+    "oldConditionalReadingOutputTokensReference": 13501,
+    "oldConditionalCompressionTextBytesReference": 26362,
+    "conditionalCompressionOutputTokensEstimate": 15867,
+    "assumptions": [
+      "经验词元比例仅来自本轮两次真实压缩响应，不是通用分词器。",
+      "新压缩守卫衡量序列化事实体积；正文每层也缩为60%是额外估算假设。",
+      "来源继承、相关条目合并和未知拆分可能改变结构开销与文本比例。",
+      "新轮通读输出可能与旧轮不同，第二组尚无本轮真实通读结果。"
+    ],
+    "hardLowerBoundInsufficient": false,
+    "conclusion": "40000输出尚无算术下界证明必然不足，但预计仅余约4500词元供核查和修复，比请求数与耗时更紧。"
+  },
+  "estimatedTime": {
+    "activeMinutes": [
+      10,
+      15
+    ],
+    "limitMinutes": 20,
+    "basis": "结合18批有效阅读350.3秒、两次压缩41403毫秒/2948输出词元及约1100词元成稿外推。",
+    "guarantee": false,
+    "risks": [
+      "服务延迟波动",
+      "多次修复",
+      "自然多轮核查",
+      "笔记数量增长"
+    ]
+  },
+  "inputBudgetCheck": {
+    "maximum50RequestsAtEffectiveEstimate": 337200,
+    "perTaskInputBudget": 400000,
+    "note": "这是输入估算口径的容量比较；执行仍以实际用量及保守预留守卫为准。"
+  },
+  "decision": {
+    "recommendation": "可将50次、40000输出和20分钟作为新轮有界试验上限；不保证所有核查路径均完成。",
+    "stopRules": [
+      "达到任一调用、输入、输出或耗时上限即保留失败。",
+      "不得为完成本轮临时提高上限、删除来源或人为强制候选及回读。",
+      "新轮每个方法保留首次成稿，失败及修复全部计入新轮账本。",
+      "预算或容量失败不能被解释为准确性、候选更新或回读价值结论。"
+    ]
+  },
+  "evidence": {
+    "priorRunRoot": "release/conversation-insights-20261115/long-comparison-runs/memory-preservation-20261115",
+    "readingLedgers": [
+      "release/conversation-insights-20261115/long-comparison-runs/memory-preservation-20261115/shared-workload-reading/attempts.jsonl",
+      "release/conversation-insights-20261115/long-comparison-runs/memory-preservation-20261115/shared-workload-reading-resume/attempts.jsonl",
+      "release/conversation-insights-20261115/long-comparison-runs/memory-preservation-20261115/shared-workload-reading-resume-2/attempts.jsonl"
+    ],
+    "checkpoint": "release/conversation-insights-20261115/long-comparison-runs/memory-preservation-20261115/shared-workload-reading-resume-2/checkpoint.json",
+    "comparisonPlan": "docs/research/conversation-insights-bounded-memory-20261116.md",
+    "sourceHashes": {
+      "electron/main/insight-generation.ts": "3824ca90793d23a5e6ce37f8cd54e3725af097e4d68269c8c0579b37c6419ca4",
+      "electron/main/insight-packing.ts": "c8d87b5a314a2d582336045a0c3743000cf71fe756c631ee813f692050eb7469",
+      "electron/data/ai/insight-prompts.ts": "a51cb4403ec737fb0ede97316323575ce3dffdf72020cb1b3899ffe84af2ef15",
+      "tests/quality/insight-long-comparison-material.mjs": "450925083b1bfce661d1b81773a9a50e7800a526a3702c6bc6f732612fe1b2c7"
+    }
+  }
+}

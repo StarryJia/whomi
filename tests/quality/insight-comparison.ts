@@ -13,6 +13,7 @@ export type TrialOutboundAttempt = { outputLimit: number; call: number; outbound
 const comparisonHaltCodes = new Set([
   'UNAPPROVED_NETWORK_REQUEST', 'UNENFORCED_OUTPUT_LIMIT', 'OUTSIDE_EVIDENCE', 'INVALID_EVIDENCE', 'UNSAFE_RESPONSE',
   'TRIAL_CALL_LIMIT', 'TRIAL_BUDGET_LIMIT', 'INSIGHT_BUDGET_EXHAUSTED', 'COMPARISON_WRITING_REPAIR_DISABLED',
+  'INVALID_INSIGHT_OUTPUT', 'CONTEXT_TOO_LARGE',
 ])
 
 export const comparisonWritingPrompt = [

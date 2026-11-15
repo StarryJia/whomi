@@ -1,0 +1,1130 @@
+{
+  "caseName": "shared-workload",
+  "variant": "reading",
+  "regression": false,
+  "scope": {
+    "kind": "dates",
+    "startDate": "2026-10-01",
+    "endDate": "2026-10-28",
+    "timezone": "Asia/Shanghai"
+  },
+  "messages": [
+    {
+      "id": "1",
+      "revision": "1ddabe10d865c9b702e19e0686c921a64d1e640146621c4cc2000ed08df67e7b",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "三号的读书小组我已经问好社区活动室了，管理员说下午两点能进。我还得把报名表再核一次，昨天有人在群里改了人数，旧表不能直接拿去用。",
+      "sentAtMs": 1790816400000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "2",
+      "revision": "057cf302b9df1b0306ffefb0aefbb4ddaa4c97dc7369c67a889349deced95455",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "知道了，我上午有课，结束后才能认真看群消息。你先把活动室位置发出来吧，门口最近在修路，第一次来的几个人可能会走到后面的旧入口。",
+      "sentAtMs": 1790817060000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "3",
+      "revision": "8b89589a54e53b3b5e498f3e8110a5611add4d6db114971cefd83352bb0f3783",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "位置和新入口照片都发了，我也把三位新朋友加进临时群。我今天从订地方到通知大家都一直在弄，零零碎碎的消息一多，就觉得半天全花在这里了。",
+      "sentAtMs": 1790817720000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "4",
+      "revision": "152a46b4785d1071d6f1db14303b67c0500847cb7f516a5ad98def09ee3ba2b4",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "投影线我昨晚已经接电脑试过，能正常显示，三号我带过去。管理员如果还要登记身份证，你记得问清楚是只登记联系人，还是每个人都得带过去。",
+      "sentAtMs": 1790818380000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "5",
+      "revision": "b70d8545b2939fe4f42ab71a06a743562a6d9fee88542d09b34c5d7faa28f292",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "问过了，只登记预约联系人，我带证件就行。我刚把那两本准备交换的书拿出来，发现其中一本夹着去年的车票，差点跟着书一起送出去。",
+      "sentAtMs": 1790819040000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "6",
+      "revision": "7c8723655aca0142f77116a3ef2b21da353c064e9c7692da1fe8e9a6c6dfe285",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "那张是不是去海边的车票，我记得你回来后一直夹在目录页。先收进那个蓝色信封吧，上次你找演出票根时，桌上几个纸袋翻来翻去都没找到。",
+      "sentAtMs": 1790819700000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "7",
+      "revision": "34e404ab5e39102682932264a22a44906cac325226d3c28eeb060b906ecf5451",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "是那张，已经放进蓝色信封了。书封面有一小块咖啡渍，我擦了一遍还是有印子，打算交换前跟人说清楚，里面的字和页码都不受影响。",
+      "sentAtMs": 1790820360000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "8",
+      "revision": "c8e690399c017aa5ded92ecaf0c9ff1abcb0027120eb41defe883b2aff73ad47",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "说清楚就好，旧书有点痕迹很正常。我准备带的那本写了几处铅笔批注，刚才把特别乱的地方擦掉了，其余保留着，想看的人也可以一起聊。",
+      "sentAtMs": 1790821020000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "9",
+      "revision": "8663668f35463c88f8fff39a62736d2c80fcfddce982d5c3b6f03fc0a417740a",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "报名又多了一位，我把桌子改成两排了，跟管理员说不用原来的圆桌。午饭还没顾上吃，等他回完这条我就下楼买点东西，今天不想再开火。",
+      "sentAtMs": 1790821680000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "10",
+      "revision": "4d79555287f65b4c6c2c3f33ff91bffda0383f52582e742aa2f6f69bb7926e6f",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "楼下那家面店今天开门，你可以先去吃，登记人数晚一点补应该也来得及。我下课后还要去拿修好的台灯，店老板说最好傍晚前过去。",
+      "sentAtMs": 1790822340000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "11",
+      "revision": "731019853ca8d1554b9895b53b190a33dc0a0fb4837e29f8bdb9e6f6f1d1713f",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "吃到了，老板把汤单独装了，没有洒在袋子里。台灯取的时候试一下开关吧，上回它得按很久才亮，修好了也别只看灯泡能不能发光。",
+      "sentAtMs": 1790823000000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "12",
+      "revision": "625d3d8019cfc470b350b9c45c8c39627bfaf28499fb2376cb30b5c9c62c64d9",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "会试的，我把你说的开关问题也记下了。现在先去上课，手机放包里可能回得慢，活动室那边如果只是确认收到，你不用一直等着我回复。",
+      "sentAtMs": 1790823660000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "13",
+      "revision": "4265141a4b1dd09f097e1555e448b6f4eb0e14b0b1e43b14b5f6196a0ab1aa03",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "昨天总算顺利结束，最后来了十一位，比报名少一个。我把没到的那位备注上了，免得下次又重复问他为什么没在名单里，他提前说过要加班。",
+      "sentAtMs": 1791075600000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "14",
+      "revision": "5f4be366aa8d895f963e9465eacee65d0f923ae4d351a188deb5ad117798b991",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "我记得他在开始前发过消息，不算临时放大家鸽子。昨天靠窗那排位置挺舒服，后半段有人翻书的时候，外面几辆车经过也没有特别吵。",
+      "sentAtMs": 1791076260000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "15",
+      "revision": "4d78424c564fe335f67874df2c19782a4becf12097dbf4885a7c36a94785bc45",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "我到的时候椅子和水都摆好了，省了些事。不过预约、报名确认、现场提醒时间，还是一直要在脑子里记着，我回家后连晚饭都不太想决定吃什么。",
+      "sentAtMs": 1791076920000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "16",
+      "revision": "4c055358d1aff1672bd550d1250700493797a406b56f7ed119dbd6c8311eaaee",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "那几个时点确实会让人一直惦记。你昨天最后还在替大家查下一班公交，我看你拿着手机站在门口，好几个人出去了又回来问不同方向怎么走。",
+      "sentAtMs": 1791077580000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "17",
+      "revision": "e2eac97f557e141648aee9e8a159eb623916c224c79069856e7a646f11a48711",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "是，后来才发现门后贴着公交图，我忙着给大家指路，自己没先看一眼。下次可以把图拍到群里，至少散场时不用一个一个打开地图找站台。",
+      "sentAtMs": 1791078240000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "18",
+      "revision": "7b058e59ad27daa48866076b2f6e9c83fa0705a30d81836ca914a83f2733f6a3",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "照片可以留着，不过施工结束后入口还会调整，发之前再看一眼。今天我把昨天带回来的几个杯子洗了，晾在厨房架子上，还没来得及收进箱子。",
+      "sentAtMs": 1791078900000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "19",
+      "revision": "b23b1ef10e15af8f96f578adbb06db8a9b6e374367663bcabc7ed33c2bf0b755",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "你家那个架子现在够放了吗，之前碗和杯子挤在一起，拿最里面一个总要先搬外面两个。我下午有空，想顺路看看有没有窄一点的收纳篮。",
+      "sentAtMs": 1791079560000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "20",
+      "revision": "f90e76f2f1c3f1e972cdef248c85a136e83e895160d421f3a3c7dc0d2f29e969",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "先别买，我把没在用的保温壶移到柜子里就空出来了。那个旧壶现在只剩外壳完好，内胆裂过，已经不能装热水，我不想再混在常用的东西里。",
+      "sentAtMs": 1791080220000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "21",
+      "revision": "0a629c5e3dc9fe76ee56479c5976e9982b02c193ba39600f363f3ae8d6db9838",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "好，那我不带收纳篮了。今天打算在附近走一圈，脚有点酸，不去远处爬坡。河边修了一半的木栈道我也会绕开，昨天看见有人在那里搬木板。",
+      "sentAtMs": 1791080880000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "22",
+      "revision": "64e91d267c91a3de9a54dd07854318cd9e6135fad3027de557ebef30b0635f8d",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "我上午刚从那边回来，入口确实围起来了，但公园里面的平路还能走。树下有几个摊位卖旧唱片，我只看了封套，没有带播放器也不知道能不能听。",
+      "sentAtMs": 1791081540000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "23",
+      "revision": "5d26ee56d380fbbf16ed9e8dab42454192d34680bbf9a1b3708432895da056e0",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "你拍的那张唱片封面很好看，像老电影海报。我走完回来发现家里的绿萝叶子朝一边歪了，估计是前阵子一直只开同一扇窗，光都从那边进来。",
+      "sentAtMs": 1791082200000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "24",
+      "revision": "dfee5a747951a791d4e031ddbcd63026102c5c163c72d042a4bd2b004ed69db2",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "转一点方向就行，别为了摆正一下子挪到正午太阳底下。我那盆上次晒过头，叶尖变干，过了好几周才缓过来，现在只放在窗边有散光的位置。",
+      "sentAtMs": 1791082860000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "25",
+      "revision": "6ffa85584fbd56792170af03e9384d2a68f3f947d6b3e75dcef23453842fc910",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "九号讨论的篇目我发到群里了，也把电子版链接补在报名表后面。有两个人只看见了旧通知，我又私下解释了一遍，这类消息最后总会绕回我这里。",
+      "sentAtMs": 1791334800000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "26",
+      "revision": "4887a4fabf12ebd71a7599ca36ea41179c02c951b45ae15dd8ccc586ff047451",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "我刚看见新版通知，时间还是六点半吧。那天我可能会迟到一小会儿，学校有个会拖到六点，但纸杯和延长线我会提前放好，不让大家等我到了才开始。",
+      "sentAtMs": 1791335460000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "27",
+      "revision": "c3e1b015fade186eaf998610859a277432f52df223ab2d8da469b989ddcf4125",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "六点半没变，我会提前去拿钥匙。这回我连开场问题也列了三条，怕大家到了都等别人先说，最后又变成我从头问到尾，结束以后嗓子特别干。",
+      "sentAtMs": 1791336120000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "28",
+      "revision": "6926361790c3e5966fdf8be766d69bbeea207cee0df64920cb0cd4c29d113250",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "问题不必都由你问，可以先留一点空，让别人接着前一位的话讲。我昨天读到那篇写旧房子的文章，觉得作者把门把手的细节记得比整条街还清楚。",
+      "sentAtMs": 1791336780000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "29",
+      "revision": "cef35a356c277be97d5fc4e17212a3a5c9039376a33e57874ecc99d45a5a7b01",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "我也注意到门把手，反而想不起他后来有没有写房子到底拆了没。文章放在手机上看有点跳，我准备今晚再翻纸本，不想在讨论时只记住几个句子。",
+      "sentAtMs": 1791337440000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "30",
+      "revision": "df85764fd5971ff7a947885619664f5c20dad70481ec3ab4cbe949baaf5f01e3",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "纸本在你上次带来的那一摞里，最下面蓝色封面的那本就是。我把折角展平了，没有夹其他东西进去，如果你找不到，就先看书脊上那条白色贴纸。",
+      "sentAtMs": 1791338100000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "31",
+      "revision": "e36e5fa49fdc5e73cea2e9334c809799105de967a0908ebe40e83c85f3499ad4",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "找到了，原来夹在笔记本下面。我刚才翻到一页小时候画的地图，路画得很直，实际走起来却都是绕路；难怪以前总觉得去外婆家特别远。",
+      "sentAtMs": 1791338760000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "32",
+      "revision": "009228beb3cc158640756386aae876803e8c168afd7d30a91eadc0a865ba1b3e",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "小时候记路容易记住某家店，不太记住距离。我还记得外婆家路口那家卖糖水的，招牌上的一个字一直掉漆，后来整间店换了老板我才发现名字读错了。",
+      "sentAtMs": 1791339420000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "33",
+      "revision": "042ebe386cfe53fbeec11c904ab21c817018757e18552a73eefc48809479e47b",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "说起外婆，我今晚得给她回电话，她上午问我围巾有没有收到。我快递都拆了，纸箱已经压平放在门边，结果只顾着发活动通知，忘了给她拍照片。",
+      "sentAtMs": 1791340080000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "34",
+      "revision": "275f9ef677e28f381db7655062e9b3e8a50305d56d741791c2c9e46e6e0921f3",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "先回她吧，她可能一直惦记尺寸合不合适。围巾如果太长，也不用急着剪，她以前会把两端拆开重新收边，剪了反而不好改，你问问她想怎么弄。",
+      "sentAtMs": 1791340740000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "35",
+      "revision": "85ef7bc26f7fffa0bd19c37933361cbfaca386975dc61a4b5fa558db5dbb8f33",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "刚聊完，长度刚好，她让我天冷以后再戴，别现在为了拍照捂出汗。她还说阳台那盆茉莉开了两朵，隔着电话一直让我猜是哪盆先开的。",
+      "sentAtMs": 1791341400000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "36",
+      "revision": "b7415dc2030365ecce940dd6c34f9f8b9959cba9f93d3265240fd2d1d2447f1d",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "这比只问吃没吃饭有意思，我总猜错她那几盆花的位置。今天我先把剩下的会前资料看完，晚一点再读文章，不然两件事摆在一起谁也没认真看进去。",
+      "sentAtMs": 1791342060000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "37",
+      "revision": "d5177dedb1baafc81598e4da240dd351fccf5e643b6f083a0676d06b03f7adc6",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "昨天那场开到快九点，回家又整理了大家推荐的书单。有人当时只说了作者，没说书名，我对着几个版本搜了一遍才补全，今天上午才发出去。",
+      "sentAtMs": 1791594000000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "38",
+      "revision": "6f7b4c114ab9a9805b6cb915c233c2d1850cc3f9e382c5247ac1d3861caa9e98",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "我收到了，版本旁边写了出版社就好找很多。昨天后面两个人聊起来以后，大家都不太想散，我看你收笔记的时候还在一边回答借书的事。",
+      "sentAtMs": 1791594660000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "39",
+      "revision": "1f6619a19bb5df05f21f3ee9bba301ebeefe73d5abbdd2444246313387d7746e",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "从订地方到把书单发完，感觉每次都得我推着才走。昨天你说可以让别人提问，可真到了现场，没人开口时我还是会马上接上，不然那一段安静很难熬。",
+      "sentAtMs": 1791595320000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "40",
+      "revision": "cc81d885a3855da6481f92df71a8a8f471eeb5c680740be1aa794e4d225f2c6a",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "那一小段安静可能是在想，不一定是等你补上。你昨天问到第二个问题时，我正想起一件以前的事，还没组织好话，你已经换到下一段内容了。",
+      "sentAtMs": 1791595980000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "41",
+      "revision": "b3e1833cf4c5a7fc9aed270d40481c1db2641942298e9a4c99122dc27886c771",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "我确实怕时间拖太晚，九点以后还有人要赶车。我现在只想把手机放一边歇会儿，十八号那场照常，通知已经发了，不是要因为这次累就临时取消。",
+      "sentAtMs": 1791596640000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "42",
+      "revision": "cb6c740445895224f1ba0584febd9d9287815ae83e9d338c354adda6b19a8bcc",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "好，你先休息。我等会儿去买菜，手机也不会一直拿着。上午市场里有人送来新鲜蘑菇，卖菜的说最好今天吃，不要装在塑料袋里闷到明天。",
+      "sentAtMs": 1791597300000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "43",
+      "revision": "a49f1c43d04bc1dd387e9c4562c0ff2fa286c9ca151d665e55ee31fd7cf4d579",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "蘑菇可以做汤，冰箱里那块豆腐也快到期了。如果你打算炒，我上次把它们洗完直接倒进锅，水一直出，最后像煮了一盘，味道倒没有坏。",
+      "sentAtMs": 1791597960000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "44",
+      "revision": "7edbbf91c995ffcd503594c4cac0552ee5b871b2bb81877b400fd7f804c74f0e",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "那我先擦干一点，豆腐就单独放汤里。我家燃气灶小火不好调，稍微转一点就快灭，等这阵忙完准备请师傅来看，不能每次都靠盯着锅补救。",
+      "sentAtMs": 1791598620000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "45",
+      "revision": "dd5ed4f9689942e4b438de2db1e994c8470137ca1b29b960155b526b2007a7ac",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "我家的也是这种老旋钮，之前清理了一下火孔才好些，不过你先让师傅看吧。刚刚睡了半小时，醒来觉得肩膀不那么紧了，还是不想马上回群里。",
+      "sentAtMs": 1791599280000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "46",
+      "revision": "216d9cca4d08a5b50ed2469165e0a67faf565f98945e222843724b923b33c54e",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "今天群里主要是在交换照片，暂时没有新的报名问题。有人拍到你桌上的那本书，我只把书名回给他了，没有替你答应借出，借不借还得你自己说。",
+      "sentAtMs": 1791599940000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "47",
+      "revision": "e5b202c01a523e3a9890cc20bba78a12e7368830eab0e428257690c7888e7757",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "这样就好，那本是朋友借给我的，我不能再随手转借。晚点我会告诉他哪里能买到电子版，先把书还给主人，别让别人等着我在群里绕几轮消息。",
+      "sentAtMs": 1791600600000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "48",
+      "revision": "08e6e8b0355e0742f79fd4113a977a77eea8cfeb149454cb63b06bcaa21dd3ed",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "我把他的那条消息留着，你有空时再回就行。蘑菇汤煮好了，豆腐没有散，今天总算没弄出一堆油烟，我打算吃完再把厨房的滤网拆下来洗。",
+      "sentAtMs": 1791601260000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "49",
+      "revision": "d9e799afb0ad73f2ed3da4c950cf4ff4ac3cc4d0a9756d2594a7a48904a29390",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "十八号的报名现在有八个人，有一位要带孩子来，我还没确认活动室能不能借到矮椅子。管理员今天休息，等他明天上班再问，先不向人家保证一定有。",
+      "sentAtMs": 1791853200000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "50",
+      "revision": "b0d683eae5c122786bdece65bdc5c340ecdb7e4178fa730e1d87f75330e8f374",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "先问清楚比较好，孩子不一定坐得住整场，也可以提醒家长带本自己喜欢的书。我下午要去城另一头办证件，排号已经约了，但不知道实际会等多久。",
+      "sentAtMs": 1791853860000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "51",
+      "revision": "8bbac592b17f971f06f167d8c44ca9e8761bfecbe11301f029b813305ae1349f",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "那边附近只有一家小超市，别等饿了才找饭吃。我去年去的时候手机快没电，号码叫到一半没看见，后来又解释了一遍才让接着排，挺折腾的。",
+      "sentAtMs": 1791854520000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "52",
+      "revision": "b1ffa08dd9a08a1172374181ba2fd3ab36f4ebdc6a34f73b80691d40f2ec7a02",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "充电线已经放进包里了，还带了一瓶水。材料我按清单分了三个袋子，原件和复印件没有混放，希望窗口不用我再跑到外面临时找打印店。",
+      "sentAtMs": 1791855180000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "53",
+      "revision": "462c1b99f889ca24f901ad6f057df7731c02f00b063eaff7b361c3b0793c7403",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "我也得整理一下抽屉里的证件袋，好几张过期会员卡还夹着。准备只把能用的留下，其他的拍张照就丢掉，不然每次找身份证都要翻过一堆旧卡。",
+      "sentAtMs": 1791855840000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "54",
+      "revision": "5bfabd1e454ab3ad34bcf694e5b423dd711767249147fe3c7b9e49288bdf046f",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "我上回也清过，最舍不得丢的是一张已经停业的电影院卡，里面还有几块钱。后来把它和票根放一起了，没再放在常用钱包里占一个卡位。",
+      "sentAtMs": 1791856500000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "55",
+      "revision": "57c41153751b84775c3e4d325591a1308da56ee3f7ccff22107c83aed07a762d",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "电影院那张可以当纪念。我找到以前写的一页旅行清单，连带几包纸巾都列了，却没写充电器，最后真的忘带，细看这种旧东西还挺好笑的。",
+      "sentAtMs": 1791857160000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "56",
+      "revision": "412b846de8f6ac9f384c6f80e921161fc49637fb9902250a426fd101fee16b92",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "有时候越担心小东西，越容易把每天用的大件忘掉。我已经到办事大厅了，前面还有十六个号，墙上的电子屏很亮，坐远一点也能看清楚，不用一直站着。",
+      "sentAtMs": 1791857820000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "57",
+      "revision": "27f28648c86a32494031cda9ffa2e45d362cfc8b32b707b68e995ee2f12ff217",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "那就先坐着，我这边把十八号要用的文章打印好了，只印十份，没按报名上限多印。过去好几次剩一叠纸带回来，最后不知道谁会再看，堆在桌边很占地方。",
+      "sentAtMs": 1791858480000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "58",
+      "revision": "1ea049d8a04b12458b16d673b3f961af6fc4b2d4c09efda008624ccb160385b0",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "少两份可以现场一起看，未必每个人都需要带走。我办完了，比预计快，工作人员只补问了一个地址。出来时下了小雨，刚好超市门口有地方躲一会儿。",
+      "sentAtMs": 1791859140000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "59",
+      "revision": "435dcea1c5e1d182a05fe8268084bd51c5c475bff9c08b5ec57c4daab89c56c5",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "我这里还没下，窗外只是暗了一点。刚把打印纸装进文件袋，今天先做到这里，晚上想看看那部拖了很久的电影，不想一边看一边继续改报名表。",
+      "sentAtMs": 1791859800000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "60",
+      "revision": "3255600b2142f4327e804311a76592e7a2c4cc668c88a64bed4708b6e3295709",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "我回家也把材料收起来，不然铺在饭桌上吃饭都没地方。电影如果太长可以分两次看，我上周硬撑着看到最后，反而不太记得中间谁说了什么。",
+      "sentAtMs": 1791860460000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "61",
+      "revision": "cb270875853e95ae66b81a59089f7057a579702e4a879b1f4b3c8bf97d35d0c1",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "矮椅子问到了，管理员只找到一把，家长说够用。我又把十八号的入门路线和开始时间发了一遍，几个熟人还是私下来问，感觉通知写得再清楚也挡不住逐个解释。",
+      "sentAtMs": 1792112400000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "62",
+      "revision": "5240bb97b4441b91477a1ab62ea3ad79d7c904f24def6a2651679338881f415f",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "有人可能没有翻到前面的消息，等快开始时才找起来。我今天回学校拿东西，顺手问了储物柜能不能借，老师说月底前都可以，但不能过夜放贵重物品。",
+      "sentAtMs": 1792113060000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "63",
+      "revision": "5aa8b100938d7a86875cc69f2a67a131e769bc58b2b8a02ec1a5188e9d8371d5",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "谢谢问柜子的事。我连着这几场都在处理预约和通知，想到后面还要做名单和书单，就有点不想接着安排了。每次都像默认我来兜住，没人主动接过去。",
+      "sentAtMs": 1792113720000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "64",
+      "revision": "74e1749f1c8b226d0f505b0bc6a23783aa89fddd95cdcd8873afb0918ecd4612",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "我听见你是累了，不是说十八号不办。我们先把这一场做完，月底那场还没有把每个人具体做什么说清楚，我今天在路上，一时也没法坐下来把它列好。",
+      "sentAtMs": 1792114380000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "65",
+      "revision": "ec0677ecc68abcacc0d17b089bc7bd1954390e663dff612953560525eeb80718",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "对，十八号照常，东西都准备好了，我不是要把已经答应的事甩掉。只是现在如果还让我同时回工作消息和小组消息，我连吃饭时脑子都在想哪条还没回。",
+      "sentAtMs": 1792115040000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "66",
+      "revision": "ec15616096ca5c657e97699a307c66efb6e5096d63793434aa8f170e33b309bc",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "那今晚先把小组群放一会儿，真有临时变动我看到会告诉你。学校这边也很吵，走廊在搬桌子，我说话的语音可能听不清，晚些到家再打字回你。",
+      "sentAtMs": 1792115700000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "67",
+      "revision": "61c388b33ca8bf899a5108215a95d267aaf1588cf6428f4e418aa415bdd9e5e9",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "我关了群提醒，手机一下安静很多。下班路上看见卖热栗子的，买了一小袋，现在正坐在楼下慢慢剥，不想站起来再赶一件事，先把这袋吃完。",
+      "sentAtMs": 1792116360000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "68",
+      "revision": "a847fffc8be6ded8e5fb02e89c2b877786e3a3722a0f973a85ce515538135ab8",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "栗子趁热比较好剥，我昨天买的凉了以后壳和里面的皮黏在一起。你别坐在进出口正对着风的地方，今天晚上突然降温，我从教室出来时还以为要下雨。",
+      "sentAtMs": 1792117020000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "69",
+      "revision": "f37fcca277b0443224c3a657cdb15cbeac258d3d927ba466da4be413ba07e2ad",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "我坐在里面那排椅子，风没吹过来。旁边有人在教孩子骑小车，孩子一转弯就停下，家长没有一直催，等他自己看好路才继续，挺有耐心的。",
+      "sentAtMs": 1792117680000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "70",
+      "revision": "6415d844c3f428cc0779d7622dd174bfe5e3980e4544f84cd86f011df2249064",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "我以前学骑车最怕别人从后面突然松手，还说是为我好。后来自己找了块空地慢慢练，反而快一些，知道随时可以停下来，就没那么急着证明能骑远。",
+      "sentAtMs": 1792118340000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "71",
+      "revision": "82a11af0a40d0269aa3f92022166c13f0fbdfd14a616ecbe04fff67bbcdc2b55",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "这个我也记得，刚学会那天只敢绕着花坛转。栗子吃完了，准备回家洗澡，今晚就看两页书，报名表明天下班再核一次，今天已经没有人等我确认位置。",
+      "sentAtMs": 1792119000000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "72",
+      "revision": "bc303f7fc947ccab98fb14f7976b75ca4c2399009a8a08bb266b859f71db0eb3",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "好，我也刚到家，拿回来的箱子先放门边，明天再拆。十八号我会按说好的时间到，如果路上堵车就提前发消息，不让你到门口才发现少了一个人。",
+      "sentAtMs": 1792119660000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "73",
+      "revision": "74b3e0d29dc6c100f5ffec2600c25edfa06375ce3f78e8ace54d3a61334b1666",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "昨天孩子那把椅子用上了，不过他后半段一直站着看窗外。讨论比前两次慢一些，中间安静的时候我忍住没立刻换问题，后来有人真的接着把自己的事讲完了。",
+      "sentAtMs": 1792371600000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "74",
+      "revision": "1c15fa0f5f0f52521b634c4138d4ed39a941724f5ba244491e0c5e1682784bb3",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "我也注意到了，那个人本来只说了两句，停了一下后才讲到重要的地方。结束时他说这次没有一直担心自己说得太慢，我觉得那个空当留得挺合适。",
+      "sentAtMs": 1792372260000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "75",
+      "revision": "3d470cca2aca92c934aef181b6564397032bc86e575dcf18016617b5d1596ca9",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "这样确实没那么费嗓子，但回来以后名单和费用还是得整理。我不是每个环节都想自己做，偏偏很多事情没有写明白，等着等着就又落到我手里。",
+      "sentAtMs": 1792372920000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "76",
+      "revision": "6fde443a769039cee150f599015ae7bba5ffe587d5bc2cad68ece81bd3c3b167",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "费用先别急着算，我带来的茶和纸杯有两样是上次剩的，不能按这次新买的一起记。我把收据按日期分好后拍给你，省得你凭聊天里几个数去猜。",
+      "sentAtMs": 1792373580000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "77",
+      "revision": "495e32abc78517571f0a70877625621f741b4463850d89db7b8be2c2a9f3319f",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "那我等收据，不把这次带到现场的都算成这次买的。我上午在洗外套，口袋里还有昨天写的提问纸，差一点就跟着进洗衣机，幸好先摸了一遍。",
+      "sentAtMs": 1792374240000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "78",
+      "revision": "adae21925960661786503077538c4a385d3b3a4329bbd98c21dfea0c292fc144",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "我也总在洗之前翻口袋，上个月有一张停车票没拿出来，纸屑粘在衣服里清了半天。今天太阳好，我把床单晾到外面，想趁下午收回来前把柜子擦一下。",
+      "sentAtMs": 1792374900000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "79",
+      "revision": "af53e61c053be8a415c88261abac862a4ea27f304ca0c84b5a11f39fbc309e66",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "家里那股潮气最近散了一些，我把窗户开了半小时，书页也没前阵子那么软。晚上准备煮一锅粥，昨天剩的南瓜刚好够，切开后不能再放很久。",
+      "sentAtMs": 1792375560000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "80",
+      "revision": "26f48ac4216ab0a7e5d43a4428d5824d1550afb150be2387e4d0ca4ca9fc4c97",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "南瓜粥可以留一点明天吃，凉了以后再放冰箱。我以前着急，热锅直接塞进去，旁边装水果的盒子都起了一层水，现在宁可分装两个浅一点的碗。",
+      "sentAtMs": 1792376220000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "81",
+      "revision": "30e14a4786481460355e9f2f353981bb6f23c1c7cf3ce9030424cb35959439bd",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "分装好了，一碗今晚吃，一碗明早吃。刚刚有人问月底那场能不能换一篇短文章，我只说还在商量，没有先答应，你有空也看看他推荐的那篇吧。",
+      "sentAtMs": 1792376880000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "82",
+      "revision": "52b959c3e0301228896c2ca2038da18f92571a08a1201f4b784e9434f2a5812b",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "我看了开头，篇幅短但里面提到几个人物，如果大家不熟可能还要解释背景。先把两篇都放着，等我们确定那次想聊什么再选，不用今天就投票定下来。",
+      "sentAtMs": 1792377540000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "83",
+      "revision": "d65de1cd082a2ab97c908e7ff97ecb0f4a3e6976946afa054c84f95c08aa4e27",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "好，月底场地我只问了有没有空，没有正式预约，别让大家以为已经全定了。今天想早点睡，昨天那条推荐链接我已经收藏，明天通勤时再读后半段。",
+      "sentAtMs": 1792378200000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "84",
+      "revision": "019bc06ec1fb8fe92c7750a7a6801d4582da8f9fb1f700215b010636640478a5",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "那我今晚也不再发长消息了，收据已经找齐，明天白天光线好时拍。最小那张字有点淡，我会把总额和购买日期一起放进照片，不单发一个金额给你。",
+      "sentAtMs": 1792378860000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "85",
+      "revision": "e6c4d7df589640a8beb4745f898a2bc57f843719a215e8adb203674315cfd779",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "收据我对上了，茶是九号新买的，纸杯有一半是更早那次剩下的，确实不能全记在十八号。我昨天又在群里说了月底还没定，可还是有人把报名表发给我等我整理。",
+      "sentAtMs": 1792630800000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "86",
+      "revision": "eecf7dc0e8849865227eae2bffb240ba127a6df6eecd6b9a81c2a5471d6a175c",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "月底先不要急着替所有人收齐。我想接着你前几天说每次都默认你兜住那句话说一点：九月那场你出差，是我找活动室、确认名单和发通知的，你还记得那次吗？",
+      "sentAtMs": 1792631460000,
+      "replyToMessageId": "63"
+    },
+    {
+      "id": "87",
+      "revision": "ddb6b4c00800086edb31c66ed6e47e0cb8e21dff3c4f9910c2529740f8af2f16",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "记得，九月我只在群里看了照片，人根本没回来，那次确实都是你联络的。我最近脑子里一直是这个月几场接着跑，刚才说每次都由我安排，把那次也抹掉了。",
+      "sentAtMs": 1792632120000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "88",
+      "revision": "aa629cec4a4ffed3492c9770b7da67e8507d966a940c8341cb2c7fb99640cfc7",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "这个月你预约、回群和整理书单做得多，这点我不是要否认。三号那场我提前去搬了椅子、试投影、摆茶水，你到的时候已经弄好了，所以那些过程你没有看见。",
+      "sentAtMs": 1792632780000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "89",
+      "revision": "382a3b41061266bba9725705b1d553a15a891596b7cb63167228ca593601e215",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "三号我到时就看见位置都摆好了，以为是管理员按预约顺手布置的，后来没问是谁弄的。我把在群里露面、能看见的那些事当成了全部筹备，这样数确实不完整。",
+      "sentAtMs": 1792633440000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "90",
+      "revision": "fd8a08bd7824a739e884128528006976c18d2cc33bca72562c3d8461be7a248c",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "十八号我也做了现场布置和清理，不过提前没有跟你列清单。你要记着各种截止时间的累，我能理解；把我做过的补上，不等于你这阵子就应该没感觉、不能再提需要帮忙。",
+      "sentAtMs": 1792634100000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "91",
+      "revision": "a8c7903db759558729d4403e914e30b74f2679b49291844579f9da21a072f240",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "是，我想收回每次都只有我在安排那种说法。现在更准确的是，这个月预约、群里确认和会后书单这几项集中在我这里，碰上工作消息多的时候特别累，我希望下次能具体分出去一项。",
+      "sentAtMs": 1792634760000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "92",
+      "revision": "248138cb724b1455a01affc091fb6ab6c8d54a7f829df4de563bd3e7ec91236c",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "那我们可以具体看下一次，不用靠争过去到底谁更忙来决定。我能接一部分报名回复，但那两天晚上有课，能回消息的时间要先告诉大家，不然他们可能又来找你问我怎么不回。",
+      "sentAtMs": 1792635420000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "93",
+      "revision": "f524e71821e9d37f46e668fd7209edac74991d49052b662393a6a49d7e2e41c8",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "可以先写清能回的时段，别假装谁都能随时在线。月底那篇短文章我读完了，前面的人物关系确实有点绕，换成另一篇也行，这件事今晚不用急着拍板。",
+      "sentAtMs": 1792636080000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "94",
+      "revision": "d4405322659e4b027126952cce728e286cee67ce552b66553b0883cb4e443790",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "我也偏向另一篇，至少不用在开始时讲很久背景。今天回家路上看见街口的面包店重新开门了，玻璃上的旧贴纸还没撕干净，里面倒是换了一排更亮的灯。",
+      "sentAtMs": 1792636740000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "95",
+      "revision": "a54b6e3dcfb06ac6e8422639571662d20e2b8e72fb22030c63cb01726fca3941",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "我下午经过时闻到香味，还以为是隔壁新开了店。想等不排队的时候买一小份试试，以前那个核桃面包一条太大，我总要切开冻一半，后来忘在冰箱后面。",
+      "sentAtMs": 1792637400000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "96",
+      "revision": "939aabf5def24417cd898d92a518a41c1a5d406ea952ae9fa72aff8244eaf183",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "这回柜台有小份切片，我只买了两片带回去。袋子上写着当天烤的，我准备晚饭后吃一片，另一片明早热一下，不想再攒到周末一起清理冰箱。",
+      "sentAtMs": 1792638060000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "97",
+      "revision": "308f36b4fe135371bcac0ba3e217df3d8093bcf8adb0a0cf52208b4b74732de1",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "二十七号的活动室订好了，篇目也换成我们后来选的那篇。这两天工作消息确实很多，你说能接的报名回复还算数吗，我想今晚关一会儿群，不然吃饭也一直被打断。",
+      "sentAtMs": 1792890000000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "98",
+      "revision": "7ac6b3d7c2cf4b19c6ed615167d25bb561d5633133131bdbe439de49ef37c429",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "算数，今晚七点半以后到九点我能看群，明晚有课就不行。我会把能答的报名和路线问题先回掉，最后名单还是由你确认一遍，避免我把后面又改的人数漏进去。",
+      "sentAtMs": 1792890660000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "99",
+      "revision": "d9253f0a4cb5e85c3959c1e84c4279efe32feb2d28474c0aa7e374614c133078",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "这样就有帮助，我把今晚谁在回消息写到群公告里，九点以后新的问题明天再处理。名单最终核对我接着做，采购谁去还没定，我先不把那一项也顺手接下来。",
+      "sentAtMs": 1792891320000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "100",
+      "revision": "c6a1b392c674f2d39cccebe68133b9090432e8024b75a82cb500a2d6d6fe1cc8",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "采购暂时别动，上次还剩茶和纸杯，明天看清库存再说。我今晚的回复会直接写在群里，不单独把答案发给你转述，省得表面上分出去了，实际上你还得再传一次。",
+      "sentAtMs": 1792891980000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "101",
+      "revision": "94a043f9cda543f45104764154793545ade708b68f1fc8d9cac3763e1bb01001",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "好，我先把手机放远一点。下午陪家里人去取照片，师傅把两张相近的底片弄反了，幸好取的时候一起看了成片，不然装进相框以后才会发现不是选的那张。",
+      "sentAtMs": 1792892640000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "102",
+      "revision": "76e097fc4d0ae1b003b5e8e6d59b2031515fce9b44aaa77b4e6a1f130bbf1289",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "相近照片尤其容易拿错，我以前挑照片只记得人站哪边，不记得背景的树是什么样。最后是哪张留下来了，是大家都看镜头那张，还是有人侧着头笑的那张？",
+      "sentAtMs": 1792893300000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "103",
+      "revision": "5caf602f0c03e4ccaf0ce30fd0d03b2d99118257c0996bb863fd658eee01c0e7",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "留下侧着头笑的那张，家里人觉得更像平时相处，不那么像正式合影。相框背板有点紧，我回家先放桌上，等找到小螺丝刀再装，不想拿钥匙硬撬。",
+      "sentAtMs": 1792893960000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "104",
+      "revision": "b79989dd09e22120c10950dac1927c14587778c2ccb7ee04f1cf33ec9a8fd269",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "小螺丝刀可能在你电视柜下面那个扁盒子里，上次换遥控器电池时放进去过。别急着挂墙，先看看灯照过来会不会反光，我家那幅换了两次位置才看得清。",
+      "sentAtMs": 1792894620000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "105",
+      "revision": "3b79959ab5c3cc6fa57e5f3cf4209e928342ac4e7ced0426aa928da367e066b6",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "找到了，真的在扁盒子里。现在先靠在书架上，吃饭时刚好能看到。群里今晚那几条路线问题我看见你已经回了，我没再逐条重复解释，脑子比平时清静不少。",
+      "sentAtMs": 1792895280000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "106",
+      "revision": "8de3ce7e896b237df40658b032520a946a7eac95f2e080b4f8620b8d97c4ff24",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "我还漏了一条关于带孩子的，刚刚补问年龄，不想直接说任何孩子都合适。九点以后我会在群里说今天先到这里，明天有新情况再接着处理，别让人以为一直有人守着。",
+      "sentAtMs": 1792895940000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "107",
+      "revision": "8f4901ce48961257505409ec5709a48b51af49fd8fb78ae797c8b6677b5d7a68",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "可以，我明天下班把名单核完。刚才觉得松快一点，但不等于以后照这样就永远没问题，下个月工作安排还没出来，到时候能接多少事得再商量，先按这次说好的做。",
+      "sentAtMs": 1792896600000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "108",
+      "revision": "114e1c4bc3a42fd6b04d51d44b4334632d5e06b47b02211aec902e2af87c9060",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "先把这次做顺就行。库存我明天拍给你看，免得我们凭印象各买一份。家里那袋茶快用完了，但活动用的是柜子上层另一袋，我不会把两处混着算进去。",
+      "sentAtMs": 1792897260000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "109",
+      "revision": "7fe250b4cc2c3fd3d7b5458cf395db96a52aa074d020cf0c2b8962380c7a5faa",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "昨天到场十个人，讨论比预计早结束了，我把最后人数改在表里。你前晚回过路线的那两位这次没再私下问我，我在开场前也有时间坐着把文章翻了一遍。",
+      "sentAtMs": 1793149200000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "110",
+      "revision": "f9464fa559ef6048322c7517e9e27449fc4d724cd9c8cdad15608edf97ba71d8",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "我昨天看你没像前几次一样一直站在门口，猜这次消息少一点会轻松些。现场还是有人临时问能不能换书，不过他自己去找书的主人了，没有再让你替他传话。",
+      "sentAtMs": 1793149860000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "111",
+      "revision": "b9c9a9394df320e5045d0ea635f7639f2f7af5234441ee2b3d21170f4780f34d",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "这回确实轻松一些，至少没有同时回群、找人、讲开场问题。会后书单还没整理，今天晚上准备先记下能确定的名字，不明确的等本人回复，不再自己猜着把它补全。",
+      "sentAtMs": 1793150520000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "112",
+      "revision": "a3351f31f81ac41efa711457e0499fe59085e20de06ff76b96ec31e95fb4b636",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "我把带回来的杯子洗完了，清点后还剩十一个，少的那个昨天有人带走装水，他说下次还。先别记成丢失，也不用为了凑整就马上再买一包新的。",
+      "sentAtMs": 1793151180000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "113",
+      "revision": "9fbb4544b6033ca2818f302ccbf5bccf50cf8f0f32311cd99d78406593044cc7",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "知道了，少一个是借出去，不是找不到。下个月第一次活动的采购和现场谁负责现在还没定，我们等各自工作时间出来再列吧，今天先不在群里发新的完整安排。",
+      "sentAtMs": 1793151840000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "114",
+      "revision": "cbee97e447879f69078cd33aff12a9e8bc722a895163f7952eb49e93492e404f",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "我下个月两次晚课的日期还没下来，等通知后会把能参加的时间告诉你。昨天那位新朋友说想带自己做的书签，但他也没确定数量，我们先别替他答应每个人一份。",
+      "sentAtMs": 1793152500000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "115",
+      "revision": "74aed359b99ca1378c8e49b5846a81fc5e31a9ee3ae16d755703fb88ea9666f3",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "可以让他按自己愿意做的数量带，不要为了小礼物又变成一项任务。今天我把昨天没喝完的水倒了，背包晾在阳台，才发现文件袋底下压着一片不知道哪里来的树叶。",
+      "sentAtMs": 1793153160000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "116",
+      "revision": "577bbc8325833cd0d90dd9b2380d4ae1961d0ea476b52894cca043d7252d206c",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "可能是你进活动室前放在长椅上时带进去的，昨天风挺大，门口一直有叶子打转。我早上经过同一条路，清洁工已经扫过了，只有墙角还积着一小堆。",
+      "sentAtMs": 1793153820000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "117",
+      "revision": "d12cf83357570b16afee750f3eaf03080f56980643e8a9d774023dcdf1ded790",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "那片叶子还挺完整，夹到旧报纸里压着了，先不往书里放，怕没干透把纸弄潮。午饭想吃清淡一点，昨晚散场后那碗面太咸，半夜醒来一直想喝水。",
+      "sentAtMs": 1793154480000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "118",
+      "revision": "1e5d6e927de05f3b6e62ffec4e1e042232538408e3a8247040c6ec6a80df27be",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "我今天煮了小米粥，加的是昨天切好的南瓜，没有放糖。冰箱里还有一小盒咸菜，想吃时夹一点就行，不会像外面那种汤面，整碗都没法再把味道调淡。",
+      "sentAtMs": 1793155140000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "119",
+      "revision": "96b67d61fdfe90902d620cc639bcb8e4206d3ab2bdeffd21fe03a436a7b834eb",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "听起来不错，我去把米淘上，等煮粥时把书桌收一下。那张刚装好的合影已经挂起来了，白天看没有反光，晚上开灯再看看，如果刺眼就挪到旁边那面墙。",
+      "sentAtMs": 1793155800000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "120",
+      "revision": "ebcbc3f556a9bb7bc10555d3eb2777412002a2af67bea80a43a7532ebacf398c",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "挂稳了就好，慢慢找合适的位置。我先去晾刚洗完的衣服，今天没有下雨，想趁天还亮把床单翻个面，晚一点再看你发的照片，不用急着现在补拍。",
+      "sentAtMs": 1793156460000,
+      "replyToMessageId": null
+    }
+  ],
+  "excluded": {
+    "id": "999",
+    "revision": "60d7730132c2357f2a004ec6c9439ef38a15c32c478758228de86f14710da1f5",
+    "senderName": "合成对方",
+    "isSelf": false,
+    "text": "这条范围外合成消息只留在本地，不属于本次聊天分析材料。",
+    "sentAtMs": 1794704400000,
+    "replyToMessageId": null
+  },
+  "limits": {
+    "maxChecks": 8,
+    "maxRoundsPerCheck": 4,
+    "maxCalls": 50,
+    "maxInputTokens": 400000,
+    "maxOutputTokens": 40000,
+    "maxElapsedMs": 1200000
+  },
+  "model": "gpt-6.1-sol",
+  "protocol": "openai-completions",
+  "perRequestEstimateCeiling": 13000,
+  "experiment": "long-candidate-comparison",
+  "totalRequestLimit": 104,
+  "precedingRequests": 0,
+  "runId": "memory-capacity-baseline-20261116",
+  "engine": {
+    "baseCommit": "fee2af45380cb379ab40009449f467d1c50c4a8b",
+    "bundlePath": "release/conversation-insights-20261115/paired-capacity-baseline-fee2af4/baseline.mjs",
+    "bundleSha256": "ef302a81ebdbd5ad8e1b402d57bf91dc6e87b9a46bba0211caf0e8ac65676b54"
+  },
+  "configuredCapacity": {
+    "known": false,
+    "contextWindow": 16000,
+    "maxOutputTokens": 8192,
+    "margin": 256
+  },
+  "syntheticPackingInputEstimateLimit": 13000,
+  "perRequestOutputLimit": 3000
+}

@@ -1,0 +1,80 @@
+{
+  "kind": "bounded-compression-offline-replay",
+  "networkCalls": 0,
+  "originalsUnchanged": true,
+  "cases": [
+    {
+      "response": "08",
+      "diagnosticGrouping": "old-group-node-count-cap-only-no-model-call",
+      "error": "INVALID_INSIGHT_OUTPUT",
+      "attempts": [
+        {
+          "inputEstimate": 6450,
+          "maxFactTextLength": 645,
+          "maxFactCount": 32,
+          "repair": false,
+          "sourceIdsSent": false
+        },
+        {
+          "inputEstimate": 6466,
+          "maxFactTextLength": 645,
+          "maxFactCount": 32,
+          "repair": true,
+          "sourceIdsSent": false
+        }
+      ],
+      "outputFactTextLength": 1067,
+      "cursorBefore": 0,
+      "cursorAfter": 0,
+      "nextRootsBefore": [],
+      "nextRootsAfter": [],
+      "originalLeafCount": 102
+    },
+    {
+      "response": "09",
+      "diagnosticGrouping": "old-group-node-count-cap-only-no-model-call",
+      "error": "INVALID_INSIGHT_OUTPUT",
+      "attempts": [
+        {
+          "inputEstimate": 6511,
+          "maxFactTextLength": 690,
+          "maxFactCount": 28,
+          "repair": false,
+          "sourceIdsSent": false
+        },
+        {
+          "inputEstimate": 6527,
+          "maxFactTextLength": 690,
+          "maxFactCount": 28,
+          "repair": true,
+          "sourceIdsSent": false
+        }
+      ],
+      "outputFactTextLength": 1235,
+      "cursorBefore": 16,
+      "cursorAfter": 16,
+      "nextRootsBefore": [
+        142
+      ],
+      "nextRootsAfter": [
+        142
+      ],
+      "originalLeafCount": 102
+    }
+  ],
+  "currentProtocolRemainingFirstLayerChunks": [
+    14,
+    15,
+    15,
+    15,
+    16,
+    17,
+    19,
+    15
+  ],
+  "currentProtocolRemainingFirstLayerCalls": 8,
+  "actualCallsAlreadyUsed": 22,
+  "remainingActualBudget": 8,
+  "minimumRemainingWithWriting": 9,
+  "excludesFurtherGlobalMerge": true
+}

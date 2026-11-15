@@ -1,0 +1,33 @@
+✔ comparison dry run lists both fixed cases without opening the configuration database (251.4803ms)
+✔ the long trial has separate phases and limits without opening the configuration database (591.2919ms)
+✔ a named long trial isolates its output and keeps the frozen cases and budgets (277.9321ms)
+✔ named trial parsing rejects ambiguous or escaping destinations before configuration access (1693.5608ms)
+✔ a named long trial can reserve natural checking room without changing the total request budget (247.7507ms)
+✔ an explicit task request limit requires a named long trial and stays within the shared budget (1.1177ms)
+✔ a bounded compaction trial reserves both task budgets and their comparison reports before dispatch (235.4742ms)
+✔ starting the other case cannot raise a legacy run budget before configuration access (245.6997ms)
+✔ a new run freezes all budgets and material hashes without rewriting its profile (17.6031ms)
+✔ legacy task and one-call comparison phases migrate without changing their artifacts (22.4903ms)
+✔ legacy migration checks every case and rejects incomplete dispatched artifacts (14.0507ms)
+✔ compression recovery preserves completed reading, existing navigation and cumulative charges (53.8181ms)
+✔ the second recovery accepts a failed compression repair without resetting attempts or repairs (2.0773ms)
+✔ compression recovery rejects unread sources, invalid navigation and non-reading failures (2.7794ms)
+✔ second reading recovery requires an unbroken failed chain and keeps cumulative charges (1.8583ms)
+✔ reading recovery cannot skip a generation or overwrite an existing destination (12.7051ms)
+✔ direct writing keeps the shared notes and the frozen findings without citing pending guesses (0.5171ms)
+✔ the rich control sends only exact excerpts from the frozen reading state (0.4527ms)
+✔ the rich control needs a dispatched check that contained original text (0.3255ms)
+✔ an outbound rejection survives SDK wrapping and stops later comparison phases (19.1089ms)
+✔ invalid compression output or insufficient capacity stops later trial phases (3.9914ms)
+✔ the production insight budget halts the comparison while a normal provider failure does not (1.4113ms)
+✔ a prohibited writing repair stops subsequent long comparison phases (2.4514ms)
+✔ reading recovery requires the archived halt and a matching reading-only pending batch (0.5105ms)
+✔ only the halted reading phase may start before a successful recovery is recorded (5.5563ms)
+ℹ tests 25
+ℹ suites 0
+ℹ pass 25
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3797.9435

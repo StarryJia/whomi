@@ -1,0 +1,9 @@
+
+ RUN  v5.0.5 D:/University/github/whomi
+
+
+ Test Files  2 passed (2)
+      Tests  89 passed (89)
+   Start at  01:55:37
+   Duration  541ms (tests 44%, transform 36%, import 17%, worker 3%)
+

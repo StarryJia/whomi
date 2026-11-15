@@ -1,0 +1,30 @@
+✔ comparison dry run lists both fixed cases without opening the configuration database (248.6248ms)
+✔ the long trial has separate phases and limits without opening the configuration database (534.1216ms)
+✔ a named long trial isolates its output and keeps the frozen cases and budgets (260.3233ms)
+✔ named trial parsing rejects ambiguous or escaping destinations before configuration access (2066.717ms)
+✔ a named long trial can reserve natural checking room without changing the total request budget (384.085ms)
+✔ an explicit task request limit requires a named long trial and stays within the shared budget (1.0266ms)
+✔ a bounded compaction trial reserves both task budgets and their comparison reports before dispatch (463.9994ms)
+✔ starting the other case cannot raise a legacy run budget before configuration access (435.6386ms)
+✔ a new run freezes all budgets and material hashes without rewriting its profile (26.6737ms)
+✔ legacy task and one-call comparison phases migrate without changing their artifacts (56.9191ms)
+✔ legacy migration checks every case and rejects incomplete dispatched artifacts (43.4085ms)
+✔ second reading recovery requires an unbroken failed chain and keeps cumulative charges (91.944ms)
+✔ reading recovery cannot skip a generation or overwrite an existing destination (14.8539ms)
+✔ direct writing keeps the shared notes and the frozen findings without citing pending guesses (1.7504ms)
+✔ the rich control sends only exact excerpts from the frozen reading state (0.8659ms)
+✔ the rich control needs a dispatched check that contained original text (0.3746ms)
+✔ an outbound rejection survives SDK wrapping and stops later comparison phases (37.3414ms)
+✔ invalid compression output or insufficient capacity stops later trial phases (50.6545ms)
+✔ the production insight budget halts the comparison while a normal provider failure does not (2.8569ms)
+✔ a prohibited writing repair stops subsequent long comparison phases (6.5014ms)
+✔ reading recovery requires the archived halt and a matching reading-only pending batch (1.1291ms)
+✔ only the halted reading phase may start before a successful recovery is recorded (13.5454ms)
+ℹ tests 22
+ℹ suites 0
+ℹ pass 22
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4859.2161

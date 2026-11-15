@@ -1,0 +1,17 @@
+
+> whomi@0.1.11 test
+> vitest run
+
+
+ RUN  v5.0.5 D:/University/github/whomi
+
+
+ Test Files  59 passed (59)
+      Tests  592 passed (592)
+   Start at  23:05:20
+   Duration  115.54s (environment 42%, tests 34%, import 13%, setup 8%, transform 3%)
+
+Environment  jsdom was created 59 times · 513.29s total, 42% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments
+

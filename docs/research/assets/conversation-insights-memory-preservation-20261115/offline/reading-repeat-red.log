@@ -1,0 +1,62 @@
+
+> whomi@0.1.11 test:backend
+> vitest run --config vitest.backend.config.ts tests/backend/insight-generation.test.ts -t repeated visible old thread|second repeated old thread|cannot hide
+
+
+ RUN  v5.0.5 D:/University/github/whomi
+
+ ❯ tests/backend/insight-generation.test.ts (53 tests | 3 failed | 48 skipped) 34ms
+   × a repeated visible old thread [ '1' ] is repaired once without admitting its old sources as new evidence 19ms
+   × a repeated visible old thread [ '1', '3' ] is repaired once without admitting its old sources as new evidence 3ms
+   × a second repeated old thread fails after the single reading repair without altering stored notes 8ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/backend/insight-generation.test.ts > a repeated visible old thread [ '1' ] is repaired once without admitting its old sources as new evidence
+ FAIL  tests/backend/insight-generation.test.ts > a repeated visible old thread [ '1', '3' ] is repaired once without admitting its old sources as new evidence
+Error: 洞察引用的原文无法验证，请重新生成。
+ ❯ invalidEvidence electron/main/insight-generation.ts:114:9
+    112|
+    113| function invalidEvidence(): never {
+    114|   throw new BoundaryError('INVALID_EVIDENCE', '洞察引用的原文无法验证，请重新生成。')
+       |         ^
+    115| }
+    116|
+ ❯ sourceIds electron/main/insight-generation.ts:151:48
+ ❯ parseNote electron/main/insight-generation.ts:191:56
+ ❯ array electron/main/insight-generation.ts:140:16
+ ❯ parseReading electron/main/insight-generation.ts:211:18
+ ❯ generateInsight electron/main/insight-generation.ts:626:17
+ ❯ tests/backend/insight-generation.test.ts:529:3
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  tests/backend/insight-generation.test.ts > a second repeated old thread fails after the single reading repair without altering stored notes
+AssertionError: expected Error: 洞察引用的原文无法验证，请重新生成。 { …(2) } to match object { code: 'INVALID_INSIGHT_OUTPUT' }
+(1 matching property omitted from actual)
+
+- Expected
++ Received
+
+- {
+-   "code": "INVALID_INSIGHT_OUTPUT",
++ BoundaryError {
++   "code": "INVALID_EVIDENCE",
+  }
+
+ ❯ tests/backend/insight-generation.test.ts:537:45
+    535| test('a second repeated old thread fails after the single reading repa…
+    536|   const { input, deps, state } = laterThreadReply({ ...noObservations,…
+    537|   await expect(generateInsight(input, deps)).rejects.toMatchObject({ c…
+       |                                             ^
+    538|   expect(state.checkpoint?.attempts.filter(attempt => attempt.stage ==…
+    539|   expect(state.checkpoint?.openThreads.some(note => note.text === '复述旧…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 2 passed | 48 skipped (53)
+   Start at  23:20:51
+   Duration  489ms (transform 52%, import 29%, tests 15%, worker 4%)
+

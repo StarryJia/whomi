@@ -1,0 +1,162 @@
+
+ RUN  v5.0.5 D:/University/github/whomi
+
+ ❯ tests/backend/insight-quote-reuse.test.ts (15 tests | 7 failed) 35ms
+   × reading reuses a continuous visible excerpt from the same candidate: 甲段已经核实 15ms
+   × reading reuses a continuous visible excerpt from the same candidate: 已经核实 2ms
+   × a visible excerpt cannot authorize another-candidate-finding 3ms
+   × checking reuses only one continuous previously verified excerpt (valid: true) 2ms
+   × a previous excerpt cannot stand in for the current unread fragment of the same source 2ms
+   × baseline response 04 can reuse old quotes while overlapping evidence roles still require repair (overlap: true) 2ms
+   × baseline response 04 can reuse old quotes while overlapping evidence roles still require repair (overlap: false) 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 7 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/backend/insight-quote-reuse.test.ts > reading reuses a continuous visible excerpt from the same candidate: 甲段已经核实
+ FAIL  tests/backend/insight-quote-reuse.test.ts > reading reuses a continuous visible excerpt from the same candidate: 已经核实
+AssertionError: expected Error: 洞察引用的原文无法验证，请重新生成。 { …(2) } to be Error: fixture accepted response without … // Object.is equality
+
+- Expected
++ Received
+
+- Error {
+-   "message": "fixture accepted response without continuing the model task",
++ BoundaryError {
++   "message": "洞察引用的原文无法验证，请重新生成。",
++   "code": "INVALID_EVIDENCE",
++   "action": "洞察引用的原文无法验证，请重新生成。",
+  }
+
+ ❯ tests/backend/insight-quote-reuse.test.ts:59:45
+     57|     return result({ ...noObservations, candidateUpdates: [{ id: '1', a…
+     58|   }
+     59|   await expect(generateInsight(input, deps)).rejects.toBe(accepted)
+       |                                             ^
+     60|   expect(state.checkpoint?.checks[0]).toMatchObject({ state: 'finished…
+     61|   expect(state.checkpoint?.checks[0].evidenceNotes).toContainEqual(not…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/7]⎯
+
+ FAIL  tests/backend/insight-quote-reuse.test.ts > a visible excerpt cannot authorize another-candidate-finding
+AssertionError: expected Error: fixture accepted response without … to match object { code: 'INVALID_EVIDENCE' }
+
+- Expected
++ Received
+
+- {
+-   "code": "INVALID_EVIDENCE",
++ Error {
++   "message": "fixture accepted response without continuing the model task",
+  }
+
+ ❯ tests/backend/insight-quote-reuse.test.ts:90:45
+     88|     ? { ...noObservations, candidates: [{ observation: '新问题。', support…
+     89|     : { ...noObservations, candidateUpdates: [{ id: '1', action: 'reso…
+     90|   await expect(generateInsight(input, deps)).rejects.toMatchObject({ c…
+       |                                             ^
+     91|   expect(state.checkpoint?.callsReserved).toBe(1)
+     92| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/7]⎯
+
+ FAIL  tests/backend/insight-quote-reuse.test.ts > checking reuses only one continuous previously verified excerpt (valid: true)
+AssertionError: expected Error: 洞察引用的原文无法验证，请重新生成。 { …(2) } to be Error: fixture accepted response without … // Object.is equality
+
+- Expected
++ Received
+
+- Error {
+-   "message": "fixture accepted response without continuing the model task",
++ BoundaryError {
++   "message": "洞察引用的原文无法验证，请重新生成。",
++   "code": "INVALID_EVIDENCE",
++   "action": "洞察引用的原文无法验证，请重新生成。",
+  }
+
+ ❯ tests/backend/insight-quote-reuse.test.ts:104:47
+    102|   }
+    103|   if (valid) {
+    104|     await expect(generateInsight(input, deps)).rejects.toBe(accepted)
+       |                                               ^
+    105|     expect(state.checkpoint?.checks[0].evidenceNotes).toContainEqual(n…
+    106|   } else await expect(generateInsight(input, deps)).rejects.toMatchObj…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/7]⎯
+
+ FAIL  tests/backend/insight-quote-reuse.test.ts > a previous excerpt cannot stand in for the current unread fragment of the same source
+AssertionError: expected Error: 洞察引用的原文无法验证，请重新生成。 { …(2) } to be Error: fixture accepted response without … // Object.is equality
+
+- Expected
++ Received
+
+- Error {
+-   "message": "fixture accepted response without continuing the model task",
++ BoundaryError {
++   "message": "洞察引用的原文无法验证，请重新生成。",
++   "code": "INVALID_EVIDENCE",
++   "action": "洞察引用的原文无法验证，请重新生成。",
+  }
+
+ ❯ tests/backend/insight-quote-reuse.test.ts:126:45
+    124|       ...(calls === 2 ? [note(payload.evidence[0].text.slice(0, 8))] :…
+    125|   }
+    126|   await expect(generateInsight(input, deps)).rejects.toBe(accepted)
+       |                                             ^
+    127|   expect(calls).toBe(2)
+    128|   expect(state.checkpoint?.callsReserved).toBe(2)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/7]⎯
+
+ FAIL  tests/backend/insight-quote-reuse.test.ts > baseline response 04 can reuse old quotes while overlapping evidence roles still require repair (overlap: true)
+AssertionError: expected Error: 洞察引用的原文无法验证，请重新生成。 { …(2) } to match object { code: 'INVALID_INSIGHT_OUTPUT' }
+(1 matching property omitted from actual)
+
+- Expected
++ Received
+
+- {
+-   "code": "INVALID_INSIGHT_OUTPUT",
++ BoundaryError {
++   "code": "INVALID_EVIDENCE",
+  }
+
+ ❯ tests/backend/insight-quote-reuse.test.ts:163:47
+    161|   }
+    162|   if (overlap) {
+    163|     await expect(generateInsight(input, deps)).rejects.toMatchObject({…
+       |                                               ^
+    164|     expect(calls).toBe(2)
+    165|     expect(state.checkpoint?.cursor.messageIndex).toBe(cursor)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/7]⎯
+
+ FAIL  tests/backend/insight-quote-reuse.test.ts > baseline response 04 can reuse old quotes while overlapping evidence roles still require repair (overlap: false)
+AssertionError: expected Error: 洞察引用的原文无法验证，请重新生成。 { …(2) } to be Error: fixture accepted response without … // Object.is equality
+
+- Expected
++ Received
+
+- Error {
+-   "message": "fixture accepted response without continuing the model task",
++ BoundaryError {
++   "message": "洞察引用的原文无法验证，请重新生成。",
++   "code": "INVALID_EVIDENCE",
++   "action": "洞察引用的原文无法验证，请重新生成。",
+  }
+
+ ❯ tests/backend/insight-quote-reuse.test.ts:168:47
+    166|     expect(state.checkpoint?.checks[0].state).toBe('pending')
+    167|   } else {
+    168|     await expect(generateInsight(input, deps)).rejects.toBe(accepted)
+       |                                               ^
+    169|     expect(calls).toBe(1)
+    170|     expect(state.checkpoint?.checks[0].state).toBe('finished')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/7]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  7 failed | 8 passed (15)
+   Start at  02:29:10
+   Duration  371ms (transform 40%, import 31%, tests 24%, worker 5%)
+

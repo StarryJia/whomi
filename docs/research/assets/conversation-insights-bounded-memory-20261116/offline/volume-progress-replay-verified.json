@@ -1,0 +1,93 @@
+{
+  "kind": "offline-writing-volume-progress",
+  "networkCalls": 0,
+  "cases": [
+    {
+      "name": "old-08",
+      "grouping": "diagnostic-original-node-count-cap",
+      "accepted": false,
+      "error": "INVALID_INSIGHT_OUTPUT",
+      "attempts": [
+        {
+          "inputEstimate": 6556,
+          "targetFactTextLength": 645,
+          "maxFactCount": 32,
+          "repair": false
+        },
+        {
+          "inputEstimate": 6572,
+          "targetFactTextLength": 645,
+          "maxFactCount": 32,
+          "repair": true
+        }
+      ],
+      "inputWritingFactBytes": 3723,
+      "outputWritingFactBytes": 3582,
+      "outputTextLength": 1067,
+      "cursorBefore": 0,
+      "cursorAfter": 0,
+      "nextRootsUnchanged": true,
+      "callsReservedBefore": 22,
+      "simulatedCallsReservedAfter": 24,
+      "repairsBefore": 0,
+      "repairsAfter": 1,
+      "originalsUnchanged": true
+    },
+    {
+      "name": "old-09",
+      "grouping": "diagnostic-original-node-count-cap",
+      "accepted": false,
+      "error": "INVALID_INSIGHT_OUTPUT",
+      "attempts": [
+        {
+          "inputEstimate": 6617,
+          "targetFactTextLength": 690,
+          "maxFactCount": 28,
+          "repair": false
+        },
+        {
+          "inputEstimate": 6633,
+          "targetFactTextLength": 690,
+          "maxFactCount": 28,
+          "repair": true
+        }
+      ],
+      "inputWritingFactBytes": 3922,
+      "outputWritingFactBytes": 4327,
+      "outputTextLength": 1235,
+      "cursorBefore": 16,
+      "cursorAfter": 16,
+      "nextRootsUnchanged": true,
+      "callsReservedBefore": 22,
+      "simulatedCallsReservedAfter": 24,
+      "repairsBefore": 0,
+      "repairsAfter": 1,
+      "originalsUnchanged": true
+    },
+    {
+      "name": "current-03",
+      "grouping": "default-current-capacity",
+      "accepted": true,
+      "error": null,
+      "attempts": [
+        {
+          "inputEstimate": 6487,
+          "targetFactTextLength": 522,
+          "maxFactCount": 40,
+          "repair": true
+        }
+      ],
+      "inputWritingFactBytes": 3192,
+      "outputWritingFactBytes": 2389,
+      "outputTextLength": 546,
+      "cursorBefore": 111,
+      "cursorAfter": 131,
+      "nextRootsUnchanged": false,
+      "callsReservedBefore": 27,
+      "simulatedCallsReservedAfter": 28,
+      "repairsBefore": 1,
+      "repairsAfter": 0,
+      "originalsUnchanged": true
+    }
+  ]
+}

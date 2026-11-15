@@ -1,0 +1,5 @@
+# Preserve the exact bytes used by the archived experiment manifests.
+docs/research/assets/conversation-insights-memory-preservation-20261115/** -text
+docs/research/assets/conversation-insights-bounded-memory-20261116/** -text
+docs/research/assets/conversation-insights-source-order-20261116/** -text
+docs/research/assets/conversation-insights-paired-capacity-20261116/** -text

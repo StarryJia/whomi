@@ -1,0 +1,49 @@
+{
+  "kind": "offline-mixed-fact-audit",
+  "networkCalls": 0,
+  "simulatedDispatches": 1,
+  "originalResponse09Accepted": true,
+  "originalsUnchanged": true,
+  "metrics": [
+    {
+      "response": "08",
+      "inputEntries": 16,
+      "outputEntries": 11,
+      "inputFactBytes": 3913,
+      "outputFactBytes": 3702,
+      "factByteChange": -211,
+      "inputTextBytes": 3146,
+      "outputTextBytes": 3135
+    },
+    {
+      "response": "09",
+      "inputEntries": 14,
+      "outputEntries": 17,
+      "inputFactBytes": 4084,
+      "outputFactBytes": 4553,
+      "factByteChange": 469,
+      "inputTextBytes": 3403,
+      "outputTextBytes": 3641
+    }
+  ],
+  "actualCallsReserved": 22,
+  "actualCallLimit": 30,
+  "remainingActualCalls": 8,
+  "unprocessedOriginalEntries": 126,
+  "remainingFirstLayerRequests": 9,
+  "remainingChunks": [
+    14,
+    15,
+    14,
+    14,
+    15,
+    15,
+    17,
+    17,
+    5
+  ],
+  "minimumRemainingCallsWithWriting": 10,
+  "excludesFurtherGlobalMerge": true,
+  "simulatedCallsReservedAfterReplay": 23,
+  "simulatedCursorAfterReplay": 30
+}

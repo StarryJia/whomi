@@ -1,0 +1,35 @@
+✔ comparison dry run lists both fixed cases without opening the configuration database (242.8941ms)
+✔ the long trial has separate phases and limits without opening the configuration database (476.9717ms)
+✔ a named long trial isolates its output and keeps the frozen cases and budgets (240.9741ms)
+✔ named trial parsing rejects ambiguous or escaping destinations before configuration access (1652.5881ms)
+✔ a named long trial can reserve natural checking room without changing the total request budget (229.8847ms)
+✔ an explicit task request limit requires a named long trial and stays within the shared budget (0.8821ms)
+✔ a bounded compaction trial reserves both task budgets and their comparison reports before dispatch (233.0005ms)
+✔ starting the other case cannot raise a legacy run budget before configuration access (245.6938ms)
+✔ a new run freezes all budgets and material hashes without rewriting its profile (22.286ms)
+✔ legacy task and one-call comparison phases migrate without changing their artifacts (25.5175ms)
+✔ legacy migration checks every case and rejects incomplete dispatched artifacts (14.0111ms)
+✔ compression recovery preserves completed reading, existing navigation and cumulative charges (52.2468ms)
+✔ version two recovery verifies earliest snapshot source order with stable fact and unknown ties (0.6153ms)
+✔ version two recovery rejects wrong leaf order, missing leaves, changed sources and unknown versions (1.941ms)
+✔ the second recovery accepts a failed compression repair without resetting attempts or repairs (1.8777ms)
+✔ compression recovery rejects unread sources, invalid navigation and non-reading failures (2.6706ms)
+✔ second reading recovery requires an unbroken failed chain and keeps cumulative charges (1.9793ms)
+✔ reading recovery cannot skip a generation or overwrite an existing destination (26.9967ms)
+✔ direct writing keeps the shared notes and the frozen findings without citing pending guesses (0.486ms)
+✔ the rich control sends only exact excerpts from the frozen reading state (0.4703ms)
+✔ the rich control needs a dispatched check that contained original text (0.3347ms)
+✔ an outbound rejection survives SDK wrapping and stops later comparison phases (19.0307ms)
+✔ invalid compression output or insufficient capacity stops later trial phases (15.1056ms)
+✔ the production insight budget halts the comparison while a normal provider failure does not (1.6792ms)
+✔ a prohibited writing repair stops subsequent long comparison phases (7.7304ms)
+✔ reading recovery requires the archived halt and a matching reading-only pending batch (0.5377ms)
+✔ only the halted reading phase may start before a successful recovery is recorded (6.2008ms)
+ℹ tests 27
+ℹ suites 0
+ℹ pass 27
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3617.9342

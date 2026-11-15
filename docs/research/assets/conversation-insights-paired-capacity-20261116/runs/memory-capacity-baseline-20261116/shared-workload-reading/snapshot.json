@@ -1,0 +1,495 @@
+{
+  "taskId": "201",
+  "scope": {
+    "kind": "dates",
+    "startDate": "2026-10-01",
+    "endDate": "2026-10-28",
+    "timezone": "Asia/Shanghai"
+  },
+  "timezone": "Asia/Shanghai",
+  "sourceStartTimeMs": 1790816400000,
+  "sourceEndTimeMs": 1793156460000,
+  "sources": [
+    {
+      "messageId": "1",
+      "revision": "1ddabe10d865c9b702e19e0686c921a64d1e640146621c4cc2000ed08df67e7b"
+    },
+    {
+      "messageId": "2",
+      "revision": "057cf302b9df1b0306ffefb0aefbb4ddaa4c97dc7369c67a889349deced95455"
+    },
+    {
+      "messageId": "3",
+      "revision": "8b89589a54e53b3b5e498f3e8110a5611add4d6db114971cefd83352bb0f3783"
+    },
+    {
+      "messageId": "4",
+      "revision": "152a46b4785d1071d6f1db14303b67c0500847cb7f516a5ad98def09ee3ba2b4"
+    },
+    {
+      "messageId": "5",
+      "revision": "b70d8545b2939fe4f42ab71a06a743562a6d9fee88542d09b34c5d7faa28f292"
+    },
+    {
+      "messageId": "6",
+      "revision": "7c8723655aca0142f77116a3ef2b21da353c064e9c7692da1fe8e9a6c6dfe285"
+    },
+    {
+      "messageId": "7",
+      "revision": "34e404ab5e39102682932264a22a44906cac325226d3c28eeb060b906ecf5451"
+    },
+    {
+      "messageId": "8",
+      "revision": "c8e690399c017aa5ded92ecaf0c9ff1abcb0027120eb41defe883b2aff73ad47"
+    },
+    {
+      "messageId": "9",
+      "revision": "8663668f35463c88f8fff39a62736d2c80fcfddce982d5c3b6f03fc0a417740a"
+    },
+    {
+      "messageId": "10",
+      "revision": "4d79555287f65b4c6c2c3f33ff91bffda0383f52582e742aa2f6f69bb7926e6f"
+    },
+    {
+      "messageId": "11",
+      "revision": "731019853ca8d1554b9895b53b190a33dc0a0fb4837e29f8bdb9e6f6f1d1713f"
+    },
+    {
+      "messageId": "12",
+      "revision": "625d3d8019cfc470b350b9c45c8c39627bfaf28499fb2376cb30b5c9c62c64d9"
+    },
+    {
+      "messageId": "13",
+      "revision": "4265141a4b1dd09f097e1555e448b6f4eb0e14b0b1e43b14b5f6196a0ab1aa03"
+    },
+    {
+      "messageId": "14",
+      "revision": "5f4be366aa8d895f963e9465eacee65d0f923ae4d351a188deb5ad117798b991"
+    },
+    {
+      "messageId": "15",
+      "revision": "4d78424c564fe335f67874df2c19782a4becf12097dbf4885a7c36a94785bc45"
+    },
+    {
+      "messageId": "16",
+      "revision": "4c055358d1aff1672bd550d1250700493797a406b56f7ed119dbd6c8311eaaee"
+    },
+    {
+      "messageId": "17",
+      "revision": "e2eac97f557e141648aee9e8a159eb623916c224c79069856e7a646f11a48711"
+    },
+    {
+      "messageId": "18",
+      "revision": "7b058e59ad27daa48866076b2f6e9c83fa0705a30d81836ca914a83f2733f6a3"
+    },
+    {
+      "messageId": "19",
+      "revision": "b23b1ef10e15af8f96f578adbb06db8a9b6e374367663bcabc7ed33c2bf0b755"
+    },
+    {
+      "messageId": "20",
+      "revision": "f90e76f2f1c3f1e972cdef248c85a136e83e895160d421f3a3c7dc0d2f29e969"
+    },
+    {
+      "messageId": "21",
+      "revision": "0a629c5e3dc9fe76ee56479c5976e9982b02c193ba39600f363f3ae8d6db9838"
+    },
+    {
+      "messageId": "22",
+      "revision": "64e91d267c91a3de9a54dd07854318cd9e6135fad3027de557ebef30b0635f8d"
+    },
+    {
+      "messageId": "23",
+      "revision": "5d26ee56d380fbbf16ed9e8dab42454192d34680bbf9a1b3708432895da056e0"
+    },
+    {
+      "messageId": "24",
+      "revision": "dfee5a747951a791d4e031ddbcd63026102c5c163c72d042a4bd2b004ed69db2"
+    },
+    {
+      "messageId": "25",
+      "revision": "6ffa85584fbd56792170af03e9384d2a68f3f947d6b3e75dcef23453842fc910"
+    },
+    {
+      "messageId": "26",
+      "revision": "4887a4fabf12ebd71a7599ca36ea41179c02c951b45ae15dd8ccc586ff047451"
+    },
+    {
+      "messageId": "27",
+      "revision": "c3e1b015fade186eaf998610859a277432f52df223ab2d8da469b989ddcf4125"
+    },
+    {
+      "messageId": "28",
+      "revision": "6926361790c3e5966fdf8be766d69bbeea207cee0df64920cb0cd4c29d113250"
+    },
+    {
+      "messageId": "29",
+      "revision": "cef35a356c277be97d5fc4e17212a3a5c9039376a33e57874ecc99d45a5a7b01"
+    },
+    {
+      "messageId": "30",
+      "revision": "df85764fd5971ff7a947885619664f5c20dad70481ec3ab4cbe949baaf5f01e3"
+    },
+    {
+      "messageId": "31",
+      "revision": "e36e5fa49fdc5e73cea2e9334c809799105de967a0908ebe40e83c85f3499ad4"
+    },
+    {
+      "messageId": "32",
+      "revision": "009228beb3cc158640756386aae876803e8c168afd7d30a91eadc0a865ba1b3e"
+    },
+    {
+      "messageId": "33",
+      "revision": "042ebe386cfe53fbeec11c904ab21c817018757e18552a73eefc48809479e47b"
+    },
+    {
+      "messageId": "34",
+      "revision": "275f9ef677e28f381db7655062e9b3e8a50305d56d741791c2c9e46e6e0921f3"
+    },
+    {
+      "messageId": "35",
+      "revision": "85ef7bc26f7fffa0bd19c37933361cbfaca386975dc61a4b5fa558db5dbb8f33"
+    },
+    {
+      "messageId": "36",
+      "revision": "b7415dc2030365ecce940dd6c34f9f8b9959cba9f93d3265240fd2d1d2447f1d"
+    },
+    {
+      "messageId": "37",
+      "revision": "d5177dedb1baafc81598e4da240dd351fccf5e643b6f083a0676d06b03f7adc6"
+    },
+    {
+      "messageId": "38",
+      "revision": "6f7b4c114ab9a9805b6cb915c233c2d1850cc3f9e382c5247ac1d3861caa9e98"
+    },
+    {
+      "messageId": "39",
+      "revision": "1f6619a19bb5df05f21f3ee9bba301ebeefe73d5abbdd2444246313387d7746e"
+    },
+    {
+      "messageId": "40",
+      "revision": "cc81d885a3855da6481f92df71a8a8f471eeb5c680740be1aa794e4d225f2c6a"
+    },
+    {
+      "messageId": "41",
+      "revision": "b3e1833cf4c5a7fc9aed270d40481c1db2641942298e9a4c99122dc27886c771"
+    },
+    {
+      "messageId": "42",
+      "revision": "cb6c740445895224f1ba0584febd9d9287815ae83e9d338c354adda6b19a8bcc"
+    },
+    {
+      "messageId": "43",
+      "revision": "a49f1c43d04bc1dd387e9c4562c0ff2fa286c9ca151d665e55ee31fd7cf4d579"
+    },
+    {
+      "messageId": "44",
+      "revision": "7edbbf91c995ffcd503594c4cac0552ee5b871b2bb81877b400fd7f804c74f0e"
+    },
+    {
+      "messageId": "45",
+      "revision": "dd5ed4f9689942e4b438de2db1e994c8470137ca1b29b960155b526b2007a7ac"
+    },
+    {
+      "messageId": "46",
+      "revision": "216d9cca4d08a5b50ed2469165e0a67faf565f98945e222843724b923b33c54e"
+    },
+    {
+      "messageId": "47",
+      "revision": "e5b202c01a523e3a9890cc20bba78a12e7368830eab0e428257690c7888e7757"
+    },
+    {
+      "messageId": "48",
+      "revision": "08e6e8b0355e0742f79fd4113a977a77eea8cfeb149454cb63b06bcaa21dd3ed"
+    },
+    {
+      "messageId": "49",
+      "revision": "d9e799afb0ad73f2ed3da4c950cf4ff4ac3cc4d0a9756d2594a7a48904a29390"
+    },
+    {
+      "messageId": "50",
+      "revision": "b0d683eae5c122786bdece65bdc5c340ecdb7e4178fa730e1d87f75330e8f374"
+    },
+    {
+      "messageId": "51",
+      "revision": "8bbac592b17f971f06f167d8c44ca9e8761bfecbe11301f029b813305ae1349f"
+    },
+    {
+      "messageId": "52",
+      "revision": "b1ffa08dd9a08a1172374181ba2fd3ab36f4ebdc6a34f73b80691d40f2ec7a02"
+    },
+    {
+      "messageId": "53",
+      "revision": "462c1b99f889ca24f901ad6f057df7731c02f00b063eaff7b361c3b0793c7403"
+    },
+    {
+      "messageId": "54",
+      "revision": "5bfabd1e454ab3ad34bcf694e5b423dd711767249147fe3c7b9e49288bdf046f"
+    },
+    {
+      "messageId": "55",
+      "revision": "57c41153751b84775c3e4d325591a1308da56ee3f7ccff22107c83aed07a762d"
+    },
+    {
+      "messageId": "56",
+      "revision": "412b846de8f6ac9f384c6f80e921161fc49637fb9902250a426fd101fee16b92"
+    },
+    {
+      "messageId": "57",
+      "revision": "27f28648c86a32494031cda9ffa2e45d362cfc8b32b707b68e995ee2f12ff217"
+    },
+    {
+      "messageId": "58",
+      "revision": "1ea049d8a04b12458b16d673b3f961af6fc4b2d4c09efda008624ccb160385b0"
+    },
+    {
+      "messageId": "59",
+      "revision": "435dcea1c5e1d182a05fe8268084bd51c5c475bff9c08b5ec57c4daab89c56c5"
+    },
+    {
+      "messageId": "60",
+      "revision": "3255600b2142f4327e804311a76592e7a2c4cc668c88a64bed4708b6e3295709"
+    },
+    {
+      "messageId": "61",
+      "revision": "cb270875853e95ae66b81a59089f7057a579702e4a879b1f4b3c8bf97d35d0c1"
+    },
+    {
+      "messageId": "62",
+      "revision": "5240bb97b4441b91477a1ab62ea3ad79d7c904f24def6a2651679338881f415f"
+    },
+    {
+      "messageId": "63",
+      "revision": "5aa8b100938d7a86875cc69f2a67a131e769bc58b2b8a02ec1a5188e9d8371d5"
+    },
+    {
+      "messageId": "64",
+      "revision": "74e1749f1c8b226d0f505b0bc6a23783aa89fddd95cdcd8873afb0918ecd4612"
+    },
+    {
+      "messageId": "65",
+      "revision": "ec0677ecc68abcacc0d17b089bc7bd1954390e663dff612953560525eeb80718"
+    },
+    {
+      "messageId": "66",
+      "revision": "ec15616096ca5c657e97699a307c66efb6e5096d63793434aa8f170e33b309bc"
+    },
+    {
+      "messageId": "67",
+      "revision": "61c388b33ca8bf899a5108215a95d267aaf1588cf6428f4e418aa415bdd9e5e9"
+    },
+    {
+      "messageId": "68",
+      "revision": "a847fffc8be6ded8e5fb02e89c2b877786e3a3722a0f973a85ce515538135ab8"
+    },
+    {
+      "messageId": "69",
+      "revision": "f37fcca277b0443224c3a657cdb15cbeac258d3d927ba466da4be413ba07e2ad"
+    },
+    {
+      "messageId": "70",
+      "revision": "6415d844c3f428cc0779d7622dd174bfe5e3980e4544f84cd86f011df2249064"
+    },
+    {
+      "messageId": "71",
+      "revision": "82a11af0a40d0269aa3f92022166c13f0fbdfd14a616ecbe04fff67bbcdc2b55"
+    },
+    {
+      "messageId": "72",
+      "revision": "bc303f7fc947ccab98fb14f7976b75ca4c2399009a8a08bb266b859f71db0eb3"
+    },
+    {
+      "messageId": "73",
+      "revision": "74b3e0d29dc6c100f5ffec2600c25edfa06375ce3f78e8ace54d3a61334b1666"
+    },
+    {
+      "messageId": "74",
+      "revision": "1c15fa0f5f0f52521b634c4138d4ed39a941724f5ba244491e0c5e1682784bb3"
+    },
+    {
+      "messageId": "75",
+      "revision": "3d470cca2aca92c934aef181b6564397032bc86e575dcf18016617b5d1596ca9"
+    },
+    {
+      "messageId": "76",
+      "revision": "6fde443a769039cee150f599015ae7bba5ffe587d5bc2cad68ece81bd3c3b167"
+    },
+    {
+      "messageId": "77",
+      "revision": "495e32abc78517571f0a70877625621f741b4463850d89db7b8be2c2a9f3319f"
+    },
+    {
+      "messageId": "78",
+      "revision": "adae21925960661786503077538c4a385d3b3a4329bbd98c21dfea0c292fc144"
+    },
+    {
+      "messageId": "79",
+      "revision": "af53e61c053be8a415c88261abac862a4ea27f304ca0c84b5a11f39fbc309e66"
+    },
+    {
+      "messageId": "80",
+      "revision": "26f48ac4216ab0a7e5d43a4428d5824d1550afb150be2387e4d0ca4ca9fc4c97"
+    },
+    {
+      "messageId": "81",
+      "revision": "30e14a4786481460355e9f2f353981bb6f23c1c7cf3ce9030424cb35959439bd"
+    },
+    {
+      "messageId": "82",
+      "revision": "52b959c3e0301228896c2ca2038da18f92571a08a1201f4b784e9434f2a5812b"
+    },
+    {
+      "messageId": "83",
+      "revision": "d65de1cd082a2ab97c908e7ff97ecb0f4a3e6976946afa054c84f95c08aa4e27"
+    },
+    {
+      "messageId": "84",
+      "revision": "019bc06ec1fb8fe92c7750a7a6801d4582da8f9fb1f700215b010636640478a5"
+    },
+    {
+      "messageId": "85",
+      "revision": "e6c4d7df589640a8beb4745f898a2bc57f843719a215e8adb203674315cfd779"
+    },
+    {
+      "messageId": "86",
+      "revision": "eecf7dc0e8849865227eae2bffb240ba127a6df6eecd6b9a81c2a5471d6a175c"
+    },
+    {
+      "messageId": "87",
+      "revision": "ddb6b4c00800086edb31c66ed6e47e0cb8e21dff3c4f9910c2529740f8af2f16"
+    },
+    {
+      "messageId": "88",
+      "revision": "aa629cec4a4ffed3492c9770b7da67e8507d966a940c8341cb2c7fb99640cfc7"
+    },
+    {
+      "messageId": "89",
+      "revision": "382a3b41061266bba9725705b1d553a15a891596b7cb63167228ca593601e215"
+    },
+    {
+      "messageId": "90",
+      "revision": "fd8a08bd7824a739e884128528006976c18d2cc33bca72562c3d8461be7a248c"
+    },
+    {
+      "messageId": "91",
+      "revision": "a8c7903db759558729d4403e914e30b74f2679b49291844579f9da21a072f240"
+    },
+    {
+      "messageId": "92",
+      "revision": "248138cb724b1455a01affc091fb6ab6c8d54a7f829df4de563bd3e7ec91236c"
+    },
+    {
+      "messageId": "93",
+      "revision": "f524e71821e9d37f46e668fd7209edac74991d49052b662393a6a49d7e2e41c8"
+    },
+    {
+      "messageId": "94",
+      "revision": "d4405322659e4b027126952cce728e286cee67ce552b66553b0883cb4e443790"
+    },
+    {
+      "messageId": "95",
+      "revision": "a54b6e3dcfb06ac6e8422639571662d20e2b8e72fb22030c63cb01726fca3941"
+    },
+    {
+      "messageId": "96",
+      "revision": "939aabf5def24417cd898d92a518a41c1a5d406ea952ae9fa72aff8244eaf183"
+    },
+    {
+      "messageId": "97",
+      "revision": "308f36b4fe135371bcac0ba3e217df3d8093bcf8adb0a0cf52208b4b74732de1"
+    },
+    {
+      "messageId": "98",
+      "revision": "7ac6b3d7c2cf4b19c6ed615167d25bb561d5633133131bdbe439de49ef37c429"
+    },
+    {
+      "messageId": "99",
+      "revision": "d9253f0a4cb5e85c3959c1e84c4279efe32feb2d28474c0aa7e374614c133078"
+    },
+    {
+      "messageId": "100",
+      "revision": "c6a1b392c674f2d39cccebe68133b9090432e8024b75a82cb500a2d6d6fe1cc8"
+    },
+    {
+      "messageId": "101",
+      "revision": "94a043f9cda543f45104764154793545ade708b68f1fc8d9cac3763e1bb01001"
+    },
+    {
+      "messageId": "102",
+      "revision": "76e097fc4d0ae1b003b5e8e6d59b2031515fce9b44aaa77b4e6a1f130bbf1289"
+    },
+    {
+      "messageId": "103",
+      "revision": "5caf602f0c03e4ccaf0ce30fd0d03b2d99118257c0996bb863fd658eee01c0e7"
+    },
+    {
+      "messageId": "104",
+      "revision": "b79989dd09e22120c10950dac1927c14587778c2ccb7ee04f1cf33ec9a8fd269"
+    },
+    {
+      "messageId": "105",
+      "revision": "3b79959ab5c3cc6fa57e5f3cf4209e928342ac4e7ced0426aa928da367e066b6"
+    },
+    {
+      "messageId": "106",
+      "revision": "8de3ce7e896b237df40658b032520a946a7eac95f2e080b4f8620b8d97c4ff24"
+    },
+    {
+      "messageId": "107",
+      "revision": "8f4901ce48961257505409ec5709a48b51af49fd8fb78ae797c8b6677b5d7a68"
+    },
+    {
+      "messageId": "108",
+      "revision": "114e1c4bc3a42fd6b04d51d44b4334632d5e06b47b02211aec902e2af87c9060"
+    },
+    {
+      "messageId": "109",
+      "revision": "7fe250b4cc2c3fd3d7b5458cf395db96a52aa074d020cf0c2b8962380c7a5faa"
+    },
+    {
+      "messageId": "110",
+      "revision": "f9464fa559ef6048322c7517e9e27449fc4d724cd9c8cdad15608edf97ba71d8"
+    },
+    {
+      "messageId": "111",
+      "revision": "b9c9a9394df320e5045d0ea635f7639f2f7af5234441ee2b3d21170f4780f34d"
+    },
+    {
+      "messageId": "112",
+      "revision": "a3351f31f81ac41efa711457e0499fe59085e20de06ff76b96ec31e95fb4b636"
+    },
+    {
+      "messageId": "113",
+      "revision": "9fbb4544b6033ca2818f302ccbf5bccf50cf8f0f32311cd99d78406593044cc7"
+    },
+    {
+      "messageId": "114",
+      "revision": "cbee97e447879f69078cd33aff12a9e8bc722a895163f7952eb49e93492e404f"
+    },
+    {
+      "messageId": "115",
+      "revision": "74aed359b99ca1378c8e49b5846a81fc5e31a9ee3ae16d755703fb88ea9666f3"
+    },
+    {
+      "messageId": "116",
+      "revision": "577bbc8325833cd0d90dd9b2380d4ae1961d0ea476b52894cca043d7252d206c"
+    },
+    {
+      "messageId": "117",
+      "revision": "d12cf83357570b16afee750f3eaf03080f56980643e8a9d774023dcdf1ded790"
+    },
+    {
+      "messageId": "118",
+      "revision": "1e5d6e927de05f3b6e62ffec4e1e042232538408e3a8247040c6ec6a80df27be"
+    },
+    {
+      "messageId": "119",
+      "revision": "96b67d61fdfe90902d620cc639bcb8e4206d3ab2bdeffd21fe03a436a7b834eb"
+    },
+    {
+      "messageId": "120",
+      "revision": "ebcbc3f556a9bb7bc10555d3eb2777412002a2af67bea80a43a7532ebacf398c"
+    }
+  ],
+  "createdAtMs": 1794764182780
+}

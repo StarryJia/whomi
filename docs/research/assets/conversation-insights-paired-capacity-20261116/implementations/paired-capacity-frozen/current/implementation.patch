@@ -1,0 +1,2687 @@
+diff --git a/electron/data/ai/insight-prompts.ts b/electron/data/ai/insight-prompts.ts
+index bf07c1f..4dd5f9d 100644
+--- a/electron/data/ai/insight-prompts.ts
++++ b/electron/data/ai/insight-prompts.ts
+@@ -20,8 +20,10 @@ const protocol = {
+   reading: [
+     '按照输入的时间顺序阅读 messages，relatedMessages 是已读补充，fragment 表示同条消息的一部分。用 timezone 理解当地日期，不按批次或日期强制划分事件。',
+     '返回 {observations:[{text,sourceIds:[]}],openThreads:[{text,sourceIds:[]}],candidates:[{observation,supportingIds:[],reason,evidenceNotes:[]}],resolvedThreadSourceIds:[],candidateUpdates:[]}。用简短笔记保留事实、未解决事项和待解指代，编号用本批实际提供的原文。用 resolvedThreadSourceIds 标出本批证实已解决的事项来源。没有适合的内容时数组留空。',
++    '输出 openThreads 只写本批新增事项，旧项自动保留，不要复述；repair 时也遵守此规则。后文已有答案时关闭可见旧项并记录答案、条件和剩余未知。旧笔记不代替原文；本批未见前文不代表全任务缺少原文。',
+     '候选只留仍需回读原文的具体问题，reason 写明要核对的细节。资料无法回答时保留未知。考虑 knownCandidates，避免换句话新建相同候选。',
+     '后文补充或推翻已知候选时，在 candidateUpdates 中沿用本批可见的 id。仍需核对具体细节时返回 {id,action:"revise",observation,supportingIds:[],reason,evidenceNotes:[]}，也可重开已解决候选。依据已足以确认、修正、撤回或明确未知时返回 {id,action:"resolve",finding:{revisedObservation,supportingIds:[],counterexampleIds:[],alternativeExplanations:[],limitations:[]},evidenceNotes:[]}。撤回概括时保留反例与仍成立的事实。',
++    'supportingIds 与 counterexampleIds 不得重叠；同条原文有多种作用时在文字中说明，编号只归主要作用一侧。',
+     '更新的依据仅用本批实际提供的原文和 knownCandidates 中的逐字摘录，旧观察和摘要可用来定位。为候选及更新中的关键支持或反例，从本批原文摘录 {sourceId,quote,text}，quote 最多 240 字符，text 简述相关行为及条件。',
+   ].join('\n'),
+   checking: [
+@@ -30,10 +32,12 @@ const protocol = {
+     '需要查看导航中的具体观察时返回 {action:"navigate",checkId,navigationId,offset,evidenceNotes:[]}。选择可见导航项从 offset 0 开始：childCount 大于 0 时展开子项，等于 0 时读取该项关联的原文。续页使用 navigationPage.nextOffset。',
+     '继续核查时，对本轮有意义的原文用 evidenceNotes 留下逐字摘录 quote（最多 240 字符）和简短观察 text。摘录应覆盖观察中的关键行为和条件。对于 fragment 至少保留一条摘录。只可摘录本轮 evidence 中实际出现的文本。重复请求没有新增证据时结束。',
+     '完成时返回 {action:"finish",checkId,revisedObservation,supportingIds:[],counterexampleIds:[],alternativeExplanations:[],limitations:[]}。只用本轮原文、实际提供的旧原文或经校验的逐字摘录作依据；没有证据时修正、撤回或明确未知。',
++    'supportingIds 与 counterexampleIds 不得重叠；同条原文有多种作用时在文字中说明，编号只归主要作用一侧。',
+     '寻找支持、反例和替代解释，说明适用时间和情境，区分情况后来变化与后来知道了更多背景。不另开任务。',
+   ].join('\n'),
+   writing: [
+     'observations 来自任务逐批阅读原文，是带有 sourceIds 的有来源的事实记录。可据此描述具体行为、顺序和互动，并引用记录标明的原文。checks 为空时，已有可核实事实仍可写成有引用的中性正文。',
++    'openThreads 是尚未解决的具体事项，不得覆盖 observations 中已明确的答案。按人物、时间及条件对照，保留后来修正和仍成立的部分；不要把某条笔记未提及的内容说成整份材料没有。每个引用仅支持与该事实条目相符的陈述，不把同组来源扩展到无关经历。',
+     '需要解释或推断的判断以 checks 中的核查为准。保留支持、反例、其他可能原因与适用范围，未确认的解释保持不确定。只对实际提供的逐字片段加引号，其余用转述。任务已读取原文，报告中不要称任务没有读过原文。',
+     '只写关于你和你们的相处，把共同经历融入分析。生成叙述称对方为 ta，不修改逐字引用，不生成标题、人格诊断或 ta 的独立人格画像。',
+     '报告正文和限制只写原文能支持的事实、材料的不确定性和可尝试的行动。不要在报告文字中提到程序字段、摘要、核查阶段或生成过程。',
+@@ -44,9 +48,9 @@ const protocol = {
+ }
+ 
+ const navigationProtocol = [
+-  '将输入 nodes 合并成一条可展开的导航摘要。仅输出一个顶层对象 {text,sourceIds:[]}，不要输出 nodes 字段或把多项摘要放进数组。',
+-  'text 不超过 220 字，写明这一组材料的主题和关键变化，优先保留矛盾、例外和可能需要回读的线索。各节点详情留在导航中，可从摘要继续展开。',
+-  'sourceIds 最多写 12 个 node 已提供的确切原文编号，可以留空。',
++  '合并 nodes.entries，仅输出 {text,facts:[{kind:"fact"或"unknown",text,entryIds:[]}]}。顶层 text 是最多120字的导航。来源由程序继承，不输出 sourceIds。所有 facts.text 合计以 targetFactTextLength 字符为目标，条目数不超过 maxFactCount。精简重复，不为凑字数删除事实或条件；repair 时进一步精简。',
++  '每个输入 entryId 至少覆盖一次，禁止新编号。已知部分须保留 fact，可另拆 unknown。unknown 可拆出其中已知部分，但原未决内容仍须 unknown 覆盖；只有与明确回答它的 fact 合并才可解除未知。',
++  'facts 按相关主题精简重复，不合并无关经历。保留人物、时间、否定、条件、反例、后文修正和仍成立的事实；部分条件放宽不等于全部取消。区分后来的变化与补充旧背景。本批未见前文不等于全任务缺少原文。不新增候选或强制回读。',
+ ].join('\n')
+ 
+ export function buildInsightPrompt(prompts: InsightPrompts, stage: keyof typeof protocol, operation?: 'compress-navigation'): string {
+diff --git a/electron/main/insight-checkpoint.ts b/electron/main/insight-checkpoint.ts
+index e43300e..989e33f 100644
+--- a/electron/main/insight-checkpoint.ts
++++ b/electron/main/insight-checkpoint.ts
+@@ -14,9 +14,13 @@ export type InsightRunLimits = {
+ }
+ 
+ export type InsightNote = { text: string; sourceIds: string[] }
++export type InsightMemoryFact = InsightNote & { kind: 'fact' | 'unknown' }
+ export type InsightEvidenceNote = { sourceId: string; quote: string; text: string }
+-type InsightNavigationNode = InsightNote & { children: number[] }
+-export type InsightNavigation = { nodes: InsightNavigationNode[]; roots: number[]; cursor: number; nextRoots: number[]; repairs: number }
++type InsightNavigationNode = InsightNote & { children: number[]; facts?: InsightMemoryFact[] }
++export type InsightNavigation = {
++  nodes: InsightNavigationNode[]; roots: number[]; cursor: number; nextRoots: number[]; repairs: number
++  factsVersion?: 1 | 2; reconciled?: boolean
++}
+ export type InsightNavigationRequest = { id: number; offset: number }
+ export type InsightCandidate = { observation: string; supportingIds: string[]; reason?: string }
+ export type InsightFinding = {
+diff --git a/electron/main/insight-generation.ts b/electron/main/insight-generation.ts
+index 23abfcd..ca4070a 100644
+--- a/electron/main/insight-generation.ts
++++ b/electron/main/insight-generation.ts
+@@ -9,7 +9,7 @@ import type { RuntimeInput, RuntimeResult, RuntimeRunner } from './ai-service'
+ import {
+   createInsightCheckpoint, insightBudgetError, remainingInsightBudget, startingInsightCursor,
+   type InsightAttempt, type InsightCandidate, type InsightCheck, type InsightCheckpoint, type InsightEvidenceNote,
+-  type InsightFinding, type InsightNavigation, type InsightNavigationRequest, type InsightNote, type InsightRunLimits, type InsightStage,
++  type InsightFinding, type InsightMemoryFact, type InsightNavigation, type InsightNavigationRequest, type InsightNote, type InsightRunLimits, type InsightStage,
+ } from './insight-checkpoint'
+ import {
+   computeInsightInputBudget, countInsightInput, insightCapacityError, packInsightSources, resolveInsightCapacity,
+@@ -63,11 +63,75 @@ type CheckResult =
+ 
+ function navigationItems(navigation: InsightNavigation, ids: readonly number[]): VisibleNavigation[] {
+   return ids.map(navigationId => {
+-    const { children, ...note } = navigation.nodes[navigationId]
+-    return { ...note, navigationId, childCount: children.length }
++    const { children, facts: _facts, ...note } = navigation.nodes[navigationId]
++    return { ...note, sourceIds: children.length ? note.sourceIds.slice(0, 12) : note.sourceIds,
++      navigationId, childCount: children.length }
+   })
+ }
+ 
++function navigationFacts(navigation: InsightNavigation, ids: readonly number[]): InsightMemoryFact[] {
++  return ids.flatMap(id => navigation.nodes[id].facts ?? [{ ...navigation.nodes[id], kind: 'fact' as const }])
++}
++
++function compressionNodes(navigation: InsightNavigation, ids: readonly number[]) {
++  return ids.map(navigationId => ({ navigationId, childCount: navigation.nodes[navigationId].children.length,
++    entries: navigationFacts(navigation, [navigationId]).map((fact, index) => ({
++      entryId: `${navigationId}:${index}`, kind: fact.kind, text: fact.text, sourceIds: fact.sourceIds,
++    })),
++  }))
++}
++
++function factTextLength(facts: readonly { text: string }[]): number {
++  return facts.reduce((total, fact) => total + [...fact.text].length, 0)
++}
++
++function compressionLimits(nodes: ReturnType<typeof compressionNodes>) {
++  const entries = nodes.flatMap(node => node.entries)
++  return { targetFactTextLength: Math.max(160, Math.floor(factTextLength(entries) * 0.6)), maxFactCount: entries.length * 2 }
++}
++
++function compressionPayload(nodes: ReturnType<typeof compressionNodes>, repair: boolean) {
++  return {
++    stage: 'reading', operation: 'compress-navigation', ...compressionLimits(nodes),
++    nodes: nodes.map(node => ({ navigationId: node.navigationId, childCount: node.childCount,
++      entries: node.entries.map(({ entryId, kind, text }) => ({ entryId, kind, text })),
++    })), ...(repair ? { repair: true } : {}),
++  }
++}
++
++function factNotes(facts: readonly InsightMemoryFact[]) {
++  const notes = (kind: InsightMemoryFact['kind']) => facts.filter(fact => fact.kind === kind)
++    .map(({ text, sourceIds }) => ({ text, sourceIds }))
++  return { observations: notes('fact'), openThreads: notes('unknown') }
++}
++
++const factBytes = (facts: readonly InsightMemoryFact[]) => Buffer.byteLength(JSON.stringify(factNotes(facts)), 'utf8')
++
++export function parseInsightCompressedFacts(value: unknown, nodes: ReturnType<typeof compressionNodes>): InsightMemoryFact[] {
++  const entries = new Map(nodes.flatMap(node => node.entries).map(entry => [entry.entryId, entry]))
++  const covered = new Set<string>()
++  const retainedFacts = new Set<string>()
++  const retainedUnknowns = new Set<string>()
++  const unknownOnlyFacts: string[][] = []
++  const facts = array<InsightMemoryFact>(value, entries.size * 2, item => {
++    const fact = object(item)
++    if (fact.kind !== 'fact' && fact.kind !== 'unknown') return invalidOutput()
++    const ids = sourceIds(fact.entryIds, new Set(entries.keys()), true)
++    const inputs = ids.map(id => entries.get(id)!)
++    if (fact.kind === 'fact' && !inputs.some(entry => entry.kind === 'fact')) unknownOnlyFacts.push(ids)
++    for (const id of ids) {
++      covered.add(id)
++      if (fact.kind === 'fact') retainedFacts.add(id)
++      else retainedUnknowns.add(id)
++    }
++    return { kind: fact.kind, text: string(fact.text, 1200), sourceIds: unique(inputs.flatMap(entry => entry.sourceIds)) }
++  })
++  if (unknownOnlyFacts.some(ids => ids.some(id => !retainedUnknowns.has(id)))) return invalidEvidence()
++  if ([...entries.values()].some(entry => !covered.has(entry.entryId)
++    || (entry.kind === 'fact' && !retainedFacts.has(entry.entryId)))) return invalidOutput()
++  return facts
++}
++
+ const codeOf = (error: unknown) => (error as { code?: unknown })?.code
+ const unique = (ids: readonly string[]) => [...new Set(ids)]
+ 
+@@ -134,13 +198,16 @@ function parseEvidenceNotes(value: unknown, evidence: readonly InsightSourcePart
+ function parseFinding(body: Record<string, unknown>, evidence: ReadonlySet<string>): InsightFinding {
+   const supportingIds = sourceIds(body.supportingIds, evidence)
+   const counterexampleIds = sourceIds(body.counterexampleIds, evidence)
+-  if (supportingIds.some(id => counterexampleIds.includes(id))) return invalidEvidence()
+   return {
+     revisedObservation: string(body.revisedObservation, 3000), supportingIds, counterexampleIds,
+     alternativeExplanations: explanations(body.alternativeExplanations ?? []), limitations: explanations(body.limitations),
+   }
+ }
+ 
++function overlappingFindingSources(finding: InsightFinding): boolean {
++  return finding.supportingIds.some(id => finding.counterexampleIds.includes(id))
++}
++
+ function parseReading(
+   response: RuntimeResult, originalEvidence: readonly InsightSourcePart[], knownCandidates: readonly VisibleCandidate[],
+   openThreads: readonly InsightNote[],
+@@ -155,6 +222,13 @@ function parseReading(
+     const note = object(value)
+     return { text: string(note.text, 1200), sourceIds: sourceIds(note.sourceIds, rawIds, true) }
+   }
++  let repeatsVisibleThread = false
++  const parseNewThread = (value: unknown) => {
++    const note = object(value)
++    const ids = sourceIds(note.sourceIds, resolvableThreadIds, true)
++    if (ids.some(id => !rawIds.has(id))) repeatsVisibleThread = true
++    return { text: string(note.text, 1200), sourceIds: ids }
++  }
+   const candidateUpdates = array(body.candidateUpdates ?? [], maximumNotesPerBatch, (value): CandidateUpdate => {
+     const update = object(value)
+     const id = string(update.id, 128)
+@@ -171,9 +245,9 @@ function parseReading(
+     }
+     return { id, action: 'revise', candidate, evidenceNotes: notes }
+   })
+-  return {
++  const reading: ReadResult = {
+     observations: array(body.observations, maximumNotesPerBatch, parseNote),
+-    openThreads: array(body.openThreads, maximumNotesPerBatch, parseNote),
++    openThreads: array(body.openThreads, maximumNotesPerBatch, parseNewThread),
+     candidates: array(body.candidates, maximumNotesPerBatch, value => {
+       const candidate = object(value)
+       return {
+@@ -185,6 +259,11 @@ function parseReading(
+     resolvedThreadSourceIds: body.resolvedThreadSourceIds === undefined ? [] : sourceIds(body.resolvedThreadSourceIds, resolvableThreadIds),
+     candidateUpdates,
+   }
++  // 先拒绝整份响应里的非法来源，再处理可修复的协议错误。
++  if (repeatsVisibleThread || candidateUpdates.some(update => update.action === 'resolve' && overlappingFindingSources(update.finding))) {
++    return invalidOutput()
++  }
++  return reading
+ }
+ 
+ function parseChecking(
+@@ -215,7 +294,9 @@ function parseChecking(
+   }
+   if (body.action !== 'finish') return invalidOutput()
+   if (hasMoreEvidence) return invalidOutput()
+-  return { action: 'finish', finding: parseFinding(body, evidence) }
++  const finding = parseFinding(body, evidence)
++  if (overlappingFindingSources(finding)) return invalidOutput()
++  return { action: 'finish', finding }
+ }
+ 
+ function parseReport(
+@@ -524,11 +605,12 @@ export async function generateInsight(input: InsightGenerationInput, deps: Insig
+     await checkActive()
+     const budget = await requestCapacity('reading')
+     const measure = async (payload: unknown) => (await count(runtimeInput('reading', payload, budget.reservedOutput))).tokens
+-    const candidateReserve = state.checks.length === 0 ? 0 : Math.max(0,
+-      Math.floor((budget.availableTokens - await measure(readingPayload([]))) / 4))
++    const spare = Math.max(0, budget.availableTokens - await measure(readingPayload([])))
++    const candidateReserve = state.checks.length === 0 ? 0 : Math.floor(spare / 4)
++    const memoryReserve = state.openThreads.length + state.observations.length === 0 ? 0 : Math.floor(spare / 5)
+     if (!state.pendingRead) {
+       const packed = await packInsightSources({
+-        messages, cursor: state.cursor, availableTokens: budget.availableTokens - candidateReserve,
++        messages, cursor: state.cursor, availableTokens: budget.availableTokens - candidateReserve - memoryReserve,
+         count: text => measure(readingPayload(JSON.parse(text))),
+       })
+       state.pendingRead = { from: state.cursor, to: packed.nextCursor, depth: 0, repairs: 0 }
+@@ -558,6 +640,20 @@ export async function generateInsight(input: InsightGenerationInput, deps: Insig
+         if (await measure(payload) > candidateLimit) candidate.evidenceNotes.pop()
+       }
+     }
++    const rotate = <T>(items: T[]) => {
++      const offset = items.length ? state.readLayouts.length % items.length : 0
++      return [...items.slice(offset), ...items.slice(0, offset)]
++    }
++    const oldThreads = [...state.openThreads].sort((left, right) => Number(linked(right.sourceIds)) - Number(linked(left.sourceIds)))
++    for (const note of oldThreads) {
++      payload.openThreads.push(note)
++      if (await measure(payload) > backgroundLimit) payload.openThreads.pop()
++    }
++    const oldFacts = rotate(state.observations).sort((left, right) => Number(linked(right.sourceIds)) - Number(linked(left.sourceIds)))
++    for (const note of oldFacts) {
++      payload.observations.push(note)
++      if (await measure(payload) > backgroundLimit) payload.observations.pop()
++    }
+     const relevant = unique([
+       ...payload.messages.flatMap(message => message.replyToMessageId ? [message.replyToMessageId] : []),
+       ...state.openThreads.flatMap(note => note.sourceIds),
+@@ -571,14 +667,6 @@ export async function generateInsight(input: InsightGenerationInput, deps: Insig
+       }
+     }
+     payload.relatedMessages.sort((left, right) => ordinal.get(left.id)! - ordinal.get(right.id)!)
+-    for (const note of state.openThreads.slice(-12)) {
+-      payload.openThreads.push(note)
+-      if (await measure(payload) > backgroundLimit) payload.openThreads.pop()
+-    }
+-    for (const note of state.observations.slice(-12)) {
+-      payload.observations.push(note)
+-      if (await measure(payload) > backgroundLimit) payload.observations.pop()
+-    }
+     let reading: ReadResult
+     try {
+       reading = parseReading(await call('reading', payload), [...payload.messages, ...payload.relatedMessages], payload.knownCandidates, payload.openThreads)
+@@ -606,10 +694,21 @@ export async function generateInsight(input: InsightGenerationInput, deps: Insig
+     const resolved = new Set(reading.resolvedThreadSourceIds)
+     const visibleThreads = new Set(payload.openThreads)
+     const rawIds = new Set([...payload.messages, ...payload.relatedMessages].map(message => message.id))
++    const closableBySource = new Map<string, InsightNote[]>()
++    for (const note of state.openThreads) {
++      for (const id of new Set(note.sourceIds)) {
++        if (resolved.has(id) && (rawIds.has(id) || visibleThreads.has(note))) {
++          closableBySource.set(id, [...closableBySource.get(id) ?? [], note])
++        }
++      }
++    }
++    // 一个来源可能提及多个问题；编号不能唯一定位时留待事实协调。
++    const closedThreads = new Set([...closableBySource.values()].filter(notes => notes.length === 1).flat())
++    const unresolved = state.openThreads.filter(note => !closedThreads.has(note))
+     state.openThreads = appendNotes(
+-      state.openThreads.filter(note => !note.sourceIds.some(id => resolved.has(id) && (rawIds.has(id) || visibleThreads.has(note)))),
++      [...unresolved.filter(note => !visibleThreads.has(note)), ...unresolved.filter(note => visibleThreads.has(note))],
+       reading.openThreads,
+-    ).slice(-maximumNotesPerBatch)
++    )
+     applyCandidateUpdates(state, reading.candidateUpdates, byId, covered)
+     queueCandidates(state, reading.candidates, byId, covered)
+     state.cursor = layout.to
+@@ -618,67 +717,113 @@ export async function generateInsight(input: InsightGenerationInput, deps: Insig
+     await save()
+   }
+ 
+-  if (!state.navigation) {
++  if (state.navigation?.factsVersion !== 2) {
++    // 旧导航可能已丢失来源；迁移从保存的逐批事实重建，沿用已用预算。
++    const facts: InsightMemoryFact[] = [
++      ...state.observations.map(note => ({ ...note, kind: 'fact' as const })),
++      ...state.openThreads.map(note => ({ ...note, kind: 'unknown' as const })),
++    ]
++    const sourceOrder = new Map(snapshot.sources.map((source, index) => [source.messageId, index]))
++    const firstSource = (fact: InsightMemoryFact) => Math.min(...fact.sourceIds.map(id => sourceOrder.get(id) ?? Infinity))
++    // 让同源事实与未决事项有机会在同一有限窗口内协调。
++    facts.sort((left, right) => firstSource(left) - firstSource(right)
++      || (left.kind === right.kind ? 0 : left.kind === 'fact' ? -1 : 1))
+     state.navigation = {
+-      nodes: state.observations.map(note => ({ ...note, children: [] })),
+-      roots: state.observations.map((_note, index) => index), cursor: 0, nextRoots: [], repairs: 0,
++      nodes: facts.map(fact => ({ text: fact.text, sourceIds: fact.sourceIds, children: [], facts: [fact] })),
++      roots: facts.map((_note, index) => index), cursor: 0, nextRoots: [], repairs: state.navigation?.repairs ?? 0, factsVersion: 2,
++      reconciled: !state.openThreads.length || !state.observations.length,
++    }
++    for (const check of state.checks) {
++      check.pendingNavigation = null
++      check.navigationRequests = []
+     }
+     await save()
+   }
+   const navigation = state.navigation
++  const writingFactsPayload = (facts: readonly InsightMemoryFact[], repair = false) => {
++    return {
++      stage: 'writing', timezone: snapshot.timezone, ...factNotes(facts),
++      checks: state.checks.map(({ id, state: status, finding, observation }) => ({
++        id, state: status, finding, ...(finding ? {} : { observation }),
++      })), ...(repair ? { repair: true } : {}),
++    }
++  }
++  const writingPayload = (roots: number[], repair = false) => writingFactsPayload(navigationFacts(navigation, roots), repair)
++  const writingFactsSize = async (facts: readonly InsightMemoryFact[]) => {
++    const budget = await requestCapacity('writing')
++    return { tokens: (await count(runtimeInput('writing', writingFactsPayload(facts, state.writingRepairs > 0), budget.reservedOutput))).tokens,
++      available: budget.availableTokens }
++  }
++  const writingSize = (roots: number[]) => writingFactsSize(navigationFacts(navigation, roots))
+   const navigationSize = (roots: number[]) => Buffer.byteLength(JSON.stringify(navigationItems(navigation, roots)), 'utf8')
+   const navigationBudget = Math.floor(computeInsightInputBudget({
+     contextWindow: capacity.contextWindow, maxInputTokens: capacity.maxInputTokens,
+     reservedOutput: ordinaryOutput, occupiedInput: 0, margin: capacity.margin,
+   }) / 3)
+-  while (navigationSize(navigation.roots) > navigationBudget) {
+-    if (navigation.cursor === navigation.roots.length) {
+-      if (navigationSize(navigation.nextRoots) >= navigationSize(navigation.roots)) throw insightCapacityError()
+-      navigation.roots = navigation.nextRoots
+-      navigation.nextRoots = []
+-      navigation.cursor = 0
+-      await save()
+-      continue
+-    }
+-    const budget = await requestCapacity('reading')
+-    const children: number[] = []
+-    const payload = {
+-      stage: 'reading', operation: 'compress-navigation', nodes: [] as VisibleNavigation[],
+-      ...(navigation.repairs ? { repair: true } : {}),
+-    }
+-    for (const child of navigation.roots.slice(navigation.cursor)) {
+-      payload.nodes.push(...navigationItems(navigation, [child]))
+-      if ((await count(runtimeInput('reading', payload, budget.reservedOutput))).tokens > budget.availableTokens) {
+-        payload.nodes.pop()
+-        break
++  async function compactMemory() {
++    while (true) {
++      if (navigation.cursor === navigation.roots.length) {
++        if (!navigation.roots.length) break
++        const before = await writingSize(navigation.roots)
++        const after = await writingSize(navigation.nextRoots)
++        const nextFacts = navigationFacts(navigation, navigation.nextRoots)
++        const reconciled = navigation.nextRoots.length === 1 || !nextFacts.some(fact => fact.kind === 'unknown')
++          || !nextFacts.some(fact => fact.kind === 'fact')
++        if ((navigation.reconciled || !reconciled) && after.tokens >= before.tokens
++          && navigationSize(navigation.nextRoots) >= navigationSize(navigation.roots)) throw insightCapacityError()
++        navigation.roots = navigation.nextRoots
++        navigation.nextRoots = []
++        navigation.cursor = 0
++        navigation.reconciled = reconciled
++        await save()
+       }
+-      children.push(child)
+-    }
+-    if (!children.length) throw insightCapacityError()
+-    const isTrailingShortNote = children.length === 1 && navigation.roots.length > 1
+-      && navigation.cursor === navigation.roots.length - 1 && navigationSize(children) < navigationBudget
+-    if (isTrailingShortNote) {
+-      navigation.nextRoots.push(children[0])
+-    } else {
+-      try {
+-        const body = outputObject(await call('reading', payload))
+-        const allowed = new Set(payload.nodes.flatMap(note => note.sourceIds))
+-        const summary = { text: string(body.text, 720), sourceIds: sourceIds(body.sourceIds, allowed), children }
+-        navigation.nextRoots.push(navigation.nodes.length)
+-        navigation.nodes.push(summary)
+-      } catch (error) {
+-        if (mayRepair(error, navigation.repairs) && remainingInsightBudget(state).calls > 1) {
+-          navigation.repairs++
+-          await save()
+-          continue
++      const writing = await writingSize(navigation.roots)
++      if (navigation.cursor === 0 && navigation.reconciled && writing.tokens <= writing.available
++        && navigationSize(navigation.roots) <= navigationBudget) break
++      const budget = await requestCapacity('reading')
++      const children: number[] = []
++      let payload = compressionPayload([], navigation.repairs > 0)
++      for (const child of navigation.roots.slice(navigation.cursor)) {
++        const candidate = compressionPayload(compressionNodes(navigation, [...children, child]), navigation.repairs > 0)
++        if ((await count(runtimeInput('reading', candidate, budget.reservedOutput))).tokens > budget.availableTokens) break
++        children.push(child)
++        payload = candidate
++      }
++      if (!children.length) throw insightCapacityError()
++      const isTrailingShortNote = children.length === 1 && navigation.roots.length > 1
++        && navigation.cursor === navigation.roots.length - 1 && navigationSize(children) < navigationBudget
++      if (isTrailingShortNote) {
++        navigation.nextRoots.push(children[0])
++      } else {
++        try {
++          const body = outputObject(await call('reading', payload))
++          const facts = parseInsightCompressedFacts(body.facts, compressionNodes(navigation, children))
++          if (factBytes(facts) >= factBytes(navigationFacts(navigation, children))) {
++            const combined = [...navigationFacts(navigation, navigation.nextRoots), ...facts,
++              ...navigationFacts(navigation, navigation.roots.slice(navigation.cursor + children.length))]
++            const reconciled = navigation.reconciled || (navigation.cursor === 0 && children.length === navigation.roots.length)
++              || !combined.some(fact => fact.kind === 'unknown') || !combined.some(fact => fact.kind === 'fact')
++            const writing = await writingFactsSize(combined)
++            if (!reconciled || writing.tokens > writing.available) return invalidOutput()
++          }
++          const summary = { text: string(body.text, 720), sourceIds: unique(facts.flatMap(fact => fact.sourceIds)), children, facts }
++          navigation.nextRoots.push(navigation.nodes.length)
++          navigation.nodes.push(summary)
++        } catch (error) {
++          if (mayRepair(error, navigation.repairs) && remainingInsightBudget(state).calls > 1) {
++            navigation.repairs++
++            await save()
++            continue
++          }
++          throw error
+         }
+-        throw error
+       }
++      navigation.cursor += children.length
++      navigation.repairs = 0
++      await save()
+     }
+-    navigation.cursor += children.length
+-    navigation.repairs = 0
+-    await save()
+   }
++  await compactMemory()
+   const observations = navigationItems(navigation, navigation.roots)
+ 
+   if (state.stage === 'reading') {
+@@ -791,21 +936,10 @@ export async function generateInsight(input: InsightGenerationInput, deps: Insig
+   state.stage = 'writing'
+   await save()
+   for (;;) {
+-    const budget = await requestCapacity('writing')
+-    const payload = {
+-      stage: 'writing', timezone: snapshot.timezone, observations, openThreads: [] as InsightNote[],
+-      checks: state.checks.map(({ id, state: status, finding, observation }) => ({
+-        id, state: status, finding, ...(finding ? {} : { observation }),
+-      })),
+-      ...(state.writingRepairs ? { repair: true } : {}),
+-    }
+-    const measure = async () => (await count(runtimeInput('writing', payload, budget.reservedOutput))).tokens
++    await compactMemory()
++    const payload = writingPayload(navigation.roots, state.writingRepairs > 0)
+     const checkedEvidence = new Set(state.checks.flatMap(check => check.finding
+       ? [...check.finding.supportingIds, ...check.finding.counterexampleIds] : []))
+-    for (const note of state.openThreads.slice(-maximumNotesPerBatch)) {
+-      payload.openThreads.push(note)
+-      if (await measure() > budget.availableTokens) payload.openThreads.pop()
+-    }
+     const writtenNotes = [...payload.observations, ...payload.openThreads]
+     const writtenEvidence = new Set([...checkedEvidence, ...writtenNotes.flatMap(note => note.sourceIds)])
+     const response = await call('writing', payload)
+diff --git a/scripts/insight-quality.mjs b/scripts/insight-quality.mjs
+index 8d4c249..eb32b0f 100644
+--- a/scripts/insight-quality.mjs
++++ b/scripts/insight-quality.mjs
+@@ -5,12 +5,13 @@ import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
+ import { dirname, join, resolve } from 'node:path'
+ import { fileURLToPath } from 'node:url'
+ import { tmpdir } from 'node:os'
+-import { comparisonProfile } from '../tests/quality/insight-comparison-profile.mjs'
++import { comparisonArguments, readingResumeOrdinal } from '../tests/quality/insight-comparison-profile.mjs'
++import { ensureComparisonRunProfile, readComparisonEngine } from '../tests/quality/insight-comparison-run.mjs'
+ 
+ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+-const args = process.argv.slice(2)
++const suppliedArgs = process.argv.slice(2)
++const { args, profile: comparison } = comparisonArguments(suppliedArgs)
+ const verification = args[0] === '--verification'
+-const comparison = comparisonProfile(args[0])
+ const output = join(root, 'release', 'conversation-insights-20261115', comparison?.outputDirectory ?? (verification ? 'verification' : 'quality'))
+ const runtime = join(dirname(output), comparison?.runtimeDirectory ?? '.quality-runtime')
+ const validCases = ['later-counterexample', 'distant-reply']
+@@ -21,23 +22,27 @@ const verificationRun = verification && (args.length === 3 || args.length === 4
+   && /^[a-z][a-z0-9-]{0,60}$/.test(args[1]) && verificationVariants.includes(args[2])
+ const regression = args.length === 3 && args[0] === 'distant-reply' && args[1] === 'insight' && ['--regression', '--writing-regression'].includes(args[2])
+ const comparisonDryRun = comparison && args.length === 2 && args[1] === '--dry-run'
+-const resumeReading = args.length === 4 && args[0] === '--long-comparison' && args[2] === 'reading' && args[3] === '--resume-reading'
++const resumeReading = args.length === 4 && args[0] === '--long-comparison' && args[2] === 'reading' && readingResumeOrdinal(args[3]) > 0
+ const comparisonRun = comparison && (args.length === 3 || resumeReading) && Object.hasOwn(comparison.cases, args[1]) && comparison.phases.includes(args[2])
+ if (!dryRun && !verificationRun && !comparisonDryRun && !comparisonRun && !regression
+   && (args.length !== 2 || !validCases.includes(args[0]) || !validVariants.includes(args[1]))) {
+-  throw new Error('Usage: node scripts/insight-quality.mjs --dry-run | <later-counterexample|distant-reply> <baseline|insight> | distant-reply insight [--regression|--writing-regression] | --verification <case> <probe-original|probe-current|flow-original|flow-current> [--run=1|--run=2] | --verification --dry-run | --comparison <shared-planning|conditional-permission> <reading|adaptive|direct|full> | --comparison --dry-run | --long-comparison <shared-workload|conditional-reschedule> <reading|adaptive|direct|direct-rich> | --long-comparison <case> reading --resume-reading | --long-comparison --dry-run')
++  throw new Error('用法: node scripts/insight-quality.mjs --dry-run | <later-counterexample|distant-reply> <baseline|insight> | distant-reply insight [--regression|--writing-regression] | --verification <case> <probe-original|probe-current|flow-original|flow-current> [--run=1|--run=2] | --verification --dry-run | --comparison <shared-planning|conditional-permission> <reading|adaptive|direct|full> | --comparison --dry-run | --long-comparison <shared-workload|conditional-reschedule> <reading|adaptive|direct|direct-rich> [[--engine-manifest=<release/path.json>] [--input-limit=<bytes>] [--task-call-limit=<1-50>] --run-id=<name>] | --long-comparison <case> reading <--resume-reading|--resume-reading=2> [[--engine-manifest=<release/path.json>] [--input-limit=<bytes>] [--task-call-limit=<1-50>] --run-id=<name>] | --long-comparison --dry-run [[--engine-manifest=<release/path.json>] [--input-limit=<bytes>] [--task-call-limit=<1-50>] --run-id=<name>]')
+ }
++const engine = comparison?.engineManifest ? readComparisonEngine(root, comparison.engineManifest) : undefined
+ if (comparisonDryRun) {
+   console.log(JSON.stringify({
+     state: 'planned', modelCalls: 0, phases: comparison.phases, totalRequestLimit: comparison.requestLimit,
+     syntheticPackingInputEstimateLimit: comparison.packingLimit, perRequestOutputLimit: comparison.outputLimit,
+-    ...(args[0] === '--long-comparison' ? { outputDirectory: comparison.outputDirectory, perTaskLimits: comparison.perTaskLimits } : {}),
++    ...(engine ? { engine } : {}),
++    ...(args[0] === '--long-comparison' ? { outputDirectory: comparison.outputDirectory, perTaskLimits: comparison.perTaskLimits,
++      ...(comparison.runId ? { runId: comparison.runId } : {}) } : {}),
+     cases: Object.entries(comparison.cases).map(([caseName, sample]) => ({
+       caseName, messageCount: sample.messages.length, scope: sample.scope, messageIds: sample.messages.map(message => message.id),
+     })),
+   }))
+   process.exit(0)
+ }
++if (comparison) ensureComparisonRunProfile(output, comparison, engine)
+ if (!process.env.WHOMI_QUALITY_DB || !process.env.WHOMI_QUALITY_PROVIDER_ID || !process.env.WHOMI_QUALITY_MODEL_ID) {
+   throw new Error('Set WHOMI_QUALITY_DB, WHOMI_QUALITY_PROVIDER_ID and WHOMI_QUALITY_MODEL_ID to the approved configuration.')
+ }
+@@ -68,7 +73,7 @@ try {
+   const env = { ...process.env, WHOMI_QUALITY_OUTPUT: output, WHOMI_QUALITY_SCRATCH: scratch }
+   delete env.ELECTRON_RUN_AS_NODE
+   const code = await new Promise((resolve, reject) => {
+-    const child = spawn(electron, [join(runtime, 'insight-quality.mjs'), ...args], { cwd: root, env, stdio: 'inherit', windowsHide: true })
++    const child = spawn(electron, [join(runtime, 'insight-quality.mjs'), ...suppliedArgs], { cwd: root, env, stdio: 'inherit', windowsHide: true })
+     child.once('error', reject)
+     child.once('exit', code => resolve(code ?? 1))
+   })
+diff --git a/tests/backend/insight-generation.test.ts b/tests/backend/insight-generation.test.ts
+index 6bfcc46..0f80a2f 100644
+--- a/tests/backend/insight-generation.test.ts
++++ b/tests/backend/insight-generation.test.ts
+@@ -2,8 +2,11 @@ import { expect, test } from 'vitest'
+ import type { AiModel } from '../../src/shared/ai-contract'
+ import type { InsightSnapshot, InsightSourceMessage } from '../../src/shared/conversation-insights'
+ import { defaultInsightPrompts } from '../../electron/data/ai/insight-prompts'
+-import type { InsightCheckpoint } from '../../electron/main/insight-checkpoint'
++import { createInsightCheckpoint, type InsightCheckpoint } from '../../electron/main/insight-checkpoint'
+ import { generateInsight, type InsightGenerationDeps } from '../../electron/main/insight-generation'
++import compressionTargetFixture from './fixtures/insight-compression-target.json'
++import compressionCoverageFixture from './fixtures/insight-compression-coverage.json'
++import compressionNetProgressFixture from './fixtures/insight-compression-net-progress.json'
+ 
+ const model: AiModel = {
+   id: 'fixture', label: 'Fixture', model: 'fixture', baseUrl: 'http://localhost',
+@@ -32,8 +35,578 @@ const paddedSource = (id: string, isSelf: boolean, text: string, replyToMessageI
+ const result = (payload: unknown, usage: { inputTokens?: number; outputTokens?: number } = { inputTokens: 18, outputTokens: 10 }) => ({
+   text: JSON.stringify(payload), usage, checkpoint: '',
+ })
++const retainEntries = (payload: { nodes: { entries: { entryId: string; kind: string; text: string }[] }[] }) => ({
++  text: '合成事实和未决事项。', facts: payload.nodes.flatMap(node => node.entries)
++    .map(entry => ({ kind: entry.kind, text: entry.text, entryIds: [entry.entryId] })),
++})
+ const limits = { maxChecks: 2, maxRoundsPerCheck: 2, maxCalls: 8, maxInputTokens: 50000, maxOutputTokens: 8000, maxElapsedMs: 60000 }
+ 
++const preservedMemory = {
++  text: '筹备分工与退款条件。', sourceIds: ['1'],
++  facts: [
++    { kind: 'fact', text: '本次筹备使本人疲惫，后文撤回每次由自己安排的概括。', entryIds: ['0:0', '1:0'] },
++    { kind: 'fact', text: '余额一年有效、无最低消费，对方已接受。', entryIds: ['2:0', '3:0'] },
++  ],
++}
++
++function memoryFixture(compress: unknown = preservedMemory, onWriting?: (payload: Record<string, any>) => void) {
++  const messages = [source('1', true, '每次都由我安排，这次很累。'), source('2', true, '上个月是你安排，每次不准确。'),
++    source('3', false, '余额一年有效且无最低消费，我接受。'), source('4', true, '余额条件确认了吗？')]
++  const fixture = setup(messages, async request => {
++    const payload = JSON.parse(request.prompt)
++    if (payload.operation === 'compress-navigation') return result(compress)
++    expect(payload.stage).toBe('writing')
++    onWriting?.(payload)
++    return result(noConclusion)
++  })
++  const checkpoint = createInsightCheckpoint('7', model, defaultInsightPrompts, limits)
++  checkpoint.cursor = { messageIndex: 4, textOffset: 0 }
++  checkpoint.coveredMessageIds = ['1', '2', '3', '4']
++  checkpoint.observations = [
++    { text: '本人觉得每次均由自己安排且疲惫。' + '事'.repeat(350), sourceIds: ['1'] },
++    { text: '本人后来承认上次由对方安排，撤回每次的概括。' + '事'.repeat(350), sourceIds: ['2'] },
++    { text: '对方明确接受一年有效且无最低消费的余额。' + '事'.repeat(350), sourceIds: ['3'] },
++  ]
++  checkpoint.openThreads = [{ text: '余额有效期和使用限制是否确认？', sourceIds: ['4'] }]
++  fixture.deps.countInput = async request => ({ method: 'tokenizer', tokens:
++    JSON.parse(request.prompt).operation === 'compress-navigation' ? 100 : 100 + Buffer.byteLength(request.prompt) })
++  return { ...fixture, input: { ...fixture.input, checkpoint } }
++}
++
++test('compaction keeps separate facts and all inherited sources while retiring an answered unknown before writing', async () => {
++  const { input, deps, state } = memoryFixture(preservedMemory, payload => {
++    expect(payload.observations).toEqual([
++      { text: preservedMemory.facts[0].text, sourceIds: ['1', '2'] },
++      { text: preservedMemory.facts[1].text, sourceIds: ['3', '4'] },
++    ])
++    expect(payload.openThreads).toEqual([])
++  })
++  await generateInsight(input, deps)
++  expect(state.checkpoint?.observations[1].sourceIds).toEqual(['2'])
++  expect(state.checkpoint?.checks).toEqual([])
++})
++
++test('compaction can separate an unknown from a mixed fact while retaining its known part and source', async () => {
++  const response = { ...preservedMemory, facts: [...preservedMemory.facts,
++    { kind: 'unknown', text: '下次由谁安排尚未确认。', entryIds: ['0:0'] },
++  ] }
++  const { input, deps } = memoryFixture(response, payload => {
++    expect(payload.observations).toContainEqual({ text: preservedMemory.facts[0].text, sourceIds: ['1', '2'] })
++    expect(payload.openThreads).toEqual([{ text: '下次由谁安排尚未确认。', sourceIds: ['1'] }])
++  })
++  input.checkpoint.observations[0].text = '本人说安排让自己疲惫，但未明确下次由谁安排。' + '事'.repeat(350)
++  await generateInsight(input, deps)
++})
++
++test('compaction can separate known context from an unknown note while preserving that note as unresolved', async () => {
++  const response = { ...preservedMemory, facts: [
++    preservedMemory.facts[0], { kind: 'fact', text: '余额条件已接受。', entryIds: ['2:0'] },
++    { kind: 'fact', text: '投影线已经测试正常。', entryIds: ['3:0'] },
++    { kind: 'unknown', text: '是否已将投影线带到现场尚未确认。', entryIds: ['3:0'] },
++  ] }
++  const { input, deps } = memoryFixture(response, payload => {
++    expect(payload.observations).toContainEqual({ text: '投影线已经测试正常。', sourceIds: ['4'] })
++    expect(payload.openThreads).toEqual([{ text: '是否已将投影线带到现场尚未确认。', sourceIds: ['4'] }])
++  })
++  input.checkpoint.openThreads = [{ text: '计划携带已测试正常的投影线，是否带到现场仍未知。', sourceIds: ['4'] }]
++  await generateInsight(input, deps)
++})
++
++test('splitting known context from several unknown notes preserves every unresolved input', async () => {
++  const response = { ...preservedMemory, facts: [
++    preservedMemory.facts[0], { kind: 'fact', text: '余额条件已接受。', entryIds: ['2:0'] },
++    { kind: 'fact', text: '投影线已测试，活动室已预订。', entryIds: ['3:0', '4:0'] },
++    { kind: 'unknown', text: '投影线是否带到现场未知。', entryIds: ['3:0'] },
++  ] }
++  const { input, deps } = memoryFixture(response)
++  input.checkpoint.openThreads.push({ text: '活动室已预订，但篇名未知。', sourceIds: ['3'] })
++  await expect(generateInsight(input, deps)).rejects.toMatchObject({ code: 'INVALID_EVIDENCE' })
++})
++
++test('compression sends only fact entry identities and text while inheriting sources locally for writing', async () => {
++  const { input, deps } = memoryFixture(preservedMemory, payload => {
++    expect(payload.observations[0].sourceIds).toEqual(['1', '2'])
++    expect(payload.observations[1].sourceIds).toEqual(['3', '4'])
++  })
++  const priorRun = deps.run
++  deps.run = async (request, context) => {
++    const payload = JSON.parse(request.prompt)
++    if (payload.operation === 'compress-navigation') {
++      for (const entry of payload.nodes.flatMap((node: { entries: object[] }) => node.entries)) {
++        expect(entry).not.toHaveProperty('sourceIds')
++      }
++      expect(payload.targetFactTextLength).toBeGreaterThanOrEqual(160)
++      expect(payload.targetFactTextLength).toBeLessThan(1000)
++      expect(payload.maxFactCount).toBe(8)
++    }
++    return priorRun(request, context)
++  }
++  await generateInsight(input, deps)
++})
++
++test('verbatim compression stops after one repair before replacing any original facts', async () => {
++  const { input, deps, state } = memoryFixture()
++  let attempts = 0
++  deps.run = async request => {
++    const payload = JSON.parse(request.prompt)
++    expect(payload.operation).toBe('compress-navigation')
++    attempts++
++    return result({ text: '导航缩短。', facts: payload.nodes.flatMap((node: { entries: { entryId: string; kind: string; text: string }[] }) => node.entries)
++      .map((entry: { entryId: string; kind: string; text: string }) => ({ kind: entry.kind, text: entry.text, entryIds: [entry.entryId] })) })
++  }
++  await expect(generateInsight(input, deps)).rejects.toMatchObject({ code: 'INVALID_INSIGHT_OUTPUT' })
++  expect(attempts).toBe(2)
++  expect(state.checkpoint?.navigation?.cursor).toBe(0)
++  expect(state.checkpoint?.navigation?.nextRoots).toEqual([])
++  expect(state.checkpoint?.navigation?.nodes).toHaveLength(4)
++})
++
++test('a shorter navigation cannot count as progress when the complete writing facts still exceed capacity', async () => {
++  const { input, deps, state } = memoryFixture()
++  input.checkpoint.observations = [{ text: '已'.repeat(160), sourceIds: ['1'] }]
++  input.checkpoint.openThreads = []
++  deps.countInput = async request => ({ method: 'tokenizer', tokens: JSON.parse(request.prompt).stage === 'writing' ? 4000 : 100 })
++  deps.run = async request => {
++    const payload = JSON.parse(request.prompt)
++    expect(payload.operation).toBe('compress-navigation')
++    return result(retainEntries(payload))
++  }
++  await expect(generateInsight(input, deps)).rejects.toMatchObject({ code: 'INVALID_INSIGHT_OUTPUT' })
++  expect(state.checkpoint?.navigation?.nodes).toHaveLength(1)
++  expect(state.checkpoint?.navigation?.nextRoots).toEqual([])
++})
++
++test('a real 546-character compression remains valid above its 522-character target when writing memory shrinks by a quarter', async () => {
++  const entries = compressionTargetFixture.entries.map(entry => ({ ...entry, kind: entry.kind as 'fact' | 'unknown' }))
++  const ids = [...new Set(entries.flatMap(entry => entry.sourceIds))].sort((a, b) => Number(a) - Number(b))
++  const messages = ids.map(id => source(id, true, '合成试验来源 ' + id))
++  const { input, deps } = setup(messages, async request => {
++    const payload = JSON.parse(request.prompt)
++    if (payload.operation === 'compress-navigation') {
++      expect(payload.targetFactTextLength ?? payload.maxFactTextLength).toBe(522)
++      const sentEntries = payload.nodes.flatMap((node: { entries: { entryId: string; text: string }[] }) => node.entries)
++      const currentId = new Map(entries.map((entry, index) => [`${index}:0`,
++        sentEntries.find((sent: { text: string }) => sent.text === entry.text)!.entryId]))
++      return result({ ...compressionTargetFixture.response, facts: compressionTargetFixture.response.facts.map(fact => ({
++        ...fact, entryIds: fact.entryIds.map(id => currentId.get(id)),
++      })) })
++    }
++    expect(payload.observations).toContainEqual({ text: '对方已追问带孩子路线中的年龄。', sourceIds: ['106'] })
++    expect(payload.openThreads).toContainEqual({ text: '年龄及路线适宜性未明。', sourceIds: ['106'] })
++    expect(Buffer.byteLength(JSON.stringify({ observations: payload.observations, openThreads: payload.openThreads }))).toBe(2389)
++    return result(noConclusion)
++  })
++  deps.countInput = async request => ({ method: 'tokenizer', tokens:
++    JSON.parse(request.prompt).operation === 'compress-navigation' ? 100 : 100 + Buffer.byteLength(request.prompt) })
++  const checkpoint = createInsightCheckpoint('7', model, defaultInsightPrompts, limits)
++  checkpoint.cursor = { messageIndex: messages.length, textOffset: 0 }
++  checkpoint.coveredMessageIds = ids
++  checkpoint.openThreads = entries.map(({ text, sourceIds }) => ({ text, sourceIds }))
++  expect(compressionTargetFixture.response.facts.reduce((sum, fact) => sum + [...fact.text].length, 0)).toBe(546)
++  await generateInsight({ ...input, checkpoint }, deps)
++})
++
++test.each([{ length: 199, passes: true }, { length: 200, passes: false }, { length: 201, passes: false }])('compression requires strict writing-memory reduction unless the complete writer fits ($length characters)', async ({ length, passes }) => {
++  const { input, deps, state } = memoryFixture()
++  input.checkpoint.observations = [{ text: 'x'.repeat(200), sourceIds: ['1'] }]
++  input.checkpoint.openThreads = []
++  let attempts = 0
++  deps.countInput = async request => {
++    const payload = JSON.parse(request.prompt)
++    return { method: 'tokenizer', tokens: payload.stage === 'writing' && (payload.observations?.[0]?.text.length ?? 0) > 199 ? 3500 : 100 }
++  }
++  deps.run = async request => {
++    const payload = JSON.parse(request.prompt)
++    if (payload.operation !== 'compress-navigation') return result(noConclusion)
++    attempts++
++    return result({ text: '缩短导航。', facts: [{ kind: 'fact', text: 'x'.repeat(length), entryIds: [payload.nodes[0].entries[0].entryId] }] })
++  }
++  if (passes) {
++    await generateInsight(input, deps)
++    expect(attempts).toBe(1)
++  } else {
++    await expect(generateInsight(input, deps)).rejects.toMatchObject({ code: 'INVALID_INSIGHT_OUTPUT' })
++    expect(attempts).toBe(2)
++    expect(state.checkpoint?.navigation?.nodes).toHaveLength(1)
++    expect(state.checkpoint?.navigation).toMatchObject({ cursor: 0, nextRoots: [], repairs: 1 })
++  }
++})
++
++test('a real second-layer compression that saves 18.63 percent advances while other memory still exceeds writing capacity', async () => {
++  const entries = compressionNetProgressFixture.entries.map(entry => ({ ...entry, kind: entry.kind as 'fact' | 'unknown' }))
++  const ids = [...new Set(entries.flatMap(entry => entry.sourceIds))]
++  const messages = ids.map(id => source(id, true, '合成试验来源 ' + id))
++  const stop = new Error('fixture accepted net compression before processing remaining memory')
++  const { input, deps, state } = setup(messages, async request => {
++    expect(JSON.parse(request.prompt).operation).toBe('compress-navigation')
++    return result(compressionNetProgressFixture.response)
++  })
++  const checkpoint = createInsightCheckpoint('7', model, defaultInsightPrompts, limits)
++  checkpoint.cursor = { messageIndex: messages.length, textOffset: 0 }
++  checkpoint.coveredMessageIds = ids
++  const remaining = { kind: 'fact' as const, text: '后续材料。' + '事'.repeat(1000), sourceIds: [ids[0]] }
++  checkpoint.observations = [...entries, remaining].filter(entry => entry.kind === 'fact').map(({ text, sourceIds }) => ({ text, sourceIds }))
++  checkpoint.openThreads = entries.filter(entry => entry.kind === 'unknown').map(({ text, sourceIds }) => ({ text, sourceIds }))
++  checkpoint.navigation = { factsVersion: 2, reconciled: false, cursor: 0, nextRoots: [], repairs: 0, roots: [0, 1], nodes: [
++    { text: '先前压缩的事实。', sourceIds: ids, children: [], facts: entries },
++    { text: remaining.text, sourceIds: remaining.sourceIds, children: [], facts: [remaining] },
++  ] }
++  deps.countInput = async request => {
++    const payload = JSON.parse(request.prompt)
++    return { method: 'tokenizer', tokens: payload.operation === 'compress-navigation'
++      ? payload.nodes.length <= 1 ? 100 : 3500 : 100 + Buffer.byteLength(request.prompt) }
++  }
++  const priorSave = deps.saveCheckpoint
++  deps.saveCheckpoint = async value => {
++    await priorSave(value)
++    if (value.navigation?.cursor === 1) throw stop
++  }
++  await expect(generateInsight({ ...input, checkpoint }, deps)).rejects.toBe(stop)
++  expect(state.checkpoint?.callsReserved).toBe(1)
++  const retained = state.checkpoint!.navigation!.nodes[2].facts!
++  const bytes = (facts: typeof retained) => Buffer.byteLength(JSON.stringify({
++    observations: facts.filter(fact => fact.kind === 'fact').map(({ text, sourceIds }) => ({ text, sourceIds })),
++    openThreads: facts.filter(fact => fact.kind === 'unknown').map(({ text, sourceIds }) => ({ text, sourceIds })),
++  }))
++  expect(bytes(entries)).toBe(2694)
++  expect(bytes(retained)).toBe(2192)
++  expect(new Set(retained.flatMap(fact => fact.sourceIds))).toEqual(new Set(ids))
++  expect(state.checkpoint?.navigation?.nodes[0].facts).toEqual(entries)
++})
++
++test('repeated one-byte compression progress still stops at the shared call budget', async () => {
++  const { input, deps, state } = memoryFixture()
++  input.checkpoint.observations = [{ text: 'x'.repeat(1000), sourceIds: ['1'] }]
++  input.checkpoint.openThreads = []
++  input.checkpoint.limits = { ...input.checkpoint.limits, maxCalls: 4 }
++  let calls = 0
++  deps.countInput = async request => {
++    const payload = JSON.parse(request.prompt)
++    return { method: 'tokenizer', tokens: payload.stage === 'writing'
++      ? 2500 + (payload.observations?.[0]?.text.length ?? 0) : 100 }
++  }
++  deps.run = async request => {
++    const payload = JSON.parse(request.prompt)
++    expect(payload.operation).toBe('compress-navigation')
++    calls++
++    const entry = payload.nodes[0].entries[0]
++    return result({ text: '逐字精简。', facts: [{ kind: 'fact', text: entry.text.slice(0, -1), entryIds: [entry.entryId] }] })
++  }
++  await expect(generateInsight(input, deps)).rejects.toMatchObject({ code: 'INSIGHT_BUDGET_EXHAUSTED' })
++  expect(calls).toBe(3)
++  expect(state.checkpoint?.callsReserved).toBe(3)
++  expect(state.checkpoint?.observations).toEqual(input.checkpoint.observations)
++})
++
++test('a jointly reconciled short memory can retain its wording when the complete writer already fits', async () => {
++  const { input, deps } = memoryFixture()
++  input.checkpoint.observations = [{ text: 'x'.repeat(200), sourceIds: ['1'] }]
++  input.checkpoint.openThreads = [{ text: '后续仍未确认。', sourceIds: ['2'] }]
++  deps.countInput = async () => ({ method: 'tokenizer', tokens: 100 })
++  deps.run = async request => {
++    const payload = JSON.parse(request.prompt)
++    if (payload.operation === 'compress-navigation') return result(retainEntries(payload))
++    expect(payload.observations[0]).toEqual(input.checkpoint.observations[0])
++    expect(payload.openThreads[0]).toEqual(input.checkpoint.openThreads[0])
++    return result(noConclusion)
++  }
++  await generateInsight(input, deps)
++})
++
++test('resuming a rejected compression retains its single repair allowance and spent calls', async () => {
++  const { input, deps, state } = memoryFixture()
++  deps.run = async request => result(retainEntries(JSON.parse(request.prompt)))
++  const priorSave = deps.saveCheckpoint
++  let paused = false
++  deps.saveCheckpoint = async value => {
++    await priorSave(value)
++    if (!paused && value.navigation?.repairs === 1) {
++      paused = true
++      throw new Error('fixture paused after compression repair was reserved')
++    }
++  }
++  await expect(generateInsight(input, deps)).rejects.toThrow('fixture paused after compression repair was reserved')
++  expect(state.checkpoint?.callsReserved).toBe(1)
++  await expect(generateInsight({ ...input, checkpoint: state.checkpoint }, deps)).rejects.toMatchObject({ code: 'INVALID_INSIGHT_OUTPUT' })
++  expect(state.checkpoint?.callsReserved).toBe(2)
++  expect(state.checkpoint?.navigation).toMatchObject({ repairs: 1, cursor: 0, nextRoots: [] })
++})
++
++test.each([false, true])('writing recompresses facts after a larger checked finding without repeating checking (resume at writing: %s)', async resumeAtWriting => {
++  const messages = [source('1', true, '本次活动我已经安排好了。')]
++  const original = { text: '本人已经安排本次活动。' + '细'.repeat(400), sourceIds: ['1'] }
++  const finding = { revisedObservation: '已核实本次安排，历史分工仍未知。' + '补'.repeat(500),
++    supportingIds: ['1'], counterexampleIds: [], alternativeExplanations: [], limitations: [] }
++  const stages: string[] = []
++  const { input, deps, state } = setup(messages, async request => {
++    const payload = JSON.parse(request.prompt)
++    stages.push(payload.operation ?? payload.stage)
++    if (payload.stage === 'checking') return result({ action: 'finish', checkId: '1', ...finding })
++    if (payload.operation === 'compress-navigation') return result({ text: '本次安排。', facts: [
++      { kind: 'fact', text: '本人已安排本次活动。', entryIds: ['0:0'] },
++    ] })
++    expect(payload.checks[0].finding).toEqual(finding)
++    expect(payload.observations).toEqual([{ text: '本人已安排本次活动。', sourceIds: ['1'] }])
++    return result({ ...noConclusion, aboutYou: [{ content: [{ text: '你已安排这次活动。', citationId: 'arrangement' }] }],
++      citations: [{ id: 'arrangement', fragments: [{ messageIds: ['1'] }] }] })
++  })
++  const checkpoint = createInsightCheckpoint('7', model, defaultInsightPrompts, limits)
++  checkpoint.stage = 'checking'
++  checkpoint.cursor = { messageIndex: 1, textOffset: 0 }
++  checkpoint.coveredMessageIds = ['1']
++  checkpoint.observations = [original]
++  checkpoint.navigation = { factsVersion: 2, reconciled: true, cursor: 0, nextRoots: [], repairs: 0, roots: [0],
++    nodes: [{ text: '安排细节。', sourceIds: ['1'], children: [], facts: [{ kind: 'fact', ...original }] }] }
++  checkpoint.checks = [{ id: '1', observation: '核实安排', supportingIds: ['1'], state: 'pending', rounds: 0,
++    seenEvidenceIds: [], evidenceNotes: [], navigationRequests: [], pendingNavigation: null, pendingIds: ['1'],
++    pendingCursor: { messageIndex: 0, textOffset: 0 }, pendingThrough: null, shrinkDepth: 0, repairs: 0,
++    purpose: '核实安排', finding: null }]
++  let paused = false
++  const priorSave = deps.saveCheckpoint
++  deps.saveCheckpoint = async value => {
++    await priorSave(value)
++    if (resumeAtWriting && !paused && value.stage === 'writing') {
++      paused = true
++      throw new Error('fixture paused before writing')
++    }
++  }
++  if (resumeAtWriting) {
++    await expect(generateInsight({ ...input, checkpoint }, deps)).rejects.toThrow('fixture paused before writing')
++    expect(state.checkpoint?.stage).toBe('writing')
++    await generateInsight({ ...input, checkpoint: state.checkpoint }, deps)
++  } else {
++    await generateInsight({ ...input, checkpoint }, deps)
++  }
++  expect(stages).toEqual(['checking', 'compress-navigation', 'writing'])
++  expect(state.checkpoint?.checks[0]).toMatchObject({ rounds: 1, state: 'finished', finding })
++  expect(state.checkpoint?.observations).toEqual([original])
++})
++
++test.each([
++  { name: 'omits a fact', code: 'INVALID_INSIGHT_OUTPUT', calls: 2, facts: [preservedMemory.facts[1]] },
++  { name: 'invents an input entry', code: 'INVALID_EVIDENCE', calls: 1, facts: [...preservedMemory.facts, { kind: 'fact', text: '伪造', entryIds: ['99:0'] }] },
++  { name: 'promotes an unknown without known evidence', code: 'INVALID_EVIDENCE', calls: 1, facts: [
++    preservedMemory.facts[0], { kind: 'fact', text: '已知规则。', entryIds: ['2:0'] },
++    { kind: 'fact', text: '已确认。', entryIds: ['3:0'] },
++  ] },
++  { name: 'downgrades known facts to unknown', code: 'INVALID_INSIGHT_OUTPUT', calls: 2, facts: [
++    { kind: 'unknown', text: '原文是否说过每次？', entryIds: ['0:0', '1:0'] }, preservedMemory.facts[1],
++  ] },
++  { name: 'omits a fact and invents an input entry', code: 'INVALID_EVIDENCE', calls: 1,
++    facts: [{ kind: 'fact', text: '伪造', entryIds: ['99:0'] }] },
++  { name: 'omits facts and promotes an unknown', code: 'INVALID_EVIDENCE', calls: 1,
++    facts: [{ kind: 'fact', text: '已确认。', entryIds: ['3:0'] }] },
++  { name: 'downgrades a known fact and promotes an unknown', code: 'INVALID_EVIDENCE', calls: 1, facts: [
++    { kind: 'unknown', text: '原文是否说过每次？', entryIds: ['0:0', '1:0'] },
++    { kind: 'fact', text: '已确认。', entryIds: ['3:0'] },
++  ] },
++])('compaction rejects a response that $name', async ({ facts, code, calls }) => {
++  const { input, deps, state } = memoryFixture({ ...preservedMemory, facts })
++  await expect(generateInsight(input, deps)).rejects.toMatchObject({ code })
++  expect(state.checkpoint?.callsReserved).toBe(calls)
++  expect(state.checkpoint?.navigation?.nextRoots).toEqual([])
++  expect(state.checkpoint?.navigation?.cursor).toBe(0)
++})
++
++test.each([true, false])('real mixed known notes mislabeled unknown receive one repair without accepting the first response (repair succeeds: %s)', async succeeds => {
++  const entries = compressionCoverageFixture.entries.map(entry => ({ ...entry, kind: entry.kind as 'fact' | 'unknown' }))
++  const ids = [...new Set(entries.flatMap(entry => entry.sourceIds))].sort((a, b) => Number(a) - Number(b))
++  const messages = ids.map(id => source(id, true, '合成试验来源 ' + id))
++  const response = compressionCoverageFixture.response
++  const corrected = { ...response, facts: [...response.facts,
++    { kind: 'fact', text: '新增一人后，本人已改两排桌并通知管理员不用原圆桌；当时仍在等回复。', entryIds: ['8:0'] },
++    { kind: 'fact', text: '10月1日对方拟下课后取修好台灯，店主希望傍晚前到；本人提醒旧开关需长按，对方答应测试并记下。', entryIds: ['11:0'] },
++  ] }
++  let compressions = 0
++  const { input, deps, state } = setup(messages, async request => {
++    const payload = JSON.parse(request.prompt)
++    if (payload.operation === 'compress-navigation') {
++      compressions++
++      expect(Boolean(payload.repair)).toBe(compressions === 2)
++      expect(state.checkpoint?.navigation?.nextRoots).toEqual([])
++      return result(compressions === 2 && succeeds ? corrected : response)
++    }
++    expect(payload.stage).toBe('writing')
++    expect(payload.observations).toContainEqual({ text: corrected.facts.at(-1)!.text, sourceIds: ['10', '11', '12'] })
++    expect(payload.observations).toContainEqual({ text: corrected.facts.at(-2)!.text, sourceIds: ['9'] })
++    expect(payload.openThreads).toContainEqual({ text: response.facts[8].text, sourceIds: ['10', '11', '12'] })
++    return result(noConclusion)
++  })
++  deps.countInput = async () => ({ method: 'tokenizer', tokens: 100 })
++  const checkpoint = createInsightCheckpoint('7', model, defaultInsightPrompts, limits)
++  checkpoint.cursor = { messageIndex: messages.length, textOffset: 0 }
++  checkpoint.coveredMessageIds = ids
++  checkpoint.observations = entries.filter(entry => entry.kind === 'fact').map(({ text, sourceIds }) => ({ text, sourceIds }))
++  checkpoint.openThreads = entries.filter(entry => entry.kind === 'unknown').map(({ text, sourceIds }) => ({ text, sourceIds }))
++  if (succeeds) await generateInsight({ ...input, checkpoint }, deps)
++  else {
++    await expect(generateInsight({ ...input, checkpoint }, deps)).rejects.toMatchObject({ code: 'INVALID_INSIGHT_OUTPUT' })
++    expect(state.checkpoint?.navigation?.nextRoots).toEqual([])
++    expect(state.checkpoint?.callsReserved).toBe(2)
++  }
++  expect(compressions).toBe(2)
++})
++
++test.each([undefined, 1] as const)('legacy compressed checkpoints rebuild from retained original notes without erasing spent budget (facts version: %s)', async factsVersion => {
++  const { input, deps, state } = memoryFixture(preservedMemory, payload => {
++    expect(payload.observations[0].sourceIds).toEqual(['1', '2'])
++    expect(payload.openThreads).toEqual([])
++  })
++  input.checkpoint.navigation = {
++    nodes: [{ text: '旧摘要丢失撤回来源。', sourceIds: ['1'], children: [] }],
++    roots: [0], cursor: 0, nextRoots: [], repairs: 0, factsVersion,
++  }
++  input.checkpoint.callsReserved = 1
++  input.checkpoint.attempts = [{ stage: 'reading', input: { method: 'tokenizer', tokens: 100 }, reservedOutput: 100,
++    startedAtMs: 0, status: 'returned', usage: { inputTokens: 80, outputTokens: 20 } }]
++  await generateInsight(input, deps)
++  expect(state.checkpoint?.callsReserved).toBe(3)
++  expect(state.checkpoint?.attempts[0].usage).toEqual({ inputTokens: 80, outputTokens: 20 })
++})
++
++test('same-source facts and unknowns share a small compression window and remain reconciled after writing resumes', async () => {
++  const { input, deps, state } = memoryFixture()
++  input.snapshot.sources = [input.snapshot.sources[1], input.snapshot.sources[0], ...input.snapshot.sources.slice(2)]
++  input.checkpoint.observations = [
++    { text: '咖啡渍已向对方说明。' + '事'.repeat(350), sourceIds: ['1'] },
++    { text: '已确认带线到现场。' + '事'.repeat(350), sourceIds: ['4', '2'] },
++  ]
++  input.checkpoint.openThreads = [
++    { text: '咖啡渍是否说明尚待核对。', sourceIds: ['1'] },
++    { text: '是否把线带到现场尚待核对。', sourceIds: ['2'] },
++  ]
++  const originals = structuredClone({ observations: input.checkpoint.observations, openThreads: input.checkpoint.openThreads })
++  const stages: string[] = []
++  let paused = false
++  deps.countInput = async request => {
++    const payload = JSON.parse(request.prompt)
++    return { method: 'tokenizer', tokens: payload.operation === 'compress-navigation'
++      ? 100 + 1100 * payload.nodes.flatMap((node: { entries: unknown[] }) => node.entries).length
++      : 100 + Buffer.byteLength(request.prompt) }
++  }
++  deps.run = async request => {
++    const payload = JSON.parse(request.prompt)
++    stages.push(payload.operation ?? payload.stage)
++    if (payload.operation === 'compress-navigation') {
++      const entries = payload.nodes.flatMap((node: { entries: { kind: string; text: string; entryId: string }[] }) => node.entries)
++      expect(entries.map((entry: { kind: string }) => entry.kind)).toEqual(['fact', 'unknown'])
++      return result({ text: '核对完成。', facts: [{ kind: 'fact', text: stages.length === 1 ? '已确认带线到现场。' : '咖啡渍已向对方说明。',
++        entryIds: entries.map((entry: { entryId: string }) => entry.entryId) }] })
++    }
++    expect(payload.observations).toEqual([
++      { text: '已确认带线到现场。', sourceIds: ['4', '2'] },
++      { text: '咖啡渍已向对方说明。', sourceIds: ['1'] },
++    ])
++    expect(payload.openThreads).toEqual([])
++    if (!paused) {
++      paused = true
++      throw new Error('fixture paused during writing after source-ordered compaction')
++    }
++    return result(noConclusion)
++  }
++  await expect(generateInsight(input, deps)).rejects.toThrow('fixture paused during writing after source-ordered compaction')
++  expect(state.checkpoint?.callsReserved).toBe(3)
++  const compactedNavigation = structuredClone(state.checkpoint?.navigation)
++  await generateInsight({ ...input, checkpoint: state.checkpoint }, deps)
++  expect(stages).toEqual(['compress-navigation', 'compress-navigation', 'writing', 'writing'])
++  expect(state.checkpoint?.callsReserved).toBe(4)
++  expect(state.checkpoint?.navigation).toEqual(compactedNavigation)
++  expect(state.checkpoint).toMatchObject(originals)
++})
++
++test('migrating source-ordered navigation retains an already used compression repair and spent calls', async () => {
++  const { input, deps, state } = memoryFixture()
++  input.checkpoint.navigation = { factsVersion: 1, reconciled: false, roots: [0], cursor: 0, nextRoots: [], repairs: 1,
++    nodes: [{ text: '旧导航。', sourceIds: ['1'], children: [] }] }
++  input.checkpoint.callsReserved = 3
++  input.checkpoint.attempts = Array.from({ length: 3 }, () => ({ stage: 'reading' as const,
++    input: { method: 'tokenizer' as const, tokens: 100 }, reservedOutput: 100, startedAtMs: 0,
++    status: 'returned' as const, usage: { inputTokens: 80, outputTokens: 20 } }))
++  input.checkpoint.writingRepairs = 1
++  let calls = 0
++  deps.run = async request => {
++    const payload = JSON.parse(request.prompt)
++    expect(payload.operation).toBe('compress-navigation')
++    expect(payload.repair).toBe(true)
++    calls++
++    return result(retainEntries(payload))
++  }
++  await expect(generateInsight(input, deps)).rejects.toMatchObject({ code: 'INVALID_INSIGHT_OUTPUT' })
++  expect(calls).toBe(1)
++  expect(state.checkpoint).toMatchObject({ callsReserved: 4, writingRepairs: 1,
++    navigation: { repairs: 1, cursor: 0, nextRoots: [] } })
++})
++
++test('facts and an old unknown split across compression requests receive a joint reconciliation before writing', async () => {
++  let calls = 0
++  const { input, deps } = memoryFixture()
++  input.checkpoint.observations = [
++    { text: '一年有效，无最低消费。' + '事'.repeat(350), sourceIds: ['1'] },
++    { text: '本人已经接受这些条件。' + '事'.repeat(350), sourceIds: ['2'] },
++  ]
++  input.checkpoint.openThreads = [{ text: '余额条件还没确定。', sourceIds: ['3'] }]
++  deps.countInput = async request => {
++    const payload = JSON.parse(request.prompt)
++    return { method: 'tokenizer', tokens: payload.operation === 'compress-navigation'
++      ? 100 + 1100 * payload.nodes.flatMap((node: { entries: unknown[] }) => node.entries).length
++      : 100 + Buffer.byteLength(request.prompt) }
++  }
++  deps.run = async request => {
++    const payload = JSON.parse(request.prompt)
++    if (payload.operation === 'compress-navigation') {
++      calls++
++      const entries = payload.nodes.flatMap((node: { entries: { kind: string; entryId: string }[] }) => node.entries)
++      const known = entries.some((entry: { kind: string }) => entry.kind === 'fact')
++      return result({ text: '余额条款。', facts: [{ kind: known ? 'fact' : 'unknown',
++        text: known ? '一年有效、无最低消费，已接受。' : '余额条件尚待确认。',
++        entryIds: entries.map((entry: { entryId: string }) => entry.entryId) }] })
++    }
++    expect(calls).toBe(2)
++    expect(payload.openThreads).toEqual([])
++    expect(payload.observations).toEqual([{ text: '一年有效、无最低消费，已接受。', sourceIds: ['1', '2', '3'] }])
++    return result(noConclusion)
++  }
++  await generateInsight(input, deps)
++})
++
++test.each([undefined, 1] as const)('migrating a legacy tree clears obsolete navigation pointers but retains checked evidence and rounds (facts version: %s)', async factsVersion => {
++  const { input, deps, state } = memoryFixture()
++  input.checkpoint.stage = 'checking'
++  input.checkpoint.navigation = { nodes: [{ text: '旧导航', sourceIds: ['1'], children: [] }], roots: [0], cursor: 0, nextRoots: [], repairs: 0, factsVersion }
++  input.checkpoint.checks = [{ id: '1', observation: '确认安排', supportingIds: ['1'], state: 'pending', rounds: 1,
++    seenEvidenceIds: ['1'], evidenceNotes: [], navigationRequests: [{ id: 55, offset: 0 }], pendingNavigation: { id: 55, offset: 0 },
++    pendingIds: ['1'], pendingCursor: { messageIndex: 1, textOffset: 0 }, pendingThrough: null, shrinkDepth: 0, repairs: 0,
++    purpose: '核对旧来源', finding: null }]
++  const priorRun = deps.run
++  deps.run = async (request, context) => {
++    const payload = JSON.parse(request.prompt)
++    if (payload.stage !== 'checking') return priorRun(request, context)
++    expect(payload.check.round).toBe(2)
++    expect(payload.earlierEvidence.map((message: InsightSourceMessage) => message.id)).toEqual(['1'])
++    expect(payload.navigationPage).toBeNull()
++    return result({ action: 'finish', checkId: '1', revisedObservation: '原话已读取。', supportingIds: ['1'], counterexampleIds: [], limitations: [] })
++  }
++  await generateInsight(input, deps)
++  expect(state.checkpoint?.checks[0].navigationRequests).toEqual([])
++  expect(state.checkpoint?.checks[0].seenEvidenceIds).toEqual(['1'])
++  expect(state.checkpoint?.checks[0].rounds).toBe(2)
++})
++
++test('unshrinking fact memory stops at the original capacity without deleting facts or asking the writer', async () => {
++  const { input, deps, state } = memoryFixture()
++  let calls = 0
++  deps.run = async request => {
++    const payload = JSON.parse(request.prompt)
++    expect(payload.operation).toBe('compress-navigation')
++    calls++
++    return result(retainEntries(payload))
++  }
++  await expect(generateInsight(input, deps)).rejects.toMatchObject({ code: 'INVALID_INSIGHT_OUTPUT' })
++  expect(calls).toBe(2)
++  expect(state.checkpoint?.observations).toHaveLength(3)
++  expect(state.checkpoint?.openThreads).toHaveLength(1)
++})
++
+ function setup(messages: InsightSourceMessage[], run: InsightGenerationDeps['run']) {
+   const snapshot: InsightSnapshot = {
+     taskId: '7', scope: { kind: 'all' }, timezone: 'Asia/Shanghai', createdAtMs: 1000,
+@@ -65,7 +638,7 @@ function setup(messages: InsightSourceMessage[], run: InsightGenerationDeps['run
+ 
+ test('reading a later correction settles a candidate without a separate check and keeps the counterexample citable after recovery', async () => {
+   const messages = [paddedSource('1', true, previousArrangement), source('2', false, '这次事情碰在一起。'),
+-    paddedSource('3', false, lastMonthArrangement, '1'), source('4', true, acknowledgeArrangement, '3')]
++    source('3', false, lastMonthArrangement + 'x'.repeat(1000), '1'), source('4', true, acknowledgeArrangement, '3')]
+   const stages: string[] = []
+   let writingFailed = false
+   const { input, deps, state } = setup(messages, async request => {
+@@ -112,7 +685,7 @@ test('reading can revise a candidate, settle it, and reopen the same record when
+   const reopenedReason = '回读原约定，确认订餐是否也在分工内。'
+   const revisedFinding = { ...arrangementFinding, revisedObservation: '对方只回了场地消息，后文确认上月场地由对方负责。', supportingIds: ['2'] }
+   const messages = [paddedSource('1', true, previousArrangement), paddedSource('2', false, '上月我只回复了场地那条消息。', '1'),
+-    paddedSource('3', false, lastMonthArrangement, '2'), source('4', true, acknowledgeArrangement, '3'),
++    source('3', false, lastMonthArrangement + 'x'.repeat(1000), '2'), source('4', true, acknowledgeArrangement, '3'),
+     paddedSource('5', true, '本月餐饮临时换人，需要看起初说的是场地还是全部。')]
+   const { input, deps, state } = setup(messages, async request => {
+     const payload = JSON.parse(request.prompt)
+@@ -162,6 +735,7 @@ test('candidate packing reserves room for a related earlier candidate even when
+     ] })
+     expect(payload.knownCandidates[0]).toMatchObject({ id: '1', observation: '分工是否轮换？' })
+     expect((await deps.countInput!(request, request.model)).tokens).toBeLessThanOrEqual(2944)
++    if (payload.operation === 'compress-navigation') return result(retainEntries(payload))
+     if (!payload.messages[0].text.startsWith('现在是轮流安排')) return result(noObservations)
+     return result({ ...noObservations, candidateUpdates: [{
+       id: '1', action: 'resolve', finding: { ...arrangementFinding, supportingIds: [], counterexampleIds: ['3'] }, evidenceNotes: [],
+@@ -244,6 +818,7 @@ test('later evidence revises a first impression through a bounded reread without
+     const payload = JSON.parse(request.prompt)
+     requests.push(payload)
+     expect((await deps.countInput!(request, request.model)).tokens).toBeLessThanOrEqual(3200)
++    if (payload.operation === 'compress-navigation') return result(retainEntries(payload))
+     if (payload.stage === 'reading') {
+       const first = payload.messages.find((item: InsightSourceMessage) => item.id === '1')
+       return result(first ? {
+@@ -277,7 +852,7 @@ test('later evidence revises a first impression through a bounded reread without
+       }],
+     })
+   })
+-  const report = await generateInsight(input, deps)
++  const report = await generateInsight({ ...input, limits: { ...limits, maxCalls: 12 } }, deps)
+   expect(requests.filter(request => request.stage === 'reading').length).toBeGreaterThan(1)
+   expect(requests.filter(request => request.stage === 'checking')).toHaveLength(2)
+   expect(state.writes.filter(checkpoint => checkpoint.stage === 'checking').map(checkpoint => checkpoint.coveredMessageIds))
+@@ -301,6 +876,7 @@ test('an explicit reply and an unfinished item carry earlier sources into the ne
+   ]
+   const { input, deps } = setup(messages, async request => {
+     const payload = JSON.parse(request.prompt)
++    if (payload.operation === 'compress-navigation') return result(retainEntries(payload))
+     if (payload.stage !== 'reading') return result(noConclusion)
+     if (payload.messages.some((item: InsightSourceMessage) => item.id === '4')) {
+       expect(payload.relatedMessages.map((item: InsightSourceMessage) => item.id)).toEqual(['1', '2'])
+@@ -319,6 +895,7 @@ function laterThreadReply(response: unknown, sharedSource = false) {
+   const hidden = { text: '未发送事项：台灯是否取回？', sourceIds: [sharedSource ? '1' : '2'] }
+   const { input, deps, state } = setup(messages, async request => {
+     const payload = JSON.parse(request.prompt)
++    if (payload.operation === 'compress-navigation') return result(retainEntries(payload))
+     if (payload.stage !== 'reading') return result(noConclusion)
+     if (payload.messages[0].id === '1') {
+       expect(payload.messages.map((message: InsightSourceMessage) => message.id)).toEqual(['1', '2'])
+@@ -334,7 +911,7 @@ function laterThreadReply(response: unknown, sharedSource = false) {
+     const payload = JSON.parse(request.prompt)
+     if (payload.stage !== 'reading') return { method: 'tokenizer', tokens: 100 }
+     return { method: 'tokenizer', tokens: 100
+-      + (payload.messages ?? []).reduce((sum: number, message: InsightSourceMessage) => sum + (message.id === '3' ? 1100 : 200), 0)
++      + (payload.messages ?? []).reduce((sum: number, message: InsightSourceMessage) => sum + (message.id === '3' ? 900 : 450), 0)
+       + 10000 * (payload.relatedMessages?.length ?? 0)
+       + (payload.openThreads ?? []).reduce((sum: number, note: { text: string }) => sum + (note.text.startsWith('未发送事项') ? 1800 : 100), 0) }
+   }
+@@ -356,17 +933,150 @@ test('resolving a visible old thread preserves an undisplayed thread with the sa
+   expect(state.checkpoint?.openThreads).toEqual([hidden])
+ })
+ 
++test.each([{ ids: ['1'] }, { ids: ['1', '3'] }])('a repeated visible old thread $ids is repaired once without admitting its old sources as new evidence', async ({ ids }) => {
++  const { input, deps, state } = laterThreadReply({ ...noObservations, openThreads: [{ text: '复述旧午饭事项。', sourceIds: ids }] })
++  const priorRun = deps.run
++  let attempts = 0
++  deps.run = async (request, context) => {
++    const payload = JSON.parse(request.prompt)
++    if (payload.stage === 'reading' && !payload.operation && payload.messages[0].id === '3') {
++      attempts++
++      if (attempts === 2) {
++        expect(payload.repair).toBe(true)
++        return result({ ...noObservations, openThreads: [{ text: '饭后是否已休息仍未知。', sourceIds: ['3'] }] })
++      }
++    }
++    return priorRun(request, context)
++  }
++  await generateInsight(input, deps)
++  expect(attempts).toBe(2)
++  expect(state.checkpoint?.openThreads).toContainEqual({ text: '饭后是否已休息仍未知。', sourceIds: ['3'] })
++  expect(state.checkpoint?.openThreads.some(note => note.text === '复述旧午饭事项。')).toBe(false)
++})
++
++test('a second repeated old thread fails after the single reading repair without altering stored notes', async () => {
++  const { input, deps, state } = laterThreadReply({ ...noObservations, openThreads: [{ text: '复述旧事项。', sourceIds: ['1'] }] })
++  await expect(generateInsight(input, deps)).rejects.toMatchObject({ code: 'INVALID_INSIGHT_OUTPUT' })
++  expect(state.checkpoint?.attempts.filter(attempt => attempt.stage === 'reading')).toHaveLength(3)
++  expect(state.checkpoint?.openThreads.some(note => note.text === '复述旧事项。')).toBe(false)
++})
++
++function readingFindingFixture(response: (attempt: number) => unknown) {
++  const messages = [source('1', true, previousArrangement), source('2', false, lastMonthArrangement),
++    source('3', true, acknowledgeArrangement)]
++  let attempts = 0
++  const fixture = setup(messages, async request => {
++    const payload = JSON.parse(request.prompt)
++    if (payload.stage === 'reading') return result(response(++attempts))
++    expect(payload.stage).toBe('writing')
++    return result(noConclusion)
++  })
++  const checkpoint = createInsightCheckpoint('7', model, defaultInsightPrompts, limits)
++  checkpoint.cursor = { messageIndex: 1, textOffset: 0 }
++  checkpoint.coveredMessageIds = ['1']
++  checkpoint.checks = [{ id: '1', observation: '是否每次都是本人安排？', supportingIds: ['1'], state: 'pending', rounds: 0,
++    seenEvidenceIds: [], evidenceNotes: [arrangementNote], navigationRequests: [], pendingNavigation: null,
++    pendingIds: ['1'], pendingCursor: { messageIndex: 0, textOffset: 0 }, pendingThrough: null, shrinkDepth: 0, repairs: 0,
++    purpose: '核对历史分工', finding: null }]
++  return { ...fixture, input: { ...fixture.input, checkpoint }, attempts: () => attempts }
++}
++
++const overlappingFinding = {
++  revisedObservation: '本人撤回每次都由自己安排，保留本次疲惫。', supportingIds: ['1', '3'], counterexampleIds: ['2', '3'],
++  alternativeExplanations: [], limitations: [],
++}
++const readingResolution = (finding = overlappingFinding) => ({ ...noObservations,
++  candidateUpdates: [{ id: '1', action: 'resolve', finding, evidenceNotes: [] }],
++})
++
++test('a valid-source overlap in a reading finding receives one repair and then resolves the same candidate', async () => {
++  const { input, deps, state, attempts } = readingFindingFixture(attempt => readingResolution(
++    attempt === 1 ? overlappingFinding : { ...overlappingFinding, counterexampleIds: ['2'] },
++  ))
++  await generateInsight(input, deps)
++  expect(attempts()).toBe(2)
++  expect(state.checkpoint?.checks).toMatchObject([{ id: '1', state: 'finished', rounds: 0,
++    finding: { supportingIds: ['1', '3'], counterexampleIds: ['2'] } }])
++})
++
++test('an unrepaired finding overlap stops after one repair without accepting the candidate update', async () => {
++  const { input, deps, state, attempts } = readingFindingFixture(() => readingResolution())
++  await expect(generateInsight(input, deps)).rejects.toMatchObject({ code: 'INVALID_INSIGHT_OUTPUT' })
++  expect(attempts()).toBe(2)
++  expect(state.checkpoint?.checks[0]).toMatchObject({ state: 'pending', finding: null })
++})
++
++test('a finding overlap cannot hide an illegal source later in the reading response', async () => {
++  const { input, deps, attempts } = readingFindingFixture(() => ({ ...readingResolution(),
++    observations: [{ text: '陌生来源。', sourceIds: ['99'] }],
++  }))
++  await expect(generateInsight(input, deps)).rejects.toMatchObject({ code: 'INVALID_EVIDENCE' })
++  expect(attempts()).toBe(1)
++})
++
++test('checking repairs overlapping valid evidence roles without changing its existing round limit', async () => {
++  let checks = 0
++  const { input, deps, state } = setup([source('1', true, previousArrangement)], async request => {
++    const payload = JSON.parse(request.prompt)
++    if (payload.stage === 'reading') return result({ ...noObservations, candidates: [arrangementCandidate] })
++    if (payload.stage === 'checking') return result({ action: 'finish', checkId: '1',
++      revisedObservation: '只能确认本人陈述疲惫。', supportingIds: ['1'], counterexampleIds: ++checks === 1 ? ['1'] : [],
++      alternativeExplanations: [], limitations: [],
++    })
++    return result(noConclusion)
++  })
++  await generateInsight(input, deps)
++  expect(checks).toBe(2)
++  expect(state.checkpoint?.checks[0]).toMatchObject({ rounds: 2, state: 'finished', finding: { supportingIds: ['1'], counterexampleIds: [] } })
++})
++
++test('a shared visible source cannot close two different old unknowns when only one has an answer', async () => {
++  const messages = [source('1', true, '还没吃午饭，也没取台灯。'), source('2', true, '已经吃完午饭了。')]
++  const lunch = { text: '是否吃过午饭？', sourceIds: ['1'] }
++  const lamp = { text: '台灯是否已取回？', sourceIds: ['1'] }
++  const { input, deps, state } = setup(messages, async request => {
++    const payload = JSON.parse(request.prompt)
++    if (payload.operation === 'compress-navigation') return result(retainEntries(payload))
++    if (payload.stage === 'reading') {
++      expect(payload.openThreads).toEqual([lunch, lamp])
++      return result({ ...noObservations, observations: [{ text: '本人已经吃完午饭。', sourceIds: ['2'] }], resolvedThreadSourceIds: ['1'] })
++    }
++    expect(payload.openThreads).toContainEqual(lamp)
++    return result(noConclusion)
++  })
++  const checkpoint = createInsightCheckpoint('7', model, defaultInsightPrompts, limits)
++  checkpoint.cursor = { messageIndex: 1, textOffset: 0 }
++  checkpoint.coveredMessageIds = ['1']
++  checkpoint.openThreads = [lunch, lamp]
++  await generateInsight({ ...input, checkpoint }, deps)
++  expect(state.checkpoint?.openThreads).toEqual([lunch, lamp])
++})
++
++test.each(['unknown-thread', 'invalid-candidate'])('a repeated old thread cannot hide %s and cause a repair request', async kind => {
++  const response = { ...noObservations,
++    openThreads: [{ text: '复述旧事项。', sourceIds: ['1'] },
++      ...(kind === 'unknown-thread' ? [{ text: '陌生来源。', sourceIds: ['99'] }] : [])],
++    candidates: kind === 'invalid-candidate' ? [{ observation: '旧事项被当作新证据。', supportingIds: ['1'] }] : [],
++  }
++  const { input, deps, state } = laterThreadReply(response)
++  await expect(generateInsight(input, deps)).rejects.toMatchObject({ code: 'INVALID_EVIDENCE' })
++  expect(state.checkpoint?.attempts.filter(attempt => attempt.stage === 'reading')).toHaveLength(2)
++})
++
+ test.each(['2', '99'])('reading cannot resolve an undisplayed earlier thread or unknown source %s', async id => {
+   const { input, deps, state } = laterThreadReply({ ...noObservations, resolvedThreadSourceIds: [id] })
+   await expect(generateInsight(input, deps)).rejects.toMatchObject({ code: 'INVALID_EVIDENCE' })
+   expect(state.checkpoint?.openThreads).toHaveLength(2)
+ })
+ 
+-test.each(['observations', 'openThreads', 'candidates'])('a visible old thread does not authorize new %s to cite its missing original', async field => {
++test.each([
++  { field: 'observations', code: 'INVALID_EVIDENCE' }, { field: 'openThreads', code: 'INVALID_INSIGHT_OUTPUT' },
++  { field: 'candidates', code: 'INVALID_EVIDENCE' },
++])('a visible old thread does not authorize new $field to cite its missing original', async ({ field, code }) => {
+   const value = field === 'candidates' ? { observation: '本人已经吃过饭。', supportingIds: ['1'] }
+     : { text: '本人已经吃过饭。', sourceIds: ['1'] }
+   const { input, deps } = laterThreadReply({ ...noObservations, [field]: [value], resolvedThreadSourceIds: ['1'] })
+-  await expect(generateInsight(input, deps)).rejects.toMatchObject({ code: 'INVALID_EVIDENCE' })
++  await expect(generateInsight(input, deps)).rejects.toMatchObject({ code })
+ })
+ 
+ test('selecting a visible leaf note rereads its original sources and supports revising the initial observation', async () => {
+@@ -390,10 +1100,12 @@ test('selecting a visible leaf note rereads its original sources and supports re
+         { text: '后文明确轮流分工，本人撤回每次的概括。', sourceIds: ['2', '19', '20'] },
+       ], candidates: [{ observation: '是否长期由本人承担安排，需要核实其他场次。', supportingIds: ['2', '3', '4'] }],
+     })
+-    if (payload.stage === 'checking' && payload.check.round === 1) return result({
+-      action: 'navigate', checkId: payload.check.id, navigationId: 5, offset: 0,
+-      evidenceNotes: [{ sourceId: '2', quote: '每次都等着我来安排，想到这些就有点累。', text: '不能据此确认长期分工。' }],
+-    })
++    if (payload.stage === 'checking' && payload.check.round === 1) {
++      const note = payload.observations.find((item: { sourceIds: string[] }) => item.sourceIds.includes('19'))
++      return result({ action: 'navigate', checkId: payload.check.id, navigationId: note.navigationId, offset: 0,
++        evidenceNotes: [{ sourceId: '2', quote: '每次都等着我来安排，想到这些就有点累。', text: '不能据此确认长期分工。' }],
++      })
++    }
+     if (payload.stage === 'checking') {
+       expect(payload.evidence.map((message: InsightSourceMessage) => message.id)).toEqual(['19', '20'])
+       expect(payload.evidenceNotes[0].quote).toBe('每次都等着我来安排，想到这些就有点累。')
+@@ -618,6 +1330,7 @@ test.each([true, false])('a frozen source is citable from an open thread only wh
+   const messages = [source('1', true, '我只能周五陪你。'), source('2', true, '包裹不急，可以顺手带上。')]
+   const { input, deps } = setup(messages, async request => {
+     const payload = JSON.parse(request.prompt)
++    if (payload.operation === 'compress-navigation') return result(retainEntries(payload))
+     if (payload.stage === 'reading') return result({
+       ...noObservations,
+       observations: [{ text: '本人只能周五陪同。', sourceIds: ['1'] }],
+@@ -683,11 +1396,11 @@ test('a rejected navigation wrapper gets a repair request with only the compress
+         nodes: [{ text: '10月5日眼科复查：本人只能周五陪同，拟问周五号；对方回复1要求保留周一号，尚未改约，周一下午另有修车安排。', sourceIds: ['1', '2'] }],
+       })
+       if (compressionCalls === 2) expect(payload.repair).toBe(true)
+-      expect(request.systemPrompt).toMatch(/顶层[^。]*\{text,sourceIds:\[\]\}/)
+       expect(request.systemPrompt).not.toContain('observations:[')
+       expect(request.systemPrompt).not.toContain('openThreads:[')
+       expect(request.systemPrompt).not.toContain('candidates:[')
+-      return result({ text: '本段合成观察。', sourceIds: payload.nodes[0].sourceIds })
++      return result({ text: '本段合成观察。', facts: [{ kind: 'fact', text: '本段合成观察。',
++        entryIds: payload.nodes.flatMap((node: { entries: { entryId: string }[] }) => node.entries.map(entry => entry.entryId)) }] })
+     }
+     if (payload.stage === 'reading') {
+       readingPrompts.push(request.systemPrompt)
+@@ -700,7 +1413,7 @@ test('a rejected navigation wrapper gets a repair request with only the compress
+     expect(payload.observations.length).toBeLessThan(4)
+     return result(noConclusion)
+   })
+-  await expect(generateInsight({ ...input, limits: { ...limits, maxCalls: 10 } }, deps)).resolves.toMatchObject({ format: 'conversation-insights-v1' })
++  await expect(generateInsight({ ...input, limits: { ...limits, maxCalls: 20 } }, deps)).resolves.toMatchObject({ format: 'conversation-insights-v1' })
+   expect(compressionCalls).toBeGreaterThan(1)
+   expect(readingPrompts.every(prompt => !prompt.includes('compress-navigation'))).toBe(true)
+ })
+@@ -746,9 +1459,14 @@ test('hierarchical navigation preserves the middle evidence and makes it availab
+     if (payload.operation === 'compress-navigation') {
+       compactionInputs.push(payload.nodes.map((node: { navigationId: number }) => node.navigationId).join(','))
+       if (compactionInputs.length === 2) throw new Error('fixture interruption during navigation')
+-      for (const node of payload.nodes) if (!node.childCount) condensedLeafIds.add(node.sourceIds[0])
+-      const includesMiddle = payload.nodes.some((node: { text: string }) => node.text.includes(marker))
+-      return result({ text: includesMiddle ? marker : '本段合成记录。', sourceIds: payload.nodes[0].sourceIds })
++      for (const node of payload.nodes) if (!node.childCount) condensedLeafIds.add(node.entries[0].entryId)
++      const entries = payload.nodes.flatMap((node: { entries: { entryId: string; text: string }[] }) => node.entries)
++      const middle = entries.filter((entry: { text: string }) => entry.text.includes(marker))
++      const ordinary = entries.filter((entry: { text: string }) => !entry.text.includes(marker))
++      return result({ text: middle.length ? marker : '本段合成记录。', facts: [
++        ...(middle.length ? [{ kind: 'fact', text: marker, entryIds: middle.map((entry: { entryId: string }) => entry.entryId) }] : []),
++        ...(ordinary.length ? [{ kind: 'fact', text: '本段合成记录。', entryIds: ordinary.map((entry: { entryId: string }) => entry.entryId) }] : []),
++      ] })
+     }
+     if (payload.stage === 'reading') return result({
+       ...noObservations,
+diff --git a/tests/quality/insight-comparison-profile.mjs b/tests/quality/insight-comparison-profile.mjs
+index ea478d1..92201bb 100644
+--- a/tests/quality/insight-comparison-profile.mjs
++++ b/tests/quality/insight-comparison-profile.mjs
+@@ -23,3 +23,70 @@ export function comparisonProfile(option) {
+     }
+   }
+ }
++
++/** @param {string[]} input */
++export function comparisonArguments(input) {
++  const profile = comparisonProfile(input[0])
++  const runOptions = input.filter(argument => argument.startsWith('--run-id'))
++  const engineOptions = input.filter(argument => argument.startsWith('--engine-manifest'))
++  let engineManifest
++  if (engineOptions.length) {
++    const match = engineOptions[0].match(/^--engine-manifest=(.+)$/)
++    const trailing = input.slice(input.indexOf(engineOptions[0]) + 1)
++    if (input[0] !== '--long-comparison' || runOptions.length !== 1 || engineOptions.length !== 1 || !match
++      || !trailing.every(argument => ['--input-limit', '--task-call-limit', '--run-id'].some(prefix => argument.startsWith(prefix)))) {
++      throw Object.assign(new Error('请在命名长试验的容量和预算选项前填写一次 --engine-manifest。'), { code: 'INVALID_COMPARISON_ENGINE' })
++    }
++    engineManifest = match[1]
++    input = input.filter(argument => argument !== engineOptions[0])
++  }
++  const inputOptions = input.filter(argument => argument.startsWith('--input-limit'))
++  let packingLimit
++  if (inputOptions.length) {
++    const limit = inputOptions[0].match(/^--input-limit=([1-9]\d*)$/)
++    const trailing = input.slice(input.indexOf(inputOptions[0]) + 1)
++    if (input[0] !== '--long-comparison' || runOptions.length !== 1 || inputOptions.length !== 1
++      || !trailing.every(argument => argument.startsWith('--task-call-limit') || argument.startsWith('--run-id'))
++      || !limit || !Number.isSafeInteger(Number(limit[1]))) {
++      throw Object.assign(new Error('请在命名长试验的预算选项前填写一次 --input-limit，取值为正整数。'), { code: 'INVALID_COMPARISON_INPUT_LIMIT' })
++    }
++    packingLimit = Number(limit[1])
++    input = input.filter(argument => argument !== inputOptions[0])
++  }
++  const callOptions = input.filter(argument => argument.startsWith('--task-call-limit'))
++  let taskCallLimit
++  if (callOptions.length) {
++    const limit = callOptions[0].match(/^--task-call-limit=([1-9]\d*)$/)
++    if (input[0] !== '--long-comparison' || runOptions.length !== 1 || callOptions.length !== 1
++      || input.at(-2) !== callOptions[0] || input.at(-1) !== runOptions[0] || !limit || Number(limit[1]) > 50) {
++      throw Object.assign(new Error('请在长试验的 --run-id 前填写一次 --task-call-limit，取值为 1 至 50。'), { code: 'INVALID_COMPARISON_TASK_CALL_LIMIT' })
++    }
++    taskCallLimit = Number(limit[1])
++  }
++  if (!runOptions.length) return { args: input, profile: profile && { ...profile, runId: undefined, engineManifest: undefined } }
++  const match = runOptions[0].match(/^--run-id=([a-z][a-z0-9-]{0,47})$/)
++  if (input[0] !== '--long-comparison' || !profile || runOptions.length !== 1 || input.at(-1) !== runOptions[0] || !match) {
++    throw Object.assign(new Error('请在长试验命令末尾填写一次 --run-id，名称使用小写字母开头的 1 至 48 个字母、数字或连字符。'), { code: 'INVALID_COMPARISON_RUN_ID' })
++  }
++  const runId = match[1]
++  return {
++    args: input.slice(0, taskCallLimit === undefined ? -1 : -2),
++    profile: {
++      ...profile, runId, engineManifest,
++      ...(packingLimit === undefined ? {} : { packingLimit }),
++      ...(taskCallLimit === undefined ? {} : {
++        perTaskLimits: { ...profile.perTaskLimits, maxCalls: taskCallLimit },
++        requestLimit: Math.max(profile.requestLimit, Object.keys(profile.cases).length * (taskCallLimit + 2)),
++      }),
++      outputDirectory: 'long-comparison-runs/' + runId, runtimeDirectory: '.' + runId + '-runtime',
++    },
++  }
++}
++
++/** @param {string | undefined} option */
++export function readingResumeOrdinal(option) {
++  if (!option?.startsWith('--resume-reading')) return 0
++  if (option === '--resume-reading' || option === '--resume-reading=1') return 1
++  if (option === '--resume-reading=2') return 2
++  throw Object.assign(new Error('请使用 --resume-reading 或 --resume-reading=2 恢复对应的阅读阶段。'), { code: 'INVALID_COMPARISON_READING_RESUME' })
++}
+diff --git a/tests/quality/insight-comparison-resume.ts b/tests/quality/insight-comparison-resume.ts
+index 3115e92..6524129 100644
+--- a/tests/quality/insight-comparison-resume.ts
++++ b/tests/quality/insight-comparison-resume.ts
+@@ -1,4 +1,5 @@
+ import { existsSync, readFileSync } from 'node:fs'
++import { createHash } from 'node:crypto'
+ import { join } from 'node:path'
+ import type { InsightCheckpoint, InsightRunLimits } from '../../electron/main/insight-checkpoint'
+ import type { InsightCursor } from '../../electron/main/insight-packing'
+@@ -6,6 +7,14 @@ import type { InsightCursor } from '../../electron/main/insight-packing'
+ export type ComparisonCharge = { httpRequests: number; inputCharged: number; outputCharged: number; elapsedMs: number }
+ export type ComparisonPhaseResult = ComparisonCharge & { state: string; error?: string; calls: number }
+ export const archivedReadingHaltName = 'halt-before-resume.json'
++export const readingPhases = ['reading', 'reading-resume', 'reading-resume-2'] as const
++
++export function readingChainPhases(output: string, caseName: string, resumeOrdinal = 0) {
++  const phases = readingPhases.filter(phase => existsSync(join(output, caseName + '-' + phase)))
++  if (!phases.length || phases.some((phase, index) => phase !== readingPhases[index])
++    || resumeOrdinal && (resumeOrdinal > 2 || phases.length !== resumeOrdinal)) return invalidResume()
++  return phases
++}
+ 
+ export function sumComparisonCharges(first: ComparisonCharge, second: ComparisonCharge): ComparisonCharge {
+   return {
+@@ -30,10 +39,62 @@ function validCursor(cursor: InsightCursor, sourceCount: number) {
+     && Number.isSafeInteger(cursor.textOffset) && cursor.textOffset >= 0 && (cursor.messageIndex < sourceCount || cursor.textOffset === 0)
+ }
+ 
++function validCompressionNavigation(checkpoint: InsightCheckpoint, sourceIds: string[]) {
++  const navigation = checkpoint.navigation
++  if (!navigation || ![1, 2].includes(navigation.factsVersion ?? 0) || typeof navigation.reconciled !== 'boolean'
++    || !Array.isArray(navigation.nodes) || !navigation.nodes.length || !Array.isArray(navigation.roots) || !navigation.roots.length
++    || !Array.isArray(navigation.nextRoots) || !Number.isSafeInteger(navigation.cursor)
++    || navigation.cursor < 0 || navigation.cursor >= navigation.roots.length || ![0, 1].includes(navigation.repairs)
++    || !Array.isArray(checkpoint.observations) || !Array.isArray(checkpoint.openThreads)) return false
++  const originals = [
++    ...checkpoint.observations.map(note => ({ ...note, kind: 'fact' })),
++    ...checkpoint.openThreads.map(note => ({ ...note, kind: 'unknown' })),
++  ]
++  const allowed = new Set(sourceIds)
++  const validSources = (ids: string[]) => Array.isArray(ids) && ids.length > 0
++    && new Set(ids).size === ids.length && ids.every(id => allowed.has(id))
++  if (originals.some(note => !validSources(note.sourceIds))) return false
++  if (navigation.factsVersion === 2) {
++    const sourceOrder = new Map(sourceIds.map((id, index) => [id, index]))
++    const firstSource = (note: typeof originals[number]) => Math.min(...note.sourceIds.map(id => sourceOrder.get(id)!))
++    originals.sort((left, right) => firstSource(left) - firstSource(right)
++      || (left.kind === right.kind ? 0 : left.kind === 'fact' ? -1 : 1))
++  }
++  const validIds = (ids: number[], before: number) => Array.isArray(ids) && new Set(ids).size === ids.length
++    && ids.every(id => Number.isSafeInteger(id) && id >= 0 && id < before)
++  const sorted = (ids: string[]) => [...new Set(ids)].sort()
++  const leaves: number[][] = []
++  for (const [id, node] of navigation.nodes.entries()) {
++    if (!node || typeof node.text !== 'string' || !node.text.trim() || !validSources(node.sourceIds)
++      || !validIds(node.children, id) || !Array.isArray(node.facts) || !node.facts.length
++      || node.facts.some(fact => !fact || !['fact', 'unknown'].includes(fact.kind)
++        || typeof fact.text !== 'string' || !fact.text.trim() || !validSources(fact.sourceIds))
++      || !equal(sorted(node.sourceIds), sorted(node.facts.flatMap(fact => fact.sourceIds)))) return false
++    if (id < originals.length) {
++      const original = originals[id]
++      if (node.children.length || node.facts.length !== 1 || node.facts[0].kind !== original.kind
++        || node.facts[0].text !== original.text || !equal(node.facts[0].sourceIds, original.sourceIds) || node.text !== original.text) return false
++      leaves.push([id])
++    } else {
++      if (!node.children.length || !equal(sorted(node.sourceIds), sorted(node.children.flatMap(child => navigation.nodes[child].sourceIds)))) return false
++      const descendants = node.children.flatMap(child => leaves[child])
++      if (new Set(descendants).size !== descendants.length) return false
++      leaves.push(descendants)
++    }
++  }
++  if (!originals.length || !validIds(navigation.roots, navigation.nodes.length) || !validIds(navigation.nextRoots, navigation.nodes.length)) return false
++  const covered = navigation.roots.flatMap(id => leaves[id]).sort((a, b) => a - b)
++  if (!equal(covered, originals.map((_note, index) => index))) return false
++  // 已压缩前缀与待续节点必须覆盖同一批原始叶笔记。
++  const completed = navigation.roots.slice(0, navigation.cursor).flatMap(id => leaves[id]).sort((a, b) => a - b)
++  return equal(navigation.nextRoots.flatMap(id => leaves[id]).sort((a, b) => a - b), completed)
++}
++
+ export function assertReadingRecoverySettled(output: string, caseNames: string[], resumeCase?: string) {
+   for (const caseName of caseNames) {
+-    if (caseName === resumeCase || !existsSync(join(output, caseName + '-reading', archivedReadingHaltName))) continue
+-    const recovered = join(output, caseName + '-reading-resume', 'result.json')
++    if (caseName === resumeCase || !readingPhases.some(phase => existsSync(join(output, caseName + '-' + phase, archivedReadingHaltName)))) continue
++    const phase = readingChainPhases(output, caseName).at(-1)!
++    const recovered = join(output, caseName + '-' + phase, 'result.json')
+     if (!existsSync(recovered) || JSON.parse(readFileSync(recovered, 'utf8')).state !== 'completed') {
+       throw Object.assign(new Error('TRIAL_HALTED'), { code: 'TRIAL_HALTED' })
+     }
+@@ -48,37 +109,123 @@ export function validateReadingResume(input: {
+   expectedLimits: InsightRunLimits
+   sourceIds: string[]
+   ledger: string
++  priorCheckpoint?: InsightCheckpoint
+ }) {
+-  const { caseName, originalResult, archivedHalt, checkpoint, expectedLimits, sourceIds, ledger } = input
++  const { caseName, originalResult, archivedHalt, checkpoint, expectedLimits, sourceIds, ledger, priorCheckpoint } = input
++  const priorCalls = priorCheckpoint?.callsReserved ?? 0
+   const { caseName: haltedCase, variant: haltedPhase, ...halted } = archivedHalt
+-  if (haltedCase !== caseName || haltedPhase !== 'reading' || originalResult.state !== 'failed' || originalResult.error !== 'INVALID_EVIDENCE'
++  const compressing = checkpoint.navigation !== null
++  const repairableFailure = originalResult.error === 'INVALID_EVIDENCE' || compressing && originalResult.error === 'INVALID_INSIGHT_OUTPUT'
++  if (haltedCase !== caseName || haltedPhase !== 'reading' || originalResult.state !== 'failed' || !repairableFailure
+     || !equal(halted, originalResult)) return invalidResume()
+ 
+   const { cursor, pendingRead, callsReserved, attempts, checks } = checkpoint
+-  if (checkpoint.stage !== 'reading' || checkpoint.report !== null || checkpoint.navigation !== null || checkpoint.writingRepairs !== 0
+-    || !equal(checkpoint.limits, expectedLimits) || !pendingRead
+-    || !validCursor(cursor, sourceIds.length) || !equal(pendingRead.from, cursor) || !validCursor(pendingRead.to, sourceIds.length)
+-    || pendingRead.to.messageIndex < cursor.messageIndex
+-    || pendingRead.to.messageIndex === cursor.messageIndex && pendingRead.to.textOffset <= cursor.textOffset
++  const resumablePosition = compressing
++    ? pendingRead === null && cursor.messageIndex === sourceIds.length && cursor.textOffset === 0
++      && validCompressionNavigation(checkpoint, sourceIds)
++    : pendingRead && equal(pendingRead.from, cursor) && validCursor(pendingRead.to, sourceIds.length)
++      && (pendingRead.to.messageIndex > cursor.messageIndex
++        || pendingRead.to.messageIndex === cursor.messageIndex && pendingRead.to.textOffset > cursor.textOffset)
++  if (checkpoint.stage !== 'reading' || checkpoint.report !== null || checkpoint.writingRepairs !== 0
++    || !equal(checkpoint.limits, expectedLimits) || !validCursor(cursor, sourceIds.length) || !resumablePosition
+     || !equal(checkpoint.coveredMessageIds, sourceIds.slice(0, cursor.messageIndex))
+     || checks.some(check => check.rounds > 0)
+-    || callsReserved !== originalResult.calls || callsReserved !== attempts.length || attempts.at(-1)?.status !== 'returned'
++    || callsReserved !== priorCalls + originalResult.calls || callsReserved !== attempts.length || attempts.at(-1)?.status !== 'returned'
++    || priorCheckpoint && !equal(attempts.slice(0, priorCalls), priorCheckpoint.attempts)
+     || attempts.some(attempt => attempt.stage !== 'reading' || !['returned', 'failed'].includes(attempt.status))) return invalidResume()
+ 
+   const reserved: number[] = []
+   const dispatched = new Set<number>()
++  let lastReservedStage: string | undefined
++  let compressionStarted = false
+   for (const line of ledger.split('\n').filter(Boolean)) {
+     const { kind, stage, call } = JSON.parse(line)
+     if (kind === 'reserved') {
+-      if (stage !== 'reading' || call !== reserved.length + 1) return invalidResume()
++      if (stage === 'compress-navigation' && compressing) compressionStarted = true
++      else if (stage !== 'reading' || compressionStarted) return invalidResume()
++      if (call !== reserved.length + 1) return invalidResume()
+       reserved.push(call)
++      lastReservedStage = stage
+     }
+     if (kind === 'dispatched') {
+       if (!reserved.includes(call) || dispatched.has(call)) return invalidResume()
+       dispatched.add(call)
+     }
+   }
+-  if (reserved.length !== callsReserved || !dispatched.has(callsReserved) || dispatched.size !== originalResult.httpRequests
++  if (lastReservedStage !== (compressing ? 'compress-navigation' : 'reading')
++    || reserved.length !== originalResult.calls || !dispatched.has(originalResult.calls) || dispatched.size !== originalResult.httpRequests
+     || ![originalResult.elapsedMs, originalResult.inputCharged, originalResult.outputCharged]
+       .every(value => Number.isSafeInteger(value) && value >= 0)) return invalidResume()
+ }
++
++export type ReadingChainPhase = {
++  phase: string; result: ComparisonPhaseResult; checkpoint: InsightCheckpoint; input: Record<string, unknown>
++  snapshot: { taskId: string; createdAtMs: number }; ledger: string
++  archivedHalt?: ComparisonPhaseResult & { caseName: string; variant: string }
++}
++
++export function validateReadingChain(phases: ReadingChainPhase[], expected: {
++  caseName: string; expectedInput: Record<string, unknown>; expectedSnapshot: { taskId: string; createdAtMs: number }
++  modelVersion: number; prompts: InsightCheckpoint['prompts']; expectedLimits: InsightRunLimits; sourceIds: string[]; resuming: boolean
++}): ComparisonCharge {
++  if (!phases.length || phases.length > (expected.resuming ? 2 : 3)) return invalidResume()
++  let charges: ComparisonCharge = { httpRequests: 0, inputCharged: 0, outputCharged: 0, elapsedMs: 0 }
++  let previous: ReadingChainPhase | undefined
++  for (const [index, phase] of phases.entries()) {
++    const { checkpoint, result, input, snapshot } = phase
++    const priorCalls = previous?.checkpoint.callsReserved ?? 0
++    const priorElapsed = previous?.checkpoint.elapsedMs ?? 0
++    if (phase.phase !== readingPhases[index] || !equal(snapshot, expected.expectedSnapshot)
++      || Object.entries(expected.expectedInput).some(([key, value]) => !equal(input[key], value))
++      || checkpoint.version !== 1 || checkpoint.taskId !== snapshot.taskId || checkpoint.modelId !== 'comparison-model'
++      || checkpoint.modelVersion !== expected.modelVersion || !equal(checkpoint.prompts, expected.prompts)
++      || !equal(checkpoint.limits, expected.expectedLimits)
++      || checkpoint.callsReserved !== priorCalls + result.calls || checkpoint.attempts.length !== checkpoint.callsReserved
++      || ![result.calls, result.httpRequests, result.inputCharged, result.outputCharged, result.elapsedMs, checkpoint.elapsedMs]
++        .every(value => Number.isSafeInteger(value) && value >= 0)
++      || checkpoint.elapsedMs <= priorElapsed || checkpoint.elapsedMs > priorElapsed + result.elapsedMs
++      || previous && (!equal(checkpoint.attempts.slice(0, priorCalls), previous.checkpoint.attempts)
++        || !equal(input.recovery, { sourcePhase: expected.caseName + '-' + previous.phase,
++          checkpointHash: createHash('sha256').update(JSON.stringify(previous.checkpoint)).digest('hex') }))) {
++      return invalidResume()
++    }
++    const failed = expected.resuming || index < phases.length - 1
++    if (failed) {
++      if (!phase.archivedHalt) return invalidResume()
++      validateReadingResume({ caseName: expected.caseName, originalResult: result, archivedHalt: phase.archivedHalt,
++        checkpoint, expectedLimits: expected.expectedLimits, sourceIds: expected.sourceIds, ledger: phase.ledger,
++        priorCheckpoint: previous?.checkpoint })
++    } else if (result.state !== 'completed' || checkpoint.stage !== 'checking' || checkpoint.pendingRead || !checkpoint.navigation
++      || !equal(checkpoint.coveredMessageIds, expected.sourceIds) || checkpoint.report !== null
++      || checkpoint.attempts.some(attempt => attempt.stage !== 'reading' || !['returned', 'failed'].includes(attempt.status))) return invalidResume()
++
++    const localAttempts = checkpoint.attempts.slice(priorCalls)
++    const reserved = new Set<number>(), dispatched = new Set<number>(), settled = new Set<number>()
++    let chargedInput = 0, chargedOutput = 0
++    for (const line of phase.ledger.split('\n').filter(Boolean)) {
++      const entry = JSON.parse(line)
++      const attempt = localAttempts[entry.call - 1]
++      if (entry.kind === 'reserved') {
++        if (!attempt || entry.call !== reserved.size + 1 || !['reading', 'compress-navigation'].includes(entry.stage)
++          || entry.inputEstimate !== attempt.input.tokens || entry.outputLimit !== attempt.reservedOutput) return invalidResume()
++        reserved.add(entry.call)
++      } else if (entry.kind === 'dispatched') {
++        if (!reserved.has(entry.call) || dispatched.has(entry.call)) return invalidResume()
++        dispatched.add(entry.call)
++      } else if (entry.kind === 'settled') {
++        if (!reserved.has(entry.call) || settled.has(entry.call) || !equal(entry.usage, attempt.usage)) return invalidResume()
++        settled.add(entry.call)
++        const usage = attempt.usage
++        chargedInput += usage?.totalInputTokens ?? (usage?.inputTokens === undefined ? attempt.input.tokens
++          : usage.inputTokens + (usage.cacheReadTokens ?? 0) + (usage.cacheWriteTokens ?? 0))
++        chargedOutput += usage?.outputTokens ?? attempt.reservedOutput
++        if (!equal(entry.charged, { input: chargedInput, output: chargedOutput })) return invalidResume()
++      }
++    }
++    if (reserved.size !== result.calls || dispatched.size !== result.httpRequests || settled.size !== result.calls
++      || chargedInput !== result.inputCharged || chargedOutput !== result.outputCharged) return invalidResume()
++    charges = sumComparisonCharges(charges, result)
++    previous = phase
++  }
++  return charges
++}
+diff --git a/tests/quality/insight-comparison.test.mjs b/tests/quality/insight-comparison.test.mjs
+index ca6505d..f416bcc 100644
+--- a/tests/quality/insight-comparison.test.mjs
++++ b/tests/quality/insight-comparison.test.mjs
+@@ -1,6 +1,7 @@
+ import assert from 'node:assert/strict'
+ import { spawnSync } from 'node:child_process'
+-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmdirSync, unlinkSync, writeFileSync } from 'node:fs'
++import { createHash } from 'node:crypto'
++import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmdirSync, unlinkSync, writeFileSync } from 'node:fs'
+ import { tmpdir } from 'node:os'
+ import { join } from 'node:path'
+ import test from 'node:test'
+@@ -42,6 +43,721 @@ test('the long trial has separate phases and limits without opening the configur
+   assert.deepEqual(shortPlan.phases, ['reading', 'adaptive', 'direct', 'full'])
+ })
+ 
++test('a named long trial isolates its output and keeps the frozen cases and budgets', () => {
++  const result = spawnSync(process.execPath, ['scripts/insight-quality.mjs', '--long-comparison', '--dry-run', '--run-id=memory-preservation-20261115'], {
++    encoding: 'utf8', env: { ...process.env, WHOMI_QUALITY_DB: 'unavailable-comparison-dry-run.sqlite' },
++  })
++  assert.equal(result.status, 0, result.stderr)
++  const plan = JSON.parse(result.stdout)
++  assert.equal(plan.runId, 'memory-preservation-20261115')
++  assert.equal(plan.outputDirectory, 'long-comparison-runs/memory-preservation-20261115')
++  assert.equal(plan.totalRequestLimit, 64)
++  assert.equal(plan.syntheticPackingInputEstimateLimit, 7000)
++  assert.equal(plan.perRequestOutputLimit, 3000)
++  assert.equal(plan.perTaskLimits.maxCalls, 28)
++  assert.equal(plan.modelCalls, 0)
++  assert.deepEqual(plan.cases.map(({ caseName, messageCount }) => [caseName, messageCount]),
++    [['shared-workload', 120], ['conditional-reschedule', 120]])
++})
++
++test('named trial parsing rejects ambiguous or escaping destinations before configuration access', async () => {
++  const { comparisonArguments } = await import('./insight-comparison-profile.mjs')
++  const original = comparisonArguments(['--long-comparison', 'shared-workload', 'reading'])
++  const named = comparisonArguments(['--long-comparison', 'shared-workload', 'reading', '--resume-reading', '--run-id=memory-preservation-20261115'])
++  assert.equal(original.profile.outputDirectory, 'long-comparison')
++  assert.equal(original.profile.runtimeDirectory, '.long-comparison-runtime')
++  assert.deepEqual(named.args, ['--long-comparison', 'shared-workload', 'reading', '--resume-reading'])
++  assert.equal(named.profile.outputDirectory, 'long-comparison-runs/memory-preservation-20261115')
++  assert.equal(named.profile.runtimeDirectory, '.memory-preservation-20261115-runtime')
++  for (const args of [
++    ['--comparison', '--dry-run', '--run-id=round-two'],
++    ['--long-comparison', '--dry-run', '--run-id=../long-comparison'],
++    ['--long-comparison', '--dry-run', '--run-id=round/two'],
++    ['--long-comparison', '--dry-run', '--run-id=round\\two'],
++    ['--long-comparison', '--dry-run', '--run-id='],
++    ['--long-comparison', '--dry-run', '--run-id=round-two', '--run-id=round-three'],
++    ['--long-comparison', '--run-id=round-two', '--dry-run'],
++  ]) {
++    const result = spawnSync(process.execPath, ['scripts/insight-quality.mjs', ...args], {
++      encoding: 'utf8', env: { ...process.env, WHOMI_QUALITY_DB: 'unavailable-comparison-dry-run.sqlite' },
++    })
++    assert.notEqual(result.status, 0)
++    assert.match(result.stderr, /INVALID_COMPARISON_RUN_ID/)
++    assert.doesNotMatch(result.stderr, /WHOMI_QUALITY_DB/)
++  }
++})
++
++test('a named long trial can reserve natural checking room without changing the total request budget', async () => {
++  const result = spawnSync(process.execPath, ['scripts/insight-quality.mjs', '--long-comparison', '--dry-run',
++    '--task-call-limit=30', '--run-id=memory-preservation-20261115'], {
++    encoding: 'utf8', env: { ...process.env, WHOMI_QUALITY_DB: 'unavailable-comparison-dry-run.sqlite' },
++  })
++  assert.equal(result.status, 0, result.stderr)
++  const plan = JSON.parse(result.stdout)
++  assert.equal(plan.modelCalls, 0)
++  assert.equal(plan.perTaskLimits.maxCalls, 30)
++  assert.equal(plan.totalRequestLimit, 64)
++  const { comparisonArguments } = await import('./insight-comparison-profile.mjs')
++  const parsed = comparisonArguments(['--long-comparison', 'shared-workload', 'reading', '--resume-reading',
++    '--task-call-limit=30', '--run-id=memory-preservation-20261115'])
++  assert.deepEqual(parsed.args, ['--long-comparison', 'shared-workload', 'reading', '--resume-reading'])
++  assert.equal(parsed.profile.perTaskLimits.maxCalls, 30)
++})
++
++test('an explicit task request limit requires a named long trial and stays within the shared budget', async () => {
++  const { comparisonArguments } = await import('./insight-comparison-profile.mjs')
++  for (const args of [
++    ['--long-comparison', '--dry-run', '--task-call-limit=30'],
++    ['--comparison', '--dry-run', '--task-call-limit=30', '--run-id=round-two'],
++    ...['0', '-1', '1.5', '51', '9007199254740992', '', '03'].map(value =>
++      ['--long-comparison', '--dry-run', '--task-call-limit=' + value, '--run-id=round-two']),
++    ['--long-comparison', '--dry-run', '--task-call-limit=29', '--task-call-limit=30', '--run-id=round-two'],
++    ['--long-comparison', '--task-call-limit=30', '--dry-run', '--run-id=round-two'],
++  ]) assert.throws(() => comparisonArguments(args), { code: 'INVALID_COMPARISON_TASK_CALL_LIMIT' })
++  assert.equal(comparisonArguments(['--long-comparison', '--dry-run', '--task-call-limit=1', '--run-id=round-two'])
++    .profile.perTaskLimits.maxCalls, 1)
++})
++
++test('a bounded compaction trial reserves both task budgets and their comparison reports before dispatch', () => {
++  const result = spawnSync(process.execPath, ['scripts/insight-quality.mjs', '--long-comparison', '--dry-run',
++    '--task-call-limit=50', '--run-id=memory-bounded-20261116'], {
++    encoding: 'utf8', env: { ...process.env, WHOMI_QUALITY_DB: 'unavailable-comparison-dry-run.sqlite' },
++  })
++  assert.equal(result.status, 0, result.stderr)
++  const plan = JSON.parse(result.stdout)
++  assert.equal(plan.modelCalls, 0)
++  assert.equal(plan.perTaskLimits.maxCalls, 50)
++  assert.equal(plan.totalRequestLimit, 104)
++  assert.equal(plan.perTaskLimits.maxOutputTokens, 40000)
++  assert.equal(plan.syntheticPackingInputEstimateLimit, 7000)
++  assert.equal(plan.perRequestOutputLimit, 3000)
++})
++
++test('a named input capacity changes packing without changing task budgets or accessing credentials', async () => {
++  const { comparisonArguments } = await import('./insight-comparison-profile.mjs')
++  const supplied = ['--long-comparison', '--dry-run', '--input-limit=13000',
++    '--task-call-limit=50', '--run-id=paired-capacity']
++  const result = spawnSync(process.execPath, ['scripts/insight-quality.mjs', ...supplied], {
++    encoding: 'utf8', env: { ...process.env, WHOMI_QUALITY_DB: 'unavailable-memory-dry-run.sqlite' },
++  })
++  assert.equal(result.status, 0, result.stderr)
++  const plan = JSON.parse(result.stdout)
++  assert.equal(plan.syntheticPackingInputEstimateLimit, 13000)
++  assert.equal(plan.perRequestOutputLimit, 3000)
++  assert.equal(plan.perTaskLimits.maxCalls, 50)
++  assert.equal(plan.perTaskLimits.maxOutputTokens, 40000)
++  assert.equal(plan.modelCalls, 0)
++  assert.deepEqual(comparisonArguments(supplied).args, ['--long-comparison', '--dry-run'])
++  assert.equal(comparisonArguments(['--long-comparison', '--dry-run']).profile.packingLimit, 7000)
++})
++
++test('input capacity requires one trailing option in a named long trial', async () => {
++  const { comparisonArguments } = await import('./insight-comparison-profile.mjs')
++  for (const args of [
++    ['--long-comparison', '--dry-run', '--input-limit=13000'],
++    ['--comparison', '--dry-run', '--input-limit=13000', '--run-id=memory'],
++    ['--long-comparison', '--input-limit=13000', '--dry-run', '--run-id=memory'],
++    ['--long-comparison', '--dry-run', '--input-limit=13000', '--input-limit=13000', '--run-id=memory'],
++    ...['0', '1.5', '-1', '013000', '9007199254740992', ''].map(value =>
++      ['--long-comparison', '--dry-run', '--input-limit=' + value, '--run-id=memory']),
++  ]) assert.throws(() => comparisonArguments(args), { code: 'INVALID_COMPARISON_INPUT_LIMIT' })
++})
++
++test('input capacity freezes before any phase can change it', async t => {
++  const { comparisonArguments } = await import('./insight-comparison-profile.mjs')
++  const { ensureComparisonRunProfile } = await import('./insight-comparison-run.mjs')
++  const output = profileDirectory(t)
++  const profile = comparisonArguments(['--long-comparison', '--dry-run', '--input-limit=13000', '--run-id=memory']).profile
++  ensureComparisonRunProfile(output, profile)
++  const frozen = readFileSync(join(output, 'run-profile.json'), 'utf8')
++  assert.equal(JSON.parse(frozen).syntheticPackingInputEstimateLimit, 13000)
++  assert.throws(() => ensureComparisonRunProfile(output, { ...profile, packingLimit: 14000 }),
++    { code: 'INVALID_COMPARISON_RUN_PROFILE' })
++  assert.throws(() => ensureComparisonRunProfile(output, { ...profile, packingLimit: 7000 }),
++    { code: 'INVALID_COMPARISON_RUN_PROFILE' })
++  assert.equal(readFileSync(join(output, 'run-profile.json'), 'utf8'), frozen)
++})
++
++test('an engine manifest is restricted to a named long trial and removed from phase arguments', async () => {
++  const { comparisonArguments } = await import('./insight-comparison-profile.mjs')
++  const option = '--engine-manifest=release/baseline/manifest.json'
++  const parsed = comparisonArguments(['--long-comparison', 'shared-workload', 'reading', option,
++    '--input-limit=13000', '--task-call-limit=50', '--run-id=old-engine'])
++  assert.deepEqual(parsed.args, ['--long-comparison', 'shared-workload', 'reading'])
++  assert.equal(parsed.profile.engineManifest, 'release/baseline/manifest.json')
++  for (const args of [
++    ['--comparison', '--dry-run', option, '--run-id=engine'],
++    ['--long-comparison', '--dry-run', option],
++    ['--long-comparison', '--dry-run', option, option, '--run-id=engine'],
++    ['--long-comparison', option, '--dry-run', '--run-id=engine'],
++    ['--long-comparison', '--dry-run', '--engine-manifest=', '--run-id=engine'],
++  ]) assert.throws(() => comparisonArguments(args), { code: 'INVALID_COMPARISON_ENGINE' })
++})
++
++function engineFixture(t) {
++  mkdirSync('release', { recursive: true })
++  const output = mkdtempSync(join('release', 'comparison-engine-test-'))
++  t.after(() => {
++    for (const name of readdirSync(output)) unlinkSync(join(output, name))
++    rmdirSync(output)
++  })
++  const bundlePath = join(output, 'baseline.mjs').replaceAll('\\', '/')
++  const manifestPath = join(output, 'manifest.json').replaceAll('\\', '/')
++  const content = 'export const generateInsight = () => "baseline"; export const defaultInsightPrompts = {version: 1}; export const buildInsightPrompt = () => "old prompt";\n'
++  const manifest = { version: 1, baseCommit: 'fee2af45380cb379ab40009449f467d1c50c4a8b', bundlePath,
++    bundleSha256: createHash('sha256').update(content).digest('hex') }
++  writeFileSync(bundlePath, content)
++  writeFileSync(manifestPath, JSON.stringify(manifest))
++  return { output, bundlePath, manifestPath, manifest }
++}
++
++test('only an unchanged local baseline bundle can be loaded and frozen for a run', async t => {
++  const { readComparisonEngine, loadComparisonEngine, ensureComparisonRunProfile } = await import('./insight-comparison-run.mjs')
++  const { comparisonArguments } = await import('./insight-comparison-profile.mjs')
++  const { bundlePath, manifestPath, manifest } = engineFixture(t)
++  const descriptor = readComparisonEngine(process.cwd(), manifestPath)
++  assert.equal(descriptor.baseCommit, 'fee2af45380cb379ab40009449f467d1c50c4a8b')
++  assert.equal(descriptor.bundleSha256, manifest.bundleSha256)
++  const engine = await loadComparisonEngine(process.cwd(), manifestPath)
++  assert.equal(engine.generateInsight(), 'baseline')
++  assert.equal(engine.buildInsightPrompt(), 'old prompt')
++  const profile = comparisonArguments(['--long-comparison', '--dry-run', '--run-id=old-engine']).profile
++  const output = profileDirectory(t)
++  ensureComparisonRunProfile(output, profile, descriptor)
++  const frozen = readFileSync(join(output, 'run-profile.json'), 'utf8')
++  assert.deepEqual(JSON.parse(frozen).engine, descriptor)
++  assert.throws(() => ensureComparisonRunProfile(output, profile), { code: 'INVALID_COMPARISON_RUN_PROFILE' })
++  assert.throws(() => ensureComparisonRunProfile(output, profile, { ...descriptor, bundleSha256: '0'.repeat(64) }),
++    { code: 'INVALID_COMPARISON_RUN_PROFILE' })
++  writeFileSync(bundlePath, 'throw new Error("MUST_NOT_IMPORT_CHANGED_BUNDLE")')
++  await assert.rejects(loadComparisonEngine(process.cwd(), manifestPath), { code: 'INVALID_COMPARISON_ENGINE' })
++  assert.equal(readFileSync(join(output, 'run-profile.json'), 'utf8'), frozen)
++})
++
++test('baseline manifests reject another commit or paths outside release before configuration access', async t => {
++  const { readComparisonEngine } = await import('./insight-comparison-run.mjs')
++  const { manifestPath, manifest } = engineFixture(t)
++  for (const changed of [
++    { ...manifest, baseCommit: '0'.repeat(40) },
++    { ...manifest, bundlePath: 'tests/quality/insight-comparison-profile.mjs' },
++    { ...manifest, bundlePath: '../outside.mjs' },
++    { ...manifest, bundleSha256: '0'.repeat(64) },
++  ]) {
++    writeFileSync(manifestPath, JSON.stringify(changed))
++    assert.throws(() => readComparisonEngine(process.cwd(), manifestPath), { code: 'INVALID_COMPARISON_ENGINE' })
++  }
++  const result = spawnSync(process.execPath, ['scripts/insight-quality.mjs', '--long-comparison', 'shared-workload', 'reading',
++    '--engine-manifest=' + manifestPath, '--run-id=invalid-engine'], {
++    encoding: 'utf8', env: { ...process.env, WHOMI_QUALITY_DB: 'unavailable-engine.sqlite', WHOMI_QUALITY_PROVIDER_ID: '', WHOMI_QUALITY_MODEL_ID: '' },
++  })
++  assert.notEqual(result.status, 0)
++  assert.match(result.stderr, /INVALID_COMPARISON_ENGINE/)
++  assert.doesNotMatch(result.stderr, /Set WHOMI_QUALITY_DB/)
++})
++
++test('starting the other case cannot raise a legacy run budget before configuration access', async t => {
++  const { comparisonArguments } = await import('./insight-comparison-profile.mjs')
++  const runId = 'profile-guard-' + process.pid + '-' + Date.now()
++  const profile = comparisonArguments(['--long-comparison', 'shared-workload', 'reading',
++    '--task-call-limit=30', '--run-id=' + runId]).profile
++  const parent = join('release', 'conversation-insights-20261115', 'long-comparison-runs')
++  mkdirSync(parent, { recursive: true })
++  const output = join(parent, runId)
++  mkdirSync(output)
++  const phase = join(output, 'shared-workload-reading')
++  mkdirSync(phase)
++  const sample = profile.cases['shared-workload']
++  const original = JSON.stringify({ caseName: 'shared-workload', variant: 'reading', ...sample,
++    limits: { maxChecks: 8, maxRoundsPerCheck: 4, maxCalls: 30, maxInputTokens: 400000, maxOutputTokens: 40000, maxElapsedMs: 1200000 },
++    experiment: 'long-candidate-comparison', runId, totalRequestLimit: 64,
++    syntheticPackingInputEstimateLimit: 7000, perRequestOutputLimit: 3000 })
++  writeFileSync(join(phase, 'input.json'), original)
++  t.after(() => {
++    unlinkSync(join(phase, 'input.json'))
++    rmdirSync(phase)
++    if (existsSync(join(output, 'run-profile.json'))) unlinkSync(join(output, 'run-profile.json'))
++    rmdirSync(output)
++  })
++  const result = spawnSync(process.execPath, ['scripts/insight-quality.mjs', '--long-comparison', 'conditional-reschedule', 'reading',
++    '--task-call-limit=50', '--run-id=' + runId], {
++    encoding: 'utf8', env: { ...process.env, WHOMI_QUALITY_DB: 'unavailable-profile-guard.sqlite',
++      WHOMI_QUALITY_PROVIDER_ID: '', WHOMI_QUALITY_MODEL_ID: '' },
++  })
++  assert.notEqual(result.status, 0)
++  assert.match(result.stderr, /INVALID_COMPARISON_RUN_PROFILE/)
++  assert.doesNotMatch(result.stderr, /Set WHOMI_QUALITY_DB/)
++  assert.equal(readFileSync(join(phase, 'input.json'), 'utf8'), original)
++  assert.equal(existsSync(join(output, 'run-profile.json')), false)
++  assert.deepEqual(readdirSync(output), ['shared-workload-reading'])
++})
++
++function profileDirectory(t) {
++  const output = mkdtempSync(join(tmpdir(), 'whomi-run-profile-'))
++  t.after(() => {
++    for (const item of readdirSync(output, { withFileTypes: true })) {
++      const file = join(output, item.name)
++      if (item.isDirectory()) {
++        for (const name of readdirSync(file)) unlinkSync(join(file, name))
++        rmdirSync(file)
++      } else unlinkSync(file)
++    }
++    rmdirSync(output)
++  })
++  return output
++}
++
++test('a new run freezes all budgets and material hashes without rewriting its profile', async t => {
++  const { ensureComparisonRunProfile } = await import('./insight-comparison-run.mjs')
++  const { comparisonArguments } = await import('./insight-comparison-profile.mjs')
++  const profile = comparisonArguments(['--long-comparison', 'shared-workload', 'reading',
++    '--task-call-limit=50', '--run-id=profile-fixture']).profile
++  const output = profileDirectory(t)
++  ensureComparisonRunProfile(output, profile)
++  const file = join(output, 'run-profile.json')
++  const original = readFileSync(file, 'utf8')
++  const saved = JSON.parse(original)
++  assert.equal(saved.perTaskLimits.maxCalls, 50)
++  assert.equal(saved.perTaskLimits.maxOutputTokens, 40000)
++  assert.equal(saved.totalRequestLimit, 104)
++  assert.equal(saved.syntheticPackingInputEstimateLimit, 7000)
++  assert.equal(saved.perRequestOutputLimit, 3000)
++  assert.equal(saved.experiment, 'long-candidate-comparison')
++  assert.equal(saved.runId, 'profile-fixture')
++  assert.deepEqual(Object.keys(saved.materialHashes), ['shared-workload', 'conditional-reschedule'])
++  assert.doesNotThrow(() => ensureComparisonRunProfile(output, profile))
++  for (const mutate of [
++    changed => { changed.perTaskLimits.maxCalls = 30; changed.requestLimit = 64 },
++    changed => { changed.perTaskLimits.maxOutputTokens = 50000 },
++    changed => { changed.packingLimit = 8000 },
++    changed => { changed.outputLimit = 4000 },
++    changed => { changed.experiment = 'different' },
++    changed => { changed.runId = 'different' },
++    changed => { changed.cases['conditional-reschedule'].messages[0].text += 'different' },
++  ]) {
++    const changed = structuredClone(profile)
++    mutate(changed)
++    assert.throws(() => ensureComparisonRunProfile(output, changed), { code: 'INVALID_COMPARISON_RUN_PROFILE' })
++    assert.equal(readFileSync(file, 'utf8'), original)
++  }
++})
++
++test('legacy task and one-call comparison phases migrate without changing their artifacts', async t => {
++  const { ensureComparisonRunProfile } = await import('./insight-comparison-run.mjs')
++  const { comparisonArguments } = await import('./insight-comparison-profile.mjs')
++  const profile = comparisonArguments(['--long-comparison', 'shared-workload', 'reading',
++    '--task-call-limit=30', '--run-id=profile-fixture']).profile
++  const output = profileDirectory(t)
++  const files = []
++  for (const [caseName, variant, calls, outputTokens] of [
++    ['shared-workload', 'reading', 30, 40000], ['shared-workload', 'adaptive', 30, 40000],
++    ['shared-workload', 'direct', 1, 3000], ['shared-workload', 'direct-rich', 1, 3000],
++    ['conditional-reschedule', 'reading', 30, 40000],
++  ]) {
++    const directory = join(output, caseName + '-' + variant)
++    mkdirSync(directory)
++    const content = JSON.stringify({ caseName, variant, ...profile.cases[caseName],
++      limits: { maxChecks: 8, maxRoundsPerCheck: 4, maxCalls: calls, maxInputTokens: 400000, maxOutputTokens: outputTokens, maxElapsedMs: 1200000 },
++      experiment: 'long-candidate-comparison', runId: 'profile-fixture', totalRequestLimit: 64,
++      syntheticPackingInputEstimateLimit: 7000, perRequestOutputLimit: 3000 })
++    const file = join(directory, 'input.json')
++    writeFileSync(file, content)
++    files.push({ file, content })
++  }
++  ensureComparisonRunProfile(output, profile)
++  assert.equal(JSON.parse(readFileSync(join(output, 'run-profile.json'), 'utf8')).perTaskLimits.maxCalls, 30)
++  for (const { file, content } of files) assert.equal(readFileSync(file, 'utf8'), content)
++})
++
++test('legacy migration checks every case and rejects incomplete dispatched artifacts', async t => {
++  const { ensureComparisonRunProfile } = await import('./insight-comparison-run.mjs')
++  const { comparisonArguments } = await import('./insight-comparison-profile.mjs')
++  const profile = comparisonArguments(['--long-comparison', 'shared-workload', 'reading',
++    '--task-call-limit=30', '--run-id=profile-fixture']).profile
++  const output = profileDirectory(t)
++  const input = caseName => ({ caseName, variant: 'reading', ...profile.cases[caseName],
++    limits: { maxChecks: 8, maxRoundsPerCheck: 4, maxCalls: 30, maxInputTokens: 400000, maxOutputTokens: 40000, maxElapsedMs: 1200000 },
++    experiment: 'long-candidate-comparison', runId: 'profile-fixture', totalRequestLimit: 64,
++    syntheticPackingInputEstimateLimit: 7000, perRequestOutputLimit: 3000 })
++  for (const caseName of ['shared-workload', 'conditional-reschedule']) {
++    const directory = join(output, caseName + '-reading')
++    mkdirSync(directory)
++    const record = input(caseName)
++    if (caseName === 'shared-workload') record.limits.maxCalls = 50
++    writeFileSync(join(directory, 'input.json'), JSON.stringify(record))
++  }
++  assert.throws(() => ensureComparisonRunProfile(output, profile), { code: 'INVALID_COMPARISON_RUN_PROFILE' })
++  assert.equal(existsSync(join(output, 'run-profile.json')), false)
++  const directory = join(output, 'shared-workload-reading')
++  unlinkSync(join(directory, 'input.json'))
++  writeFileSync(join(directory, 'attempts.jsonl'), JSON.stringify({ kind: 'dispatched', call: 1 }) + '\n')
++  assert.throws(() => ensureComparisonRunProfile(output, profile), { code: 'INVALID_COMPARISON_RUN_PROFILE' })
++  assert.equal(existsSync(join(output, 'run-profile.json')), false)
++})
++
++function interruptedCompression() {
++  const limits = { maxChecks: 8, maxRoundsPerCheck: 4, maxCalls: 50, maxInputTokens: 400000, maxOutputTokens: 40000, maxElapsedMs: 1200000 }
++  const input = { caseName: 'sample', variant: 'reading', model: 'sample-model', limits, messages: [{ id: '1' }, { id: '2' }, { id: '3' }] }
++  const snapshot = { taskId: '201', createdAtMs: 123 }
++  const facts = [
++    { kind: 'fact', text: '集合时间已确认。', sourceIds: ['1'] },
++    { kind: 'fact', text: '集合地点已确认。', sourceIds: ['2'] },
++    { kind: 'unknown', text: '参加人数待确认。', sourceIds: ['3'] },
++  ]
++  const checkpoint = {
++    version: 1, taskId: '201', modelId: 'comparison-model', modelVersion: 1, prompts: { reading: 'fixed' }, limits,
++    stage: 'reading', report: null, writingRepairs: 0, callsReserved: 3, elapsedMs: 99,
++    cursor: { messageIndex: 3, textOffset: 0 }, pendingRead: null, coveredMessageIds: ['1', '2', '3'], checks: [],
++    observations: facts.slice(0, 2).map(({ text, sourceIds }) => ({ text, sourceIds })),
++    openThreads: [{ text: '参加人数待确认。', sourceIds: ['3'] }],
++    navigation: {
++      factsVersion: 1, reconciled: false, repairs: 0, roots: [0, 1, 2], cursor: 2, nextRoots: [3],
++      nodes: [
++        ...facts.map(fact => ({ text: fact.text, sourceIds: fact.sourceIds, children: [], facts: [fact] })),
++        { text: '时间和地点', sourceIds: ['1', '2'], children: [0, 1],
++          facts: [{ kind: 'fact', text: '集合时间和地点已确认。', sourceIds: ['1', '2'] }] },
++      ],
++    },
++    attempts: [1, 2, 3].map(call => ({ stage: 'reading', status: 'returned', input: { tokens: 100, method: 'estimate' }, reservedOutput: 3000,
++      startedAtMs: call * 10, usage: { totalInputTokens: 10, outputTokens: 20 } })),
++  }
++  const result = { state: 'failed', error: 'INVALID_EVIDENCE', calls: 3, httpRequests: 3, inputCharged: 30, outputCharged: 60, elapsedMs: 100 }
++  return {
++    phase: { phase: 'reading', input, snapshot, checkpoint, result,
++      archivedHalt: { caseName: 'sample', variant: 'reading', ...result },
++      ledger: [1, 2, 3].flatMap(call => [
++        { kind: 'reserved', stage: call === 1 ? 'reading' : 'compress-navigation', call, inputEstimate: 100, outputLimit: 3000 },
++        { kind: 'dispatched', call },
++        { kind: 'settled', call, usage: { totalInputTokens: 10, outputTokens: 20 }, charged: { input: call * 10, output: call * 20 } },
++      ]).map(JSON.stringify).join('\n') },
++    expected: { caseName: 'sample', expectedInput: input, expectedSnapshot: snapshot, modelVersion: 1,
++      prompts: { reading: 'fixed' }, expectedLimits: limits, sourceIds: ['1', '2', '3'], resuming: true },
++  }
++}
++
++test('compression recovery preserves completed reading, existing navigation and cumulative charges', async () => {
++  const { validateReadingChain } = await import('./insight-comparison-resume.ts')
++  const { comparisonDigest } = await import('./insight-comparison.ts')
++  const { phase, expected } = interruptedCompression()
++  const original = JSON.stringify(phase)
++  assert.deepEqual(validateReadingChain([phase], expected), { httpRequests: 3, inputCharged: 30, outputCharged: 60, elapsedMs: 100 })
++  assert.equal(JSON.stringify(phase), original)
++  const resumed = structuredClone(phase)
++  resumed.phase = 'reading-resume'
++  resumed.input.recovery = { sourcePhase: 'sample-reading', checkpointHash: comparisonDigest(phase.checkpoint) }
++  resumed.result = { state: 'completed', calls: 1, httpRequests: 1, inputCharged: 10, outputCharged: 20, elapsedMs: 100 }
++  resumed.checkpoint.stage = 'checking'
++  resumed.checkpoint.callsReserved = 4
++  resumed.checkpoint.elapsedMs = 199
++  resumed.checkpoint.attempts.push({ ...structuredClone(phase.checkpoint.attempts[2]), startedAtMs: 40 })
++  resumed.ledger = [
++    { kind: 'reserved', stage: 'compress-navigation', call: 1, inputEstimate: 100, outputLimit: 3000 },
++    { kind: 'dispatched', call: 1 },
++    { kind: 'settled', call: 1, usage: { totalInputTokens: 10, outputTokens: 20 }, charged: { input: 10, output: 20 } },
++  ].map(JSON.stringify).join('\n')
++  assert.deepEqual(validateReadingChain([phase, resumed], { ...expected, resuming: false }),
++    { httpRequests: 4, inputCharged: 40, outputCharged: 80, elapsedMs: 200 })
++  for (const mutate of [
++    later => { later.checkpoint.attempts[0].usage.outputTokens = 1 },
++    later => { later.input.recovery.checkpointHash = 'different' },
++    later => { later.checkpoint.limits.maxCalls = 51 },
++  ]) {
++    const later = structuredClone(resumed); mutate(later)
++    assert.throws(() => validateReadingChain([phase, later], { ...expected, resuming: false }), { code: 'INVALID_COMPARISON_READING_RESUME' })
++  }
++})
++
++function interruptedSourceOrderedCompression() {
++  const fixture = interruptedCompression()
++  const { phase, expected } = fixture
++  const sourceIds = ['b', 'd', 'a', 'c']
++  phase.input.messages = sourceIds.map(id => ({ id }))
++  expected.sourceIds = sourceIds
++  phase.checkpoint.cursor = { messageIndex: 4, textOffset: 0 }
++  phase.checkpoint.coveredMessageIds = [...sourceIds]
++  phase.checkpoint.observations = [
++    { text: '第三条来源的事实。', sourceIds: ['a'] },
++    { text: '第一条与第四条来源的事实。', sourceIds: ['c', 'b'] },
++    { text: '第一条来源的另一事实。', sourceIds: ['b'] },
++  ]
++  phase.checkpoint.openThreads = [
++    { text: '第一条来源的未知事项。', sourceIds: ['b'] },
++    { text: '第二条来源的未知事项。', sourceIds: ['d'] },
++  ]
++  const leaves = [
++    { kind: 'fact', text: '第一条与第四条来源的事实。', sourceIds: ['c', 'b'] },
++    { kind: 'fact', text: '第一条来源的另一事实。', sourceIds: ['b'] },
++    { kind: 'unknown', text: '第一条来源的未知事项。', sourceIds: ['b'] },
++    { kind: 'unknown', text: '第二条来源的未知事项。', sourceIds: ['d'] },
++    { kind: 'fact', text: '第三条来源的事实。', sourceIds: ['a'] },
++  ]
++  phase.checkpoint.navigation = {
++    factsVersion: 2, reconciled: false, repairs: 1, roots: [0, 1, 2, 3, 4], cursor: 3, nextRoots: [5],
++    nodes: [
++      ...leaves.map(fact => ({ text: fact.text, sourceIds: fact.sourceIds, children: [], facts: [fact] })),
++      { text: '第一条来源相关事项。', sourceIds: ['c', 'b'], children: [0, 1, 2], facts: structuredClone(leaves.slice(0, 3)) },
++    ],
++  }
++  return fixture
++}
++
++test('version two recovery verifies earliest snapshot source order with stable fact and unknown ties', async () => {
++  const { validateReadingChain } = await import('./insight-comparison-resume.ts')
++  const { phase, expected } = interruptedSourceOrderedCompression()
++  const original = JSON.stringify(phase)
++  assert.deepEqual(validateReadingChain([phase], expected), { httpRequests: 3, inputCharged: 30, outputCharged: 60, elapsedMs: 100 })
++  assert.equal(JSON.stringify(phase), original)
++})
++
++test('version two recovery rejects wrong leaf order, missing leaves, changed sources and unknown versions', async () => {
++  const { validateReadingChain } = await import('./insight-comparison-resume.ts')
++  const { phase, expected } = interruptedSourceOrderedCompression()
++  for (const mutate of [
++    entry => { entry.checkpoint.navigation.factsVersion = 1 },
++    entry => { entry.checkpoint.navigation.factsVersion = 3 },
++    entry => { [entry.checkpoint.navigation.nodes[0], entry.checkpoint.navigation.nodes[1]] = [entry.checkpoint.navigation.nodes[1], entry.checkpoint.navigation.nodes[0]] },
++    entry => { [entry.checkpoint.navigation.nodes[1], entry.checkpoint.navigation.nodes[2]] = [entry.checkpoint.navigation.nodes[2], entry.checkpoint.navigation.nodes[1]] },
++    entry => { [entry.checkpoint.navigation.nodes[3], entry.checkpoint.navigation.nodes[4]] = [entry.checkpoint.navigation.nodes[4], entry.checkpoint.navigation.nodes[3]] },
++    entry => { entry.checkpoint.navigation.nodes.splice(3, 1) },
++    entry => { entry.checkpoint.navigation.nodes[0].facts[0].sourceIds = ['b'] },
++    entry => { entry.checkpoint.navigation.nodes[0].facts[0].sourceIds = ['c', 'unknown-source'] },
++    entry => { entry.checkpoint.navigation.nodes[0].facts[0].text = '被改写的原始笔记。' },
++    entry => { entry.checkpoint.navigation.nextRoots = [0, 1] },
++    entry => { entry.checkpoint.navigation.nodes[5].children = [5] },
++    entry => { entry.checkpoint.limits.maxCalls = 51 },
++  ]) {
++    const changed = structuredClone(phase); mutate(changed)
++    assert.throws(() => validateReadingChain([changed], expected), { code: 'INVALID_COMPARISON_READING_RESUME' })
++  }
++})
++
++let coverageResumeModule
++async function coverageResumeHelper() {
++  if (!coverageResumeModule) coverageResumeModule = (async () => {
++    const { build } = await import('vite')
++    const bundle = await build({ configFile: false, logLevel: 'silent', build: {
++      ssr: 'tests/quality/insight-comparison-compression-resume.ts', write: false, minify: false,
++      rollupOptions: { output: { format: 'es' } },
++    } })
++    return import('data:text/javascript;base64,' + Buffer.from(bundle.output[0].code).toString('base64'))
++  })()
++  return coverageResumeModule
++}
++
++function coverageResumeFixture() {
++  const { phase, expected } = interruptedSourceOrderedCompression()
++  phase.checkpoint.navigation.repairs = 0
++  const nodes = [3, 4].map(navigationId => ({ navigationId, childCount: 0,
++    entries: phase.checkpoint.navigation.nodes[navigationId].facts.map((fact, index) => ({ entryId: `${navigationId}:${index}`, kind: fact.kind, text: fact.text })),
++  }))
++  phase.ledger += '\n' + JSON.stringify({ kind: 'returned', call: 3, stopReason: 'stop' })
++  return { phases: [phase], expected: structuredClone(expected), replay: {
++    request: { stage: 'compress-navigation', model: 'sample-model', inputEstimate: 100, outputLimit: 3000,
++      prompt: JSON.stringify({ stage: 'reading', operation: 'compress-navigation', targetFactTextLength: 160, maxFactCount: 4, nodes }) },
++    response: JSON.stringify({ text: '待核对事项', facts: [{ kind: 'unknown', text: '待核对。', entryIds: ['3:0', '4:0'] }] }),
++  } }
++}
++
++test('legacy coverage failure consumes exactly one repair on an immutable recovery copy', async () => {
++  const { prepareCompressionCoverageResume } = await coverageResumeHelper()
++  for (const omission of [false, true]) {
++    const fixture = coverageResumeFixture()
++    if (omission) fixture.replay.response = JSON.stringify({ text: '待核对事项', facts: [{ kind: 'unknown', text: '待核对。', entryIds: ['3:0'] }] })
++    const before = JSON.stringify(fixture)
++    const restored = prepareCompressionCoverageResume(fixture.phases, fixture.expected, fixture.replay)
++    assert.equal(restored.navigation.repairs, 1)
++    assert.equal(restored.callsReserved, 3)
++    assert.deepEqual({ ...restored, navigation: { ...restored.navigation, repairs: 0 } }, fixture.phases[0].checkpoint)
++    assert.equal(JSON.stringify(fixture), before)
++  }
++})
++
++test('coverage recovery rejects other format, evidence, history and budget failures', async () => {
++  const { prepareCompressionCoverageResume } = await coverageResumeHelper()
++  for (const mutate of [
++    f => { f.phases[0].checkpoint.navigation.repairs = 1 },
++    f => { f.phases[0].checkpoint.navigation.factsVersion = 1 },
++    f => { f.phases[0].checkpoint.stage = 'checking' },
++    f => { f.phases[0].checkpoint.cursor.messageIndex = 3 },
++    f => { f.phases[0].checkpoint.limits.maxCalls = 51 },
++    f => { f.phases[0].checkpoint.attempts[0].usage.outputTokens = 1 },
++    f => { f.phases[0].result.error = 'INVALID_INSIGHT_OUTPUT'; f.phases[0].archivedHalt.error = 'INVALID_INSIGHT_OUTPUT' },
++    f => { f.expected.expectedLimits.maxCalls = 3; f.phases[0].checkpoint.limits.maxCalls = 3 },
++    f => { f.replay.request.inputEstimate = 99 },
++    f => { f.replay.request.outputLimit = 3001 },
++    f => { f.replay.request.model = 'changed-model' },
++    f => { f.phases[0].ledger = f.phases[0].ledger.replace('"stopReason":"stop"', '"stopReason":"length"') },
++    f => { const p = JSON.parse(f.replay.request.prompt); p.nodes.reverse(); f.replay.request.prompt = JSON.stringify(p) },
++    f => { const p = JSON.parse(f.replay.request.prompt); p.nodes[0].entries[0].text = '改动原文'; f.replay.request.prompt = JSON.stringify(p) },
++    f => { const p = JSON.parse(f.replay.request.prompt); p.repair = true; f.replay.request.prompt = JSON.stringify(p) },
++    f => { f.replay.response = 'invalid json' },
++    f => { f.replay.response = JSON.stringify({ text: '', facts: [] }) },
++    f => { f.replay.response = JSON.stringify({ text: 'x'.repeat(721), facts: [] }) },
++    f => { f.replay.response = JSON.stringify({ text: '缺少正文', facts: [{ kind: 'unknown', entryIds: ['3:0'] }] }) },
++    f => { f.replay.response = JSON.stringify({ text: '超长正文', facts: [{ kind: 'unknown', text: 'x'.repeat(1201), entryIds: ['3:0'] }] }) },
++    f => { f.replay.response = JSON.stringify({ text: '未压缩', facts: [{ kind: 'unknown', text: 'x'.repeat(500), entryIds: ['3:0', '4:0'] }] }) },
++    f => { f.replay.response = JSON.stringify({ text: '外来编号并遗漏', facts: [{ kind: 'unknown', text: '待核对', entryIds: ['outside'] }] }) },
++    f => { f.replay.response = JSON.stringify({ text: '无依据升级并遗漏', facts: [{ kind: 'fact', text: '已确认', entryIds: ['3:0'] }] }) },
++    f => { f.replay.response = JSON.stringify({ text: '合法响应不能迁移', facts: [{ kind: 'fact', text: '已确认', entryIds: ['3:0', '4:0'] }] }) },
++  ]) {
++    const fixture = coverageResumeFixture(); mutate(fixture)
++    assert.throws(() => prepareCompressionCoverageResume(fixture.phases, fixture.expected, fixture.replay), { code: 'INVALID_COMPARISON_READING_RESUME' }, mutate.toString())
++  }
++})
++
++test('the second recovery accepts a failed compression repair without resetting attempts or repairs', async () => {
++  const { validateReadingChain } = await import('./insight-comparison-resume.ts')
++  const { comparisonDigest } = await import('./insight-comparison.ts')
++  const { phase, expected } = interruptedCompression()
++  const later = structuredClone(phase)
++  later.phase = 'reading-resume'
++  later.input.recovery = { sourcePhase: 'sample-reading', checkpointHash: comparisonDigest(phase.checkpoint) }
++  later.result = { state: 'failed', error: 'INVALID_INSIGHT_OUTPUT', calls: 2, httpRequests: 2, inputCharged: 20, outputCharged: 40, elapsedMs: 100 }
++  later.archivedHalt = { caseName: 'sample', variant: 'reading', ...later.result }
++  later.checkpoint.callsReserved = 5
++  later.checkpoint.elapsedMs = 199
++  later.checkpoint.navigation.repairs = 1
++  later.checkpoint.attempts.push(...[40, 50].map(startedAtMs => ({ ...structuredClone(phase.checkpoint.attempts[2]), startedAtMs })))
++  later.ledger = [1, 2].flatMap(call => [
++    { kind: 'reserved', stage: 'compress-navigation', call, inputEstimate: 100, outputLimit: 3000 },
++    { kind: 'dispatched', call },
++    { kind: 'settled', call, usage: { totalInputTokens: 10, outputTokens: 20 }, charged: { input: call * 10, output: call * 20 } },
++  ]).map(JSON.stringify).join('\n')
++  const original = JSON.stringify(later)
++  assert.deepEqual(validateReadingChain([phase, later], expected), { httpRequests: 5, inputCharged: 50, outputCharged: 100, elapsedMs: 200 })
++  assert.equal(JSON.stringify(later), original)
++  assert.equal(later.checkpoint.navigation.repairs, 1)
++  assert.throws(() => validateReadingChain([phase, later, later], expected), { code: 'INVALID_COMPARISON_READING_RESUME' })
++  for (const mutate of [
++    entry => { entry.checkpoint.stage = 'checking' },
++    entry => { entry.checkpoint.stage = 'writing' },
++    entry => { entry.checkpoint.attempts[0].usage.outputTokens = 1 },
++    entry => { entry.checkpoint.limits.maxCalls = 51 },
++    entry => {
++      entry.checkpoint.navigation = null
++      entry.checkpoint.cursor = { messageIndex: 2, textOffset: 0 }
++      entry.checkpoint.coveredMessageIds = ['1', '2']
++      entry.checkpoint.pendingRead = { from: { messageIndex: 2, textOffset: 0 }, to: { messageIndex: 3, textOffset: 0 }, depth: 0, repairs: 1 }
++      entry.ledger = entry.ledger.replaceAll('compress-navigation', 'reading')
++    },
++  ]) {
++    const changed = structuredClone(later); mutate(changed)
++    assert.throws(() => validateReadingChain([phase, changed], expected), { code: 'INVALID_COMPARISON_READING_RESUME' })
++  }
++})
++
++test('compression recovery rejects unread sources, invalid navigation and non-reading failures', async () => {
++  const { validateReadingChain } = await import('./insight-comparison-resume.ts')
++  const { phase, expected } = interruptedCompression()
++  for (const mutate of [
++    entry => { entry.checkpoint.stage = 'checking' },
++    entry => { entry.checkpoint.stage = 'writing' },
++    entry => { entry.checkpoint.report = {} },
++    entry => { entry.checkpoint.cursor.messageIndex = 2; entry.checkpoint.coveredMessageIds = ['1', '2'] },
++    entry => { entry.checkpoint.cursor.textOffset = 1 },
++    entry => { entry.checkpoint.pendingRead = { from: { messageIndex: 2, textOffset: 0 }, to: { messageIndex: 3, textOffset: 0 }, depth: 0, repairs: 0 } },
++    entry => { delete entry.checkpoint.navigation.factsVersion },
++    entry => { entry.checkpoint.navigation.cursor = 3 },
++    entry => { entry.checkpoint.navigation.roots[0] = 999 },
++    entry => { entry.checkpoint.navigation.nodes[3].children = [3] },
++    entry => { entry.checkpoint.navigation.nodes[3].facts[0].sourceIds = ['1'] },
++    entry => { entry.checkpoint.navigation.nodes[3].sourceIds = ['1']; entry.checkpoint.navigation.nodes[3].facts[0].sourceIds = ['1'] },
++    entry => { entry.checkpoint.navigation.nextRoots = [0] },
++    entry => { entry.checkpoint.navigation.nodes[0].facts[0].sourceIds = ['999'] },
++    entry => { entry.checkpoint.navigation.nodes[0].facts[0].kind = 'other' },
++    entry => { entry.checkpoint.limits.maxCalls = 51 },
++    entry => { entry.checkpoint.attempts[0].usage.outputTokens = 1 },
++    entry => { entry.checkpoint.attempts[2].stage = 'checking' },
++    entry => { entry.checkpoint.checks = [{ rounds: 1 }] },
++    entry => { entry.ledger = entry.ledger.replaceAll('compress-navigation', 'checking') },
++    entry => { entry.checkpoint.prompts.reading = 'changed' },
++    entry => { entry.checkpoint.modelVersion = 2 },
++    entry => { entry.result.error = 'CONTEXT_TOO_LARGE'; entry.archivedHalt.error = 'CONTEXT_TOO_LARGE' },
++  ]) {
++    const changed = structuredClone(phase); mutate(changed)
++    assert.throws(() => validateReadingChain([changed], expected), { code: 'INVALID_COMPARISON_READING_RESUME' })
++  }
++})
++
++test('second reading recovery requires an unbroken failed chain and keeps cumulative charges', async () => {
++  const { validateReadingChain } = await import('./insight-comparison-resume.ts')
++  const { comparisonDigest } = await import('./insight-comparison.ts')
++  const limits = { maxChecks: 8, maxRoundsPerCheck: 4, maxCalls: 30, maxInputTokens: 400000, maxOutputTokens: 40000, maxElapsedMs: 1200000 }
++  const input = { caseName: 'sample', variant: 'reading', model: 'sample-model', limits, messages: [{ id: '1' }, { id: '2' }, { id: '3' }] }
++  const snapshot = { taskId: '201', createdAtMs: 123 }
++  const attempt = n => ({ stage: 'reading', status: 'returned', input: { tokens: 100, method: 'estimate' }, reservedOutput: 3000,
++    startedAtMs: n * 1000, usage: { totalInputTokens: 10, outputTokens: 20 } })
++  const phase = n => {
++    const checkpoint = { version: 1, taskId: '201', modelId: 'comparison-model', modelVersion: 1, prompts: { reading: 'fixed' }, limits,
++      stage: 'reading', report: null, navigation: null, writingRepairs: 0, callsReserved: n, elapsedMs: n * 99,
++      cursor: { messageIndex: n - 1, textOffset: 0 }, pendingRead: { from: { messageIndex: n - 1, textOffset: 0 }, to: { messageIndex: n, textOffset: 0 }, depth: 0, repairs: 0 },
++      coveredMessageIds: ['1', '2', '3'].slice(0, n - 1), checks: [], attempts: Array.from({ length: n }, (_, i) => attempt(i + 1)) }
++    const result = { state: 'failed', error: 'INVALID_EVIDENCE', calls: 1, httpRequests: 1, inputCharged: 10, outputCharged: 20, elapsedMs: 100 }
++    return { phase: n === 1 ? 'reading' : 'reading-resume', input, snapshot, checkpoint, result,
++      archivedHalt: { caseName: 'sample', variant: 'reading', ...result }, ledger: [
++        { kind: 'reserved', stage: 'reading', call: 1, inputEstimate: 100, outputLimit: 3000 }, { kind: 'dispatched', call: 1 },
++        { kind: 'settled', call: 1, usage: attempt(n).usage, charged: { input: 10, output: 20 } },
++      ].map(JSON.stringify).join('\n') }
++  }
++  const first = phase(1), second = phase(2)
++  second.input = { ...input, recovery: { sourcePhase: 'sample-reading', checkpointHash: comparisonDigest(first.checkpoint) } }
++  const expected = { caseName: 'sample', expectedInput: input, expectedSnapshot: snapshot, modelVersion: 1,
++    prompts: { reading: 'fixed' }, expectedLimits: limits, sourceIds: ['1', '2', '3'], resuming: true }
++  assert.deepEqual(validateReadingChain([first, second], expected), { httpRequests: 2, inputCharged: 20, outputCharged: 40, elapsedMs: 200 })
++  const third = phase(3)
++  third.phase = 'reading-resume-2'
++  third.input = { ...input, recovery: { sourcePhase: 'sample-reading-resume', checkpointHash: comparisonDigest(second.checkpoint) } }
++  third.result = { state: 'completed', calls: 1, httpRequests: 1, inputCharged: 10, outputCharged: 20, elapsedMs: 100 }
++  third.checkpoint = { ...third.checkpoint, stage: 'checking', pendingRead: null, navigation: { roots: [0] }, coveredMessageIds: ['1', '2', '3'] }
++  assert.deepEqual(validateReadingChain([first, second, third], { ...expected, resuming: false }),
++    { httpRequests: 3, inputCharged: 30, outputCharged: 60, elapsedMs: 300 })
++  for (const mutate of [
++    entries => { entries[1].phase = 'reading-resume-2' },
++    entries => { delete entries[0].archivedHalt },
++    entries => { entries[1].checkpoint.callsReserved = 1 },
++    entries => { entries[1].checkpoint.attempts[0].usage.outputTokens = 1 },
++    entries => { entries[1].input.model = 'different' },
++    entries => { entries[1].result.inputCharged = 1 },
++    entries => { entries[1].checkpoint.elapsedMs = 1 },
++    entries => { entries[1].input.recovery.checkpointHash = 'different' },
++    entries => { entries[1].ledger = entries[1].ledger.replace('"call":1', '"call":2') },
++  ]) {
++    const entries = structuredClone([first, second]); mutate(entries)
++    assert.throws(() => validateReadingChain(entries, expected), { code: 'INVALID_COMPARISON_READING_RESUME' })
++  }
++})
++
++test('reading recovery cannot skip a generation or overwrite an existing destination', async t => {
++  const { readingChainPhases, assertReadingRecoverySettled, archivedReadingHaltName } = await import('./insight-comparison-resume.ts')
++  const { readingResumeOrdinal } = await import('./insight-comparison-profile.mjs')
++  assert.equal(readingResumeOrdinal('--resume-reading'), 1)
++  assert.equal(readingResumeOrdinal('--resume-reading=2'), 2)
++  assert.throws(() => readingResumeOrdinal('--resume-reading=3'), { code: 'INVALID_COMPARISON_READING_RESUME' })
++  const output = mkdtempSync(join(tmpdir(), 'whomi-second-resume-'))
++  const dirs = ['reading', 'reading-resume', 'reading-resume-2'].map(phase => join(output, 'sample-' + phase))
++  t.after(() => {
++    for (const dir of dirs.toReversed()) {
++      for (const name of ['result.json', archivedReadingHaltName]) if (existsSync(join(dir, name))) unlinkSync(join(dir, name))
++      if (existsSync(dir)) rmdirSync(dir)
++    }
++    rmdirSync(output)
++  })
++  mkdirSync(dirs[0])
++  writeFileSync(join(dirs[0], archivedReadingHaltName), '{}')
++  assert.deepEqual(readingChainPhases(output, 'sample', 1), ['reading'])
++  assert.throws(() => readingChainPhases(output, 'sample', 2), { code: 'INVALID_COMPARISON_READING_RESUME' })
++  mkdirSync(dirs[1])
++  writeFileSync(join(dirs[1], archivedReadingHaltName), '{}')
++  writeFileSync(join(dirs[1], 'result.json'), JSON.stringify({ state: 'failed' }))
++  assert.throws(() => readingChainPhases(output, 'sample', 1), { code: 'INVALID_COMPARISON_READING_RESUME' })
++  assert.deepEqual(readingChainPhases(output, 'sample', 2), ['reading', 'reading-resume'])
++  assert.throws(() => assertReadingRecoverySettled(output, ['sample']), { code: 'TRIAL_HALTED' })
++  mkdirSync(dirs[2])
++  assert.throws(() => readingChainPhases(output, 'sample', 2), { code: 'INVALID_COMPARISON_READING_RESUME' })
++  writeFileSync(join(dirs[2], 'result.json'), JSON.stringify({ state: 'completed' }))
++  assert.doesNotThrow(() => assertReadingRecoverySettled(output, ['sample']))
++  assert.deepEqual(readingChainPhases(output, 'sample'), ['reading', 'reading-resume', 'reading-resume-2'])
++})
++
+ test('direct writing keeps the shared notes and the frozen findings without citing pending guesses', async () => {
+   const { comparisonWritingBase, comparisonDirectPayload, comparisonDirectEvidence } = await import('./insight-comparison.ts')
+   const sent = {
+@@ -160,6 +876,23 @@ test('an outbound rejection survives SDK wrapping and stops later comparison pha
+   assert.throws(() => assertTrialNotHalted(output), { code: 'TRIAL_HALTED' })
+ })
+ 
++test('invalid compression output or insufficient capacity stops later trial phases', async t => {
++  const { assertTrialNotHalted, recordComparisonHalt } = await import('./insight-comparison.ts')
++  for (const code of ['INVALID_INSIGHT_OUTPUT', 'CONTEXT_TOO_LARGE']) {
++    const output = mkdtempSync(join(tmpdir(), 'whomi-compression-halt-'))
++    const halt = join(output, 'halt.json')
++    t.after(() => {
++      if (existsSync(halt)) unlinkSync(halt)
++      rmdirSync(output)
++    })
++    const original = JSON.stringify({ error: code, httpRequests: 2 })
++    recordComparisonHalt(output, code, original)
++    assert.throws(() => assertTrialNotHalted(output), { code: 'TRIAL_HALTED' })
++    recordComparisonHalt(output, code, JSON.stringify({ error: code, httpRequests: 3 }))
++    assert.equal(readFileSync(halt, 'utf8'), original)
++  }
++})
++
+ test('the production insight budget halts the comparison while a normal provider failure does not', async t => {
+   const { createTrialOutboundGuard, assertTrialNotHalted, recordComparisonHalt } = await import('./insight-comparison.ts')
+   const { output } = haltFolder(t)
+diff --git a/tests/quality/insight-comparison.ts b/tests/quality/insight-comparison.ts
+index 3c6364a..11477bc 100644
+--- a/tests/quality/insight-comparison.ts
++++ b/tests/quality/insight-comparison.ts
+@@ -13,6 +13,7 @@ export type TrialOutboundAttempt = { outputLimit: number; call: number; outbound
+ const comparisonHaltCodes = new Set([
+   'UNAPPROVED_NETWORK_REQUEST', 'UNENFORCED_OUTPUT_LIMIT', 'OUTSIDE_EVIDENCE', 'INVALID_EVIDENCE', 'UNSAFE_RESPONSE',
+   'TRIAL_CALL_LIMIT', 'TRIAL_BUDGET_LIMIT', 'INSIGHT_BUDGET_EXHAUSTED', 'COMPARISON_WRITING_REPAIR_DISABLED',
++  'INVALID_INSIGHT_OUTPUT', 'CONTEXT_TOO_LARGE',
+ ])
+ 
+ export const comparisonWritingPrompt = [
+diff --git a/tests/quality/insight-quality.ts b/tests/quality/insight-quality.ts
+index fe82d07..86325ce 100644
+--- a/tests/quality/insight-quality.ts
++++ b/tests/quality/insight-quality.ts
+@@ -9,22 +9,24 @@ import { validateAiResult } from '../../src/shared/ai-validation'
+ import { createCredentialVault } from '../../electron/main/ai-credentials'
+ import type { RuntimeInput, RuntimeRunner } from '../../electron/main/ai-service'
+ import { computeInsightInputBudget, countInsightInput, resolveInsightCapacity } from '../../electron/main/insight-packing'
+-import { generateInsight } from '../../electron/main/insight-generation'
++import { generateInsight as currentGenerateInsight } from '../../electron/main/insight-generation'
+ import { remainingInsightBudget, type InsightCheckpoint } from '../../electron/main/insight-checkpoint'
+-import { buildInsightPrompt, defaultInsightPrompts } from '../../electron/data/ai/insight-prompts'
++import { buildInsightPrompt as currentBuildInsightPrompt, defaultInsightPrompts as currentInsightPrompts } from '../../electron/data/ai/insight-prompts'
+ import { comparisonOutputLimit, trialRequestLimit } from './insight-comparison-material.mjs'
+-import { comparisonProfile, shortComparisonLimits as verificationLimits } from './insight-comparison-profile.mjs'
++import { comparisonArguments, readingResumeOrdinal, shortComparisonLimits as verificationLimits } from './insight-comparison-profile.mjs'
++import { ensureComparisonRunProfile, loadComparisonEngine, readComparisonEngine } from './insight-comparison-run.mjs'
+ import {
+   assertTrialNotHalted, comparisonDigest, comparisonDirectEvidence, comparisonDirectPayload, comparisonReadEvidence,
+   comparisonWritingBase, comparisonWritingPrompt, createTrialOutboundGuard, hasDispatchedCheckingOriginals,
+   longComparisonWritingPrompt, recordComparisonHalt, validateComparisonWriting, type TrialOutboundAttempt,
+ } from './insight-comparison'
+ import {
+-  archivedReadingHaltName, assertReadingRecoverySettled, sumComparisonCharges, validateReadingResume,
++  archivedReadingHaltName, assertReadingRecoverySettled, readingChainPhases, readingPhases, sumComparisonCharges, validateReadingChain,
+   type ComparisonCharge, type ComparisonPhaseResult,
+ } from './insight-comparison-resume'
+ import { insightQualityCases } from './insight-material.mjs'
+ import { insightVerificationCases } from './insight-verification-material.mjs'
++import { prepareCompressionCoverageResume } from './insight-comparison-compression-resume'
+ 
+ const selectedProvider = process.env.WHOMI_QUALITY_PROVIDER_ID
+ const selectedModel = process.env.WHOMI_QUALITY_MODEL_ID
+@@ -35,6 +37,13 @@ const scratch = resolve(process.env.WHOMI_QUALITY_SCRATCH!)
+ const output = resolve(process.env.WHOMI_QUALITY_OUTPUT!)
+ const sourceDatabase = resolve(process.env.WHOMI_QUALITY_DB!)
+ const comparisonModelId = 'comparison-model'
++const { args: trialArgs, profile: trialProfile } = comparisonArguments(process.argv.slice(2))
++const engine = trialProfile?.engineManifest ? readComparisonEngine(process.cwd(), trialProfile.engineManifest) : undefined
++if (trialProfile) ensureComparisonRunProfile(output, trialProfile, engine)
++const baselineEngine = trialProfile?.engineManifest ? await loadComparisonEngine(process.cwd(), trialProfile.engineManifest) : undefined
++const generateInsight: typeof currentGenerateInsight = baselineEngine?.generateInsight ?? currentGenerateInsight
++const buildInsightPrompt: typeof currentBuildInsightPrompt = baselineEngine?.buildInsightPrompt ?? currentBuildInsightPrompt
++const defaultInsightPrompts: typeof currentInsightPrompts = baselineEngine?.defaultInsightPrompts ?? currentInsightPrompts
+ app.setPath('userData', scratch)
+ app.setPath('sessionData', scratch)
+ 
+@@ -100,8 +109,8 @@ function totalInput(usage: AiUsage): number | undefined {
+ }
+ 
+ async function main() {
+-  const args = process.argv.slice(2)
+-  const profile = comparisonProfile(args[0])
++  const args = trialArgs
++  const profile = trialProfile
+   if (!profile) return runTrial(args)
+   mkdirSync(output, { recursive: true })
+   const lock = join(output, '.active-comparison')
+@@ -109,7 +118,7 @@ async function main() {
+   try {
+     assertTrialNotHalted(output)
+     if (args[0] === '--long-comparison') {
+-      const resumeCase = args[2] === 'reading' && args[3] === '--resume-reading' ? args[1] : undefined
++      const resumeCase = args[2] === 'reading' && readingResumeOrdinal(args[3]) ? args[1] : undefined
+       assertReadingRecoverySettled(output, Object.keys(profile.cases), resumeCase)
+     }
+     await runTrial(args)
+@@ -121,7 +130,7 @@ async function main() {
+ async function runTrial(args: string[]) {
+   const { model, apiKey } = selectModel()
+   const verification = args[0] === '--verification'
+-  const profile = comparisonProfile(args[0])
++  const profile = trialProfile
+   const comparison = !!profile
+   const longComparison = args[0] === '--long-comparison'
+   const totalRequestLimit = profile?.requestLimit ?? trialRequestLimit
+@@ -130,7 +139,8 @@ async function runTrial(args: string[]) {
+   const writingPrompt = longComparison ? longComparisonWritingPrompt : comparisonWritingPrompt
+   const detailedArtifacts = verification || comparison
+   const [caseName, variant, runOption] = detailedArtifacts ? args.slice(1) : args
+-  const resumeReading = longComparison && variant === 'reading' && runOption === '--resume-reading'
++  const resumeOrdinal = longComparison && variant === 'reading' ? readingResumeOrdinal(runOption) : 0
++  const resumeReading = resumeOrdinal > 0
+   const probe = verification && variant?.startsWith('probe-')
+   const directComparison = comparison && ['direct', 'direct-rich'].includes(variant)
+   const richComparison = longComparison && variant === 'direct-rich'
+@@ -208,8 +218,11 @@ async function runTrial(args: string[]) {
+   let priorReading: ComparisonCharge | undefined
+   let sharedReading: ComparisonCharge | undefined
+   let resumeCheckpointHash: string | undefined
++  let resumeSourcePhase: string | undefined
++  let coverageRecovery: { sourcePhase: string; checkpointHash: string; requestHash: string; responseHash: string; originalRepairs: number; restoredRepairs: number } | undefined
+   if (resumeReading || comparison && (variant === 'adaptive' || directComparison)) {
+-    const phase = !resumeReading && longComparison && existsSync(artifact('reading-resume', 'result.json')) ? 'reading-resume' : 'reading'
++    const phases = longComparison ? readingChainPhases(output, caseName, resumeOrdinal) : ['reading']
++    const phase = phases.at(-1)!
+     const reading = load<ComparisonPhaseResult>(phase, 'result.json')
+     const frozenSnapshot = load<InsightSnapshot>(phase, 'snapshot.json')
+     const checkpoint = load<InsightCheckpoint>(phase, 'checkpoint.json')
+@@ -220,33 +233,47 @@ async function runTrial(args: string[]) {
+     }
+     const { httpRequests, inputCharged, outputCharged, elapsedMs } = reading
+     const chargedPhase = { httpRequests, inputCharged, outputCharged, elapsedMs }
+-    if (resumeReading) {
+-      const originalInput = load<Record<string, unknown>>('reading', 'input.json')
++    if (longComparison) {
+       const expectedInput = {
+-        caseName, variant, experiment: profile!.experiment, scope: snapshot.scope, messages, excluded, limits, model: model.model,
++        caseName, variant: 'reading', experiment: profile!.experiment, scope: snapshot.scope, messages, excluded, limits: perTaskLimits, model: model.model,
++        ...(profile!.runId ? { runId: profile!.runId } : {}),
++        ...(engine ? { engine } : {}),
+         protocol: model.protocol, configuredCapacity, syntheticPackingInputEstimateLimit: inputLimit,
+         perRequestOutputLimit: comparisonRequestOutputLimit, totalRequestLimit,
+       }
+-      if (checkpoint.version !== 1 || checkpoint.taskId !== snapshot.taskId
+-        || comparisonDigest(checkpoint.prompts) !== comparisonDigest(defaultInsightPrompts)
+-        || Object.entries(expectedInput).some(([key, expected]) => JSON.stringify(originalInput[key]) !== JSON.stringify(expected))) {
+-        return fault('INVALID_COMPARISON_READING_RESUME')
++      const readingChain = phases.map(item => ({
++        phase: item, result: load<ComparisonPhaseResult>(item, 'result.json'), checkpoint: load<InsightCheckpoint>(item, 'checkpoint.json'),
++        input: load<Record<string, unknown>>(item, 'input.json'), snapshot: load<InsightSnapshot>(item, 'snapshot.json'),
++        ledger: readFileSync(artifact(item, 'attempts.jsonl'), 'utf8'),
++        ...(existsSync(artifact(item, archivedReadingHaltName)) ? { archivedHalt: load<ComparisonPhaseResult & { caseName: string; variant: string }>(item, archivedReadingHaltName) } : {}),
++      }))
++      const expectedReading = {
++        caseName, expectedInput, expectedSnapshot: frozenSnapshot, modelVersion: model.version, prompts: defaultInsightPrompts,
++        expectedLimits: perTaskLimits, sourceIds, resuming: resumeReading,
+       }
+-      validateReadingResume({
+-        caseName, originalResult: reading, archivedHalt: load('reading', archivedReadingHaltName), checkpoint,
+-        expectedLimits: perTaskLimits, sourceIds, ledger: readFileSync(artifact('reading', 'attempts.jsonl'), 'utf8'),
+-      })
+-      priorReading = chargedPhase
+-      resumeCheckpointHash = comparisonDigest(checkpoint)
++      const charges = validateReadingChain(readingChain, expectedReading)
++      if (resumeReading) {
++        priorReading = charges
++        resumeCheckpointHash = comparisonDigest(checkpoint)
++        resumeSourcePhase = caseName + '-' + phase
++        if (reading.error === 'INVALID_EVIDENCE' && checkpoint.navigation?.factsVersion === 2) {
++          const lastCall = String(reading.calls).padStart(2, '0')
++          const request = load<{ stage: string; model: string; prompt: string; systemPrompt: string; inputEstimate: number; outputLimit: number }>(phase, 'request-' + lastCall + '.json')
++          const response = readFileSync(artifact(phase, 'response-' + lastCall + '.txt'), 'utf8')
++          if (request.systemPrompt !== buildInsightPrompt(defaultInsightPrompts, 'reading', 'compress-navigation')) return fault('INVALID_COMPARISON_READING_RESUME')
++          frozenCheckpoint = prepareCompressionCoverageResume(readingChain, expectedReading, { request, response })
++          coverageRecovery = { sourcePhase: resumeSourcePhase, checkpointHash: resumeCheckpointHash,
++            requestHash: comparisonDigest(request), responseHash: comparisonDigest(response), originalRepairs: 0, restoredRepairs: 1 }
++        }
++      } else sharedReading = charges
+     } else {
+       if (reading.state !== 'completed' || checkpoint.stage !== 'checking' || checkpoint.pendingRead || !checkpoint.navigation
+         || checkpoint.attempts.some(attempt => attempt.stage !== 'reading' || attempt.status === 'pending')
+         || JSON.stringify(checkpoint.coveredMessageIds) !== JSON.stringify(sourceIds)) return fault('INVALID_COMPARISON_CHECKPOINT')
+-      sharedReading = phase === 'reading-resume'
+-        ? sumComparisonCharges(load<ComparisonPhaseResult>('reading', 'result.json'), chargedPhase) : chargedPhase
++      sharedReading = chargedPhase
+     }
+     snapshot = frozenSnapshot
+-    frozenCheckpoint = { ...checkpoint, modelId: model.id }
++    frozenCheckpoint = { ...(frozenCheckpoint ?? checkpoint), modelId: model.id }
+   }
+   let capturedAdaptive: { record: WritingRecord; request: CapturedWriting } | undefined
+   let readingExcerpts: ReturnType<typeof comparisonReadEvidence> | undefined
+@@ -271,7 +298,7 @@ async function runTrial(args: string[]) {
+       if (!readingExcerpts.length) return fault('COMPARISON_NO_READING_EXCERPTS')
+     }
+   }
+-  const folder = join(output, caseName + '-' + variant + (resumeReading ? '-resume' : '')
++  const folder = join(output, caseName + '-' + (resumeReading ? readingPhases[resumeOrdinal] : variant)
+     + (regression ? runOption.slice(1) : '') + (runNumber === 2 ? '-run2' : ''))
+   mkdirSync(folder)
+   const prefix = (name: string) => join(folder, name)
+@@ -293,8 +320,11 @@ async function runTrial(args: string[]) {
+     ...(inputLimit ? { perRequestEstimateCeiling: inputLimit } : {}),
+     ...(verification ? { experiment: 'autonomous-verification', runNumber, totalRequestLimit: 24, precedingRequests: previousDispatched } : {}),
+     ...(profile ? { experiment: profile.experiment, totalRequestLimit, precedingRequests: previousDispatched,
++      ...(profile.runId ? { runId: profile.runId } : {}),
++      ...(engine ? { engine } : {}),
+       configuredCapacity, syntheticPackingInputEstimateLimit: inputLimit, perRequestOutputLimit: comparisonRequestOutputLimit } : {}),
+-    ...(resumeCheckpointHash ? { recovery: { sourcePhase: caseName + '-reading', checkpointHash: resumeCheckpointHash } } : {}) })
++    ...(resumeCheckpointHash ? { recovery: { sourcePhase: resumeSourcePhase, checkpointHash: resumeCheckpointHash } } : {}) })
++  if (coverageRecovery) json('recovery-migration.json', { kind: 'compression-coverage-repair', ...coverageRecovery })
+ 
+   const nativeFetch = globalThis.fetch.bind(globalThis)
+   const outboundGuard = createTrialOutboundGuard({
+@@ -469,7 +499,7 @@ async function runTrial(args: string[]) {
+           hypotheticalArmTotal: sumComparisonCharges(sharedReading, incremental),
+         } : {}),
+       },
+-      ...(resumeCheckpointHash ? { resumedFrom: caseName + '-reading', resumeCheckpointHash } : {}),
++      ...(resumeCheckpointHash ? { resumedFrom: resumeSourcePhase, resumeCheckpointHash } : {}),
+       ...(writingRecord ? {
+         sharedBaseHash: writingRecord.sharedBaseHash, pairWarnings,
+         adaptiveWriting: { repair: writingRecord.repair, outputLimit: writingRecord.outputLimit },

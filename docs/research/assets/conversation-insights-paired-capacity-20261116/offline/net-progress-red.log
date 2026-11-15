@@ -1,0 +1,62 @@
+
+ RUN  v5.0.5 D:/University/github/whomi
+
+ ❯ tests/backend/insight-generation.test.ts (83 tests | 2 failed | 78 skipped) 30ms
+   × a real second-layer compression that saves 18.63 percent advances while other memory still exceeds writing capacity 13ms
+   × repeated one-byte compression progress still stops at the shared call budget 3ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/backend/insight-generation.test.ts > a real second-layer compression that saves 18.63 percent advances while other memory still exceeds writing capacity
+AssertionError: expected Error: 洞察结果格式错误，请继续生成。 { …(2) } to be Error: fixture accepted net compression b… // Object.is equality
+
+- Expected
++ Received
+
+- Error {
+-   "message": "fixture accepted net compression before processing remaining memory",
++ BoundaryError {
++   "message": "洞察结果格式错误，请继续生成。",
++   "code": "INVALID_INSIGHT_OUTPUT",
++   "action": "洞察结果格式错误，请继续生成。",
+  }
+
+ ❯ tests/backend/insight-generation.test.ts:264:64
+    262|     if (value.navigation?.cursor === 1) throw stop
+    263|   }
+    264|   await expect(generateInsight({ ...input, checkpoint }, deps)).reject…
+       |                                                                ^
+    265|   expect(state.checkpoint?.callsReserved).toBe(1)
+    266|   const retained = state.checkpoint!.navigation!.nodes[2].facts!
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  tests/backend/insight-generation.test.ts > repeated one-byte compression progress still stops at the shared call budget
+AssertionError: expected Error: 洞察结果格式错误，请继续生成。 { …(2) } to match object { code: 'INSIGHT_BUDGET_EXHAUSTED' }
+(1 matching property omitted from actual)
+
+- Expected
++ Received
+
+- {
+-   "code": "INSIGHT_BUDGET_EXHAUSTED",
++ BoundaryError {
++   "code": "INVALID_INSIGHT_OUTPUT",
+  }
+
+ ❯ tests/backend/insight-generation.test.ts:295:45
+    293|     return result({ text: '逐字精简。', facts: [{ kind: 'fact', text: entry…
+    294|   }
+    295|   await expect(generateInsight(input, deps)).rejects.toMatchObject({ c…
+       |                                             ^
+    296|   expect(calls).toBe(3)
+    297|   expect(state.checkpoint?.callsReserved).toBe(3)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 3 passed | 78 skipped (83)
+   Start at  01:29:35
+   Duration  449ms (transform 53%, import 31%, tests 12%, worker 3%)
+

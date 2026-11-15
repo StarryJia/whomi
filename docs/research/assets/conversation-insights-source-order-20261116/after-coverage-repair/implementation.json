@@ -1,0 +1,82 @@
+{
+  "createdAt": "2026-11-15T17:19:15.637Z",
+  "baseCommit": "fee2af45380cb379ab40009449f467d1c50c4a8b",
+  "precedingActualRequestsInThisRun": 20,
+  "priorClosedRuns": {
+    "requests": 50,
+    "inputTokens": 93526,
+    "outputTokens": 48670
+  },
+  "taskCalls": 50,
+  "totalRequests": 104,
+  "navigationFactsVersion": 2,
+  "reason": "Classify compression coverage errors as one bounded format repair; migrate the prior rejected attempt into its repair allowance.",
+  "nodeVersion": "v24.12.0",
+  "files": [
+    {
+      "file": "electron/data/ai/insight-prompts.ts",
+      "sha256": "0643589ba6b30a765c9ef6bdd2b9279653ebfb709b354546b7b6a7b607963f37"
+    },
+    {
+      "file": "electron/main/insight-checkpoint.ts",
+      "sha256": "cb3bcbc658f58e19e20ad1a42fd660b418db1d77f88acf9a8db090250e55d65a"
+    },
+    {
+      "file": "electron/main/insight-generation.ts",
+      "sha256": "2b509a15aac97b8719894c48198e961c22b5a9e6cb6bde35c4080db9621bcf94"
+    },
+    {
+      "file": "scripts/insight-quality.mjs",
+      "sha256": "bab96cf245e8cc8957da872b84cbf55762b58e711914593210242d3473830d9c"
+    },
+    {
+      "file": "tests/backend/insight-generation.test.ts",
+      "sha256": "a4161be0ba57aa8f44f1d9756113da23c11b7238eb38bb265444069613b7dc74"
+    },
+    {
+      "file": "tests/backend/insight-reading-memory.test.ts",
+      "sha256": "3c3702f5c37f0aeab9266eeda89dad7565664d03ff3f4adf8acf7e6c95bb632a"
+    },
+    {
+      "file": "tests/quality/insight-comparison-profile.mjs",
+      "sha256": "d3a120ffe87ad6ba55e28056fe2a703a1f283b217bf190796e1e8959b28a2c82"
+    },
+    {
+      "file": "tests/quality/insight-comparison-run.mjs",
+      "sha256": "0717301158d1e580debcd8adbc9ae648d39d03cedb01f6eacb97106e465ab4b2"
+    },
+    {
+      "file": "tests/quality/insight-comparison-resume.ts",
+      "sha256": "3ec2879588c3615575d173fb24759b6d3d5a1147cc03994e01b6ddc15288e49c"
+    },
+    {
+      "file": "tests/quality/insight-comparison.test.mjs",
+      "sha256": "7b1195888096a6e5e8e091871e74da1334daa747cd6006186a601c8c72cd9e47"
+    },
+    {
+      "file": "tests/quality/insight-comparison.ts",
+      "sha256": "1da7ba554c17313be4986094e81c1dca9183085027fb80b13f619b42522188b1"
+    },
+    {
+      "file": "tests/quality/insight-quality.ts",
+      "sha256": "8723ecd764014708e6382c030fb296a4b04811d4804507258f41d24eb46ac2e8"
+    },
+    {
+      "file": "tests/quality/insight-long-comparison-material.mjs",
+      "sha256": "450925083b1bfce661d1b81773a9a50e7800a526a3702c6bc6f732612fe1b2c7"
+    },
+    {
+      "file": "tests/quality/insight-comparison-compression-resume.ts",
+      "sha256": "e4bec4e1e57180a13946a772cccce515c98a7e54ad37cc375d22374f2010b429"
+    },
+    {
+      "file": "tests/backend/fixtures/insight-compression-target.json",
+      "sha256": "bff44a9f34554aa031cee343f4599f516f6599b13f78bdeb713a908369cdf1ee"
+    },
+    {
+      "file": "tests/backend/fixtures/insight-compression-coverage.json",
+      "sha256": "7dc05df843baa237af30e1f633fb1661ae66ac9bc7ab9242bd9b97eefa7bece8"
+    }
+  ],
+  "patchSha256": "5d9fb639f0bc0df993b42649f5b45f1628c66dc767b582dfeb6e47f3dbb32813"
+}

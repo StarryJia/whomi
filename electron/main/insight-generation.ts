@@ -9,7 +9,7 @@ import type { RuntimeInput, RuntimeResult, RuntimeRunner } from './ai-service'
 import {
   createInsightCheckpoint, insightBudgetError, remainingInsightBudget, startingInsightCursor,
   type InsightAttempt, type InsightCandidate, type InsightCheck, type InsightCheckpoint, type InsightEvidenceNote,
-  type InsightFinding, type InsightNavigation, type InsightNavigationRequest, type InsightNote, type InsightRunLimits, type InsightStage,
+  type InsightFinding, type InsightMemoryFact, type InsightNavigation, type InsightNavigationRequest, type InsightNote, type InsightRunLimits, type InsightStage,
 } from './insight-checkpoint'
 import {
   computeInsightInputBudget, countInsightInput, insightCapacityError, packInsightSources, resolveInsightCapacity,
@@ -63,9 +63,70 @@ type CheckResult =
 
 function navigationItems(navigation: InsightNavigation, ids: readonly number[]): VisibleNavigation[] {
   return ids.map(navigationId => {
-    const { children, ...note } = navigation.nodes[navigationId]
-    return { ...note, navigationId, childCount: children.length }
+    const { children, facts: _facts, ...note } = navigation.nodes[navigationId]
+    return { ...note, sourceIds: children.length ? note.sourceIds.slice(0, 12) : note.sourceIds,
+      navigationId, childCount: children.length }
   })
+}
+
+function navigationFacts(navigation: InsightNavigation, ids: readonly number[]): InsightMemoryFact[] {
+  return ids.flatMap(id => navigation.nodes[id].facts ?? [{ ...navigation.nodes[id], kind: 'fact' as const }])
+}
+
+function compressionNodes(navigation: InsightNavigation, ids: readonly number[]) {
+  return ids.map(navigationId => ({ navigationId, childCount: navigation.nodes[navigationId].children.length,
+    entries: navigationFacts(navigation, [navigationId]).map((fact, index) => ({
+      entryId: `${navigationId}:${index}`, kind: fact.kind, text: fact.text, sourceIds: fact.sourceIds,
+    })),
+  }))
+}
+
+function factTextLength(facts: readonly { text: string }[]): number {
+  return facts.reduce((total, fact) => total + [...fact.text].length, 0)
+}
+
+function compressionLimits(nodes: ReturnType<typeof compressionNodes>) {
+  const entries = nodes.flatMap(node => node.entries)
+  return { targetFactTextLength: Math.max(160, Math.floor(factTextLength(entries) * 0.6)), maxFactCount: entries.length * 2 }
+}
+
+function compressionPayload(nodes: ReturnType<typeof compressionNodes>, repair: boolean) {
+  return {
+    stage: 'reading', operation: 'compress-navigation', ...compressionLimits(nodes),
+    nodes: nodes.map(node => ({ navigationId: node.navigationId, childCount: node.childCount,
+      entries: node.entries.map(({ entryId, kind, text }) => ({ entryId, kind, text })),
+    })), ...(repair ? { repair: true } : {}),
+  }
+}
+
+function factNotes(facts: readonly InsightMemoryFact[]) {
+  const notes = (kind: InsightMemoryFact['kind']) => facts.filter(fact => fact.kind === kind)
+    .map(({ text, sourceIds }) => ({ text, sourceIds }))
+  return { observations: notes('fact'), openThreads: notes('unknown') }
+}
+
+const factBytes = (facts: readonly InsightMemoryFact[]) => Buffer.byteLength(JSON.stringify(factNotes(facts)), 'utf8')
+
+export function parseInsightCompressedFacts(value: unknown, nodes: ReturnType<typeof compressionNodes>): InsightMemoryFact[] {
+  const entries = new Map(nodes.flatMap(node => node.entries).map(entry => [entry.entryId, entry]))
+  const covered = new Set<string>()
+  const retainedUnknowns = new Set<string>()
+  const unknownOnlyFacts: string[][] = []
+  const facts = array<InsightMemoryFact>(value, entries.size * 2, item => {
+    const fact = object(item)
+    if (fact.kind !== 'fact' && fact.kind !== 'unknown') return invalidOutput()
+    const ids = sourceIds(fact.entryIds, new Set(entries.keys()), true)
+    const inputs = ids.map(id => entries.get(id)!)
+    if (fact.kind === 'fact' && !inputs.some(entry => entry.kind === 'fact')) unknownOnlyFacts.push(ids)
+    for (const id of ids) {
+      covered.add(id)
+      if (fact.kind === 'unknown') retainedUnknowns.add(id)
+    }
+    return { kind: fact.kind, text: string(fact.text, 1200), sourceIds: unique(inputs.flatMap(entry => entry.sourceIds)) }
+  })
+  if (unknownOnlyFacts.some(ids => ids.some(id => !retainedUnknowns.has(id)))) return invalidEvidence()
+  if ([...entries.keys()].some(id => !covered.has(id))) return invalidOutput()
+  return facts
 }
 
 const codeOf = (error: unknown) => (error as { code?: unknown })?.code
@@ -121,12 +182,15 @@ function explanations(value: unknown): string[] {
   return array(value, 24, item => string(item, 3000))
 }
 
-function parseEvidenceNotes(value: unknown, evidence: readonly InsightSourcePart[]): InsightEvidenceNote[] {
+function parseEvidenceNotes(
+  value: unknown, evidence: readonly InsightSourcePart[], verified: readonly InsightEvidenceNote[] = [],
+): InsightEvidenceNote[] {
   return array(value, maximumEvidenceNotes, item => {
     const note = object(item)
     const sourceId = string(note.sourceId, 256)
     const quote = string(note.quote, 240)
-    if (!evidence.some(part => part.id === sourceId && part.text.includes(quote))) return invalidEvidence()
+    if (!evidence.some(part => part.id === sourceId && part.text.includes(quote))
+      && !verified.some(prior => prior.sourceId === sourceId && prior.quote.includes(quote))) return invalidEvidence()
     return { sourceId, quote, text: string(note.text, 480) }
   })
 }
@@ -134,11 +198,14 @@ function parseEvidenceNotes(value: unknown, evidence: readonly InsightSourcePart
 function parseFinding(body: Record<string, unknown>, evidence: ReadonlySet<string>): InsightFinding {
   const supportingIds = sourceIds(body.supportingIds, evidence)
   const counterexampleIds = sourceIds(body.counterexampleIds, evidence)
-  if (supportingIds.some(id => counterexampleIds.includes(id))) return invalidEvidence()
   return {
     revisedObservation: string(body.revisedObservation, 3000), supportingIds, counterexampleIds,
     alternativeExplanations: explanations(body.alternativeExplanations ?? []), limitations: explanations(body.limitations),
   }
+}
+
+function overlappingFindingSources(finding: InsightFinding): boolean {
+  return finding.supportingIds.some(id => finding.counterexampleIds.includes(id))
 }
 
 function parseReading(
@@ -150,17 +217,25 @@ function parseReading(
   // 关闭已显示的旧事项不要求重复提供原文，也不授予新增事实的引用资格。
   const resolvableThreadIds = new Set([...rawIds, ...openThreads.flatMap(note => note.sourceIds)])
   const candidateIds = new Set(knownCandidates.map(candidate => candidate.id))
-  const updateEvidence = new Set([...rawIds, ...knownCandidates.flatMap(candidate => candidate.evidenceNotes.map(note => note.sourceId))])
+  const visibleNotes = knownCandidates.flatMap(candidate => candidate.evidenceNotes)
+  const updateEvidence = new Set([...rawIds, ...visibleNotes.map(note => note.sourceId)])
   const parseNote = (value: unknown) => {
     const note = object(value)
     return { text: string(note.text, 1200), sourceIds: sourceIds(note.sourceIds, rawIds, true) }
+  }
+  let repeatsVisibleThread = false
+  const parseNewThread = (value: unknown) => {
+    const note = object(value)
+    const ids = sourceIds(note.sourceIds, resolvableThreadIds, true)
+    if (ids.some(id => !rawIds.has(id))) repeatsVisibleThread = true
+    return { text: string(note.text, 1200), sourceIds: ids }
   }
   const candidateUpdates = array(body.candidateUpdates ?? [], maximumNotesPerBatch, (value): CandidateUpdate => {
     const update = object(value)
     const id = string(update.id, 128)
     if (!candidateIds.has(id)) return invalidEvidence()
     candidateIds.delete(id)
-    const notes = parseEvidenceNotes(update.evidenceNotes ?? [], originalEvidence)
+    const notes = parseEvidenceNotes(update.evidenceNotes ?? [], originalEvidence, visibleNotes)
     if (update.action === 'resolve') {
       return { id, action: 'resolve', finding: parseFinding(object(update.finding), updateEvidence), evidenceNotes: notes }
     }
@@ -171,9 +246,9 @@ function parseReading(
     }
     return { id, action: 'revise', candidate, evidenceNotes: notes }
   })
-  return {
+  const reading: ReadResult = {
     observations: array(body.observations, maximumNotesPerBatch, parseNote),
-    openThreads: array(body.openThreads, maximumNotesPerBatch, parseNote),
+    openThreads: array(body.openThreads, maximumNotesPerBatch, parseNewThread),
     candidates: array(body.candidates, maximumNotesPerBatch, value => {
       const candidate = object(value)
       return {
@@ -185,17 +260,24 @@ function parseReading(
     resolvedThreadSourceIds: body.resolvedThreadSourceIds === undefined ? [] : sourceIds(body.resolvedThreadSourceIds, resolvableThreadIds),
     candidateUpdates,
   }
+  // 先拒绝整份响应里的非法来源，再处理可修复的协议错误。
+  if (repeatsVisibleThread || candidateUpdates.some(update => update.action === 'resolve' && overlappingFindingSources(update.finding))) {
+    return invalidOutput()
+  }
+  return reading
 }
 
 function parseChecking(
   response: RuntimeResult, checkId: string, covered: ReadonlySet<string>, evidence: ReadonlySet<string>, hasMoreEvidence: boolean,
   currentEvidence: readonly InsightSourcePart[], visibleNavigation: readonly VisibleNavigation[], navigationPage: NavigationPage | null,
+  verifiedNotes: readonly InsightEvidenceNote[],
 ): CheckResult {
   const body = outputObject(response)
   if (body.checkId !== checkId) return invalidOutput()
   if (body.action === 'read' || body.action === 'navigate') {
-    const evidenceNotes = parseEvidenceNotes(body.evidenceNotes ?? [], currentEvidence)
-    if (currentEvidence.some(part => part.fragment && !evidenceNotes.some(note => note.sourceId === part.id))) return invalidOutput()
+    const evidenceNotes = parseEvidenceNotes(body.evidenceNotes ?? [], currentEvidence, verifiedNotes)
+    if (currentEvidence.some(part => part.fragment
+      && !evidenceNotes.some(note => note.sourceId === part.id && part.text.includes(note.quote)))) return invalidOutput()
     if (body.action === 'read') {
       return { action: 'read', messageIds: sourceIds(body.messageIds, covered, !hasMoreEvidence), purpose: string(body.purpose, 1200), evidenceNotes }
     }
@@ -215,7 +297,9 @@ function parseChecking(
   }
   if (body.action !== 'finish') return invalidOutput()
   if (hasMoreEvidence) return invalidOutput()
-  return { action: 'finish', finding: parseFinding(body, evidence) }
+  const finding = parseFinding(body, evidence)
+  if (overlappingFindingSources(finding)) return invalidOutput()
+  return { action: 'finish', finding }
 }
 
 function parseReport(
@@ -524,11 +608,12 @@ export async function generateInsight(input: InsightGenerationInput, deps: Insig
     await checkActive()
     const budget = await requestCapacity('reading')
     const measure = async (payload: unknown) => (await count(runtimeInput('reading', payload, budget.reservedOutput))).tokens
-    const candidateReserve = state.checks.length === 0 ? 0 : Math.max(0,
-      Math.floor((budget.availableTokens - await measure(readingPayload([]))) / 4))
+    const spare = Math.max(0, budget.availableTokens - await measure(readingPayload([])))
+    const candidateReserve = state.checks.length === 0 ? 0 : Math.floor(spare / 4)
+    const memoryReserve = state.openThreads.length + state.observations.length === 0 ? 0 : Math.floor(spare / 5)
     if (!state.pendingRead) {
       const packed = await packInsightSources({
-        messages, cursor: state.cursor, availableTokens: budget.availableTokens - candidateReserve,
+        messages, cursor: state.cursor, availableTokens: budget.availableTokens - candidateReserve - memoryReserve,
         count: text => measure(readingPayload(JSON.parse(text))),
       })
       state.pendingRead = { from: state.cursor, to: packed.nextCursor, depth: 0, repairs: 0 }
@@ -558,6 +643,20 @@ export async function generateInsight(input: InsightGenerationInput, deps: Insig
         if (await measure(payload) > candidateLimit) candidate.evidenceNotes.pop()
       }
     }
+    const rotate = <T>(items: T[]) => {
+      const offset = items.length ? state.readLayouts.length % items.length : 0
+      return [...items.slice(offset), ...items.slice(0, offset)]
+    }
+    const oldThreads = [...state.openThreads].sort((left, right) => Number(linked(right.sourceIds)) - Number(linked(left.sourceIds)))
+    for (const note of oldThreads) {
+      payload.openThreads.push(note)
+      if (await measure(payload) > backgroundLimit) payload.openThreads.pop()
+    }
+    const oldFacts = rotate(state.observations).sort((left, right) => Number(linked(right.sourceIds)) - Number(linked(left.sourceIds)))
+    for (const note of oldFacts) {
+      payload.observations.push(note)
+      if (await measure(payload) > backgroundLimit) payload.observations.pop()
+    }
     const relevant = unique([
       ...payload.messages.flatMap(message => message.replyToMessageId ? [message.replyToMessageId] : []),
       ...state.openThreads.flatMap(note => note.sourceIds),
@@ -571,14 +670,6 @@ export async function generateInsight(input: InsightGenerationInput, deps: Insig
       }
     }
     payload.relatedMessages.sort((left, right) => ordinal.get(left.id)! - ordinal.get(right.id)!)
-    for (const note of state.openThreads.slice(-12)) {
-      payload.openThreads.push(note)
-      if (await measure(payload) > backgroundLimit) payload.openThreads.pop()
-    }
-    for (const note of state.observations.slice(-12)) {
-      payload.observations.push(note)
-      if (await measure(payload) > backgroundLimit) payload.observations.pop()
-    }
     let reading: ReadResult
     try {
       reading = parseReading(await call('reading', payload), [...payload.messages, ...payload.relatedMessages], payload.knownCandidates, payload.openThreads)
@@ -606,10 +697,21 @@ export async function generateInsight(input: InsightGenerationInput, deps: Insig
     const resolved = new Set(reading.resolvedThreadSourceIds)
     const visibleThreads = new Set(payload.openThreads)
     const rawIds = new Set([...payload.messages, ...payload.relatedMessages].map(message => message.id))
+    const closableBySource = new Map<string, InsightNote[]>()
+    for (const note of state.openThreads) {
+      for (const id of new Set(note.sourceIds)) {
+        if (resolved.has(id) && (rawIds.has(id) || visibleThreads.has(note))) {
+          closableBySource.set(id, [...closableBySource.get(id) ?? [], note])
+        }
+      }
+    }
+    // 一个来源可能提及多个问题；编号不能唯一定位时留待事实协调。
+    const closedThreads = new Set([...closableBySource.values()].filter(notes => notes.length === 1).flat())
+    const unresolved = state.openThreads.filter(note => !closedThreads.has(note))
     state.openThreads = appendNotes(
-      state.openThreads.filter(note => !note.sourceIds.some(id => resolved.has(id) && (rawIds.has(id) || visibleThreads.has(note)))),
+      [...unresolved.filter(note => !visibleThreads.has(note)), ...unresolved.filter(note => visibleThreads.has(note))],
       reading.openThreads,
-    ).slice(-maximumNotesPerBatch)
+    )
     applyCandidateUpdates(state, reading.candidateUpdates, byId, covered)
     queueCandidates(state, reading.candidates, byId, covered)
     state.cursor = layout.to
@@ -618,67 +720,110 @@ export async function generateInsight(input: InsightGenerationInput, deps: Insig
     await save()
   }
 
-  if (!state.navigation) {
+  if (state.navigation?.factsVersion !== 2) {
+    // 旧导航可能已丢失来源；迁移从保存的逐批事实重建，沿用已用预算。
+    const facts: InsightMemoryFact[] = [
+      ...state.observations.map(note => ({ ...note, kind: 'fact' as const })),
+      ...state.openThreads.map(note => ({ ...note, kind: 'unknown' as const })),
+    ]
+    const sourceOrder = new Map(snapshot.sources.map((source, index) => [source.messageId, index]))
+    const firstSource = (fact: InsightMemoryFact) => Math.min(...fact.sourceIds.map(id => sourceOrder.get(id) ?? Infinity))
+    // 让同源事实与未决事项有机会在同一有限窗口内协调。
+    facts.sort((left, right) => firstSource(left) - firstSource(right)
+      || (left.kind === right.kind ? 0 : left.kind === 'fact' ? -1 : 1))
     state.navigation = {
-      nodes: state.observations.map(note => ({ ...note, children: [] })),
-      roots: state.observations.map((_note, index) => index), cursor: 0, nextRoots: [], repairs: 0,
+      nodes: facts.map(fact => ({ text: fact.text, sourceIds: fact.sourceIds, children: [], facts: [fact] })),
+      roots: facts.map((_note, index) => index), cursor: 0, nextRoots: [], repairs: state.navigation?.repairs ?? 0, factsVersion: 2,
+      reconciled: !state.openThreads.length || !state.observations.length,
+    }
+    for (const check of state.checks) {
+      check.pendingNavigation = null
+      check.navigationRequests = []
     }
     await save()
   }
   const navigation = state.navigation
+  const writingFactsPayload = (facts: readonly InsightMemoryFact[], repair = false) => {
+    return {
+      stage: 'writing', timezone: snapshot.timezone, ...factNotes(facts),
+      checks: state.checks.map(({ id, state: status, finding, observation }) => ({
+        id, state: status, finding, ...(finding ? {} : { observation }),
+      })), ...(repair ? { repair: true } : {}),
+    }
+  }
+  const writingPayload = (roots: number[], repair = false) => writingFactsPayload(navigationFacts(navigation, roots), repair)
+  const writingFactsSize = async (facts: readonly InsightMemoryFact[]) => {
+    const budget = await requestCapacity('writing')
+    return { tokens: (await count(runtimeInput('writing', writingFactsPayload(facts, state.writingRepairs > 0), budget.reservedOutput))).tokens,
+      available: budget.availableTokens }
+  }
+  const writingSize = (roots: number[]) => writingFactsSize(navigationFacts(navigation, roots))
   const navigationSize = (roots: number[]) => Buffer.byteLength(JSON.stringify(navigationItems(navigation, roots)), 'utf8')
   const navigationBudget = Math.floor(computeInsightInputBudget({
     contextWindow: capacity.contextWindow, maxInputTokens: capacity.maxInputTokens,
     reservedOutput: ordinaryOutput, occupiedInput: 0, margin: capacity.margin,
   }) / 3)
-  while (navigationSize(navigation.roots) > navigationBudget) {
-    if (navigation.cursor === navigation.roots.length) {
-      if (navigationSize(navigation.nextRoots) >= navigationSize(navigation.roots)) throw insightCapacityError()
-      navigation.roots = navigation.nextRoots
-      navigation.nextRoots = []
-      navigation.cursor = 0
-      await save()
-      continue
-    }
-    const budget = await requestCapacity('reading')
-    const children: number[] = []
-    const payload = {
-      stage: 'reading', operation: 'compress-navigation', nodes: [] as VisibleNavigation[],
-      ...(navigation.repairs ? { repair: true } : {}),
-    }
-    for (const child of navigation.roots.slice(navigation.cursor)) {
-      payload.nodes.push(...navigationItems(navigation, [child]))
-      if ((await count(runtimeInput('reading', payload, budget.reservedOutput))).tokens > budget.availableTokens) {
-        payload.nodes.pop()
-        break
+  async function compactMemory() {
+    while (true) {
+      if (navigation.cursor === navigation.roots.length) {
+        if (!navigation.roots.length) break
+        const before = await writingSize(navigation.roots)
+        const after = await writingSize(navigation.nextRoots)
+        const reconciled = navigation.reconciled || navigation.nextRoots.length === 1
+        if ((navigation.reconciled || !reconciled) && after.tokens >= before.tokens
+          && navigationSize(navigation.nextRoots) >= navigationSize(navigation.roots)) throw insightCapacityError()
+        navigation.roots = navigation.nextRoots
+        navigation.nextRoots = []
+        navigation.cursor = 0
+        navigation.reconciled = reconciled
+        await save()
       }
-      children.push(child)
-    }
-    if (!children.length) throw insightCapacityError()
-    const isTrailingShortNote = children.length === 1 && navigation.roots.length > 1
-      && navigation.cursor === navigation.roots.length - 1 && navigationSize(children) < navigationBudget
-    if (isTrailingShortNote) {
-      navigation.nextRoots.push(children[0])
-    } else {
-      try {
-        const body = outputObject(await call('reading', payload))
-        const allowed = new Set(payload.nodes.flatMap(note => note.sourceIds))
-        const summary = { text: string(body.text, 720), sourceIds: sourceIds(body.sourceIds, allowed), children }
-        navigation.nextRoots.push(navigation.nodes.length)
-        navigation.nodes.push(summary)
-      } catch (error) {
-        if (mayRepair(error, navigation.repairs) && remainingInsightBudget(state).calls > 1) {
-          navigation.repairs++
-          await save()
-          continue
+      const writing = await writingSize(navigation.roots)
+      if (navigation.cursor === 0 && navigation.reconciled && writing.tokens <= writing.available
+        && navigationSize(navigation.roots) <= navigationBudget) break
+      const budget = await requestCapacity('reading')
+      const children: number[] = []
+      let payload = compressionPayload([], navigation.repairs > 0)
+      for (const child of navigation.roots.slice(navigation.cursor)) {
+        const candidate = compressionPayload(compressionNodes(navigation, [...children, child]), navigation.repairs > 0)
+        if ((await count(runtimeInput('reading', candidate, budget.reservedOutput))).tokens > budget.availableTokens) break
+        children.push(child)
+        payload = candidate
+      }
+      if (!children.length) throw insightCapacityError()
+      const isTrailingShortNote = children.length === 1 && navigation.roots.length > 1
+        && navigation.cursor === navigation.roots.length - 1 && navigationSize(children) < navigationBudget
+      if (isTrailingShortNote) {
+        navigation.nextRoots.push(children[0])
+      } else {
+        try {
+          const body = outputObject(await call('reading', payload))
+          const facts = parseInsightCompressedFacts(body.facts, compressionNodes(navigation, children))
+          if (factBytes(facts) >= factBytes(navigationFacts(navigation, children))) {
+            const combined = [...navigationFacts(navigation, navigation.nextRoots), ...facts,
+              ...navigationFacts(navigation, navigation.roots.slice(navigation.cursor + children.length))]
+            const reconciled = navigation.reconciled || (navigation.cursor === 0 && children.length === navigation.roots.length)
+            const writing = await writingFactsSize(combined)
+            if (!reconciled || writing.tokens > writing.available) return invalidOutput()
+          }
+          const summary = { text: string(body.text, 720), sourceIds: unique(facts.flatMap(fact => fact.sourceIds)), children, facts }
+          navigation.nextRoots.push(navigation.nodes.length)
+          navigation.nodes.push(summary)
+        } catch (error) {
+          if (mayRepair(error, navigation.repairs) && remainingInsightBudget(state).calls > 1) {
+            navigation.repairs++
+            await save()
+            continue
+          }
+          throw error
         }
-        throw error
       }
+      navigation.cursor += children.length
+      navigation.repairs = 0
+      await save()
     }
-    navigation.cursor += children.length
-    navigation.repairs = 0
-    await save()
   }
+  await compactMemory()
   const observations = navigationItems(navigation, navigation.roots)
 
   if (state.stage === 'reading') {
@@ -736,7 +881,7 @@ export async function generateInsight(input: InsightGenerationInput, deps: Insig
       try {
         action = parseChecking(
           await call('checking', payload, check), check.id, covered, supported, stillUnread, payload.evidence,
-          [...payload.observations, ...payload.navigationPage?.nodes ?? []], payload.navigationPage,
+          [...payload.observations, ...payload.navigationPage?.nodes ?? []], payload.navigationPage, payload.evidenceNotes,
         )
       } catch (error) {
         if (codeOf(error) === 'MODEL_CONTEXT_LIMIT') {
@@ -791,21 +936,10 @@ export async function generateInsight(input: InsightGenerationInput, deps: Insig
   state.stage = 'writing'
   await save()
   for (;;) {
-    const budget = await requestCapacity('writing')
-    const payload = {
-      stage: 'writing', timezone: snapshot.timezone, observations, openThreads: [] as InsightNote[],
-      checks: state.checks.map(({ id, state: status, finding, observation }) => ({
-        id, state: status, finding, ...(finding ? {} : { observation }),
-      })),
-      ...(state.writingRepairs ? { repair: true } : {}),
-    }
-    const measure = async () => (await count(runtimeInput('writing', payload, budget.reservedOutput))).tokens
+    await compactMemory()
+    const payload = writingPayload(navigation.roots, state.writingRepairs > 0)
     const checkedEvidence = new Set(state.checks.flatMap(check => check.finding
       ? [...check.finding.supportingIds, ...check.finding.counterexampleIds] : []))
-    for (const note of state.openThreads.slice(-maximumNotesPerBatch)) {
-      payload.openThreads.push(note)
-      if (await measure() > budget.availableTokens) payload.openThreads.pop()
-    }
     const writtenNotes = [...payload.observations, ...payload.openThreads]
     const writtenEvidence = new Set([...checkedEvidence, ...writtenNotes.flatMap(note => note.sourceIds)])
     const response = await call('writing', payload)

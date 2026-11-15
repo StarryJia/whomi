@@ -1,0 +1,71 @@
+
+> whomi@0.1.11 test:backend
+> vitest run --config vitest.backend.config.ts tests/backend/insight-generation.test.ts -t 546-character|twenty-percent|jointly reconciled short|resuming a rejected compression
+
+
+ RUN  v5.0.5 D:/University/github/whomi
+
+ ❯ tests/backend/insight-generation.test.ts (71 tests | 3 failed | 66 skipped) 34ms
+   × a real 546-character compression remains valid above its 522-character target when writing memory shrinks by a quarter 20ms
+   × compression enforces the exact twenty-percent writing-memory reduction boundary (148 characters) 7ms
+   × a jointly reconciled short memory can retain its wording when the complete writer already fits 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/backend/insight-generation.test.ts > a real 546-character compression remains valid above its 522-character target when writing memory shrinks by a quarter
+Error: 洞察结果格式错误，请继续生成。
+ ❯ invalidOutput electron/main/insight-generation.ts:140:9
+    138|
+    139| function invalidOutput(): never {
+    140|   throw new BoundaryError('INVALID_INSIGHT_OUTPUT', '洞察结果格式错误，请继续生成。')
+       |         ^
+    141| }
+    142|
+ ❯ compressedFacts electron/main/insight-generation.ts:132:82
+ ❯ compactMemory electron/main/insight-generation.ts:796:25
+ ❯ generateInsight electron/main/insight-generation.ts:822:3
+ ❯ tests/backend/insight-generation.test.ts:199:3
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  tests/backend/insight-generation.test.ts > compression enforces the exact twenty-percent writing-memory reduction boundary (148 characters)
+AssertionError: expected 3 to be 2 // Object.is equality
+
+- Expected
++ Received
+
+- 2
++ 3
+
+ ❯ tests/backend/insight-generation.test.ts:222:22
+    220|   } else {
+    221|     await expect(generateInsight(input, deps)).rejects.toMatchObject({…
+    222|     expect(attempts).toBe(2)
+       |                      ^
+    223|     expect(state.checkpoint?.navigation?.nodes).toHaveLength(1)
+    224|   }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  tests/backend/insight-generation.test.ts > a jointly reconciled short memory can retain its wording when the complete writer already fits
+Error: 洞察结果格式错误，请继续生成。
+ ❯ invalidOutput electron/main/insight-generation.ts:140:9
+    138|
+    139| function invalidOutput(): never {
+    140|   throw new BoundaryError('INVALID_INSIGHT_OUTPUT', '洞察结果格式错误，请继续生成。')
+       |         ^
+    141| }
+    142|
+ ❯ compressedFacts electron/main/insight-generation.ts:132:82
+ ❯ compactMemory electron/main/insight-generation.ts:796:25
+ ❯ generateInsight electron/main/insight-generation.ts:822:3
+ ❯ tests/backend/insight-generation.test.ts:239:3
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 2 passed | 66 skipped (71)
+   Start at  00:37:41
+   Duration  385ms (transform 49%, import 29%, tests 18%, worker 4%)
+

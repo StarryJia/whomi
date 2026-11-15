@@ -1,0 +1,46 @@
+[
+  {
+    "details": "# Instructions\n\n- Following Playwright test failed.\n- Explain why, be concise, respect Playwright best practices.\n- Provide a snippet of code with the fix, if possible.\n\n# Test info\n\n- Name: tests\\desktop\\ai.spec.mjs >> real Pi process persists analysis reports and dialogue through the isolated desktop bridge\n- Location: tests\\desktop\\ai.spec.mjs:9:1\n\n# Error details\n\n```\nError: expect(received).toMatchObject(expected)\n\n- Expected  - 2\n+ Received  + 2\n\n  Object {\n-   \"analyzedMessages\": 1,\n-   \"state\": \"completed\",\n+   \"analyzedMessages\": 0,\n+   \"state\": \"failed\",\n    \"usage\": Object {\n      \"inputTokens\": 40,\n      \"outputTokens\": 20,\n    },\n  }\n\nCall Log:\n- Timeout 30000ms exceeded while waiting on the predicate\n```\n\n",
+    "test": "tests-desktop-ai-real-Pi-p-04d48-the-isolated-desktop-bridge"
+  },
+  {
+    "details": "# Instructions\n\n- Following Playwright test failed.\n- Explain why, be concise, respect Playwright best practices.\n- Provide a snippet of code with the fix, if possible.\n\n# Test info\n\n- Name: tests\\desktop\\analysis-resume.spec.mjs >> resume a paused analysis after restart, retaining committed work and reporting against the same task\n- Location: tests\\desktop\\analysis-resume.spec.mjs:9:1\n\n# Error details\n\n```\nTimeoutError: locator.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for getByRole('button', { name: '整理成记忆', exact: true })\n\n```\n\n",
+    "test": "tests-desktop-analysis-res-09551-rting-against-the-same-task"
+  },
+  {
+    "details": "# Instructions\n\n- Following Playwright test failed.\n- Explain why, be concise, respect Playwright best practices.\n- Provide a snippet of code with the fix, if possible.\n\n# Test info\n\n- Name: tests\\desktop\\conversation-entry.spec.mjs >> 首条 AI 对话与缺模型时的设置往返 · 1440\n- Location: tests\\desktop\\conversation-entry.spec.mjs:8:3\n\n# Error details\n\n```\nTimeoutError: locator.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for getByRole('button', { name: '整理成记忆', exact: true })\n\n```\n\n",
+    "test": "tests-desktop-conversation-entry-首条-AI-对话与缺模型时的设置往返-·-1440"
+  },
+  {
+    "details": "# Instructions\n\n- Following Playwright test failed.\n- Explain why, be concise, respect Playwright best practices.\n- Provide a snippet of code with the fix, if possible.\n\n# Test info\n\n- Name: tests\\desktop\\conversation-entry.spec.mjs >> 首条 AI 对话与缺模型时的设置往返 · 360\n- Location: tests\\desktop\\conversation-entry.spec.mjs:8:3\n\n# Error details\n\n```\nTimeoutError: locator.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for getByRole('button', { name: '整理成记忆', exact: true })\n\n```\n\n",
+    "test": "tests-desktop-conversation-entry-首条-AI-对话与缺模型时的设置往返-·-360"
+  },
+  {
+    "details": "# Instructions\n\n- Following Playwright test failed.\n- Explain why, be concise, respect Playwright best practices.\n- Provide a snippet of code with the fix, if possible.\n\n# Test info\n\n- Name: tests\\desktop\\memory-scoring.spec.mjs >> local manuscripts vote once per relationship and retract on identity correction\n- Location: tests\\desktop\\memory-scoring.spec.mjs:7:1\n\n# Error details\n\n```\nError: expect(received).toMatchObject(expected)\n\n- Expected  - 13\n+ Received  +  1\n\n  Object {\n-   \"report\": Object {\n-     \"dimensions\": Object {\n-       \"JP\": \"J\",\n-     },\n-     \"eventVotes\": Object {\n-       \"JP\": Array [\n-         3,\n-         0,\n-       ],\n-     },\n-     \"format\": \"memory-v4\",\n-   },\n-   \"state\": \"completed\",\n+   \"state\": \"failed\",\n  }\n\nCall Log:\n- Timeout 30000ms exceeded while waiting on the predicate\n```\n\n",
+    "test": "tests-desktop-memory-scori-33bc3-ract-on-identity-correction"
+  },
+  {
+    "details": "# Instructions\n\n- Following Playwright test failed.\n- Explain why, be concise, respect Playwright best practices.\n- Provide a snippet of code with the fix, if possible.\n\n# Test info\n\n- Name: tests\\desktop\\primary-empty-pages.spec.mjs >> 首次整理在 1280 像素窗口从总览、问一问、仓库到真实文稿\n- Location: tests\\desktop\\primary-empty-pages.spec.mjs:8:34\n\n# Error details\n\n```\nTimeoutError: locator.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for getByRole('button', { name: '记忆仓库', exact: true })\n\n```\n\n",
+    "test": "tests-desktop-primary-empt-e5c82-理在-1280-像素窗口从总览、问一问、仓库到真实文稿"
+  },
+  {
+    "details": "# Instructions\n\n- Following Playwright test failed.\n- Explain why, be concise, respect Playwright best practices.\n- Provide a snippet of code with the fix, if possible.\n\n# Test info\n\n- Name: tests\\desktop\\primary-empty-pages.spec.mjs >> 首次整理在 360 像素窗口从总览、问一问、仓库到真实文稿\n- Location: tests\\desktop\\primary-empty-pages.spec.mjs:8:34\n\n# Error details\n\n```\nTimeoutError: locator.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for getByRole('button', { name: '记忆仓库', exact: true })\n\n```\n\n",
+    "test": "tests-desktop-primary-empt-f1891-整理在-360-像素窗口从总览、问一问、仓库到真实文稿"
+  },
+  {
+    "details": "# Instructions\n\n- Following Playwright test failed.\n- Explain why, be concise, respect Playwright best practices.\n- Provide a snippet of code with the fix, if possible.\n\n# Test info\n\n- Name: tests\\desktop\\settings.spec.mjs >> settings persist real models, process outbound chat, preserve drafts and migrate conversation storage\n- Location: tests\\desktop\\settings.spec.mjs:8:1\n\n# Error details\n\n```\nTimeoutError: locator.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for getByRole('button', { name: '整理成记忆', exact: true })\n\n```\n\n",
+    "test": "tests-desktop-settings-set-ee8f5-igrate-conversation-storage"
+  },
+  {
+    "details": "# Instructions\n\n- Following Playwright test failed.\n- Explain why, be concise, respect Playwright best practices.\n- Provide a snippet of code with the fix, if possible.\n\n# Test info\n\n- Name: tests\\desktop\\settings-shared-shell.spec.mjs >> 设置保留导航和对话草稿，主导航等待有效配置保存后切换\n- Location: tests\\desktop\\settings-shared-shell.spec.mjs:7:1\n\n# Error details\n\n```\nTimeoutError: locator.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for getByRole('button', { name: '记忆仓库', exact: true })\n\n```\n\n",
+    "test": "tests-desktop-settings-sha-da616--设置保留导航和对话草稿，主导航等待有效配置保存后切换"
+  },
+  {
+    "details": "# Instructions\n\n- Following Playwright test failed.\n- Explain why, be concise, respect Playwright best practices.\n- Provide a snippet of code with the fix, if possible.\n\n# Test info\n\n- Name: tests\\desktop\\subscription-cards.spec.mjs >> 订阅服务商在 1920 像素下可登录、取消、退出和切换账号（模拟授权）\n- Location: tests\\desktop\\subscription-cards.spec.mjs:6:34\n\n# Error details\n\n```\nError: expect(received).toBeLessThanOrEqual(expected)\n\nExpected: <= 1\nReceived:    308\n```\n\n",
+    "test": "tests-desktop-subscription-7db6c-920-像素下可登录、取消、退出和切换账号（模拟授权）"
+  },
+  {
+    "details": "# Instructions\n\n- Following Playwright test failed.\n- Explain why, be concise, respect Playwright best practices.\n- Provide a snippet of code with the fix, if possible.\n\n# Test info\n\n- Name: tests\\desktop\\window-shell.spec.mjs >> desktop shell opens at a readable size, preserves bounds, and shows the refined conversation UI\n- Location: tests\\desktop\\window-shell.spec.mjs:6:1\n\n# Error details\n\n```\nTimeoutError: locator.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for getByRole('button', { name: '整理成记忆', exact: true })\n\n```\n\n",
+    "test": "tests-desktop-window-shell-55276-the-refined-conversation-UI"
+  }
+]

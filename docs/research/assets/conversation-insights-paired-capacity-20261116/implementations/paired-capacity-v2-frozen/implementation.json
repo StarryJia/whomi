@@ -1,0 +1,161 @@
+{
+  "createdAt": "2026-11-15T17:56:53.642Z",
+  "baseCommit": "fee2af45380cb379ab40009449f467d1c50c4a8b",
+  "precedingModelCallsInThisExperiment": 20,
+  "retiredCurrentAttemptCalls": 11,
+  "priorClosedDiagnosticCalls": 84,
+  "model": "gpt-6.1-sol",
+  "packingEstimateLimit": 13000,
+  "fallbackContextWindow": 16000,
+  "effectiveInputCeiling": 12744,
+  "perRequestOutputLimit": 3000,
+  "perTaskCalls": 50,
+  "perTaskOutputTokens": 40000,
+  "perRunRequestLimit": 104,
+  "runIds": {
+    "baseline": "memory-capacity-baseline-20261116",
+    "current": "memory-capacity-current-v2-20261116"
+  },
+  "baselineBundleSha256": "ef302a81ebdbd5ad8e1b402d57bf91dc6e87b9a46bba0211caf0e8ac65676b54",
+  "currentFiles": [
+    {
+      "file": "electron/data/ai/insight-prompts.ts",
+      "sha256": "716d56216bccbde3364156b22bb9ee9fee4bb7a323f5df109c9799d87567d6a3"
+    },
+    {
+      "file": "electron/main/insight-checkpoint.ts",
+      "sha256": "cb3bcbc658f58e19e20ad1a42fd660b418db1d77f88acf9a8db090250e55d65a"
+    },
+    {
+      "file": "electron/main/insight-generation.ts",
+      "sha256": "816e82fac393459f6b36dc1f6470ffcb454b23467bfb843fd2c3a8b667da81e9"
+    },
+    {
+      "file": "scripts/insight-quality.mjs",
+      "sha256": "24b331bb457467f959460dc892112ecdb62116344538fc649f0ec7c1bc1d2f05"
+    },
+    {
+      "file": "tests/backend/insight-generation.test.ts",
+      "sha256": "2b478a677e9d8e84fa22cb819cf9e42aa2d5b723f865e81d601fead5df08a5cf"
+    },
+    {
+      "file": "tests/backend/insight-reading-memory.test.ts",
+      "sha256": "3c3702f5c37f0aeab9266eeda89dad7565664d03ff3f4adf8acf7e6c95bb632a"
+    },
+    {
+      "file": "tests/quality/insight-comparison-profile.mjs",
+      "sha256": "e7e16f782858f75389ddfd3e102210a817490e8895e857a8e1f675b42a8b3795"
+    },
+    {
+      "file": "tests/quality/insight-comparison-run.mjs",
+      "sha256": "a795ab067b9782c024fa2606b2b534c9414a0c16a6322ad50248e8f9611f8e8c"
+    },
+    {
+      "file": "tests/quality/insight-comparison-resume.ts",
+      "sha256": "3ec2879588c3615575d173fb24759b6d3d5a1147cc03994e01b6ddc15288e49c"
+    },
+    {
+      "file": "tests/quality/insight-comparison.test.mjs",
+      "sha256": "01587c74c606213047421be537c915ed2b42b54192e11b3c9e2f20d1cfb4f9f5"
+    },
+    {
+      "file": "tests/quality/insight-comparison.ts",
+      "sha256": "1da7ba554c17313be4986094e81c1dca9183085027fb80b13f619b42522188b1"
+    },
+    {
+      "file": "tests/quality/insight-quality.ts",
+      "sha256": "a96f2b218a84eeb2fff5cc58da671d60808cb79c8b875bf417d26cc003a87556"
+    },
+    {
+      "file": "tests/quality/insight-long-comparison-material.mjs",
+      "sha256": "450925083b1bfce661d1b81773a9a50e7800a526a3702c6bc6f732612fe1b2c7"
+    },
+    {
+      "file": "tests/quality/insight-comparison-compression-resume.ts",
+      "sha256": "e4bec4e1e57180a13946a772cccce515c98a7e54ad37cc375d22374f2010b429"
+    },
+    {
+      "file": "tests/backend/fixtures/insight-compression-target.json",
+      "sha256": "bff44a9f34554aa031cee343f4599f516f6599b13f78bdeb713a908369cdf1ee"
+    },
+    {
+      "file": "tests/backend/fixtures/insight-compression-coverage.json",
+      "sha256": "7dc05df843baa237af30e1f633fb1661ae66ac9bc7ab9242bd9b97eefa7bece8"
+    },
+    {
+      "file": "electron/main/insight-packing.ts",
+      "sha256": "c8d87b5a314a2d582336045a0c3743000cf71fe756c631ee813f692050eb7469"
+    },
+    {
+      "file": "src/shared/desktop-validation.ts",
+      "sha256": "0607ef8227f291daa450fc3878928175cdc94c8235b38d623eeeccc1a6c3ec4f"
+    },
+    {
+      "file": "src/shared/import-contract.ts",
+      "sha256": "7c8196c983b0ac05ee7ff1c5e02b7bdafd94ab0c6a4dd82cc680ccc4b8796140"
+    },
+    {
+      "file": "src/shared/memory.ts",
+      "sha256": "4963bdd3734a14c29b8b86734357abedbd743e8f8228b4b84192ad19aecb0cc3"
+    },
+    {
+      "file": "src/shared/model-limits.ts",
+      "sha256": "2d045222c56182095d2608d66cd1f7bc21b46d755cf9b86c2bc2281849616ffb"
+    },
+    {
+      "file": "src/shared/system-prompts.ts",
+      "sha256": "e1cbe6e09b7ef7889b04248b2461442e6f466c7a308f885a46a7b53c80bcd608"
+    },
+    {
+      "file": "tests/backend/fixtures/insight-compression-mixed-kinds.json",
+      "sha256": "6334462177523cb44dd0b9b6dc76332df408d25f136221fe6e34e801ee25c3c2"
+    },
+    {
+      "file": "tests/backend/fixtures/insight-compression-net-progress.json",
+      "sha256": "175d2e3ef63ab23baa28a6db84cb0de8f7bb9eea2f3ba3301b9f972665f61396"
+    },
+    {
+      "file": "tests/quality/insight-comparison-material.mjs",
+      "sha256": "1ad02886f207f29cdd943e960d26655f7c2bf910d4438e3d12436663463a1049"
+    }
+  ],
+  "baselineFiles": [
+    {
+      "file": "electron/data/ai/insight-prompts.ts",
+      "sha256": "0769119009766be5991f6c77d2d384754c0d2e2b36df7863a7f2e9f3c2f4244d"
+    },
+    {
+      "file": "electron/main/insight-checkpoint.ts",
+      "sha256": "deb2757f015e05070973438b4277b909a76f43a023770a77980c91c3261205d8"
+    },
+    {
+      "file": "electron/main/insight-generation.ts",
+      "sha256": "03797f6abda57ac0ea72ac79b94a38a579e8ed10d05f08c12929fdf5bdc6d957"
+    },
+    {
+      "file": "electron/main/insight-packing.ts",
+      "sha256": "c8d87b5a314a2d582336045a0c3743000cf71fe756c631ee813f692050eb7469"
+    },
+    {
+      "file": "src/shared/desktop-validation.ts",
+      "sha256": "0607ef8227f291daa450fc3878928175cdc94c8235b38d623eeeccc1a6c3ec4f"
+    },
+    {
+      "file": "src/shared/import-contract.ts",
+      "sha256": "7c8196c983b0ac05ee7ff1c5e02b7bdafd94ab0c6a4dd82cc680ccc4b8796140"
+    },
+    {
+      "file": "src/shared/memory.ts",
+      "sha256": "2f08024576c4f1eece852f8453c71f4e66b9b42c67eb1846d4bd7af2e1fb96d6"
+    },
+    {
+      "file": "src/shared/model-limits.ts",
+      "sha256": "23fb2d29d8aa4ea16e3f2b6331b2a634ab1c090936578e13be014c62f192c980"
+    },
+    {
+      "file": "src/shared/system-prompts.ts",
+      "sha256": "2808c4bb17471af07286d5714cdabef5be28da5b901bc7ef2432f013434040c2"
+    }
+  ],
+  "patchSha256": "ccba47eebd35cce17a185116f7d0e58ce280f797ec679dfad6ce926952c3b047"
+}

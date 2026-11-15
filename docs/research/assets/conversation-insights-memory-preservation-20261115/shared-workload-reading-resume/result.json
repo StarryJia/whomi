@@ -1,0 +1,32 @@
+{
+  "state": "failed",
+  "error": "INVALID_EVIDENCE",
+  "calls": 10,
+  "httpRequests": 10,
+  "elapsedMs": 214912,
+  "inputCharged": 19275,
+  "outputCharged": 10370,
+  "trialRequestsAfterPhase": 13,
+  "accounting": {
+    "incremental": {
+      "httpRequests": 10,
+      "elapsedMs": 214912,
+      "inputCharged": 19275,
+      "outputCharged": 10370
+    },
+    "priorReading": {
+      "httpRequests": 3,
+      "inputCharged": 5842,
+      "outputCharged": 3461,
+      "elapsedMs": 64754
+    },
+    "combinedReading": {
+      "httpRequests": 13,
+      "inputCharged": 25117,
+      "outputCharged": 13831,
+      "elapsedMs": 279666
+    }
+  },
+  "resumedFrom": "shared-workload-reading",
+  "resumeCheckpointHash": "60eb8dd2065775310c0aecf53ae2f6fe1ffcdc74277dccd03b16257b9592eb36"
+}

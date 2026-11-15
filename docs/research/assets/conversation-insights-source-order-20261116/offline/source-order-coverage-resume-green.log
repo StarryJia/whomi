@@ -1,0 +1,37 @@
+✔ comparison dry run lists both fixed cases without opening the configuration database (259.6121ms)
+✔ the long trial has separate phases and limits without opening the configuration database (586.4357ms)
+✔ a named long trial isolates its output and keeps the frozen cases and budgets (261.1135ms)
+✔ named trial parsing rejects ambiguous or escaping destinations before configuration access (1715.4353ms)
+✔ a named long trial can reserve natural checking room without changing the total request budget (246.0329ms)
+✔ an explicit task request limit requires a named long trial and stays within the shared budget (0.992ms)
+✔ a bounded compaction trial reserves both task budgets and their comparison reports before dispatch (238.879ms)
+✔ starting the other case cannot raise a legacy run budget before configuration access (246.446ms)
+✔ a new run freezes all budgets and material hashes without rewriting its profile (17.1577ms)
+✔ legacy task and one-call comparison phases migrate without changing their artifacts (26.38ms)
+✔ legacy migration checks every case and rejects incomplete dispatched artifacts (14.9888ms)
+✔ compression recovery preserves completed reading, existing navigation and cumulative charges (53.8711ms)
+✔ version two recovery verifies earliest snapshot source order with stable fact and unknown ties (0.6411ms)
+✔ version two recovery rejects wrong leaf order, missing leaves, changed sources and unknown versions (1.9149ms)
+✔ legacy coverage failure consumes exactly one repair on an immutable recovery copy (259.3516ms)
+✔ coverage recovery rejects other format, evidence, history and budget failures (5.5179ms)
+✔ the second recovery accepts a failed compression repair without resetting attempts or repairs (1.9384ms)
+✔ compression recovery rejects unread sources, invalid navigation and non-reading failures (3.0654ms)
+✔ second reading recovery requires an unbroken failed chain and keeps cumulative charges (2.1096ms)
+✔ reading recovery cannot skip a generation or overwrite an existing destination (18.5109ms)
+✔ direct writing keeps the shared notes and the frozen findings without citing pending guesses (0.4827ms)
+✔ the rich control sends only exact excerpts from the frozen reading state (0.4797ms)
+✔ the rich control needs a dispatched check that contained original text (0.3134ms)
+✔ an outbound rejection survives SDK wrapping and stops later comparison phases (9.4485ms)
+✔ invalid compression output or insufficient capacity stops later trial phases (15.0552ms)
+✔ the production insight budget halts the comparison while a normal provider failure does not (1.5234ms)
+✔ a prohibited writing repair stops subsequent long comparison phases (2.2983ms)
+✔ reading recovery requires the archived halt and a matching reading-only pending batch (0.5012ms)
+✔ only the halted reading phase may start before a successful recovery is recorded (6.092ms)
+ℹ tests 29
+ℹ suites 0
+ℹ pass 29
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4087.4325

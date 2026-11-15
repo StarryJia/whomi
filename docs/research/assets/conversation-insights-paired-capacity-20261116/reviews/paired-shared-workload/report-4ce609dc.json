@@ -1,0 +1,370 @@
+{
+  "aboutYou": [
+    {
+      "content": [
+        {
+          "text": "这个月，读书活动的事务与工作消息叠加，让你难以真正收工。三号活动顺利，到场十一人，缺席的一人也已提前说明加班，但订场和通知仍耗去你半天，结束后还挂心提醒，回家连晚饭也不想决定。",
+          "citationId": "3"
+        },
+        {
+          "text": "九号散场时，你一边收笔记一边答应借书，回家继续查书名和版本。你感到从订场到书单都要自己接住，讨论一冷场就赶紧接话，同时还担心大家赶车；十号虽想休息，却已经通知十八号照常，午睡后仍不想回群。这份疲惫不仅来自现场，也来自会前会后不断延伸的收尾。",
+          "citationId": "41"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "text": "你随后开始尝试不把每个空缺都立即补上。十八号，你在讨论中留出了沉默，节奏比前两次慢；ta转述，有参加者因此不再那么怕慢。",
+          "citationId": "74"
+        },
+        {
+          "text": "二十五日，你看到ta在回复报名和路线问题后，没有再逐条跟答，也暂时没有接下尚未确定的采购。这次你确实觉得轻松了一些，但没有据此保证以后都会如此。",
+          "citationId": "107"
+        },
+        {
+          "text": "到二十八日回顾前次活动时，你已经能在开场前看文章，不再同时回群、找人和准备开场；换书的人也自行寻找书主。这些是本次负担减轻的具体变化，还不足以说明长期分工已经稳定。",
+          "citationId": "110"
+        }
+      ]
+    }
+  ],
+  "relationship": [
+    {
+      "content": [
+        {
+          "text": "你们围绕活动分工有过一次重要校正。你觉得事情若不写清，最后就会落到自己身上；二十二日，ta回应这份累积的不满，列出此前找场地、核名单、通知及现场布置清理等参与。你确认自己出差时ta曾负责联络，也确认三号到场前椅子和水已经准备好，只是先前误以为是管理员做的；十八号布置清理的具体内容则仍主要来自ta的陈述。",
+          "citationId": "87"
+        },
+        {
+          "text": "你因此收回了每次都只有自己在做的概括，改为说明：这个月预约、群内确认和书单较集中在你这里，又赶上工作忙，所以希望ta明确分走一项，ta也认可。这里既有你此前没看见的投入，也有你仍需被回应的具体负担，并不是其中一方完全没有付出。",
+          "citationId": "91"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "text": "此后，你们开始把帮忙说得更具体，也保留各自的时间边界：二十五日约定由ta在十九点半至二十一点直接回答能答的报名和路线问题，次日晚有课不接，二十一点后的问题次日处理，最终名单仍由你核对。你已看到ta实际回复，但答疑结束公告及名单核对是否按计划完成，材料没有交代。",
+          "citationId": "99"
+        },
+        {
+          "text": "ta也曾提醒，你在九号提出第二个问题后，有人还在回忆，你就转入下一段；这提供了一个具体反例，说明至少那次沉默不等于无人回应，而不是证明所有冷场都该等待。",
+          "citationId": "43"
+        },
+        {
+          "text": "到月底，你们没有急着发布完整的下月安排，而是等你的工作安排和ta的晚课日期明确后，再谈采购与现场负责人；对新朋友提出带自制书签，也共同保留自愿、不保证人手一份的边界。你们正在尝试让参与不自动变成额外任务，但这套做法能否持续，仍需后续经历验证。",
+          "citationId": "114"
+        }
+      ]
+    }
+  ],
+  "citations": [
+    {
+      "id": "3",
+      "conversationId": "1",
+      "fragments": [
+        {
+          "sources": [
+            {
+              "messageId": "3",
+              "revision": "8b89589a54e53b3b5e498f3e8110a5611add4d6db114971cefd83352bb0f3783"
+            },
+            {
+              "messageId": "13",
+              "revision": "4265141a4b1dd09f097e1555e448b6f4eb0e14b0b1e43b14b5f6196a0ab1aa03"
+            },
+            {
+              "messageId": "14",
+              "revision": "5f4be366aa8d895f963e9465eacee65d0f923ae4d351a188deb5ad117798b991"
+            },
+            {
+              "messageId": "15",
+              "revision": "4d78424c564fe335f67874df2c19782a4becf12097dbf4885a7c36a94785bc45"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "41",
+      "conversationId": "1",
+      "fragments": [
+        {
+          "sources": [
+            {
+              "messageId": "37",
+              "revision": "d5177dedb1baafc81598e4da240dd351fccf5e643b6f083a0676d06b03f7adc6"
+            },
+            {
+              "messageId": "38",
+              "revision": "6f7b4c114ab9a9805b6cb915c233c2d1850cc3f9e382c5247ac1d3861caa9e98"
+            },
+            {
+              "messageId": "39",
+              "revision": "1f6619a19bb5df05f21f3ee9bba301ebeefe73d5abbdd2444246313387d7746e"
+            },
+            {
+              "messageId": "40",
+              "revision": "cc81d885a3855da6481f92df71a8a8f471eeb5c680740be1aa794e4d225f2c6a"
+            },
+            {
+              "messageId": "41",
+              "revision": "b3e1833cf4c5a7fc9aed270d40481c1db2641942298e9a4c99122dc27886c771"
+            },
+            {
+              "messageId": "42",
+              "revision": "cb6c740445895224f1ba0584febd9d9287815ae83e9d338c354adda6b19a8bcc"
+            },
+            {
+              "messageId": "43",
+              "revision": "a49f1c43d04bc1dd387e9c4562c0ff2fa286c9ca151d665e55ee31fd7cf4d579"
+            },
+            {
+              "messageId": "45",
+              "revision": "dd5ed4f9689942e4b438de2db1e994c8470137ca1b29b960155b526b2007a7ac"
+            },
+            {
+              "messageId": "46",
+              "revision": "216d9cca4d08a5b50ed2469165e0a67faf565f98945e222843724b923b33c54e"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "74",
+      "conversationId": "1",
+      "fragments": [
+        {
+          "sources": [
+            {
+              "messageId": "72",
+              "revision": "bc303f7fc947ccab98fb14f7976b75ca4c2399009a8a08bb266b859f71db0eb3"
+            },
+            {
+              "messageId": "73",
+              "revision": "74b3e0d29dc6c100f5ffec2600c25edfa06375ce3f78e8ace54d3a61334b1666"
+            },
+            {
+              "messageId": "74",
+              "revision": "1c15fa0f5f0f52521b634c4138d4ed39a941724f5ba244491e0c5e1682784bb3"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "107",
+      "conversationId": "1",
+      "fragments": [
+        {
+          "sources": [
+            {
+              "messageId": "99",
+              "revision": "d9253f0a4cb5e85c3959c1e84c4279efe32feb2d28474c0aa7e374614c133078"
+            },
+            {
+              "messageId": "100",
+              "revision": "c6a1b392c674f2d39cccebe68133b9090432e8024b75a82cb500a2d6d6fe1cc8"
+            },
+            {
+              "messageId": "105",
+              "revision": "3b79959ab5c3cc6fa57e5f3cf4209e928342ac4e7ced0426aa928da367e066b6"
+            },
+            {
+              "messageId": "106",
+              "revision": "8de3ce7e896b237df40658b032520a946a7eac95f2e080b4f8620b8d97c4ff24"
+            },
+            {
+              "messageId": "107",
+              "revision": "8f4901ce48961257505409ec5709a48b51af49fd8fb78ae797c8b6677b5d7a68"
+            },
+            {
+              "messageId": "108",
+              "revision": "114e1c4bc3a42fd6b04d51d44b4334632d5e06b47b02211aec902e2af87c9060"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "110",
+      "conversationId": "1",
+      "fragments": [
+        {
+          "sources": [
+            {
+              "messageId": "109",
+              "revision": "7fe250b4cc2c3fd3d7b5458cf395db96a52aa074d020cf0c2b8962380c7a5faa"
+            },
+            {
+              "messageId": "110",
+              "revision": "f9464fa559ef6048322c7517e9e27449fc4d724cd9c8cdad15608edf97ba71d8"
+            },
+            {
+              "messageId": "111",
+              "revision": "b9c9a9394df320e5045d0ea635f7639f2f7af5234441ee2b3d21170f4780f34d"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "87",
+      "conversationId": "1",
+      "fragments": [
+        {
+          "sources": [
+            {
+              "messageId": "75",
+              "revision": "3d470cca2aca92c934aef181b6564397032bc86e575dcf18016617b5d1596ca9"
+            },
+            {
+              "messageId": "86",
+              "revision": "eecf7dc0e8849865227eae2bffb240ba127a6df6eecd6b9a81c2a5471d6a175c"
+            },
+            {
+              "messageId": "87",
+              "revision": "ddb6b4c00800086edb31c66ed6e47e0cb8e21dff3c4f9910c2529740f8af2f16"
+            },
+            {
+              "messageId": "88",
+              "revision": "aa629cec4a4ffed3492c9770b7da67e8507d966a940c8341cb2c7fb99640cfc7"
+            },
+            {
+              "messageId": "89",
+              "revision": "382a3b41061266bba9725705b1d553a15a891596b7cb63167228ca593601e215"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "91",
+      "conversationId": "1",
+      "fragments": [
+        {
+          "sources": [
+            {
+              "messageId": "88",
+              "revision": "aa629cec4a4ffed3492c9770b7da67e8507d966a940c8341cb2c7fb99640cfc7"
+            },
+            {
+              "messageId": "89",
+              "revision": "382a3b41061266bba9725705b1d553a15a891596b7cb63167228ca593601e215"
+            },
+            {
+              "messageId": "90",
+              "revision": "fd8a08bd7824a739e884128528006976c18d2cc33bca72562c3d8461be7a248c"
+            },
+            {
+              "messageId": "91",
+              "revision": "a8c7903db759558729d4403e914e30b74f2679b49291844579f9da21a072f240"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "99",
+      "conversationId": "1",
+      "fragments": [
+        {
+          "sources": [
+            {
+              "messageId": "92",
+              "revision": "248138cb724b1455a01affc091fb6ab6c8d54a7f829df4de563bd3e7ec91236c"
+            },
+            {
+              "messageId": "93",
+              "revision": "f524e71821e9d37f46e668fd7209edac74991d49052b662393a6a49d7e2e41c8"
+            },
+            {
+              "messageId": "97",
+              "revision": "308f36b4fe135371bcac0ba3e217df3d8093bcf8adb0a0cf52208b4b74732de1"
+            },
+            {
+              "messageId": "98",
+              "revision": "7ac6b3d7c2cf4b19c6ed615167d25bb561d5633133131bdbe439de49ef37c429"
+            },
+            {
+              "messageId": "99",
+              "revision": "d9253f0a4cb5e85c3959c1e84c4279efe32feb2d28474c0aa7e374614c133078"
+            },
+            {
+              "messageId": "100",
+              "revision": "c6a1b392c674f2d39cccebe68133b9090432e8024b75a82cb500a2d6d6fe1cc8"
+            },
+            {
+              "messageId": "105",
+              "revision": "3b79959ab5c3cc6fa57e5f3cf4209e928342ac4e7ced0426aa928da367e066b6"
+            },
+            {
+              "messageId": "106",
+              "revision": "8de3ce7e896b237df40658b032520a946a7eac95f2e080b4f8620b8d97c4ff24"
+            },
+            {
+              "messageId": "107",
+              "revision": "8f4901ce48961257505409ec5709a48b51af49fd8fb78ae797c8b6677b5d7a68"
+            },
+            {
+              "messageId": "109",
+              "revision": "7fe250b4cc2c3fd3d7b5458cf395db96a52aa074d020cf0c2b8962380c7a5faa"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "43",
+      "conversationId": "1",
+      "fragments": [
+        {
+          "sources": [
+            {
+              "messageId": "41",
+              "revision": "b3e1833cf4c5a7fc9aed270d40481c1db2641942298e9a4c99122dc27886c771"
+            },
+            {
+              "messageId": "42",
+              "revision": "cb6c740445895224f1ba0584febd9d9287815ae83e9d338c354adda6b19a8bcc"
+            },
+            {
+              "messageId": "43",
+              "revision": "a49f1c43d04bc1dd387e9c4562c0ff2fa286c9ca151d665e55ee31fd7cf4d579"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "114",
+      "conversationId": "1",
+      "fragments": [
+        {
+          "sources": [
+            {
+              "messageId": "113",
+              "revision": "9fbb4544b6033ca2818f302ccbf5bccf50cf8f0f32311cd99d78406593044cc7"
+            },
+            {
+              "messageId": "114",
+              "revision": "cbee97e447879f69078cd33aff12a9e8bc722a895163f7952eb49e93492e404f"
+            },
+            {
+              "messageId": "115",
+              "revision": "74aed359b99ca1378c8e49b5846a81fc5e31a9ee3ae16d755703fb88ea9666f3"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "材料主要覆盖2026年10月，不能据此判断双方长期的投入比例，也不能把本月预约、群内确认和书单较集中于你，扩大为所有事务始终由你承担。",
+    "部分协助只有计划或一方陈述，不能一概视为已经完成；尤其十八号现场布置清理的细项，尚无你独立确认的记录。",
+    "月底这次减负已有具体表现，但下月采购、现场负责人及持续分工仍未确定，尚不能确认新的安排已经稳定。",
+    "材料未明确双方的关系身份，也不足以判断活动之外是否存在同样的负担分配。"
+  ]
+}

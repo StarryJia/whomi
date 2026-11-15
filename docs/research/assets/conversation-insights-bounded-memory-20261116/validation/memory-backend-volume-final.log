@@ -1,0 +1,58 @@
+
+> whomi@0.1.11 test:backend
+> vitest run --config vitest.backend.config.ts
+
+
+ RUN  v5.0.5 D:/University/github/whomi
+
+ ❯ tests/backend/cherry-accounts.test.ts (4 tests | 1 failed) 2333ms
+   × Grok uses its registered callback and fixed local catalog, sends the selected model to its own proxy 1052ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/backend/cherry-accounts.test.ts > Grok uses its registered callback and fixed local catalog, sends the selected model to its own proxy
+AssertionError: expected "vi.fn()" to be called at least once
+ ❯ tests/backend/cherry-accounts.test.ts:99:73
+     97|   })
+     98|   const auth=create('grok-cli',o);cleanup.push(()=>auth.close())
+     99|   const result=auth.signIn();await vi.waitFor(()=>expect(o.openBrowser…
+       |                                                                         ^
+    100|   const cb=new URL(authUrl!.searchParams.get('redirect_uri')!)
+    101|   expect(cb.href).toBe('http://127.0.0.1:56121/callback')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+⎯⎯⎯⎯⎯⎯ Unhandled Errors ⎯⎯⎯⎯⎯⎯
+
+Vitest caught 1 unhandled error during the test run.
+This might cause false positive tests. Resolve unhandled errors to make sure your tests are not affected.
+
+⎯⎯⎯⎯ Unhandled Rejection ⎯⎯⎯⎯⎯
+Error: 登录失败，请核对应用授权并重试。
+ ❯ Object.signIn electron/main/cherry-accounts.ts:128:13
+    126|       if (next.signal.aborted) throw next.signal.reason
+    127|       if (error instanceof BoundaryError && !error.code.startsWith('CH…
+    128|       throw new BoundaryError('ACCOUNT_LOGIN','登录失败，请核对应用授权并重试。')
+       |             ^
+    129|     } finally {clearTimeout(timeout);if (attempt===next) {attempt=unde…
+    130|   }
+ ❯ process.processTicksAndRejections node:internal/process/task_queues:103:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+Serialized Error: { code: 'ACCOUNT_LOGIN', action: '登录失败，请核对应用授权并重试。' }
+This error originated in "tests/backend/cherry-accounts.test.ts" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+The last test to run before this error was "Grok uses its registered callback and fixed local catalog, sends the selected model to its own proxy". This means either:
+- the error was thrown while Vitest was running this test, or
+- the error was thrown after the test completed, and this was the most recent test at that point.
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+
+
+ Test Files  1 failed | 54 passed (55)
+      Tests  1 failed | 658 passed (659)
+     Errors  1 error
+   Start at  00:39:49
+   Duration  63.94s (tests 96%, import 4%)
+
+    Isolate  55 workers spawned · ~165ms startup each (spawn + environment, per file)
+             at least ~4.36s faster with isolate: false — reuses workers across files instead of one per file
+

@@ -1,0 +1,13 @@
+
+> whomi@0.1.11 test:backend
+> vitest run --config vitest.backend.config.ts tests/backend/insight-generation.test.ts tests/backend/insight-reading-memory.test.ts
+
+
+ RUN  v5.0.5 D:/University/github/whomi
+
+
+ Test Files  2 passed (2)
+      Tests  63 passed (63)
+   Start at  23:50:08
+   Duration  491ms (tests 38%, transform 37%, import 22%, worker 3%)
+

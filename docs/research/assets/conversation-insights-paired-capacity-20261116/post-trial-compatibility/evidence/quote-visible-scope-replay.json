@@ -1,0 +1,62 @@
+{
+  "kind": "local-visible-verified-excerpt-compatibility",
+  "networkCalls": 0,
+  "modelResampled": false,
+  "trialRecoveryPerformed": false,
+  "method": "Exact current parser loaded with a temporary in-memory export. Saved baseline request fields are unchanged; response controls exist only in memory.",
+  "originalTrialOutcome": {
+    "state": "failed",
+    "error": "INVALID_EVIDENCE",
+    "calls": 4,
+    "httpRequests": 4,
+    "elapsedMs": 108363,
+    "inputCharged": 15428,
+    "outputCharged": 7386,
+    "trialRequestsAfterPhase": 13,
+    "accounting": {
+      "incremental": {
+        "httpRequests": 4,
+        "elapsedMs": 108363,
+        "inputCharged": 15428,
+        "outputCharged": 7386
+      }
+    }
+  },
+  "cases": [
+    {
+      "control": "original",
+      "code": "INVALID_INSIGHT_OUTPUT",
+      "checkpointApplied": false
+    },
+    {
+      "control": "disjoint-only",
+      "code": "ACCEPTED_READING_RESPONSE",
+      "checkpointApplied": false
+    },
+    {
+      "control": "current-notes-only",
+      "code": "INVALID_INSIGHT_OUTPUT",
+      "checkpointApplied": false
+    },
+    {
+      "control": "both",
+      "code": "ACCEPTED_READING_RESPONSE",
+      "checkpointApplied": false
+    }
+  ],
+  "originalSourceHashes": {
+    "request-04.json": "8495afa07457fe5f80c56ce2ea30968eb1be41a7618adefd41d1ebc35e422475",
+    "response-04.txt": "49a75c0483c97688f51185f582885e1aa6c435967fa52a12c181d7a5120298e3",
+    "checkpoint.json": "f61efdafcb4836f7532d1d0665ddc3f2deb3a50ff44b9a8069af4e6fb8273ab3",
+    "result.json": "94efc00e8ebbf127a8f5ecf4d2641cb83e9fa9f98fc042dba7b5e82caf590f5c"
+  },
+  "originalsUnchanged": true,
+  "productHashes": {
+    "electron/main/insight-generation.ts": "294693d887a8a1c6128fd1328c522e5163f7e21fe0e6694c6cbcf295e4a0c51d",
+    "electron/data/ai/insight-prompts.ts": "716d56216bccbde3364156b22bb9ee9fee4bb7a323f5df109c9799d87567d6a3",
+    "tests/backend/insight-quote-reuse.test.ts": "2782114aeae052a49d3c68e5dd097d5b7d50227a0bf782061500f56a48b9ab6f",
+    "tests/backend/fixtures/insight-visible-excerpt-reuse.json": "a2c7766f90fd00a60e6b63b0c99d2298ad736eb5e88645cc4086d661ea07749c"
+  },
+  "frozenModelControlGenerationHash": "816e82fac393459f6b36dc1f6470ffcb454b23467bfb843fd2c3a8b667da81e9",
+  "disclosure": "This local compatibility fix was made after all real model calls ended. It changes neither the frozen real trial result nor the scores. The original baseline response still fails for overlapping support/counterexample roles; only its in-memory disjoint control passes parsing."
+}

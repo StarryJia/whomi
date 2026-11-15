@@ -1,0 +1,626 @@
+{
+  "runId": "memory-source-order-20261116",
+  "scope": "first failed phase only; not final trial closure",
+  "result": {
+    "state": "failed",
+    "error": "INVALID_EVIDENCE",
+    "calls": 20,
+    "httpRequests": 20,
+    "elapsedMs": 350864,
+    "inputCharged": 37516,
+    "outputCharged": 17997,
+    "trialRequestsAfterPhase": 20,
+    "accounting": {
+      "incremental": {
+        "httpRequests": 20,
+        "elapsedMs": 350864,
+        "inputCharged": 37516,
+        "outputCharged": 17997
+      }
+    }
+  },
+  "materialHash": "6f63b461c034eacaebc473ea5637bef13119aae59e286fa1d449347d9c6af756",
+  "totals": {
+    "dispatched": 20,
+    "settled": 20,
+    "readingRequests": 19,
+    "compressionRequests": 1,
+    "checkingRequests": 0,
+    "writingRequests": 0,
+    "coveredMessages": 120
+  },
+  "compression": {
+    "request": "request-20.json",
+    "response": "response-20.txt",
+    "accepted": false,
+    "inputEntries": 16,
+    "outputEntries": 12,
+    "targetFactTextLength": 608,
+    "outputTextLength": 589,
+    "inputFactBytes": 3548,
+    "outputFactBytes": 2205,
+    "serializedReduction": 0.3785231116121759,
+    "omittedEntryIds": [],
+    "foreignEntryIds": [],
+    "knownOnlyMappedToUnknown": [
+      {
+        "entryId": "8:0",
+        "kind": "fact",
+        "text": "报名又增加一人后，本人称已将桌子安排改为两排，并向管理员说明不用原来的圆桌；消息发出时仍在等管理员回复。",
+        "sourceIds": [
+          "9"
+        ]
+      },
+      {
+        "entryId": "11:0",
+        "kind": "fact",
+        "text": "2026-10-01，合成对方计划下课后取修好的台灯，称店老板希望其傍晚前到。本人提醒取灯时测试开关，说明此前需长按才亮；对方答应测试并已记下开关问题。",
+        "sourceIds": [
+          "10",
+          "11",
+          "12"
+        ]
+      }
+    ],
+    "checkpoint": {
+      "factsVersion": 2,
+      "nodes": 142,
+      "roots": 142,
+      "cursor": 0,
+      "nextRoots": [],
+      "repairs": 0
+    }
+  },
+  "candidate": {
+    "id": "1",
+    "proposals": [
+      {
+        "call": 12,
+        "messageIds": [
+          "80",
+          "81",
+          "82",
+          "83",
+          "84",
+          "85",
+          "86"
+        ],
+        "candidates": [
+          {
+            "observation": "合成对方以九月一次自己承担筹备工作的经历，回应合成本人先前关于“每次都默认你兜住”的表述；两者是否矛盾，需核对63的原话及所指范围。",
+            "supportingIds": [
+              "86"
+            ],
+            "reason": "需回读被明确回复的63，核对“每次”是在概括全部活动、近期活动，还是表达最终兜底的负担；九月承担具体工作不必然等同于承担最终兜底责任。",
+            "evidenceNotes": [
+              {
+                "sourceId": "86",
+                "quote": "我想接着你前几天说每次都默认你兜住那句话说一点：九月那场你出差，是我找活动室、确认名单和发通知的，你还记得那次吗？",
+                "text": "这是合成对方对旧话的转述及其自述的具体事例，尚无合成本人的确认，不能直接据此判断长期分工或否定负担感。"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "updates": [
+      {
+        "call": 13,
+        "messageIds": [
+          "87",
+          "88",
+          "89",
+          "90"
+        ],
+        "updates": [
+          {
+            "id": "1",
+            "action": "resolve",
+            "finding": {
+              "revisedObservation": "后文已明确：合成本人承认自己刚才“每次都由我安排”的概括遗漏九月那次，并确认那次自己未回来、联络均由合成对方完成。因此，九月反例对“每次均由本人安排”这一字面概括的修正已得到本人承认；但不能据此进一步认定其关于最终兜底或近期负担的感受也被推翻。",
+              "supportingIds": [
+                "87"
+              ],
+              "counterexampleIds": [],
+              "alternativeExplanations": [
+                "合成本人解释，自己当时主要想着本月连续几场活动，因而遗漏九月那次。"
+              ],
+              "limitations": [
+                "本批未提供63原文，无法独立核对“每次都默认你兜住”的准确措辞、人物指向及完整语境。",
+                "九月联络分工的确认，不足以确定每场活动的最终兜底责任。"
+              ]
+            },
+            "evidenceNotes": [
+              {
+                "sourceId": "87",
+                "quote": "记得，九月我只在群里看了照片，人根本没回来，那次确实都是你联络的。我最近脑子里一直是这个月几场接着跑，刚才说每次都由我安排，把那次也抹掉了。",
+                "text": "合成本人明确确认九月的联络分工，并自行修正“每次都由我安排”的概括；该确认不等于确认全部兜底责任的归属。"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "call": 14,
+        "messageIds": [
+          "91",
+          "92",
+          "93",
+          "94",
+          "95"
+        ],
+        "updates": [
+          {
+            "id": "1",
+            "action": "resolve",
+            "finding": {
+              "revisedObservation": "本人进一步明确收回“每次都只有我在安排”的概括，改为限定本月预约、群里确认和会后书单集中在自己这里，并提出下次分出一项。因此不宜继续沿用“每次均由本人安排”的说法；本月具体负担则仍是本人的陈述，不能因其撤回绝对概括而一并否定。",
+              "supportingIds": [
+                "91"
+              ],
+              "counterexampleIds": [],
+              "alternativeExplanations": [],
+              "limitations": [
+                "本批未重新呈现九月筹备过程或63原文，不能仅凭本批重建此前全部分工。",
+                "本批没有独立核实本月各项工作的实际分配或工作量。"
+              ]
+            },
+            "evidenceNotes": [
+              {
+                "sourceId": "91",
+                "quote": "我想收回每次都只有我在安排那种说法。现在更准确的是，这个月预约、群里确认和会后书单这几项集中在我这里",
+                "text": "本人主动撤回绝对化概括，将仍主张的负担限定为本月三类具体事务。"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "acceptedTransitions": [
+      {
+        "eventsLine": 38,
+        "call": 12,
+        "lastCoveredSource": "86",
+        "candidate": {
+          "observation": "合成对方以九月一次自己承担筹备工作的经历，回应合成本人先前关于“每次都默认你兜住”的表述；两者是否矛盾，需核对63的原话及所指范围。",
+          "supportingIds": [
+            "86"
+          ],
+          "reason": "需回读被明确回复的63，核对“每次”是在概括全部活动、近期活动，还是表达最终兜底的负担；九月承担具体工作不必然等同于承担最终兜底责任。",
+          "evidenceNotes": [
+            {
+              "sourceId": "86",
+              "quote": "我想接着你前几天说每次都默认你兜住那句话说一点：九月那场你出差，是我找活动室、确认名单和发通知的，你还记得那次吗？",
+              "text": "这是合成对方对旧话的转述及其自述的具体事例，尚无合成本人的确认，不能直接据此判断长期分工或否定负担感。"
+            }
+          ],
+          "id": "1",
+          "state": "pending",
+          "rounds": 0,
+          "seenEvidenceIds": [],
+          "navigationRequests": [],
+          "pendingNavigation": null,
+          "pendingIds": [
+            "63",
+            "86"
+          ],
+          "pendingCursor": {
+            "messageIndex": 0,
+            "textOffset": 0
+          },
+          "pendingThrough": null,
+          "shrinkDepth": 0,
+          "repairs": 0,
+          "purpose": "需回读被明确回复的63，核对“每次”是在概括全部活动、近期活动，还是表达最终兜底的负担；九月承担具体工作不必然等同于承担最终兜底责任。",
+          "finding": null
+        }
+      },
+      {
+        "eventsLine": 41,
+        "call": 13,
+        "lastCoveredSource": "90",
+        "candidate": {
+          "observation": "合成对方以九月一次自己承担筹备工作的经历，回应合成本人先前关于“每次都默认你兜住”的表述；两者是否矛盾，需核对63的原话及所指范围。",
+          "supportingIds": [
+            "86"
+          ],
+          "evidenceNotes": [
+            {
+              "sourceId": "86",
+              "quote": "我想接着你前几天说每次都默认你兜住那句话说一点：九月那场你出差，是我找活动室、确认名单和发通知的，你还记得那次吗？",
+              "text": "这是合成对方对旧话的转述及其自述的具体事例，尚无合成本人的确认，不能直接据此判断长期分工或否定负担感。"
+            },
+            {
+              "sourceId": "87",
+              "quote": "记得，九月我只在群里看了照片，人根本没回来，那次确实都是你联络的。我最近脑子里一直是这个月几场接着跑，刚才说每次都由我安排，把那次也抹掉了。",
+              "text": "合成本人明确确认九月的联络分工，并自行修正“每次都由我安排”的概括；该确认不等于确认全部兜底责任的归属。"
+            }
+          ],
+          "id": "1",
+          "state": "finished",
+          "rounds": 0,
+          "seenEvidenceIds": [],
+          "navigationRequests": [],
+          "pendingNavigation": null,
+          "pendingIds": [
+            "63",
+            "86"
+          ],
+          "pendingCursor": {
+            "messageIndex": 0,
+            "textOffset": 0
+          },
+          "pendingThrough": null,
+          "shrinkDepth": 0,
+          "repairs": 0,
+          "purpose": null,
+          "finding": {
+            "revisedObservation": "后文已明确：合成本人承认自己刚才“每次都由我安排”的概括遗漏九月那次，并确认那次自己未回来、联络均由合成对方完成。因此，九月反例对“每次均由本人安排”这一字面概括的修正已得到本人承认；但不能据此进一步认定其关于最终兜底或近期负担的感受也被推翻。",
+            "supportingIds": [
+              "87"
+            ],
+            "counterexampleIds": [],
+            "alternativeExplanations": [
+              "合成本人解释，自己当时主要想着本月连续几场活动，因而遗漏九月那次。"
+            ],
+            "limitations": [
+              "本批未提供63原文，无法独立核对“每次都默认你兜住”的准确措辞、人物指向及完整语境。",
+              "九月联络分工的确认，不足以确定每场活动的最终兜底责任。"
+            ]
+          }
+        }
+      },
+      {
+        "eventsLine": 44,
+        "call": 14,
+        "lastCoveredSource": "95",
+        "candidate": {
+          "observation": "合成对方以九月一次自己承担筹备工作的经历，回应合成本人先前关于“每次都默认你兜住”的表述；两者是否矛盾，需核对63的原话及所指范围。",
+          "supportingIds": [
+            "86"
+          ],
+          "evidenceNotes": [
+            {
+              "sourceId": "86",
+              "quote": "我想接着你前几天说每次都默认你兜住那句话说一点：九月那场你出差，是我找活动室、确认名单和发通知的，你还记得那次吗？",
+              "text": "这是合成对方对旧话的转述及其自述的具体事例，尚无合成本人的确认，不能直接据此判断长期分工或否定负担感。"
+            },
+            {
+              "sourceId": "87",
+              "quote": "记得，九月我只在群里看了照片，人根本没回来，那次确实都是你联络的。我最近脑子里一直是这个月几场接着跑，刚才说每次都由我安排，把那次也抹掉了。",
+              "text": "合成本人明确确认九月的联络分工，并自行修正“每次都由我安排”的概括；该确认不等于确认全部兜底责任的归属。"
+            },
+            {
+              "sourceId": "91",
+              "quote": "我想收回每次都只有我在安排那种说法。现在更准确的是，这个月预约、群里确认和会后书单这几项集中在我这里",
+              "text": "本人主动撤回绝对化概括，将仍主张的负担限定为本月三类具体事务。"
+            }
+          ],
+          "id": "1",
+          "state": "finished",
+          "rounds": 0,
+          "seenEvidenceIds": [],
+          "navigationRequests": [],
+          "pendingNavigation": null,
+          "pendingIds": [
+            "63",
+            "86"
+          ],
+          "pendingCursor": {
+            "messageIndex": 0,
+            "textOffset": 0
+          },
+          "pendingThrough": null,
+          "shrinkDepth": 0,
+          "repairs": 0,
+          "purpose": null,
+          "finding": {
+            "revisedObservation": "本人进一步明确收回“每次都只有我在安排”的概括，改为限定本月预约、群里确认和会后书单集中在自己这里，并提出下次分出一项。因此不宜继续沿用“每次均由本人安排”的说法；本月具体负担则仍是本人的陈述，不能因其撤回绝对概括而一并否定。",
+            "supportingIds": [
+              "91"
+            ],
+            "counterexampleIds": [],
+            "alternativeExplanations": [],
+            "limitations": [
+              "本批未重新呈现九月筹备过程或63原文，不能仅凭本批重建此前全部分工。",
+              "本批没有独立核实本月各项工作的实际分配或工作量。"
+            ]
+          }
+        }
+      }
+    ],
+    "laterInputs": [
+      {
+        "call": 14,
+        "knownCandidate": {
+          "id": "1",
+          "state": "finished",
+          "observation": "合成对方以九月一次自己承担筹备工作的经历，回应合成本人先前关于“每次都默认你兜住”的表述；两者是否矛盾，需核对63的原话及所指范围。",
+          "supportingIds": [
+            "86"
+          ],
+          "finding": {
+            "revisedObservation": "后文已明确：合成本人承认自己刚才“每次都由我安排”的概括遗漏九月那次，并确认那次自己未回来、联络均由合成对方完成。因此，九月反例对“每次均由本人安排”这一字面概括的修正已得到本人承认；但不能据此进一步认定其关于最终兜底或近期负担的感受也被推翻。",
+            "supportingIds": [
+              "87"
+            ],
+            "counterexampleIds": []
+          },
+          "evidenceNotes": []
+        },
+        "messageIds": [
+          "91",
+          "92",
+          "93",
+          "94",
+          "95"
+        ]
+      },
+      {
+        "call": 15,
+        "knownCandidate": {
+          "id": "1",
+          "state": "finished",
+          "observation": "合成对方以九月一次自己承担筹备工作的经历，回应合成本人先前关于“每次都默认你兜住”的表述；两者是否矛盾，需核对63的原话及所指范围。",
+          "supportingIds": [
+            "86"
+          ],
+          "finding": {
+            "revisedObservation": "本人进一步明确收回“每次都只有我在安排”的概括，改为限定本月预约、群里确认和会后书单集中在自己这里，并提出下次分出一项。因此不宜继续沿用“每次均由本人安排”的说法；本月具体负担则仍是本人的陈述，不能因其撤回绝对概括而一并否定。",
+            "supportingIds": [
+              "91"
+            ],
+            "counterexampleIds": []
+          },
+          "evidenceNotes": []
+        },
+        "messageIds": [
+          "96",
+          "97",
+          "98",
+          "99",
+          "100"
+        ]
+      },
+      {
+        "call": 16,
+        "knownCandidate": {
+          "id": "1",
+          "state": "finished",
+          "observation": "合成对方以九月一次自己承担筹备工作的经历，回应合成本人先前关于“每次都默认你兜住”的表述；两者是否矛盾，需核对63的原话及所指范围。",
+          "supportingIds": [
+            "86"
+          ],
+          "finding": {
+            "revisedObservation": "本人进一步明确收回“每次都只有我在安排”的概括，改为限定本月预约、群里确认和会后书单集中在自己这里，并提出下次分出一项。因此不宜继续沿用“每次均由本人安排”的说法；本月具体负担则仍是本人的陈述，不能因其撤回绝对概括而一并否定。",
+            "supportingIds": [
+              "91"
+            ],
+            "counterexampleIds": []
+          },
+          "evidenceNotes": []
+        },
+        "messageIds": [
+          "101",
+          "102",
+          "103",
+          "104",
+          "105"
+        ]
+      },
+      {
+        "call": 17,
+        "knownCandidate": {
+          "id": "1",
+          "state": "finished",
+          "observation": "合成对方以九月一次自己承担筹备工作的经历，回应合成本人先前关于“每次都默认你兜住”的表述；两者是否矛盾，需核对63的原话及所指范围。",
+          "supportingIds": [
+            "86"
+          ],
+          "finding": {
+            "revisedObservation": "本人进一步明确收回“每次都只有我在安排”的概括，改为限定本月预约、群里确认和会后书单集中在自己这里，并提出下次分出一项。因此不宜继续沿用“每次均由本人安排”的说法；本月具体负担则仍是本人的陈述，不能因其撤回绝对概括而一并否定。",
+            "supportingIds": [
+              "91"
+            ],
+            "counterexampleIds": []
+          },
+          "evidenceNotes": []
+        },
+        "messageIds": [
+          "106",
+          "107",
+          "108",
+          "109",
+          "110"
+        ]
+      },
+      {
+        "call": 18,
+        "knownCandidate": {
+          "id": "1",
+          "state": "finished",
+          "observation": "合成对方以九月一次自己承担筹备工作的经历，回应合成本人先前关于“每次都默认你兜住”的表述；两者是否矛盾，需核对63的原话及所指范围。",
+          "supportingIds": [
+            "86"
+          ],
+          "finding": {
+            "revisedObservation": "本人进一步明确收回“每次都只有我在安排”的概括，改为限定本月预约、群里确认和会后书单集中在自己这里，并提出下次分出一项。因此不宜继续沿用“每次均由本人安排”的说法；本月具体负担则仍是本人的陈述，不能因其撤回绝对概括而一并否定。",
+            "supportingIds": [
+              "91"
+            ],
+            "counterexampleIds": []
+          },
+          "evidenceNotes": []
+        },
+        "messageIds": [
+          "111",
+          "112",
+          "113",
+          "114",
+          "115"
+        ]
+      },
+      {
+        "call": 19,
+        "knownCandidate": {
+          "id": "1",
+          "state": "finished",
+          "observation": "合成对方以九月一次自己承担筹备工作的经历，回应合成本人先前关于“每次都默认你兜住”的表述；两者是否矛盾，需核对63的原话及所指范围。",
+          "supportingIds": [
+            "86"
+          ],
+          "finding": {
+            "revisedObservation": "本人进一步明确收回“每次都只有我在安排”的概括，改为限定本月预约、群里确认和会后书单集中在自己这里，并提出下次分出一项。因此不宜继续沿用“每次均由本人安排”的说法；本月具体负担则仍是本人的陈述，不能因其撤回绝对概括而一并否定。",
+            "supportingIds": [
+              "91"
+            ],
+            "counterexampleIds": []
+          },
+          "evidenceNotes": []
+        },
+        "messageIds": [
+          "116",
+          "117",
+          "118",
+          "119",
+          "120"
+        ]
+      }
+    ],
+    "finalCheckpoint": {
+      "observation": "合成对方以九月一次自己承担筹备工作的经历，回应合成本人先前关于“每次都默认你兜住”的表述；两者是否矛盾，需核对63的原话及所指范围。",
+      "supportingIds": [
+        "86"
+      ],
+      "evidenceNotes": [
+        {
+          "sourceId": "86",
+          "quote": "我想接着你前几天说每次都默认你兜住那句话说一点：九月那场你出差，是我找活动室、确认名单和发通知的，你还记得那次吗？",
+          "text": "这是合成对方对旧话的转述及其自述的具体事例，尚无合成本人的确认，不能直接据此判断长期分工或否定负担感。"
+        },
+        {
+          "sourceId": "87",
+          "quote": "记得，九月我只在群里看了照片，人根本没回来，那次确实都是你联络的。我最近脑子里一直是这个月几场接着跑，刚才说每次都由我安排，把那次也抹掉了。",
+          "text": "合成本人明确确认九月的联络分工，并自行修正“每次都由我安排”的概括；该确认不等于确认全部兜底责任的归属。"
+        },
+        {
+          "sourceId": "91",
+          "quote": "我想收回每次都只有我在安排那种说法。现在更准确的是，这个月预约、群里确认和会后书单这几项集中在我这里",
+          "text": "本人主动撤回绝对化概括，将仍主张的负担限定为本月三类具体事务。"
+        }
+      ],
+      "id": "1",
+      "state": "finished",
+      "rounds": 0,
+      "seenEvidenceIds": [],
+      "navigationRequests": [],
+      "pendingNavigation": null,
+      "pendingIds": [
+        "63",
+        "86"
+      ],
+      "pendingCursor": {
+        "messageIndex": 0,
+        "textOffset": 0
+      },
+      "pendingThrough": null,
+      "shrinkDepth": 0,
+      "repairs": 0,
+      "purpose": null,
+      "finding": {
+        "revisedObservation": "本人进一步明确收回“每次都只有我在安排”的概括，改为限定本月预约、群里确认和会后书单集中在自己这里，并提出下次分出一项。因此不宜继续沿用“每次均由本人安排”的说法；本月具体负担则仍是本人的陈述，不能因其撤回绝对概括而一并否定。",
+        "supportingIds": [
+          "91"
+        ],
+        "counterexampleIds": [],
+        "alternativeExplanations": [],
+        "limitations": [
+          "本批未重新呈现九月筹备过程或63原文，不能仅凭本批重建此前全部分工。",
+          "本批没有独立核实本月各项工作的实际分配或工作量。"
+        ]
+      }
+    },
+    "original63ReadAtCall": 9,
+    "original63ResentWith86": false,
+    "quoteValidation": [
+      {
+        "sourceId": "86",
+        "exactSubstring": true
+      },
+      {
+        "sourceId": "87",
+        "exactSubstring": true
+      },
+      {
+        "sourceId": "91",
+        "exactSubstring": true
+      }
+    ]
+  },
+  "limits": {
+    "maxChecks": 8,
+    "maxRoundsPerCheck": 4,
+    "maxCalls": 50,
+    "maxInputTokens": 400000,
+    "maxOutputTokens": 40000,
+    "maxElapsedMs": 1200000
+  },
+  "remaining": {
+    "taskRequests": 30,
+    "sharedRequests": 84,
+    "inputTokens": 362484,
+    "outputTokens": 22003,
+    "elapsedMs": 849143
+  },
+  "originalFiles": {
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\halt.json": "620867f4244cda5845421e5bfd64a366dfbc818e1b9b2ae980f5a276e243d6d6",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\run-profile.json": "e1dd6ac9395c0d501a0470f29f76f461fed51d1cd857ba8a2df73f918cfd2ad6",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\attempts.jsonl": "99d245b44faf30deaeba5825dc1c223e75775df0d9cc4991787f22fd30d30df0",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\checkpoint.json": "9d1dd08bfe121660ec878019062b03bc91ac895ac89b93d8a2f8dae7cfc21ede",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\events.jsonl": "c9079686aca93d9a4458cb659721b0efc8855ec54eeff56d3dd34c84734cce94",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\input.json": "67e7d838b394c57b631ca8b626b88fb00012e536734cf40cb1637795b1dd524b",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\request-01.json": "5a9da8c7a03d38a3e8d92a4379a7406a84268c3535cacd626a88d680b93a66fe",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\request-02.json": "3ba3d61d2cd67b9ca41023c5521bab49c8188ceb1a093f4b01f56eeb73d239ed",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\request-03.json": "03e49ff620cbe94d150a82b80fe4bd6d923b119124398b0b697362e0ba09ba05",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\request-04.json": "759d90c3c3f432bba6488bfa621388d9a5747c1f6bcbc7f00bab4412ded2e7d3",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\request-05.json": "fafa398961b021199d5c1984472016c9c890f7c01b02bc75e5af0a92aca3efa1",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\request-06.json": "23543718db1635753c393392b795435801c9b54425727eb497cef79848660e5f",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\request-07.json": "a259a9c3a570094cbf2ff38a41f3e9572707ce13b879df448e2b77e8b119befb",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\request-08.json": "b5c9a4132370065bb7adca947db02d915202641fd460bd020e6ae3a6a639cc16",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\request-09.json": "3e77d2147238cdb39c2199a96b50369dc7be906535c3160fb5011a7af88bb574",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\request-10.json": "39b6da3b01fc2e3ba33681940069aaee725ac8f48abf19c2304e1387a877c84b",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\request-11.json": "f05fc0f4dee842eedde9f18b3c321e3ede8354b8f2ec3416a2fb084efc3a4cc3",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\request-12.json": "c8472f031b745d028bfa70447e84f0904dd511af6343706d5ab7de5c0b1766da",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\request-13.json": "3084e00a06a064350b4cde3fdd3e6cb1acc6214a1a089a7c3c1dc74f98e832fc",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\request-14.json": "9be83a32e17c54eee419cae1fc899d04ebecfd936faf32c43bafa97eecc70296",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\request-15.json": "94c0eef08b36c6912efa7a62b823a6c9f5d78a0c5f1651b9e9133607ac1bae50",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\request-16.json": "bd09de8c8f8e4b4b3fdfc7b56bc1dc84a0e6d23d62faee6ea5d104d527e30a12",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\request-17.json": "2be0627f1886c53764dae320007bb5ca7dd61b0f3584783af2dbd5bd6ceecd4b",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\request-18.json": "2ded08aeac658140dc19a2ef6ad23c75ac0ea98944c923a7ffcb8773977f4563",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\request-19.json": "d6e516fe2d06ba364b5bbb170cded93de7db2b32c2ede694b29f3048cfc9a1aa",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\request-20.json": "ed69fa6b429eb2c9d442bd9362b9a366b89d8bb38c256a2cf2cd3137e085b9ef",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\response-01.txt": "68d8a7510a3e335947dc48108c516d36b50d62c0a1494278416c71e77439891c",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\response-02.txt": "eaa1a12205895fa3b9a80f28da977f07fbf1e423204f1704edc1615254946bbd",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\response-03.txt": "3827e86822f6c1212d9ff874440d5b02a84c6337ca5fc07acd69c15cf0fc6dd0",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\response-04.txt": "7c83fcb654ad15eaf7b31ca91c855599ab36c747289cbba3a81a7cd44d14c135",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\response-05.txt": "f09ef8870deaf15b8599adfc269a5a17ad6aeaeba147f60aac697d158daacc4e",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\response-06.txt": "4e6521395a056a1c5d5b723ea68ceb4f6bd7e7af85f9dea10024741a60c9e648",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\response-07.txt": "8c84e894f96ec904e6fa5277a8b9258ee977bcd54fe85e00c731f04d4097428b",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\response-08.txt": "6f0a1e05f0ff50e1fe0cd30c49c63783d0d86e120ca3a3382aaa36ae4db6b935",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\response-09.txt": "a55e3972612bfeb3fb8a654670397bb564ef9f46d5eed5a446953afb6d49e329",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\response-10.txt": "cac4e6ee20463ccd014f06cb768eea329b8d6ae07a27c944819be919785555bd",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\response-11.txt": "fd0eda051bdc69a00641436e0a8afbc8fb82ffbe106b73d21e8ef2157dbb915e",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\response-12.txt": "103139dc85890e69ef739c287c2cce1259cb4cf8bcf23b1e1e3f356cf7707ca4",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\response-13.txt": "b86cc5fad20a536c24485c7f80b8a4b468d500dbb3d42f2d0c2e2144ef4cddbf",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\response-14.txt": "c23955321c4a132a62039192b00a7fced4ce6223001cd933d6ee34d08db711e2",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\response-15.txt": "3b661881a62a5854d2cc00b81909c3e0e5ccb983f4430c2e601564d2ece9223e",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\response-16.txt": "5afbe1e08b420f948b35c8698d03f36a9d9cb84fe89aeb6a7926360934b45c81",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\response-17.txt": "754d128fcebabc3168fbbeaad6df19650575451f3d7bf8b79c2eb65bd03b6133",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\response-18.txt": "15b810ecac384a427dd9768acfe689f3448c6e77b0a48d6732b98f85a0e69f76",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\response-19.txt": "fe62b07659ed48761782b129ab242e334318015b8afff809bb1358f185366d50",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\response-20.txt": "653caac2f246a6bc88e5de9bb3676d25f3f741dec3ce31c3de8dafb87ecedc3b",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\result.json": "93bbb137ba0c4055f95bba4ebfe4b439421a762e6b04c8401e06b758097ccefe",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\snapshot.json": "53d7000e19f3bbf11577f35fff117c6baafdcb6925af6e5310557b2be77e02cf"
+  },
+  "originalFilesUnchanged": true
+}

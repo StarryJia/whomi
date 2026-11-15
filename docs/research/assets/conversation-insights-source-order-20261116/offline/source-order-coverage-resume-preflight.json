@@ -1,0 +1,272 @@
+{
+  "networkCalls": 0,
+  "stubCalls": 1,
+  "originalArtifactsUnchanged": true,
+  "originalHashes": {
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\attempts.jsonl": "99d245b44faf30deaeba5825dc1c223e75775df0d9cc4991787f22fd30d30df0",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\checkpoint.json": "9d1dd08bfe121660ec878019062b03bc91ac895ac89b93d8a2f8dae7cfc21ede",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\events.jsonl": "c9079686aca93d9a4458cb659721b0efc8855ec54eeff56d3dd34c84734cce94",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\input.json": "67e7d838b394c57b631ca8b626b88fb00012e536734cf40cb1637795b1dd524b",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\request-01.json": "5a9da8c7a03d38a3e8d92a4379a7406a84268c3535cacd626a88d680b93a66fe",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\request-02.json": "3ba3d61d2cd67b9ca41023c5521bab49c8188ceb1a093f4b01f56eeb73d239ed",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\request-03.json": "03e49ff620cbe94d150a82b80fe4bd6d923b119124398b0b697362e0ba09ba05",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\request-04.json": "759d90c3c3f432bba6488bfa621388d9a5747c1f6bcbc7f00bab4412ded2e7d3",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\request-05.json": "fafa398961b021199d5c1984472016c9c890f7c01b02bc75e5af0a92aca3efa1",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\request-06.json": "23543718db1635753c393392b795435801c9b54425727eb497cef79848660e5f",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\request-07.json": "a259a9c3a570094cbf2ff38a41f3e9572707ce13b879df448e2b77e8b119befb",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\request-08.json": "b5c9a4132370065bb7adca947db02d915202641fd460bd020e6ae3a6a639cc16",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\request-09.json": "3e77d2147238cdb39c2199a96b50369dc7be906535c3160fb5011a7af88bb574",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\request-10.json": "39b6da3b01fc2e3ba33681940069aaee725ac8f48abf19c2304e1387a877c84b",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\request-11.json": "f05fc0f4dee842eedde9f18b3c321e3ede8354b8f2ec3416a2fb084efc3a4cc3",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\request-12.json": "c8472f031b745d028bfa70447e84f0904dd511af6343706d5ab7de5c0b1766da",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\request-13.json": "3084e00a06a064350b4cde3fdd3e6cb1acc6214a1a089a7c3c1dc74f98e832fc",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\request-14.json": "9be83a32e17c54eee419cae1fc899d04ebecfd936faf32c43bafa97eecc70296",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\request-15.json": "94c0eef08b36c6912efa7a62b823a6c9f5d78a0c5f1651b9e9133607ac1bae50",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\request-16.json": "bd09de8c8f8e4b4b3fdfc7b56bc1dc84a0e6d23d62faee6ea5d104d527e30a12",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\request-17.json": "2be0627f1886c53764dae320007bb5ca7dd61b0f3584783af2dbd5bd6ceecd4b",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\request-18.json": "2ded08aeac658140dc19a2ef6ad23c75ac0ea98944c923a7ffcb8773977f4563",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\request-19.json": "d6e516fe2d06ba364b5bbb170cded93de7db2b32c2ede694b29f3048cfc9a1aa",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\request-20.json": "ed69fa6b429eb2c9d442bd9362b9a366b89d8bb38c256a2cf2cd3137e085b9ef",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\response-01.txt": "68d8a7510a3e335947dc48108c516d36b50d62c0a1494278416c71e77439891c",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\response-02.txt": "eaa1a12205895fa3b9a80f28da977f07fbf1e423204f1704edc1615254946bbd",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\response-03.txt": "3827e86822f6c1212d9ff874440d5b02a84c6337ca5fc07acd69c15cf0fc6dd0",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\response-04.txt": "7c83fcb654ad15eaf7b31ca91c855599ab36c747289cbba3a81a7cd44d14c135",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\response-05.txt": "f09ef8870deaf15b8599adfc269a5a17ad6aeaeba147f60aac697d158daacc4e",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\response-06.txt": "4e6521395a056a1c5d5b723ea68ceb4f6bd7e7af85f9dea10024741a60c9e648",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\response-07.txt": "8c84e894f96ec904e6fa5277a8b9258ee977bcd54fe85e00c731f04d4097428b",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\response-08.txt": "6f0a1e05f0ff50e1fe0cd30c49c63783d0d86e120ca3a3382aaa36ae4db6b935",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\response-09.txt": "a55e3972612bfeb3fb8a654670397bb564ef9f46d5eed5a446953afb6d49e329",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\response-10.txt": "cac4e6ee20463ccd014f06cb768eea329b8d6ae07a27c944819be919785555bd",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\response-11.txt": "fd0eda051bdc69a00641436e0a8afbc8fb82ffbe106b73d21e8ef2157dbb915e",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\response-12.txt": "103139dc85890e69ef739c287c2cce1259cb4cf8bcf23b1e1e3f356cf7707ca4",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\response-13.txt": "b86cc5fad20a536c24485c7f80b8a4b468d500dbb3d42f2d0c2e2144ef4cddbf",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\response-14.txt": "c23955321c4a132a62039192b00a7fced4ce6223001cd933d6ee34d08db711e2",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\response-15.txt": "3b661881a62a5854d2cc00b81909c3e0e5ccb983f4430c2e601564d2ece9223e",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\response-16.txt": "5afbe1e08b420f948b35c8698d03f36a9d9cb84fe89aeb6a7926360934b45c81",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\response-17.txt": "754d128fcebabc3168fbbeaad6df19650575451f3d7bf8b79c2eb65bd03b6133",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\response-18.txt": "15b810ecac384a427dd9768acfe689f3448c6e77b0a48d6732b98f85a0e69f76",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\response-19.txt": "fe62b07659ed48761782b129ab242e334318015b8afff809bb1358f185366d50",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\response-20.txt": "653caac2f246a6bc88e5de9bb3676d25f3f741dec3ce31c3de8dafb87ecedc3b",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\result.json": "93bbb137ba0c4055f95bba4ebfe4b439421a762e6b04c8401e06b758097ccefe",
+    "release\\conversation-insights-20261115\\long-comparison-runs\\memory-source-order-20261116\\shared-workload-reading\\snapshot.json": "53d7000e19f3bbf11577f35fff117c6baafdcb6925af6e5310557b2be77e02cf",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-source-order-20261116/halt.json": "620867f4244cda5845421e5bfd64a366dfbc818e1b9b2ae980f5a276e243d6d6",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-source-order-20261116/run-profile.json": "e1dd6ac9395c0d501a0470f29f76f461fed51d1cd857ba8a2df73f918cfd2ad6"
+  },
+  "originalCallsReserved": 20,
+  "restoredCallsReserved": 20,
+  "originalRepairs": 0,
+  "restoredRepairs": 1,
+  "remainingTaskCalls": 30,
+  "firstRequest": {
+    "key": "insight:201:21",
+    "payload": {
+      "stage": "reading",
+      "operation": "compress-navigation",
+      "targetFactTextLength": 608,
+      "maxFactCount": 32,
+      "nodes": [
+        {
+          "navigationId": 0,
+          "childCount": 0,
+          "entries": [
+            {
+              "entryId": "0:0",
+              "kind": "fact",
+              "text": "2026-10-01（当地时间），合成本人称已为“三号”的读书小组问好社区活动室，管理员表示下午两点可进入；结合发言日期，“三号”应指10月3日。"
+            }
+          ]
+        },
+        {
+          "navigationId": 1,
+          "childCount": 0,
+          "entries": [
+            {
+              "entryId": "1:0",
+              "kind": "fact",
+              "text": "合成对方提醒门口修路、初来者可能误走旧入口，请本人发位置。本人随后确认已发位置和新入口照片，并将三位新朋友加入临时群。"
+            }
+          ]
+        },
+        {
+          "navigationId": 2,
+          "childCount": 0,
+          "entries": [
+            {
+              "entryId": "2:0",
+              "kind": "fact",
+              "text": "本人表示当天从订场地到通知参与者一直在处理事务，零碎消息令其感觉半天都花在此事上；截至最后一条消息仍未吃午饭。"
+            }
+          ]
+        },
+        {
+          "navigationId": 3,
+          "childCount": 0,
+          "entries": [
+            {
+              "entryId": "3:0",
+              "kind": "fact",
+              "text": "对方称前一晚已将投影线接电脑测试，显示正常，并表示三号会带去。"
+            }
+          ]
+        },
+        {
+          "navigationId": 4,
+          "childCount": 0,
+          "entries": [
+            {
+              "entryId": "4:0",
+              "kind": "fact",
+              "text": "对方提出核实身份证登记范围；本人随后确认只登记预约联系人，由本人带证件即可。"
+            }
+          ]
+        },
+        {
+          "navigationId": 5,
+          "childCount": 0,
+          "entries": [
+            {
+              "entryId": "5:0",
+              "kind": "unknown",
+              "text": "三号活动尚待落实：对方带投影线、本人带预约联系人证件，以及本人交换旧书前说明封面咖啡印，均尚无完成记录。"
+            }
+          ]
+        },
+        {
+          "navigationId": 6,
+          "childCount": 0,
+          "entries": [
+            {
+              "entryId": "6:0",
+              "kind": "fact",
+              "text": "本人从准备交换的两本书之一中发现去年车票，确认是去海边的那张，并已按对方建议收进蓝色信封。对方提及此前寻找演出票根未找到，但本批没有该票根后续。"
+            }
+          ]
+        },
+        {
+          "navigationId": 7,
+          "childCount": 0,
+          "entries": [
+            {
+              "entryId": "7:0",
+              "kind": "fact",
+              "text": "本人准备交换的书封面有擦不掉的咖啡印，自述不影响文字和页码，计划交换前告知。对方准备带的书有铅笔批注，已擦去特别乱的部分，其余保留，愿与感兴趣者讨论。"
+            }
+          ]
+        },
+        {
+          "navigationId": 8,
+          "childCount": 0,
+          "entries": [
+            {
+              "entryId": "8:0",
+              "kind": "fact",
+              "text": "报名又增加一人后，本人称已将桌子安排改为两排，并向管理员说明不用原来的圆桌；消息发出时仍在等管理员回复。"
+            }
+          ]
+        },
+        {
+          "navigationId": 9,
+          "childCount": 0,
+          "entries": [
+            {
+              "entryId": "9:0",
+              "kind": "unknown",
+              "text": "等待管理员回复两排桌子、取消原圆桌的安排；本人表示等回复后下楼买吃的，是否收到回复及用餐均未确认。"
+            }
+          ]
+        },
+        {
+          "navigationId": 10,
+          "childCount": 0,
+          "entries": [
+            {
+              "entryId": "10:0",
+              "kind": "fact",
+              "text": "2026-10-01，合成对方建议本人先去楼下面店吃饭，认为人数登记晚些补应来得及；本人随后确认已吃到面。此前未用餐事项已解决，但管理员是否回复桌椅安排，本批仍无记录。"
+            }
+          ]
+        },
+        {
+          "navigationId": 11,
+          "childCount": 0,
+          "entries": [
+            {
+              "entryId": "11:0",
+              "kind": "fact",
+              "text": "2026-10-01，合成对方计划下课后取修好的台灯，称店老板希望其傍晚前到。本人提醒取灯时测试开关，说明此前需长按才亮；对方答应测试并已记下开关问题。"
+            }
+          ]
+        },
+        {
+          "navigationId": 12,
+          "childCount": 0,
+          "entries": [
+            {
+              "entryId": "12:0",
+              "kind": "unknown",
+              "text": "合成对方尚待取回修好的台灯并测试开关，计划下课后、尽量傍晚前到店；本批未确认取回或测试结果。"
+            }
+          ]
+        },
+        {
+          "navigationId": 13,
+          "childCount": 0,
+          "entries": [
+            {
+              "entryId": "13:0",
+              "kind": "fact",
+              "text": "合成对方表示将去上课，手机放包里可能回复较慢；若活动室方面只是确认收到，本人不必一直等其回复。这是有条件的沟通安排，并非活动室已确认的记录。"
+            }
+          ]
+        },
+        {
+          "navigationId": 14,
+          "childCount": 0,
+          "entries": [
+            {
+              "entryId": "14:0",
+              "kind": "fact",
+              "text": "2026-10-04，本人称前一天活动顺利结束，实际到场十一位，比报名少一位，并已备注缺席者提前说过要加班；对方也称记得此人在开始前发过消息。最终报名人数据此为十二位，但报名表是否逐项核完未被明确说明。"
+            }
+          ]
+        },
+        {
+          "navigationId": 15,
+          "childCount": 0,
+          "entries": [
+            {
+              "entryId": "15:0",
+              "kind": "fact",
+              "text": "本人称到场时椅子和水已摆好；对方评价靠窗位置舒服，后半段翻书时外面车辆经过也没有特别吵。活动已结束，但本批未逐项确认投影线携带、预约证件或旧书咖啡印说明是否完成。"
+            }
+          ]
+        }
+      ],
+      "repair": true
+    },
+    "outputLimit": 3000
+  },
+  "savedSimulation": {
+    "callsReserved": 21,
+    "repairs": 1,
+    "stage": "reading"
+  },
+  "originalFailure": {
+    "state": "failed",
+    "error": "INVALID_EVIDENCE",
+    "calls": 20,
+    "httpRequests": 20,
+    "elapsedMs": 350864,
+    "inputCharged": 37516,
+    "outputCharged": 17997,
+    "trialRequestsAfterPhase": 20,
+    "accounting": {
+      "incremental": {
+        "httpRequests": 20,
+        "elapsedMs": 350864,
+        "inputCharged": 37516,
+        "outputCharged": 17997
+      }
+    }
+  }
+}

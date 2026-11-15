@@ -1,0 +1,54 @@
+{
+  "createdAt": "2026-11-15T15:37:25.358Z",
+  "baseCommit": "fee2af45380cb379ab40009449f467d1c50c4a8b",
+  "precedingActualRequests": 13,
+  "taskCalls": 30,
+  "totalRequests": 64,
+  "files": [
+    {
+      "file": "electron/data/ai/insight-prompts.ts",
+      "sha256": "6d67e14246c080b1c9838f03579f01a3bb79700b070fd45b615983450f3c0a44"
+    },
+    {
+      "file": "electron/main/insight-checkpoint.ts",
+      "sha256": "9929950b70637cfddee7dff7be1a12505962486256dc0e0621c0c2408ebb6568"
+    },
+    {
+      "file": "electron/main/insight-generation.ts",
+      "sha256": "ca47fd311430c4dd4a6afe25e6d1f289d6430ac626b1fd8e901a1dcea04dff33"
+    },
+    {
+      "file": "scripts/insight-quality.mjs",
+      "sha256": "1da38fd589e1eb047bab297151f2cdeebbbbb8f9925d18ba169edc4fec2492f6"
+    },
+    {
+      "file": "tests/backend/insight-generation.test.ts",
+      "sha256": "7d22a4b2ce8c440d42cce96665a2fa5b3592e6231055625f3ce7f5e1015f027c"
+    },
+    {
+      "file": "tests/quality/insight-comparison-profile.mjs",
+      "sha256": "d1aee5f179cf8d2430f2223febc8bc1855b76f02270643ba5e361def4ae9a992"
+    },
+    {
+      "file": "tests/quality/insight-comparison-resume.ts",
+      "sha256": "f41f08ae5320b8cfe5b9f450fe42828b0257d9481cf702f221eeab79f150b629"
+    },
+    {
+      "file": "tests/quality/insight-comparison.test.mjs",
+      "sha256": "8355abdba42ab183650cbac2fd4077cd8f78945131964eab9f0937c05f304863"
+    },
+    {
+      "file": "tests/quality/insight-quality.ts",
+      "sha256": "cdfc3fa3d6de52b34c7e55fef06d58cde628a5506185d9b2e0b2e67d81dd1fef"
+    },
+    {
+      "file": "tests/backend/insight-reading-memory.test.ts",
+      "sha256": "3c3702f5c37f0aeab9266eeda89dad7565664d03ff3f4adf8acf7e6c95bb632a"
+    },
+    {
+      "file": "tests/quality/insight-long-comparison-material.mjs",
+      "sha256": "450925083b1bfce661d1b81773a9a50e7800a526a3702c6bc6f732612fe1b2c7"
+    }
+  ],
+  "patchSha256": "da4b95d364e037c10d332319d83359756c7389114b13b9d9309d464157b3fbeb"
+}

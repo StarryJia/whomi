@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmdirSync, unlinkSync, writeFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmdirSync, unlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
@@ -40,6 +41,728 @@ test('the long trial has separate phases and limits without opening the configur
   const shortPlan = JSON.parse(shortRun.stdout)
   assert.equal(shortPlan.totalRequestLimit, 24)
   assert.deepEqual(shortPlan.phases, ['reading', 'adaptive', 'direct', 'full'])
+})
+
+test('a named long trial isolates its output and keeps the frozen cases and budgets', () => {
+  const result = spawnSync(process.execPath, ['scripts/insight-quality.mjs', '--long-comparison', '--dry-run', '--run-id=memory-preservation-20261115'], {
+    encoding: 'utf8', env: { ...process.env, WHOMI_QUALITY_DB: 'unavailable-comparison-dry-run.sqlite' },
+  })
+  assert.equal(result.status, 0, result.stderr)
+  const plan = JSON.parse(result.stdout)
+  assert.equal(plan.runId, 'memory-preservation-20261115')
+  assert.equal(plan.outputDirectory, 'long-comparison-runs/memory-preservation-20261115')
+  assert.equal(plan.totalRequestLimit, 64)
+  assert.equal(plan.syntheticPackingInputEstimateLimit, 7000)
+  assert.equal(plan.perRequestOutputLimit, 3000)
+  assert.equal(plan.perTaskLimits.maxCalls, 28)
+  assert.equal(plan.modelCalls, 0)
+  assert.deepEqual(plan.cases.map(({ caseName, messageCount }) => [caseName, messageCount]),
+    [['shared-workload', 120], ['conditional-reschedule', 120]])
+})
+
+test('named trial parsing rejects ambiguous or escaping destinations before configuration access', async () => {
+  const { comparisonArguments } = await import('./insight-comparison-profile.mjs')
+  const original = comparisonArguments(['--long-comparison', 'shared-workload', 'reading'])
+  const named = comparisonArguments(['--long-comparison', 'shared-workload', 'reading', '--resume-reading', '--run-id=memory-preservation-20261115'])
+  assert.equal(original.profile.outputDirectory, 'long-comparison')
+  assert.equal(original.profile.runtimeDirectory, '.long-comparison-runtime')
+  assert.deepEqual(named.args, ['--long-comparison', 'shared-workload', 'reading', '--resume-reading'])
+  assert.equal(named.profile.outputDirectory, 'long-comparison-runs/memory-preservation-20261115')
+  assert.equal(named.profile.runtimeDirectory, '.memory-preservation-20261115-runtime')
+  for (const args of [
+    ['--comparison', '--dry-run', '--run-id=round-two'],
+    ['--long-comparison', '--dry-run', '--run-id=../long-comparison'],
+    ['--long-comparison', '--dry-run', '--run-id=round/two'],
+    ['--long-comparison', '--dry-run', '--run-id=round\\two'],
+    ['--long-comparison', '--dry-run', '--run-id='],
+    ['--long-comparison', '--dry-run', '--run-id=round-two', '--run-id=round-three'],
+    ['--long-comparison', '--run-id=round-two', '--dry-run'],
+  ]) {
+    const result = spawnSync(process.execPath, ['scripts/insight-quality.mjs', ...args], {
+      encoding: 'utf8', env: { ...process.env, WHOMI_QUALITY_DB: 'unavailable-comparison-dry-run.sqlite' },
+    })
+    assert.notEqual(result.status, 0)
+    assert.match(result.stderr, /INVALID_COMPARISON_RUN_ID/)
+    assert.doesNotMatch(result.stderr, /WHOMI_QUALITY_DB/)
+  }
+})
+
+test('a named long trial can reserve natural checking room without changing the total request budget', async () => {
+  const result = spawnSync(process.execPath, ['scripts/insight-quality.mjs', '--long-comparison', '--dry-run',
+    '--task-call-limit=30', '--run-id=memory-preservation-20261115'], {
+    encoding: 'utf8', env: { ...process.env, WHOMI_QUALITY_DB: 'unavailable-comparison-dry-run.sqlite' },
+  })
+  assert.equal(result.status, 0, result.stderr)
+  const plan = JSON.parse(result.stdout)
+  assert.equal(plan.modelCalls, 0)
+  assert.equal(plan.perTaskLimits.maxCalls, 30)
+  assert.equal(plan.totalRequestLimit, 64)
+  const { comparisonArguments } = await import('./insight-comparison-profile.mjs')
+  const parsed = comparisonArguments(['--long-comparison', 'shared-workload', 'reading', '--resume-reading',
+    '--task-call-limit=30', '--run-id=memory-preservation-20261115'])
+  assert.deepEqual(parsed.args, ['--long-comparison', 'shared-workload', 'reading', '--resume-reading'])
+  assert.equal(parsed.profile.perTaskLimits.maxCalls, 30)
+})
+
+test('an explicit task request limit requires a named long trial and stays within the shared budget', async () => {
+  const { comparisonArguments } = await import('./insight-comparison-profile.mjs')
+  for (const args of [
+    ['--long-comparison', '--dry-run', '--task-call-limit=30'],
+    ['--comparison', '--dry-run', '--task-call-limit=30', '--run-id=round-two'],
+    ...['0', '-1', '1.5', '51', '9007199254740992', '', '03'].map(value =>
+      ['--long-comparison', '--dry-run', '--task-call-limit=' + value, '--run-id=round-two']),
+    ['--long-comparison', '--dry-run', '--task-call-limit=29', '--task-call-limit=30', '--run-id=round-two'],
+    ['--long-comparison', '--task-call-limit=30', '--dry-run', '--run-id=round-two'],
+  ]) assert.throws(() => comparisonArguments(args), { code: 'INVALID_COMPARISON_TASK_CALL_LIMIT' })
+  assert.equal(comparisonArguments(['--long-comparison', '--dry-run', '--task-call-limit=1', '--run-id=round-two'])
+    .profile.perTaskLimits.maxCalls, 1)
+})
+
+test('a bounded compaction trial reserves both task budgets and their comparison reports before dispatch', () => {
+  const result = spawnSync(process.execPath, ['scripts/insight-quality.mjs', '--long-comparison', '--dry-run',
+    '--task-call-limit=50', '--run-id=memory-bounded-20261116'], {
+    encoding: 'utf8', env: { ...process.env, WHOMI_QUALITY_DB: 'unavailable-comparison-dry-run.sqlite' },
+  })
+  assert.equal(result.status, 0, result.stderr)
+  const plan = JSON.parse(result.stdout)
+  assert.equal(plan.modelCalls, 0)
+  assert.equal(plan.perTaskLimits.maxCalls, 50)
+  assert.equal(plan.totalRequestLimit, 104)
+  assert.equal(plan.perTaskLimits.maxOutputTokens, 40000)
+  assert.equal(plan.syntheticPackingInputEstimateLimit, 7000)
+  assert.equal(plan.perRequestOutputLimit, 3000)
+})
+
+test('a named input capacity changes packing without changing task budgets or accessing credentials', async () => {
+  const { comparisonArguments } = await import('./insight-comparison-profile.mjs')
+  const supplied = ['--long-comparison', '--dry-run', '--input-limit=13000',
+    '--task-call-limit=50', '--run-id=paired-capacity']
+  const result = spawnSync(process.execPath, ['scripts/insight-quality.mjs', ...supplied], {
+    encoding: 'utf8', env: { ...process.env, WHOMI_QUALITY_DB: 'unavailable-memory-dry-run.sqlite' },
+  })
+  assert.equal(result.status, 0, result.stderr)
+  const plan = JSON.parse(result.stdout)
+  assert.equal(plan.syntheticPackingInputEstimateLimit, 13000)
+  assert.equal(plan.perRequestOutputLimit, 3000)
+  assert.equal(plan.perTaskLimits.maxCalls, 50)
+  assert.equal(plan.perTaskLimits.maxOutputTokens, 40000)
+  assert.equal(plan.modelCalls, 0)
+  assert.deepEqual(comparisonArguments(supplied).args, ['--long-comparison', '--dry-run'])
+  assert.equal(comparisonArguments(['--long-comparison', '--dry-run']).profile.packingLimit, 7000)
+})
+
+test('input capacity requires one trailing option in a named long trial', async () => {
+  const { comparisonArguments } = await import('./insight-comparison-profile.mjs')
+  for (const args of [
+    ['--long-comparison', '--dry-run', '--input-limit=13000'],
+    ['--comparison', '--dry-run', '--input-limit=13000', '--run-id=memory'],
+    ['--long-comparison', '--input-limit=13000', '--dry-run', '--run-id=memory'],
+    ['--long-comparison', '--dry-run', '--input-limit=13000', '--input-limit=13000', '--run-id=memory'],
+    ...['0', '1.5', '-1', '013000', '9007199254740992', ''].map(value =>
+      ['--long-comparison', '--dry-run', '--input-limit=' + value, '--run-id=memory']),
+  ]) assert.throws(() => comparisonArguments(args), { code: 'INVALID_COMPARISON_INPUT_LIMIT' })
+})
+
+test('input capacity freezes before any phase can change it', async t => {
+  const { comparisonArguments } = await import('./insight-comparison-profile.mjs')
+  const { ensureComparisonRunProfile } = await import('./insight-comparison-run.mjs')
+  const output = profileDirectory(t)
+  const profile = comparisonArguments(['--long-comparison', '--dry-run', '--input-limit=13000', '--run-id=memory']).profile
+  ensureComparisonRunProfile(output, profile)
+  const frozen = readFileSync(join(output, 'run-profile.json'), 'utf8')
+  assert.equal(JSON.parse(frozen).syntheticPackingInputEstimateLimit, 13000)
+  assert.throws(() => ensureComparisonRunProfile(output, { ...profile, packingLimit: 14000 }),
+    { code: 'INVALID_COMPARISON_RUN_PROFILE' })
+  assert.throws(() => ensureComparisonRunProfile(output, { ...profile, packingLimit: 7000 }),
+    { code: 'INVALID_COMPARISON_RUN_PROFILE' })
+  assert.equal(readFileSync(join(output, 'run-profile.json'), 'utf8'), frozen)
+})
+
+test('an engine manifest is restricted to a named long trial and removed from phase arguments', async () => {
+  const { comparisonArguments } = await import('./insight-comparison-profile.mjs')
+  const option = '--engine-manifest=release/baseline/manifest.json'
+  const parsed = comparisonArguments(['--long-comparison', 'shared-workload', 'reading', option,
+    '--input-limit=13000', '--task-call-limit=50', '--run-id=old-engine'])
+  assert.deepEqual(parsed.args, ['--long-comparison', 'shared-workload', 'reading'])
+  assert.equal(parsed.profile.engineManifest, 'release/baseline/manifest.json')
+  for (const args of [
+    ['--comparison', '--dry-run', option, '--run-id=engine'],
+    ['--long-comparison', '--dry-run', option],
+    ['--long-comparison', '--dry-run', option, option, '--run-id=engine'],
+    ['--long-comparison', option, '--dry-run', '--run-id=engine'],
+    ['--long-comparison', '--dry-run', '--engine-manifest=', '--run-id=engine'],
+  ]) assert.throws(() => comparisonArguments(args), { code: 'INVALID_COMPARISON_ENGINE' })
+})
+
+function engineFixture(t) {
+  mkdirSync('release', { recursive: true })
+  const output = mkdtempSync(join('release', 'comparison-engine-test-'))
+  t.after(() => {
+    for (const name of readdirSync(output)) unlinkSync(join(output, name))
+    rmdirSync(output)
+  })
+  const bundlePath = join(output, 'baseline.mjs').replaceAll('\\', '/')
+  const manifestPath = join(output, 'manifest.json').replaceAll('\\', '/')
+  const content = 'export const generateInsight = () => "baseline"; export const defaultInsightPrompts = {version: 1}; export const buildInsightPrompt = () => "old prompt";\n'
+  const manifest = { version: 1, baseCommit: 'fee2af45380cb379ab40009449f467d1c50c4a8b', bundlePath,
+    bundleSha256: createHash('sha256').update(content).digest('hex') }
+  writeFileSync(bundlePath, content)
+  writeFileSync(manifestPath, JSON.stringify(manifest))
+  return { output, bundlePath, manifestPath, manifest }
+}
+
+test('only an unchanged local baseline bundle can be loaded and frozen for a run', async t => {
+  const { readComparisonEngine, loadComparisonEngine, ensureComparisonRunProfile } = await import('./insight-comparison-run.mjs')
+  const { comparisonArguments } = await import('./insight-comparison-profile.mjs')
+  const { bundlePath, manifestPath, manifest } = engineFixture(t)
+  const descriptor = readComparisonEngine(process.cwd(), manifestPath)
+  assert.equal(descriptor.baseCommit, 'fee2af45380cb379ab40009449f467d1c50c4a8b')
+  assert.equal(descriptor.bundleSha256, manifest.bundleSha256)
+  const engine = await loadComparisonEngine(process.cwd(), manifestPath)
+  assert.equal(engine.generateInsight(), 'baseline')
+  assert.equal(engine.buildInsightPrompt(), 'old prompt')
+  const profile = comparisonArguments(['--long-comparison', '--dry-run', '--run-id=old-engine']).profile
+  const output = profileDirectory(t)
+  ensureComparisonRunProfile(output, profile, descriptor)
+  const frozen = readFileSync(join(output, 'run-profile.json'), 'utf8')
+  assert.deepEqual(JSON.parse(frozen).engine, descriptor)
+  assert.throws(() => ensureComparisonRunProfile(output, profile), { code: 'INVALID_COMPARISON_RUN_PROFILE' })
+  assert.throws(() => ensureComparisonRunProfile(output, profile, { ...descriptor, bundleSha256: '0'.repeat(64) }),
+    { code: 'INVALID_COMPARISON_RUN_PROFILE' })
+  writeFileSync(bundlePath, 'throw new Error("MUST_NOT_IMPORT_CHANGED_BUNDLE")')
+  await assert.rejects(loadComparisonEngine(process.cwd(), manifestPath), { code: 'INVALID_COMPARISON_ENGINE' })
+  assert.equal(readFileSync(join(output, 'run-profile.json'), 'utf8'), frozen)
+})
+
+test('baseline manifests reject another commit or paths outside release before configuration access', async t => {
+  const { readComparisonEngine } = await import('./insight-comparison-run.mjs')
+  const { manifestPath, manifest } = engineFixture(t)
+  for (const changed of [
+    { ...manifest, baseCommit: '0'.repeat(40) },
+    { ...manifest, bundlePath: 'tests/quality/insight-comparison-profile.mjs' },
+    { ...manifest, bundlePath: '../outside.mjs' },
+    { ...manifest, bundleSha256: '0'.repeat(64) },
+  ]) {
+    writeFileSync(manifestPath, JSON.stringify(changed))
+    assert.throws(() => readComparisonEngine(process.cwd(), manifestPath), { code: 'INVALID_COMPARISON_ENGINE' })
+  }
+  const result = spawnSync(process.execPath, ['scripts/insight-quality.mjs', '--long-comparison', 'shared-workload', 'reading',
+    '--engine-manifest=' + manifestPath, '--run-id=invalid-engine'], {
+    encoding: 'utf8', env: { ...process.env, WHOMI_QUALITY_DB: 'unavailable-engine.sqlite', WHOMI_QUALITY_PROVIDER_ID: '', WHOMI_QUALITY_MODEL_ID: '' },
+  })
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /INVALID_COMPARISON_ENGINE/)
+  assert.doesNotMatch(result.stderr, /Set WHOMI_QUALITY_DB/)
+})
+
+test('starting the other case cannot raise a legacy run budget before configuration access', async t => {
+  const { comparisonArguments } = await import('./insight-comparison-profile.mjs')
+  const runId = 'profile-guard-' + process.pid + '-' + Date.now()
+  const profile = comparisonArguments(['--long-comparison', 'shared-workload', 'reading',
+    '--task-call-limit=30', '--run-id=' + runId]).profile
+  const parent = join('release', 'conversation-insights-20261115', 'long-comparison-runs')
+  mkdirSync(parent, { recursive: true })
+  const output = join(parent, runId)
+  mkdirSync(output)
+  const phase = join(output, 'shared-workload-reading')
+  mkdirSync(phase)
+  const sample = profile.cases['shared-workload']
+  const original = JSON.stringify({ caseName: 'shared-workload', variant: 'reading', ...sample,
+    limits: { maxChecks: 8, maxRoundsPerCheck: 4, maxCalls: 30, maxInputTokens: 400000, maxOutputTokens: 40000, maxElapsedMs: 1200000 },
+    experiment: 'long-candidate-comparison', runId, totalRequestLimit: 64,
+    syntheticPackingInputEstimateLimit: 7000, perRequestOutputLimit: 3000 })
+  writeFileSync(join(phase, 'input.json'), original)
+  t.after(() => {
+    unlinkSync(join(phase, 'input.json'))
+    rmdirSync(phase)
+    if (existsSync(join(output, 'run-profile.json'))) unlinkSync(join(output, 'run-profile.json'))
+    rmdirSync(output)
+  })
+  const result = spawnSync(process.execPath, ['scripts/insight-quality.mjs', '--long-comparison', 'conditional-reschedule', 'reading',
+    '--task-call-limit=50', '--run-id=' + runId], {
+    encoding: 'utf8', env: { ...process.env, WHOMI_QUALITY_DB: 'unavailable-profile-guard.sqlite',
+      WHOMI_QUALITY_PROVIDER_ID: '', WHOMI_QUALITY_MODEL_ID: '' },
+  })
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /INVALID_COMPARISON_RUN_PROFILE/)
+  assert.doesNotMatch(result.stderr, /Set WHOMI_QUALITY_DB/)
+  assert.equal(readFileSync(join(phase, 'input.json'), 'utf8'), original)
+  assert.equal(existsSync(join(output, 'run-profile.json')), false)
+  assert.deepEqual(readdirSync(output), ['shared-workload-reading'])
+})
+
+function profileDirectory(t) {
+  const output = mkdtempSync(join(tmpdir(), 'whomi-run-profile-'))
+  t.after(() => {
+    for (const item of readdirSync(output, { withFileTypes: true })) {
+      const file = join(output, item.name)
+      if (item.isDirectory()) {
+        for (const name of readdirSync(file)) unlinkSync(join(file, name))
+        rmdirSync(file)
+      } else unlinkSync(file)
+    }
+    rmdirSync(output)
+  })
+  return output
+}
+
+test('a new run freezes all budgets and material hashes without rewriting its profile', async t => {
+  const { ensureComparisonRunProfile } = await import('./insight-comparison-run.mjs')
+  const { comparisonArguments } = await import('./insight-comparison-profile.mjs')
+  const profile = comparisonArguments(['--long-comparison', 'shared-workload', 'reading',
+    '--task-call-limit=50', '--run-id=profile-fixture']).profile
+  const output = profileDirectory(t)
+  ensureComparisonRunProfile(output, profile)
+  const file = join(output, 'run-profile.json')
+  const original = readFileSync(file, 'utf8')
+  const saved = JSON.parse(original)
+  assert.equal(saved.perTaskLimits.maxCalls, 50)
+  assert.equal(saved.perTaskLimits.maxOutputTokens, 40000)
+  assert.equal(saved.totalRequestLimit, 104)
+  assert.equal(saved.syntheticPackingInputEstimateLimit, 7000)
+  assert.equal(saved.perRequestOutputLimit, 3000)
+  assert.equal(saved.experiment, 'long-candidate-comparison')
+  assert.equal(saved.runId, 'profile-fixture')
+  assert.deepEqual(Object.keys(saved.materialHashes), ['shared-workload', 'conditional-reschedule'])
+  assert.doesNotThrow(() => ensureComparisonRunProfile(output, profile))
+  for (const mutate of [
+    changed => { changed.perTaskLimits.maxCalls = 30; changed.requestLimit = 64 },
+    changed => { changed.perTaskLimits.maxOutputTokens = 50000 },
+    changed => { changed.packingLimit = 8000 },
+    changed => { changed.outputLimit = 4000 },
+    changed => { changed.experiment = 'different' },
+    changed => { changed.runId = 'different' },
+    changed => { changed.cases['conditional-reschedule'].messages[0].text += 'different' },
+  ]) {
+    const changed = structuredClone(profile)
+    mutate(changed)
+    assert.throws(() => ensureComparisonRunProfile(output, changed), { code: 'INVALID_COMPARISON_RUN_PROFILE' })
+    assert.equal(readFileSync(file, 'utf8'), original)
+  }
+})
+
+test('legacy task and one-call comparison phases migrate without changing their artifacts', async t => {
+  const { ensureComparisonRunProfile } = await import('./insight-comparison-run.mjs')
+  const { comparisonArguments } = await import('./insight-comparison-profile.mjs')
+  const profile = comparisonArguments(['--long-comparison', 'shared-workload', 'reading',
+    '--task-call-limit=30', '--run-id=profile-fixture']).profile
+  const output = profileDirectory(t)
+  const files = []
+  for (const [caseName, variant, calls, outputTokens] of [
+    ['shared-workload', 'reading', 30, 40000], ['shared-workload', 'adaptive', 30, 40000],
+    ['shared-workload', 'direct', 1, 3000], ['shared-workload', 'direct-rich', 1, 3000],
+    ['conditional-reschedule', 'reading', 30, 40000],
+  ]) {
+    const directory = join(output, caseName + '-' + variant)
+    mkdirSync(directory)
+    const content = JSON.stringify({ caseName, variant, ...profile.cases[caseName],
+      limits: { maxChecks: 8, maxRoundsPerCheck: 4, maxCalls: calls, maxInputTokens: 400000, maxOutputTokens: outputTokens, maxElapsedMs: 1200000 },
+      experiment: 'long-candidate-comparison', runId: 'profile-fixture', totalRequestLimit: 64,
+      syntheticPackingInputEstimateLimit: 7000, perRequestOutputLimit: 3000 })
+    const file = join(directory, 'input.json')
+    writeFileSync(file, content)
+    files.push({ file, content })
+  }
+  ensureComparisonRunProfile(output, profile)
+  assert.equal(JSON.parse(readFileSync(join(output, 'run-profile.json'), 'utf8')).perTaskLimits.maxCalls, 30)
+  for (const { file, content } of files) assert.equal(readFileSync(file, 'utf8'), content)
+})
+
+test('legacy migration checks every case and rejects incomplete dispatched artifacts', async t => {
+  const { ensureComparisonRunProfile } = await import('./insight-comparison-run.mjs')
+  const { comparisonArguments } = await import('./insight-comparison-profile.mjs')
+  const profile = comparisonArguments(['--long-comparison', 'shared-workload', 'reading',
+    '--task-call-limit=30', '--run-id=profile-fixture']).profile
+  const output = profileDirectory(t)
+  const input = caseName => ({ caseName, variant: 'reading', ...profile.cases[caseName],
+    limits: { maxChecks: 8, maxRoundsPerCheck: 4, maxCalls: 30, maxInputTokens: 400000, maxOutputTokens: 40000, maxElapsedMs: 1200000 },
+    experiment: 'long-candidate-comparison', runId: 'profile-fixture', totalRequestLimit: 64,
+    syntheticPackingInputEstimateLimit: 7000, perRequestOutputLimit: 3000 })
+  for (const caseName of ['shared-workload', 'conditional-reschedule']) {
+    const directory = join(output, caseName + '-reading')
+    mkdirSync(directory)
+    const record = input(caseName)
+    if (caseName === 'shared-workload') record.limits.maxCalls = 50
+    writeFileSync(join(directory, 'input.json'), JSON.stringify(record))
+  }
+  assert.throws(() => ensureComparisonRunProfile(output, profile), { code: 'INVALID_COMPARISON_RUN_PROFILE' })
+  assert.equal(existsSync(join(output, 'run-profile.json')), false)
+  const directory = join(output, 'shared-workload-reading')
+  unlinkSync(join(directory, 'input.json'))
+  writeFileSync(join(directory, 'attempts.jsonl'), JSON.stringify({ kind: 'dispatched', call: 1 }) + '\n')
+  assert.throws(() => ensureComparisonRunProfile(output, profile), { code: 'INVALID_COMPARISON_RUN_PROFILE' })
+  assert.equal(existsSync(join(output, 'run-profile.json')), false)
+})
+
+function interruptedCompression() {
+  const limits = { maxChecks: 8, maxRoundsPerCheck: 4, maxCalls: 50, maxInputTokens: 400000, maxOutputTokens: 40000, maxElapsedMs: 1200000 }
+  const input = { caseName: 'sample', variant: 'reading', model: 'sample-model', limits, messages: [{ id: '1' }, { id: '2' }, { id: '3' }] }
+  const snapshot = { taskId: '201', createdAtMs: 123 }
+  const facts = [
+    { kind: 'fact', text: '集合时间已确认。', sourceIds: ['1'] },
+    { kind: 'fact', text: '集合地点已确认。', sourceIds: ['2'] },
+    { kind: 'unknown', text: '参加人数待确认。', sourceIds: ['3'] },
+  ]
+  const checkpoint = {
+    version: 1, taskId: '201', modelId: 'comparison-model', modelVersion: 1, prompts: { reading: 'fixed' }, limits,
+    stage: 'reading', report: null, writingRepairs: 0, callsReserved: 3, elapsedMs: 99,
+    cursor: { messageIndex: 3, textOffset: 0 }, pendingRead: null, coveredMessageIds: ['1', '2', '3'], checks: [],
+    observations: facts.slice(0, 2).map(({ text, sourceIds }) => ({ text, sourceIds })),
+    openThreads: [{ text: '参加人数待确认。', sourceIds: ['3'] }],
+    navigation: {
+      factsVersion: 1, reconciled: false, repairs: 0, roots: [0, 1, 2], cursor: 2, nextRoots: [3],
+      nodes: [
+        ...facts.map(fact => ({ text: fact.text, sourceIds: fact.sourceIds, children: [], facts: [fact] })),
+        { text: '时间和地点', sourceIds: ['1', '2'], children: [0, 1],
+          facts: [{ kind: 'fact', text: '集合时间和地点已确认。', sourceIds: ['1', '2'] }] },
+      ],
+    },
+    attempts: [1, 2, 3].map(call => ({ stage: 'reading', status: 'returned', input: { tokens: 100, method: 'estimate' }, reservedOutput: 3000,
+      startedAtMs: call * 10, usage: { totalInputTokens: 10, outputTokens: 20 } })),
+  }
+  const result = { state: 'failed', error: 'INVALID_EVIDENCE', calls: 3, httpRequests: 3, inputCharged: 30, outputCharged: 60, elapsedMs: 100 }
+  return {
+    phase: { phase: 'reading', input, snapshot, checkpoint, result,
+      archivedHalt: { caseName: 'sample', variant: 'reading', ...result },
+      ledger: [1, 2, 3].flatMap(call => [
+        { kind: 'reserved', stage: call === 1 ? 'reading' : 'compress-navigation', call, inputEstimate: 100, outputLimit: 3000 },
+        { kind: 'dispatched', call },
+        { kind: 'settled', call, usage: { totalInputTokens: 10, outputTokens: 20 }, charged: { input: call * 10, output: call * 20 } },
+      ]).map(JSON.stringify).join('\n') },
+    expected: { caseName: 'sample', expectedInput: input, expectedSnapshot: snapshot, modelVersion: 1,
+      prompts: { reading: 'fixed' }, expectedLimits: limits, sourceIds: ['1', '2', '3'], resuming: true },
+  }
+}
+
+test('compression recovery preserves completed reading, existing navigation and cumulative charges', async () => {
+  const { validateReadingChain } = await import('./insight-comparison-resume.ts')
+  const { comparisonDigest } = await import('./insight-comparison.ts')
+  const { phase, expected } = interruptedCompression()
+  const original = JSON.stringify(phase)
+  assert.deepEqual(validateReadingChain([phase], expected), { httpRequests: 3, inputCharged: 30, outputCharged: 60, elapsedMs: 100 })
+  assert.equal(JSON.stringify(phase), original)
+  const resumed = structuredClone(phase)
+  resumed.phase = 'reading-resume'
+  resumed.input.recovery = { sourcePhase: 'sample-reading', checkpointHash: comparisonDigest(phase.checkpoint) }
+  resumed.result = { state: 'completed', calls: 1, httpRequests: 1, inputCharged: 10, outputCharged: 20, elapsedMs: 100 }
+  resumed.checkpoint.stage = 'checking'
+  resumed.checkpoint.callsReserved = 4
+  resumed.checkpoint.elapsedMs = 199
+  resumed.checkpoint.attempts.push({ ...structuredClone(phase.checkpoint.attempts[2]), startedAtMs: 40 })
+  resumed.ledger = [
+    { kind: 'reserved', stage: 'compress-navigation', call: 1, inputEstimate: 100, outputLimit: 3000 },
+    { kind: 'dispatched', call: 1 },
+    { kind: 'settled', call: 1, usage: { totalInputTokens: 10, outputTokens: 20 }, charged: { input: 10, output: 20 } },
+  ].map(JSON.stringify).join('\n')
+  assert.deepEqual(validateReadingChain([phase, resumed], { ...expected, resuming: false }),
+    { httpRequests: 4, inputCharged: 40, outputCharged: 80, elapsedMs: 200 })
+  for (const mutate of [
+    later => { later.checkpoint.attempts[0].usage.outputTokens = 1 },
+    later => { later.input.recovery.checkpointHash = 'different' },
+    later => { later.checkpoint.limits.maxCalls = 51 },
+  ]) {
+    const later = structuredClone(resumed); mutate(later)
+    assert.throws(() => validateReadingChain([phase, later], { ...expected, resuming: false }), { code: 'INVALID_COMPARISON_READING_RESUME' })
+  }
+})
+
+function interruptedSourceOrderedCompression() {
+  const fixture = interruptedCompression()
+  const { phase, expected } = fixture
+  const sourceIds = ['b', 'd', 'a', 'c']
+  phase.input.messages = sourceIds.map(id => ({ id }))
+  expected.sourceIds = sourceIds
+  phase.checkpoint.cursor = { messageIndex: 4, textOffset: 0 }
+  phase.checkpoint.coveredMessageIds = [...sourceIds]
+  phase.checkpoint.observations = [
+    { text: '第三条来源的事实。', sourceIds: ['a'] },
+    { text: '第一条与第四条来源的事实。', sourceIds: ['c', 'b'] },
+    { text: '第一条来源的另一事实。', sourceIds: ['b'] },
+  ]
+  phase.checkpoint.openThreads = [
+    { text: '第一条来源的未知事项。', sourceIds: ['b'] },
+    { text: '第二条来源的未知事项。', sourceIds: ['d'] },
+  ]
+  const leaves = [
+    { kind: 'fact', text: '第一条与第四条来源的事实。', sourceIds: ['c', 'b'] },
+    { kind: 'fact', text: '第一条来源的另一事实。', sourceIds: ['b'] },
+    { kind: 'unknown', text: '第一条来源的未知事项。', sourceIds: ['b'] },
+    { kind: 'unknown', text: '第二条来源的未知事项。', sourceIds: ['d'] },
+    { kind: 'fact', text: '第三条来源的事实。', sourceIds: ['a'] },
+  ]
+  phase.checkpoint.navigation = {
+    factsVersion: 2, reconciled: false, repairs: 1, roots: [0, 1, 2, 3, 4], cursor: 3, nextRoots: [5],
+    nodes: [
+      ...leaves.map(fact => ({ text: fact.text, sourceIds: fact.sourceIds, children: [], facts: [fact] })),
+      { text: '第一条来源相关事项。', sourceIds: ['c', 'b'], children: [0, 1, 2], facts: structuredClone(leaves.slice(0, 3)) },
+    ],
+  }
+  return fixture
+}
+
+test('version two recovery verifies earliest snapshot source order with stable fact and unknown ties', async () => {
+  const { validateReadingChain } = await import('./insight-comparison-resume.ts')
+  const { phase, expected } = interruptedSourceOrderedCompression()
+  const original = JSON.stringify(phase)
+  assert.deepEqual(validateReadingChain([phase], expected), { httpRequests: 3, inputCharged: 30, outputCharged: 60, elapsedMs: 100 })
+  assert.equal(JSON.stringify(phase), original)
+})
+
+test('version two recovery rejects wrong leaf order, missing leaves, changed sources and unknown versions', async () => {
+  const { validateReadingChain } = await import('./insight-comparison-resume.ts')
+  const { phase, expected } = interruptedSourceOrderedCompression()
+  for (const mutate of [
+    entry => { entry.checkpoint.navigation.factsVersion = 1 },
+    entry => { entry.checkpoint.navigation.factsVersion = 3 },
+    entry => { [entry.checkpoint.navigation.nodes[0], entry.checkpoint.navigation.nodes[1]] = [entry.checkpoint.navigation.nodes[1], entry.checkpoint.navigation.nodes[0]] },
+    entry => { [entry.checkpoint.navigation.nodes[1], entry.checkpoint.navigation.nodes[2]] = [entry.checkpoint.navigation.nodes[2], entry.checkpoint.navigation.nodes[1]] },
+    entry => { [entry.checkpoint.navigation.nodes[3], entry.checkpoint.navigation.nodes[4]] = [entry.checkpoint.navigation.nodes[4], entry.checkpoint.navigation.nodes[3]] },
+    entry => { entry.checkpoint.navigation.nodes.splice(3, 1) },
+    entry => { entry.checkpoint.navigation.nodes[0].facts[0].sourceIds = ['b'] },
+    entry => { entry.checkpoint.navigation.nodes[0].facts[0].sourceIds = ['c', 'unknown-source'] },
+    entry => { entry.checkpoint.navigation.nodes[0].facts[0].text = '被改写的原始笔记。' },
+    entry => { entry.checkpoint.navigation.nextRoots = [0, 1] },
+    entry => { entry.checkpoint.navigation.nodes[5].children = [5] },
+    entry => { entry.checkpoint.limits.maxCalls = 51 },
+  ]) {
+    const changed = structuredClone(phase); mutate(changed)
+    assert.throws(() => validateReadingChain([changed], expected), { code: 'INVALID_COMPARISON_READING_RESUME' })
+  }
+})
+
+let coverageResumeModule
+async function coverageResumeHelper() {
+  if (!coverageResumeModule) coverageResumeModule = (async () => {
+    const { build } = await import('vite')
+    const bundle = await build({ configFile: false, logLevel: 'silent', build: {
+      ssr: 'tests/quality/insight-comparison-compression-resume.ts', write: false, minify: false,
+      rollupOptions: { output: { format: 'es' } },
+    } })
+    return import('data:text/javascript;base64,' + Buffer.from(bundle.output[0].code).toString('base64'))
+  })()
+  return coverageResumeModule
+}
+
+function coverageResumeFixture() {
+  const { phase, expected } = interruptedSourceOrderedCompression()
+  phase.checkpoint.navigation.repairs = 0
+  const nodes = [3, 4].map(navigationId => ({ navigationId, childCount: 0,
+    entries: phase.checkpoint.navigation.nodes[navigationId].facts.map((fact, index) => ({ entryId: `${navigationId}:${index}`, kind: fact.kind, text: fact.text })),
+  }))
+  phase.ledger += '\n' + JSON.stringify({ kind: 'returned', call: 3, stopReason: 'stop' })
+  return { phases: [phase], expected: structuredClone(expected), replay: {
+    request: { stage: 'compress-navigation', model: 'sample-model', inputEstimate: 100, outputLimit: 3000,
+      prompt: JSON.stringify({ stage: 'reading', operation: 'compress-navigation', targetFactTextLength: 160, maxFactCount: 4, nodes }) },
+    response: JSON.stringify({ text: '待核对事项', facts: [{ kind: 'unknown', text: '待核对。', entryIds: ['3:0', '4:0'] }] }),
+  } }
+}
+
+test('legacy coverage failure consumes exactly one repair on an immutable recovery copy', async () => {
+  const { prepareCompressionCoverageResume } = await coverageResumeHelper()
+  const fixture = coverageResumeFixture()
+  fixture.replay.response = JSON.stringify({ text: '待核对事项', facts: [{ kind: 'unknown', text: '待核对。', entryIds: ['3:0'] }] })
+  const before = JSON.stringify(fixture)
+  const restored = prepareCompressionCoverageResume(fixture.phases, fixture.expected, fixture.replay)
+  assert.equal(restored.navigation.repairs, 1)
+  assert.equal(restored.callsReserved, 3)
+  assert.deepEqual({ ...restored, navigation: { ...restored.navigation, repairs: 0 } }, fixture.phases[0].checkpoint)
+  assert.equal(JSON.stringify(fixture), before)
+})
+
+test('a complete fact reclassified as unknown cannot be recovered as a legacy coverage failure', async () => {
+  const { prepareCompressionCoverageResume } = await coverageResumeHelper()
+  const fixture = coverageResumeFixture()
+  const before = JSON.stringify(fixture)
+  assert.throws(() => prepareCompressionCoverageResume(fixture.phases, fixture.expected, fixture.replay),
+    { code: 'INVALID_COMPARISON_READING_RESUME' })
+  assert.equal(JSON.stringify(fixture), before)
+})
+
+test('coverage recovery rejects other format, evidence, history and budget failures', async () => {
+  const { prepareCompressionCoverageResume } = await coverageResumeHelper()
+  for (const mutate of [
+    f => { f.phases[0].checkpoint.navigation.repairs = 1 },
+    f => { f.phases[0].checkpoint.navigation.factsVersion = 1 },
+    f => { f.phases[0].checkpoint.stage = 'checking' },
+    f => { f.phases[0].checkpoint.cursor.messageIndex = 3 },
+    f => { f.phases[0].checkpoint.limits.maxCalls = 51 },
+    f => { f.phases[0].checkpoint.attempts[0].usage.outputTokens = 1 },
+    f => { f.phases[0].result.error = 'INVALID_INSIGHT_OUTPUT'; f.phases[0].archivedHalt.error = 'INVALID_INSIGHT_OUTPUT' },
+    f => { f.expected.expectedLimits.maxCalls = 3; f.phases[0].checkpoint.limits.maxCalls = 3 },
+    f => { f.replay.request.inputEstimate = 99 },
+    f => { f.replay.request.outputLimit = 3001 },
+    f => { f.replay.request.model = 'changed-model' },
+    f => { f.phases[0].ledger = f.phases[0].ledger.replace('"stopReason":"stop"', '"stopReason":"length"') },
+    f => { const p = JSON.parse(f.replay.request.prompt); p.nodes.reverse(); f.replay.request.prompt = JSON.stringify(p) },
+    f => { const p = JSON.parse(f.replay.request.prompt); p.nodes[0].entries[0].text = '改动原文'; f.replay.request.prompt = JSON.stringify(p) },
+    f => { const p = JSON.parse(f.replay.request.prompt); p.repair = true; f.replay.request.prompt = JSON.stringify(p) },
+    f => { f.replay.response = 'invalid json' },
+    f => { f.replay.response = JSON.stringify({ text: '', facts: [] }) },
+    f => { f.replay.response = JSON.stringify({ text: 'x'.repeat(721), facts: [] }) },
+    f => { f.replay.response = JSON.stringify({ text: '缺少正文', facts: [{ kind: 'unknown', entryIds: ['3:0'] }] }) },
+    f => { f.replay.response = JSON.stringify({ text: '超长正文', facts: [{ kind: 'unknown', text: 'x'.repeat(1201), entryIds: ['3:0'] }] }) },
+    f => { f.replay.response = JSON.stringify({ text: '未压缩', facts: [{ kind: 'unknown', text: 'x'.repeat(500), entryIds: ['3:0', '4:0'] }] }) },
+    f => { f.replay.response = JSON.stringify({ text: '外来编号并遗漏', facts: [{ kind: 'unknown', text: '待核对', entryIds: ['outside'] }] }) },
+    f => { f.replay.response = JSON.stringify({ text: '无依据升级并遗漏', facts: [{ kind: 'fact', text: '已确认', entryIds: ['3:0'] }] }) },
+    f => { f.replay.response = JSON.stringify({ text: '合法响应不能迁移', facts: [{ kind: 'fact', text: '已确认', entryIds: ['3:0', '4:0'] }] }) },
+  ]) {
+    const fixture = coverageResumeFixture(); mutate(fixture)
+    assert.throws(() => prepareCompressionCoverageResume(fixture.phases, fixture.expected, fixture.replay), { code: 'INVALID_COMPARISON_READING_RESUME' }, mutate.toString())
+  }
+})
+
+test('the second recovery accepts a failed compression repair without resetting attempts or repairs', async () => {
+  const { validateReadingChain } = await import('./insight-comparison-resume.ts')
+  const { comparisonDigest } = await import('./insight-comparison.ts')
+  const { phase, expected } = interruptedCompression()
+  const later = structuredClone(phase)
+  later.phase = 'reading-resume'
+  later.input.recovery = { sourcePhase: 'sample-reading', checkpointHash: comparisonDigest(phase.checkpoint) }
+  later.result = { state: 'failed', error: 'INVALID_INSIGHT_OUTPUT', calls: 2, httpRequests: 2, inputCharged: 20, outputCharged: 40, elapsedMs: 100 }
+  later.archivedHalt = { caseName: 'sample', variant: 'reading', ...later.result }
+  later.checkpoint.callsReserved = 5
+  later.checkpoint.elapsedMs = 199
+  later.checkpoint.navigation.repairs = 1
+  later.checkpoint.attempts.push(...[40, 50].map(startedAtMs => ({ ...structuredClone(phase.checkpoint.attempts[2]), startedAtMs })))
+  later.ledger = [1, 2].flatMap(call => [
+    { kind: 'reserved', stage: 'compress-navigation', call, inputEstimate: 100, outputLimit: 3000 },
+    { kind: 'dispatched', call },
+    { kind: 'settled', call, usage: { totalInputTokens: 10, outputTokens: 20 }, charged: { input: call * 10, output: call * 20 } },
+  ]).map(JSON.stringify).join('\n')
+  const original = JSON.stringify(later)
+  assert.deepEqual(validateReadingChain([phase, later], expected), { httpRequests: 5, inputCharged: 50, outputCharged: 100, elapsedMs: 200 })
+  assert.equal(JSON.stringify(later), original)
+  assert.equal(later.checkpoint.navigation.repairs, 1)
+  assert.throws(() => validateReadingChain([phase, later, later], expected), { code: 'INVALID_COMPARISON_READING_RESUME' })
+  for (const mutate of [
+    entry => { entry.checkpoint.stage = 'checking' },
+    entry => { entry.checkpoint.stage = 'writing' },
+    entry => { entry.checkpoint.attempts[0].usage.outputTokens = 1 },
+    entry => { entry.checkpoint.limits.maxCalls = 51 },
+    entry => {
+      entry.checkpoint.navigation = null
+      entry.checkpoint.cursor = { messageIndex: 2, textOffset: 0 }
+      entry.checkpoint.coveredMessageIds = ['1', '2']
+      entry.checkpoint.pendingRead = { from: { messageIndex: 2, textOffset: 0 }, to: { messageIndex: 3, textOffset: 0 }, depth: 0, repairs: 1 }
+      entry.ledger = entry.ledger.replaceAll('compress-navigation', 'reading')
+    },
+  ]) {
+    const changed = structuredClone(later); mutate(changed)
+    assert.throws(() => validateReadingChain([phase, changed], expected), { code: 'INVALID_COMPARISON_READING_RESUME' })
+  }
+})
+
+test('compression recovery rejects unread sources, invalid navigation and non-reading failures', async () => {
+  const { validateReadingChain } = await import('./insight-comparison-resume.ts')
+  const { phase, expected } = interruptedCompression()
+  for (const mutate of [
+    entry => { entry.checkpoint.stage = 'checking' },
+    entry => { entry.checkpoint.stage = 'writing' },
+    entry => { entry.checkpoint.report = {} },
+    entry => { entry.checkpoint.cursor.messageIndex = 2; entry.checkpoint.coveredMessageIds = ['1', '2'] },
+    entry => { entry.checkpoint.cursor.textOffset = 1 },
+    entry => { entry.checkpoint.pendingRead = { from: { messageIndex: 2, textOffset: 0 }, to: { messageIndex: 3, textOffset: 0 }, depth: 0, repairs: 0 } },
+    entry => { delete entry.checkpoint.navigation.factsVersion },
+    entry => { entry.checkpoint.navigation.cursor = 3 },
+    entry => { entry.checkpoint.navigation.roots[0] = 999 },
+    entry => { entry.checkpoint.navigation.nodes[3].children = [3] },
+    entry => { entry.checkpoint.navigation.nodes[3].facts[0].sourceIds = ['1'] },
+    entry => { entry.checkpoint.navigation.nodes[3].sourceIds = ['1']; entry.checkpoint.navigation.nodes[3].facts[0].sourceIds = ['1'] },
+    entry => { entry.checkpoint.navigation.nextRoots = [0] },
+    entry => { entry.checkpoint.navigation.nodes[0].facts[0].sourceIds = ['999'] },
+    entry => { entry.checkpoint.navigation.nodes[0].facts[0].kind = 'other' },
+    entry => { entry.checkpoint.limits.maxCalls = 51 },
+    entry => { entry.checkpoint.attempts[0].usage.outputTokens = 1 },
+    entry => { entry.checkpoint.attempts[2].stage = 'checking' },
+    entry => { entry.checkpoint.checks = [{ rounds: 1 }] },
+    entry => { entry.ledger = entry.ledger.replaceAll('compress-navigation', 'checking') },
+    entry => { entry.checkpoint.prompts.reading = 'changed' },
+    entry => { entry.checkpoint.modelVersion = 2 },
+    entry => { entry.result.error = 'CONTEXT_TOO_LARGE'; entry.archivedHalt.error = 'CONTEXT_TOO_LARGE' },
+  ]) {
+    const changed = structuredClone(phase); mutate(changed)
+    assert.throws(() => validateReadingChain([changed], expected), { code: 'INVALID_COMPARISON_READING_RESUME' })
+  }
+})
+
+test('second reading recovery requires an unbroken failed chain and keeps cumulative charges', async () => {
+  const { validateReadingChain } = await import('./insight-comparison-resume.ts')
+  const { comparisonDigest } = await import('./insight-comparison.ts')
+  const limits = { maxChecks: 8, maxRoundsPerCheck: 4, maxCalls: 30, maxInputTokens: 400000, maxOutputTokens: 40000, maxElapsedMs: 1200000 }
+  const input = { caseName: 'sample', variant: 'reading', model: 'sample-model', limits, messages: [{ id: '1' }, { id: '2' }, { id: '3' }] }
+  const snapshot = { taskId: '201', createdAtMs: 123 }
+  const attempt = n => ({ stage: 'reading', status: 'returned', input: { tokens: 100, method: 'estimate' }, reservedOutput: 3000,
+    startedAtMs: n * 1000, usage: { totalInputTokens: 10, outputTokens: 20 } })
+  const phase = n => {
+    const checkpoint = { version: 1, taskId: '201', modelId: 'comparison-model', modelVersion: 1, prompts: { reading: 'fixed' }, limits,
+      stage: 'reading', report: null, navigation: null, writingRepairs: 0, callsReserved: n, elapsedMs: n * 99,
+      cursor: { messageIndex: n - 1, textOffset: 0 }, pendingRead: { from: { messageIndex: n - 1, textOffset: 0 }, to: { messageIndex: n, textOffset: 0 }, depth: 0, repairs: 0 },
+      coveredMessageIds: ['1', '2', '3'].slice(0, n - 1), checks: [], attempts: Array.from({ length: n }, (_, i) => attempt(i + 1)) }
+    const result = { state: 'failed', error: 'INVALID_EVIDENCE', calls: 1, httpRequests: 1, inputCharged: 10, outputCharged: 20, elapsedMs: 100 }
+    return { phase: n === 1 ? 'reading' : 'reading-resume', input, snapshot, checkpoint, result,
+      archivedHalt: { caseName: 'sample', variant: 'reading', ...result }, ledger: [
+        { kind: 'reserved', stage: 'reading', call: 1, inputEstimate: 100, outputLimit: 3000 }, { kind: 'dispatched', call: 1 },
+        { kind: 'settled', call: 1, usage: attempt(n).usage, charged: { input: 10, output: 20 } },
+      ].map(JSON.stringify).join('\n') }
+  }
+  const first = phase(1), second = phase(2)
+  second.input = { ...input, recovery: { sourcePhase: 'sample-reading', checkpointHash: comparisonDigest(first.checkpoint) } }
+  const expected = { caseName: 'sample', expectedInput: input, expectedSnapshot: snapshot, modelVersion: 1,
+    prompts: { reading: 'fixed' }, expectedLimits: limits, sourceIds: ['1', '2', '3'], resuming: true }
+  assert.deepEqual(validateReadingChain([first, second], expected), { httpRequests: 2, inputCharged: 20, outputCharged: 40, elapsedMs: 200 })
+  const third = phase(3)
+  third.phase = 'reading-resume-2'
+  third.input = { ...input, recovery: { sourcePhase: 'sample-reading-resume', checkpointHash: comparisonDigest(second.checkpoint) } }
+  third.result = { state: 'completed', calls: 1, httpRequests: 1, inputCharged: 10, outputCharged: 20, elapsedMs: 100 }
+  third.checkpoint = { ...third.checkpoint, stage: 'checking', pendingRead: null, navigation: { roots: [0] }, coveredMessageIds: ['1', '2', '3'] }
+  assert.deepEqual(validateReadingChain([first, second, third], { ...expected, resuming: false }),
+    { httpRequests: 3, inputCharged: 30, outputCharged: 60, elapsedMs: 300 })
+  for (const mutate of [
+    entries => { entries[1].phase = 'reading-resume-2' },
+    entries => { delete entries[0].archivedHalt },
+    entries => { entries[1].checkpoint.callsReserved = 1 },
+    entries => { entries[1].checkpoint.attempts[0].usage.outputTokens = 1 },
+    entries => { entries[1].input.model = 'different' },
+    entries => { entries[1].result.inputCharged = 1 },
+    entries => { entries[1].checkpoint.elapsedMs = 1 },
+    entries => { entries[1].input.recovery.checkpointHash = 'different' },
+    entries => { entries[1].ledger = entries[1].ledger.replace('"call":1', '"call":2') },
+  ]) {
+    const entries = structuredClone([first, second]); mutate(entries)
+    assert.throws(() => validateReadingChain(entries, expected), { code: 'INVALID_COMPARISON_READING_RESUME' })
+  }
+})
+
+test('reading recovery cannot skip a generation or overwrite an existing destination', async t => {
+  const { readingChainPhases, assertReadingRecoverySettled, archivedReadingHaltName } = await import('./insight-comparison-resume.ts')
+  const { readingResumeOrdinal } = await import('./insight-comparison-profile.mjs')
+  assert.equal(readingResumeOrdinal('--resume-reading'), 1)
+  assert.equal(readingResumeOrdinal('--resume-reading=2'), 2)
+  assert.throws(() => readingResumeOrdinal('--resume-reading=3'), { code: 'INVALID_COMPARISON_READING_RESUME' })
+  const output = mkdtempSync(join(tmpdir(), 'whomi-second-resume-'))
+  const dirs = ['reading', 'reading-resume', 'reading-resume-2'].map(phase => join(output, 'sample-' + phase))
+  t.after(() => {
+    for (const dir of dirs.toReversed()) {
+      for (const name of ['result.json', archivedReadingHaltName]) if (existsSync(join(dir, name))) unlinkSync(join(dir, name))
+      if (existsSync(dir)) rmdirSync(dir)
+    }
+    rmdirSync(output)
+  })
+  mkdirSync(dirs[0])
+  writeFileSync(join(dirs[0], archivedReadingHaltName), '{}')
+  assert.deepEqual(readingChainPhases(output, 'sample', 1), ['reading'])
+  assert.throws(() => readingChainPhases(output, 'sample', 2), { code: 'INVALID_COMPARISON_READING_RESUME' })
+  mkdirSync(dirs[1])
+  writeFileSync(join(dirs[1], archivedReadingHaltName), '{}')
+  writeFileSync(join(dirs[1], 'result.json'), JSON.stringify({ state: 'failed' }))
+  assert.throws(() => readingChainPhases(output, 'sample', 1), { code: 'INVALID_COMPARISON_READING_RESUME' })
+  assert.deepEqual(readingChainPhases(output, 'sample', 2), ['reading', 'reading-resume'])
+  assert.throws(() => assertReadingRecoverySettled(output, ['sample']), { code: 'TRIAL_HALTED' })
+  mkdirSync(dirs[2])
+  assert.throws(() => readingChainPhases(output, 'sample', 2), { code: 'INVALID_COMPARISON_READING_RESUME' })
+  writeFileSync(join(dirs[2], 'result.json'), JSON.stringify({ state: 'completed' }))
+  assert.doesNotThrow(() => assertReadingRecoverySettled(output, ['sample']))
+  assert.deepEqual(readingChainPhases(output, 'sample'), ['reading', 'reading-resume', 'reading-resume-2'])
 })
 
 test('direct writing keeps the shared notes and the frozen findings without citing pending guesses', async () => {
@@ -158,6 +881,23 @@ test('an outbound rejection survives SDK wrapping and stops later comparison pha
   assert.equal(dispatches, 0)
   assert.deepEqual(JSON.parse(readFileSync(marker, 'utf8')), { error: 'UNAPPROVED_NETWORK_REQUEST' })
   assert.throws(() => assertTrialNotHalted(output), { code: 'TRIAL_HALTED' })
+})
+
+test('invalid compression output or insufficient capacity stops later trial phases', async t => {
+  const { assertTrialNotHalted, recordComparisonHalt } = await import('./insight-comparison.ts')
+  for (const code of ['INVALID_INSIGHT_OUTPUT', 'CONTEXT_TOO_LARGE']) {
+    const output = mkdtempSync(join(tmpdir(), 'whomi-compression-halt-'))
+    const halt = join(output, 'halt.json')
+    t.after(() => {
+      if (existsSync(halt)) unlinkSync(halt)
+      rmdirSync(output)
+    })
+    const original = JSON.stringify({ error: code, httpRequests: 2 })
+    recordComparisonHalt(output, code, original)
+    assert.throws(() => assertTrialNotHalted(output), { code: 'TRIAL_HALTED' })
+    recordComparisonHalt(output, code, JSON.stringify({ error: code, httpRequests: 3 }))
+    assert.equal(readFileSync(halt, 'utf8'), original)
+  }
 })
 
 test('the production insight budget halts the comparison while a normal provider failure does not', async t => {

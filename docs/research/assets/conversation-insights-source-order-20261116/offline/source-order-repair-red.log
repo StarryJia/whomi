@@ -1,0 +1,37 @@
+
+ RUN  v5.0.5 D:/University/github/whomi
+
+ ❯ tests/backend/insight-generation.test.ts (75 tests | 1 failed | 74 skipped) 16ms
+   × migrating source-ordered navigation retains an already used compression repair and spent calls 15ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/backend/insight-generation.test.ts > migrating source-ordered navigation retains an already used compression repair and spent calls
+AssertionError: expected Error: 洞察进度无法恢复，请重新生成。 { …(2) } to match object { code: 'INVALID_INSIGHT_OUTPUT' }
+(1 matching property omitted from actual)
+
+- Expected
++ Received
+
+- {
+-   "code": "INVALID_INSIGHT_OUTPUT",
++ BoundaryError {
++   "code": "INVALID_INSIGHT_CHECKPOINT",
+  }
+
+ ❯ tests/backend/insight-generation.test.ts:412:45
+    410|     return result(retainEntries(payload))
+    411|   }
+    412|   await expect(generateInsight(input, deps)).rejects.toMatchObject({ c…
+       |                                             ^
+    413|   expect(calls).toBe(1)
+    414|   expect(state.checkpoint).toMatchObject({ callsReserved: 4, writingRe…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 74 skipped (75)
+   Start at  00:52:16
+   Duration  375ms (transform 57%, import 31%, tests 9%, worker 4%)
+

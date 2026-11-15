@@ -1,0 +1,41 @@
+
+ RUN  v5.0.5 D:/University/github/whomi
+
+ ❯ tests/backend/insight-generation.test.ts (75 tests | 1 failed | 74 skipped) 21ms
+   × migrating source-ordered navigation retains an already used compression repair and spent calls 19ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/backend/insight-generation.test.ts > migrating source-ordered navigation retains an already used compression repair and spent calls
+AssertionError: expected AssertionError: expected undefined to be … { …(4) } to match object { code: 'INVALID_INSIGHT_OUTPUT' }
+(5 matching properties omitted from actual)
+
+- Expected
++ Received
+
+- {
+-   "code": "INVALID_INSIGHT_OUTPUT",
++ AssertionError {
++   "message": "expected undefined to be true // Object.is equality",
++   "actual": undefined,
++   "expected": true,
++   "showDiff": true,
++   "operator": "strictEqual",
+  }
+
+ ❯ tests/backend/insight-generation.test.ts:415:45
+    413|     return result(retainEntries(payload))
+    414|   }
+    415|   await expect(generateInsight(input, deps)).rejects.toMatchObject({ c…
+       |                                             ^
+    416|   expect(calls).toBe(1)
+    417|   expect(state.checkpoint).toMatchObject({ callsReserved: 4, writingRe…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 74 skipped (75)
+   Start at  00:52:34
+   Duration  408ms (transform 54%, import 32%, tests 10%, worker 4%)
+

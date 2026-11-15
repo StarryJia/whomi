@@ -1,0 +1,52 @@
+{
+  "kind": "offline-mixed-unknown-replay",
+  "networkCalls": 0,
+  "simulatedDispatches": 1,
+  "originalResponseAccepted": true,
+  "originalsUnchanged": true,
+  "callsReservedBefore": 24,
+  "simulatedCallsReservedAfter": 25,
+  "cursorBefore": 92,
+  "cursorAfter": 111,
+  "inputEstimate": 6626,
+  "maxFactTextLength": 605,
+  "maxFactCount": 38,
+  "outputLimit": 3000,
+  "inputWritingFactBytes": 3560,
+  "outputWritingFactBytes": 2431,
+  "outputTextLength": 592,
+  "knownParts": [
+    {
+      "kind": "fact",
+      "text": "投影线已测正常。",
+      "sourceIds": [
+        "4"
+      ]
+    },
+    {
+      "kind": "fact",
+      "text": "二十七号已订室换文。",
+      "sourceIds": [
+        "94",
+        "97"
+      ]
+    }
+  ],
+  "remainingUnknowns": [
+    {
+      "kind": "unknown",
+      "text": "对方三号是否带线未明。",
+      "sourceIds": [
+        "4"
+      ]
+    },
+    {
+      "kind": "unknown",
+      "text": "篇名及两处篇目指代未明。",
+      "sourceIds": [
+        "94",
+        "97"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "state": "completed",
+  "calls": 1,
+  "httpRequests": 1,
+  "elapsedMs": 35303,
+  "inputCharged": 2941,
+  "outputCharged": 2026,
+  "trialRequestsAfterPhase": 15,
+  "accounting": {
+    "incremental": {
+      "httpRequests": 1,
+      "elapsedMs": 35303,
+      "inputCharged": 2941,
+      "outputCharged": 2026
+    },
+    "sharedReading": {
+      "httpRequests": 13,
+      "inputCharged": 43284,
+      "outputCharged": 21688,
+      "elapsedMs": 369295
+    },
+    "hypotheticalArmTotal": {
+      "httpRequests": 14,
+      "inputCharged": 46225,
+      "outputCharged": 23714,
+      "elapsedMs": 404598
+    }
+  },
+  "sharedBaseHash": "5314c634b7c7d362a8456114b873259b7f533eebb76fcc6c159adc61855c261a",
+  "pairWarnings": [],
+  "adaptiveWriting": {
+    "repair": false,
+    "outputLimit": 3000
+  },
+  "directOutputLimit": 3000,
+  "writingCapacity": {
+    "inputEstimate": 10221,
+    "inputBudget": 12744
+  }
+}

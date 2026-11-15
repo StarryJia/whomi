@@ -1,0 +1,64 @@
+
+ RUN  v5.0.5 D:/University/github/whomi
+
+ ❯ tests/backend/insight-generation.test.ts (85 tests | 2 failed | 83 skipped) 26ms
+   × reclassifying separate mixed-memory groups as unknown still requires a joint reconciliation 18ms
+   × a local kind change cannot use the complete-writer exception before mixed memory is jointly reconciled 6ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/backend/insight-generation.test.ts > reclassifying separate mixed-memory groups as unknown still requires a joint reconciliation
+AssertionError: expected 2 to be 3 // Object.is equality
+
+- Expected
++ Received
+
+- 3
++ 2
+
+ ❯ Object.deps.run tests/backend/insight-generation.test.ts:493:26
+    491|         entryIds: entries.map((entry: { entryId: string }) => entry.en…
+    492|     }
+    493|     expect(compressions).toBe(3)
+       |                          ^
+    494|     expect(payload.observations).toEqual([])
+    495|     expect(payload.openThreads).toEqual([{ text: '采购暂缓，负责人未定，下月安排未发布。'…
+ ❯ call electron/main/insight-generation.ts:564:27
+ ❯ generateInsight electron/main/insight-generation.ts:942:22
+ ❯ tests/backend/insight-generation.test.ts:498:3
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  tests/backend/insight-generation.test.ts > a local kind change cannot use the complete-writer exception before mixed memory is jointly reconciled
+AssertionError: expected AssertionError: expected undefined to be … { …(4) } to match object { code: 'INVALID_INSIGHT_OUTPUT' }
+(5 matching properties omitted from actual)
+
+- Expected
++ Received
+
+- {
+-   "code": "INVALID_INSIGHT_OUTPUT",
++ AssertionError {
++   "message": "expected undefined to be 'compress-navigation' // Object.is equality",
++   "actual": undefined,
++   "expected": "compress-navigation",
++   "showDiff": true,
++   "operator": "strictEqual",
+  }
+
+ ❯ tests/backend/insight-generation.test.ts:515:45
+    513|       .map((entry: { text: string; entryId: string }) => ({ kind: 'unk…
+    514|   }
+    515|   await expect(generateInsight(input, deps)).rejects.toMatchObject({ c…
+       |                                             ^
+    516|   expect(state.checkpoint?.callsReserved).toBe(2)
+    517|   expect(state.checkpoint?.navigation).toMatchObject({ cursor: 0, next…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 83 skipped (85)
+   Start at  01:54:48
+   Duration  445ms (transform 55%, import 32%, tests 10%, worker 3%)
+

@@ -1,0 +1,25 @@
+{
+  "networkCalls": 0,
+  "resumable": true,
+  "originalArtifactsUnchanged": true,
+  "originalHashes": {
+    "release/conversation-insights-20261115/long-comparison-runs/memory-bounded-20261116/shared-workload-reading/input.json": "3f1b330a85e5be6a753381bd59551152e7a81cd028cd7eec11fa102dc097cc31",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-bounded-20261116/shared-workload-reading/snapshot.json": "403e0c418cbb663eddd65ec2929096152ccaabeef700d671485413d75aad8ec1",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-bounded-20261116/shared-workload-reading/checkpoint.json": "32c9a0100146908fea90a8fcde8eed10a6ae2ef0bae8ddc0906f2b0209d559ee",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-bounded-20261116/shared-workload-reading/result.json": "284951dc5be6b56d7d9dec65a22a390586d7790114a3268164837f28d66b6235",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-bounded-20261116/shared-workload-reading/attempts.jsonl": "5de63bc38fa8a454c557b876dabdcd9befa7b4c6c0bb3d9965708d9cff202698",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-bounded-20261116/halt.json": "966cc6c129b345c528a63e2cada7850073ce5cb0c10af52f61514a536c7a6e13"
+  },
+  "charges": {
+    "httpRequests": 24,
+    "inputCharged": 45118,
+    "outputCharged": 21378,
+    "elapsedMs": 435726
+  },
+  "callsReserved": 24,
+  "remainingCalls": 26,
+  "readCount": 120,
+  "navigationCursor": 92,
+  "navigationRoots": 139,
+  "nextRoots": 6
+}

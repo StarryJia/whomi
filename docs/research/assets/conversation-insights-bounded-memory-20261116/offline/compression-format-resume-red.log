@@ -1,0 +1,23 @@
+✖ the second recovery accepts a failed compression repair without resetting attempts or repairs (53.0944ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 138.6868
+
+✖ failing tests:
+
+test at tests\quality\insight-comparison.test.mjs:346:1
+✖ the second recovery accepts a failed compression repair without resetting attempts or repairs (53.0944ms)
+  Error: INVALID_COMPARISON_READING_RESUME
+      at invalidResume (file:///D:/University/github/whomi/tests/quality/insight-comparison-resume.ts:30:23)
+      at validateReadingResume (file:///D:/University/github/whomi/tests/quality/insight-comparison-resume.ts:111:47)
+      at validateReadingChain (file:///D:/University/github/whomi/tests/quality/insight-comparison-resume.ts:187:7)
+      at TestContext.<anonymous> (file:///D:/University/github/whomi/tests/quality/insight-comparison.test.mjs:365:20)
+      at async Test.run (node:internal/test_runner/test:1113:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:358:3) {
+    code: 'INVALID_COMPARISON_READING_RESUME'
+  }

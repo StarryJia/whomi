@@ -1,0 +1,174 @@
+{
+  "runId": "memory-capacity-current-20261116",
+  "closed": true,
+  "resumePermitted": false,
+  "result": {
+    "state": "failed",
+    "error": "INVALID_INSIGHT_OUTPUT",
+    "calls": 11,
+    "httpRequests": 11,
+    "elapsedMs": 249515,
+    "inputCharged": 36211,
+    "outputCharged": 15693,
+    "trialRequestsAfterPhase": 11,
+    "accounting": {
+      "incremental": {
+        "httpRequests": 11,
+        "elapsedMs": 249515,
+        "inputCharged": 36211,
+        "outputCharged": 15693
+      }
+    }
+  },
+  "sourceHash": "6f63b461c034eacaebc473ea5637bef13119aae59e286fa1d449347d9c6af756",
+  "totals": {
+    "requests": 11,
+    "settled": 11,
+    "inputTokens": 36211,
+    "outputTokens": 15693,
+    "reading": 7,
+    "compression": 4,
+    "checking": 0,
+    "writing": 0
+  },
+  "coveredMessages": 120,
+  "naturalCandidates": 0,
+  "acceptedCompressionNodes": [
+    96,
+    97
+  ],
+  "reportGenerated": false,
+  "secondCaseStarted": false,
+  "accuracyScored": false,
+  "rejectedResponses": [
+    {
+      "call": 10,
+      "repair": false,
+      "frozenParserError": "INVALID_INSIGHT_OUTPUT",
+      "accepted": false,
+      "inputEntries": 26,
+      "outputEntries": 22,
+      "inputFactBytes": 5723,
+      "outputFactBytes": 3702,
+      "reductionFraction": 0.3531364668879958,
+      "entry87": {
+        "entryId": "87:0",
+        "kind": "fact",
+        "text": "双方暂不发布下个月首次活动的完整安排，采购和现场负责人待工作时间明确后再列。对方另有两次晚课日期未定，待通知后提供可参加时间。",
+        "sourceIds": [
+          "113",
+          "114"
+        ]
+      },
+      "output87": [
+        {
+          "kind": "unknown",
+          "text": "双方暂不发下月首次活动完整安排，采购、现场负责人及承担事项待工作时间明确再议；对方两次晚课日期、可参加时间待通知。",
+          "entryIds": [
+            "80:0",
+            "87:0"
+          ]
+        }
+      ],
+      "coveredAll": true,
+      "foreignEntryIds": [],
+      "knownOnlyUnknownIds": [
+        "87:0"
+      ]
+    },
+    {
+      "call": 11,
+      "repair": true,
+      "frozenParserError": "INVALID_INSIGHT_OUTPUT",
+      "accepted": false,
+      "inputEntries": 26,
+      "outputEntries": 20,
+      "inputFactBytes": 5723,
+      "outputFactBytes": 3468,
+      "reductionFraction": 0.39402411322732833,
+      "entry87": {
+        "entryId": "87:0",
+        "kind": "fact",
+        "text": "双方暂不发布下个月首次活动的完整安排，采购和现场负责人待工作时间明确后再列。对方另有两次晚课日期未定，待通知后提供可参加时间。",
+        "sourceIds": [
+          "113",
+          "114"
+        ]
+      },
+      "output87": [
+        {
+          "kind": "unknown",
+          "text": "下月首次活动完整安排暂不发布，采购、现场负责人及双方承担事项待工作安排；对方两次晚课日期及可参加时间待通知。",
+          "entryIds": [
+            "80:0",
+            "87:0"
+          ]
+        }
+      ],
+      "coveredAll": true,
+      "foreignEntryIds": [],
+      "knownOnlyUnknownIds": [
+        "87:0"
+      ]
+    }
+  ],
+  "preservedBaselineSharedWorkload": {
+    "requests": 9,
+    "settled": 9,
+    "inputTokens": 29433,
+    "outputTokens": 11645,
+    "reading": 5,
+    "compression": 2,
+    "checking": 0,
+    "writing": 2,
+    "reusedWithoutResampling": true
+  },
+  "pairedCostsSoFar": {
+    "requests": 20,
+    "inputTokens": 65644,
+    "outputTokens": 27338
+  },
+  "priorClosedDiagnostics": {
+    "requests": 84,
+    "inputTokens": 151868,
+    "outputTokens": 77887
+  },
+  "allCostsSoFar": {
+    "requests": 104,
+    "inputTokens": 217512,
+    "outputTokens": 105225
+  },
+  "originalFilesUnchanged": true,
+  "originalHashes": {
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/attempts.jsonl": "85be01c1f9d9eb9d30cad329eeda652eafc74e04151f224707de10c245ad84a8",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/checkpoint.json": "9342327c4d9301d5b099e9b047f042dbaafdf9e0393f885507c319f9ccdfec18",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/events.jsonl": "9d782ac6b68325f779627442dc44b212359dd1086d34608c37aed830ef44aa72",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/input.json": "9a8c84640ced4cfc35b7105a01960cead56f1c1497c2d3405d6fcef009041868",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/request-01.json": "e268b35451f9d4b81bf2c543faaf3b0de0072da0e6c484cc4d563fc7f051f774",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/request-02.json": "d8812ad87d0b57e0c80a2ad2dd9f196d8cc4f9247963eea0ecd260ba47085735",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/request-03.json": "a1adb2ddd21834bc4c67d3ed1cab75e1ce393c7078f2a3a0881c8169a22d499a",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/request-04.json": "2fa4c5d36bc0cb0ee6a07d3d90dfa90485c20dcef89cd63a5f3f68c4278b627e",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/request-05.json": "4dfbd8758377e76fc0a86e1820098b37c953a84daf47266ebcde44a1bb657528",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/request-06.json": "feaf003574f78aef65bdea9cdf0fcc3ac6882e43fbca76e1c6868d405d87c944",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/request-07.json": "d843203e01ed4c6e4feedb547e1da6e4f59bf78312f823c0e7b1591ef90a511a",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/request-08.json": "5a5cdee77560467d4aea52dd24c8b0eac5fcd4d0462d92e9fe6abe5ba456278d",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/request-09.json": "a614b3903b87553939f76f233397b38d23584280815013280104c90d862956ae",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/request-10.json": "3a5eef5c6bc57bae318302540b501aa27331e25e9a8b24fc953130e5212e21e0",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/request-11.json": "9df314ecdfd62739b36f7118a4748025e41b8376c62ba9c5c3f8048d90f802c6",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/response-01.txt": "ced2df64daf6def0b1673ced8bb3e7594bf079c97f15fbd48ad91f7251eb3a0d",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/response-02.txt": "06a107e07f09a3688c19efe227477e650b64c6a24c863e878bcdf8e164b4c33b",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/response-03.txt": "e7b71c0f92c83abdd0c311264f4ce3f6c34975224375102147ffea23007822b4",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/response-04.txt": "14b3a632054581bb738a17d22f16f760669fbd7dd700c19fae321d4a558ea73c",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/response-05.txt": "b7cb48c265228494be716cf452edd4ce48e7b0a63e1bc3c758bd32a75ae3b973",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/response-06.txt": "0ea6e3b804537a3f01e9ab957a4432ec3049fe9f0075d3a1b40fec0cb5b44b93",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/response-07.txt": "3ff3ffbee6042b0b4beba05785c5fab24708b80ba134f608efeca25ad26a34e0",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/response-08.txt": "ccabf76c38e90f18742fd5e3f480b2d648d291aac1e2f608a2e3118310223df4",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/response-09.txt": "425c41c41f15f3c956b5e74b7e64ec9b51c8c45840850aa2fa895264b8e0137f",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/response-10.txt": "c4f9d39e5c2c41f4a1d1eb76c48d465e1ce7b2209550938ef39c2db2283f4488",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/response-11.txt": "917fa709a7d11ef770d0036880a1226916258688e8b21a14d713bd2934ef1e35",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/result.json": "140a6cab91a80cc3ea7fdc98efb61cb2d220f7031595da9c18015b59ea4860dc",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/snapshot.json": "645f7d8e18027258c55830a512251e03d60150ead9c0762c6a0faf8be2659723",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/halt.json": "714b1547dff3d817ab3bc7b17c1479f5a86b3822e1d856711936f86cfe9d7e32",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/run-profile.json": "dee5ece6b472e32e0c812f434af21aaca0888393015d567c22ccf8043473b0c7"
+  }
+}

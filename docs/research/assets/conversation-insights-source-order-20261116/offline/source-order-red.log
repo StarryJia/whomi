@@ -1,0 +1,70 @@
+
+ RUN  v5.0.5 D:/University/github/whomi
+
+ ❯ tests/backend/insight-generation.test.ts (74 tests | 3 failed | 69 skipped) 40ms
+   × legacy compressed checkpoints rebuild from retained original notes without erasing spent budget (facts version: 1) 13ms
+   × same-source facts and unknowns share a small compression window and remain reconciled after writing resumes 10ms
+   × migrating a legacy tree clears obsolete navigation pointers but retains checked evidence and rounds (facts version: 1) 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/backend/insight-generation.test.ts > legacy compressed checkpoints rebuild from retained original notes without erasing spent budget (facts version: 1)
+Error: 洞察引用的原文无法验证，请重新生成。
+ ❯ invalidEvidence electron/main/insight-generation.ts:143:9
+    141|
+    142| function invalidEvidence(): never {
+    143|   throw new BoundaryError('INVALID_EVIDENCE', '洞察引用的原文无法验证，请重新生成。')
+       |         ^
+    144| }
+    145|
+ ❯ sourceIds electron/main/insight-generation.ts:180:48
+ ❯ electron/main/insight-generation.ts:119:17
+ ❯ array electron/main/insight-generation.ts:169:16
+ ❯ compressedFacts electron/main/insight-generation.ts:116:17
+ ❯ compactMemory electron/main/insight-generation.ts:795:25
+ ❯ generateInsight electron/main/insight-generation.ts:821:3
+ ❯ tests/backend/insight-generation.test.ts:338:3
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  tests/backend/insight-generation.test.ts > same-source facts and unknowns share a small compression window and remain reconciled after writing resumes
+AssertionError: expected [Function] to throw error including 'fixture paused during writing after s…' but got 'expected [ \'fact\', \'fact\' ] to de…'
+
+Expected: "fixture paused during writing after source-ordered compaction"
+Received: "expected [ 'fact', 'fact' ] to deeply equal [ 'fact', 'unknown' ]"
+
+ ❯ tests/backend/insight-generation.test.ts:383:45
+    381|     return result(noConclusion)
+    382|   }
+    383|   await expect(generateInsight(input, deps)).rejects.toThrow('fixture …
+       |                                             ^
+    384|   expect(state.checkpoint?.callsReserved).toBe(3)
+    385|   const compactedNavigation = structuredClone(state.checkpoint?.naviga…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  tests/backend/insight-generation.test.ts > migrating a legacy tree clears obsolete navigation pointers but retains checked evidence and rounds (facts version: 1)
+Error: 洞察引用的原文无法验证，请重新生成。
+ ❯ invalidEvidence electron/main/insight-generation.ts:143:9
+    141|
+    142| function invalidEvidence(): never {
+    143|   throw new BoundaryError('INVALID_EVIDENCE', '洞察引用的原文无法验证，请重新生成。')
+       |         ^
+    144| }
+    145|
+ ❯ sourceIds electron/main/insight-generation.ts:180:48
+ ❯ electron/main/insight-generation.ts:119:17
+ ❯ array electron/main/insight-generation.ts:169:16
+ ❯ compressedFacts electron/main/insight-generation.ts:116:17
+ ❯ compactMemory electron/main/insight-generation.ts:795:25
+ ❯ generateInsight electron/main/insight-generation.ts:821:3
+ ❯ tests/backend/insight-generation.test.ts:442:3
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 2 passed | 69 skipped (74)
+   Start at  00:50:53
+   Duration  439ms (transform 51%, import 29%, tests 17%, worker 3%)
+

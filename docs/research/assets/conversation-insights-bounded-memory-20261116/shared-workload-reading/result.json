@@ -1,0 +1,18 @@
+{
+  "state": "failed",
+  "error": "INVALID_EVIDENCE",
+  "calls": 24,
+  "httpRequests": 24,
+  "elapsedMs": 435726,
+  "inputCharged": 45118,
+  "outputCharged": 21378,
+  "trialRequestsAfterPhase": 24,
+  "accounting": {
+    "incremental": {
+      "httpRequests": 24,
+      "elapsedMs": 435726,
+      "inputCharged": 45118,
+      "outputCharged": 21378
+    }
+  }
+}

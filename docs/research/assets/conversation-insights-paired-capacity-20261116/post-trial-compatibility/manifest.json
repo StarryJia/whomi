@@ -1,0 +1,75 @@
+{
+  "kind": "post-trial-local-visible-excerpt-compatibility",
+  "createdAt": "2026-11-15T18:36:52.0082973Z",
+  "branch": "codex/issue-10-conversation-insights",
+  "head": "fee2af45380cb379ab40009449f467d1c50c4a8b",
+  "realModelCallsAdded": 0,
+  "trialsRecovered": 0,
+  "originalTrialArtifactsUnchanged": true,
+  "frozenModelControl": {
+    "path": "release/conversation-insights-20261115/paired-capacity-v2-frozen/current/source/electron/main/insight-generation.ts",
+    "sha256": "816e82fac393459f6b36dc1f6470ffcb454b23467bfb843fd2c3a8b667da81e9"
+  },
+  "localVerification": {
+    "targetedTestsPassed": 104,
+    "newQuoteTestsPassed": 15,
+    "typecheck": "passed",
+    "fullBackendAndBuild": "recorded separately by parent",
+    "originalResponse04": "INVALID_INSIGHT_OUTPUT: support/counterexample overlap",
+    "inMemoryDisjointOnlyControl": "ACCEPTED_READING_RESPONSE"
+  },
+  "sourceFiles": [
+    {
+      "path": "source/electron/main/insight-generation.ts",
+      "original": "electron/main/insight-generation.ts",
+      "sha256": "294693d887a8a1c6128fd1328c522e5163f7e21fe0e6694c6cbcf295e4a0c51d"
+    },
+    {
+      "path": "source/electron/data/ai/insight-prompts.ts",
+      "original": "electron/data/ai/insight-prompts.ts",
+      "sha256": "716d56216bccbde3364156b22bb9ee9fee4bb7a323f5df109c9799d87567d6a3"
+    },
+    {
+      "path": "source/tests/backend/insight-quote-reuse.test.ts",
+      "original": "tests/backend/insight-quote-reuse.test.ts",
+      "sha256": "2782114aeae052a49d3c68e5dd097d5b7d50227a0bf782061500f56a48b9ab6f"
+    },
+    {
+      "path": "source/tests/backend/fixtures/insight-visible-excerpt-reuse.json",
+      "original": "tests/backend/fixtures/insight-visible-excerpt-reuse.json",
+      "sha256": "a2c7766f90fd00a60e6b63b0c99d2298ad736eb5e88645cc4086d661ea07749c"
+    }
+  ],
+  "evidenceFiles": [
+    {
+      "path": "evidence/quote-visible-scope-red.log",
+      "sha256": "edb979c974a1368cfe6574bfdf56c7e4b5cf1fa9f31c6c493a2f95bb8c0f737e"
+    },
+    {
+      "path": "evidence/quote-visible-scope-green.log",
+      "sha256": "62aa369462aa9f4f7b03d00f838161e2e4db1400abb3663a97314d16343b7681"
+    },
+    {
+      "path": "evidence/quote-visible-scope-typecheck.log",
+      "sha256": "769a0517181db6476a758a3c98d4c3772614d7aa820e989fb11cf46d6b6ac7a8"
+    },
+    {
+      "path": "evidence/quote-visible-scope-replay.json",
+      "sha256": "d20873818c46215173a7caafbb01695415547319c2adf3248bba9999ba33e248"
+    },
+    {
+      "path": "evidence/quote-reuse-replay.mjs",
+      "sha256": "677b8489787b9ae4aa06895968c34f1e0eb1d9c30277232c3d713761780c2c22"
+    },
+    {
+      "path": "evidence/quote-reuse-red-verified.log",
+      "sha256": "9e7f4de69b17e198b9671109f2fcd87d8d0744d66f18e6ab995ae004545df71f"
+    },
+    {
+      "path": "evidence/post-trial-generation.diff",
+      "sha256": "fd9da9edd6dd8ed4a3a1237d91b1ec615daa8925f9d0705bb74300be3917b91b"
+    }
+  ],
+  "readmeSha256": "b4b68143fdab0b4dafe983ed24550f2c9597fffc8573ecd5b755336ff2c82674",
+  "disclosure": "Local compatibility change after all real model calls ended. This source snapshot was not used to resample or recover any real model trial. Actual source visibility replaces the superseded same-candidate restriction. Existing real outcomes and scores are unchanged."
+}

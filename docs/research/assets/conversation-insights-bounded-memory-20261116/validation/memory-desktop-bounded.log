@@ -1,0 +1,318 @@
+
+> whomi@0.1.11 test:desktop
+> node scripts/desktop-smoke.mjs
+
+
+Running 56 tests using 1 worker
+
+  ok  1 tests\desktop\acceptance-fixes.spec.mjs:8:1 › active import remains recoverable and compact reply navigation preserves the draft across pages (9.8s)
+  ok  2 tests\desktop\account-model-lifecycle.spec.mjs:7:34 › 订阅账号退出、重新登录和换账号在 1280 像素下结束旧模型界面 (8.0s)
+  ok  3 tests\desktop\account-model-lifecycle.spec.mjs:7:34 › 订阅账号退出、重新登录和换账号在 360 像素下结束旧模型界面 (7.4s)
+  x   4 tests\desktop\ai.spec.mjs:9:1 › real Pi process persists analysis reports and dialogue through the isolated desktop bridge (36.4s)
+  x   5 tests\desktop\analysis-resume.spec.mjs:9:1 › resume a paused analysis after restart, retaining committed work and reporting against the same task (37.0s)
+ELECTRON STDERR: Debugger ending on ws://127.0.0.1:36616/e1a898ab-8941-43c8-8e35-fd9fdff032e5
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+  ok  6 tests\desktop\capture-evidence.spec.mjs:7:1 › capture comprehensive evidence for import flow, unified top bar, conversation management, and message bubbles (9.3s)
+  ok  7 tests\desktop\cherry-recovery.spec.mjs:77:1 › Cherry restores terminal and interrupted turns and shows real aggregate usage without loading remote answer resources (14.6s)
+  ok  8 tests\desktop\cherry-settings.spec.mjs:7:1 › Cherry settings menus, auto-save, sync recovery and capacity drawers work in the desktop window (8.9s)
+  ok  9 tests\desktop\codex-quota.spec.mjs:6:39 › 方案 C 在 1280 像素完成连接、刷新、重试、取消与来源切换（示例数据） (7.3s)
+  ok 10 tests\desktop\codex-quota.spec.mjs:6:39 › 方案 C 在 960 像素完成连接、刷新、重试、取消与来源切换（示例数据） (7.0s)
+  ok 11 tests\desktop\codex-quota.spec.mjs:6:39 › 方案 C 在 360 像素完成连接、刷新、重试、取消与来源切换（示例数据） (6.6s)
+  ok 12 tests\desktop\composer-selection-clarity.spec.mjs:20:34 › 在 1280 像素窗口双向切换选择与引用，逐组管理时保留草稿 (8.3s)
+  ok 13 tests\desktop\composer-selection-clarity.spec.mjs:20:34 › 在 360 像素窗口双向切换选择与引用，逐组管理时保留草稿 (9.5s)
+  x  14 tests\desktop\conversation-entry.spec.mjs:8:3 › 首条 AI 对话与缺模型时的设置往返 · 1440 (32.8s)
+  x  15 tests\desktop\conversation-entry.spec.mjs:8:3 › 首条 AI 对话与缺模型时的设置往返 · 360 (36.4s)
+  ok 16 tests\desktop\conversation-insights.spec.mjs:14:1 › isolated Electron resumes a scoped insight, retries writing, and preserves exact citations through rename and deletion (9.4s)
+  ok 17 tests\desktop\conversation-lists.spec.mjs:9:34 › 两类会话管理在 1280 像素下可拖序、恢复和删除 (16.6s)
+  ok 18 tests\desktop\conversation-lists.spec.mjs:9:34 › 两类会话管理在 440 像素下可拖序、恢复和删除 (18.4s)
+  ok 19 tests\desktop\custom-provider.spec.mjs:7:1 › 自定义服务商在宽窄窗口配置头像和两个端点，重启后按默认协议读取模型 (14.8s)
+  ok 20 tests\desktop\design-review-settings-replies.spec.mjs:19:1 › settings use the provider model drawer and a neutral grouped number focus (7.8s)
+  ok 21 tests\desktop\design-review-settings-replies.spec.mjs:97:1 › SIWX reimport repairs an old quote and jumps across unloaded pages without losing the draft (17.1s)
+  ok 22 tests\desktop\identity-entry.spec.mjs:6:34 › 导入后在 1280 像素确认本人，取消可阅读，重进重问，保存后重启不再提示 (12.6s)
+  ok 23 tests\desktop\identity-entry.spec.mjs:6:34 › 导入后在 360 像素确认本人，取消可阅读，重进重问，保存后重启不再提示 (6.0s)
+  ok 24 tests\desktop\import.spec.mjs:38:1 › import guide stays in the app, adapts to the panel and returns to the same picker (6.9s)
+firstWindowReadyMs=1967
+  ok 25 tests\desktop\import.spec.mjs:80:1 › actual import UI preserves old messages, self identity, source bytes and stable locations after restart (14.3s)
+  ok 26 tests\desktop\import.spec.mjs:147:1 › actual reader bounds six pages and preserves a visible anchor in both directions (8.1s)
+  ok 27 tests\desktop\import.spec.mjs:175:1 › actual import cancels before saving and retains partial results for recovery (7.3s)
+  ok 28 tests\desktop\import.spec.mjs:209:1 › actual large-file parsing shows real counts and can be cancelled (6.8s)
+  ok 29 tests\desktop\insight-ui.spec.mjs:113:1 › real Electron insight UI validates scope, pauses and retries, reads exact sources, renames and deletes (17.0s)
+  ok 30 tests\desktop\insight-ui.spec.mjs:298:1 › real Electron requires self selection and a model before creating an insight (9.3s)
+  ok 31 tests\desktop\insight-ui.spec.mjs:323:1 › real Electron report list shows loading and retryable first-read failure (11.8s)
+  ok 32 tests\desktop\insight-ui.spec.mjs:355:1 › real Electron preserves long report reading position and fits an 80-character title at 960 by 640 (13.1s)
+  ok 33 tests\desktop\lifecycle-boundaries.spec.mjs:8:1 › 切换与新建 AI 对话结束旧引用查看，保留各自草稿 (12.8s)
+  -  34 tests\desktop\memory-capacity-upgrade.spec.mjs:20:1 › 0.1.7 capacity failure and committed prefix resume after upgrading the same database
+  x  35 tests\desktop\memory-scoring.spec.mjs:7:1 › local manuscripts vote once per relationship and retract on identity correction (31.7s)
+  ok 36 tests\desktop\menu-hit-test.spec.mjs:7:1 › identity entry accepts pointer and keyboard input outside its draggable header (14.3s)
+  ok 37 tests\desktop\overview-panes-status.spec.mjs:9:1 › 从空总览导入记录，调整三个分栏，在宽窄窗口发送、重试并保留草稿 (24.1s)
+  x  38 tests\desktop\primary-empty-pages.spec.mjs:8:34 › 首次整理在 1280 像素窗口从总览、问一问、仓库到真实文稿 (35.6s)
+  x  39 tests\desktop\primary-empty-pages.spec.mjs:8:34 › 首次整理在 360 像素窗口从总览、问一问、仓库到真实文稿 (35.5s)
+  ok 40 tests\desktop\provider-presets.spec.mjs:10:1 › browse offline provider presets, configure one, and retain custom accounts across restarts (19.6s)
+  ok 41 tests\desktop\reading-polish.spec.mjs:34:1 › explicit safe webpage links reach the browser while executable schemes stay blocked (1.8s)
+  ok 42 tests\desktop\reading-polish.spec.mjs:52:1 › reading polish: fixed content, history, model identity, copy, retry and narrow windows (41.0s)
+  ok 43 tests\desktop\reference-group.spec.mjs:9:1 › 核对同一问题的19条原文，跨页、失败重试和重启后保持整组 (21.5s)
+  ok 44 tests\desktop\runtime.spec.mjs:7:42 › rejects a test directory junction at the main boundary without opening its target database (1.0s)
+  ok 45 tests\desktop\runtime.spec.mjs:7:42 › rejects a test directory junction at the data boundary without opening its target database (2.8s)
+runtime=24.22.1 sqlite=3.53.4 writable=true
+  ok 46 tests\desktop\runtime.spec.mjs:70:1 › saved data survives a restart while the renderer stays isolated (3.5s)
+  ok 47 tests\desktop\runtime.spec.mjs:107:44 › crash recovery after actual import exits Before COMMIT (2.6s)
+  ok 48 tests\desktop\runtime.spec.mjs:107:44 › crash recovery after actual import exits After COMMIT (2.9s)
+  ok 49 tests\desktop\runtime.spec.mjs:130:1 › desktop bridge accepts genuine disk files and directory drops and keeps the renderer isolated (4.2s)
+  x  50 tests\desktop\settings-shared-shell.spec.mjs:7:1 › 设置保留导航和对话草稿，主导航等待有效配置保存后切换 (37.7s)
+  x  51 tests\desktop\settings.spec.mjs:8:1 › settings persist real models, process outbound chat, preserve drafts and migrate conversation storage (45.3s)
+  x  52 tests\desktop\subscription-cards.spec.mjs:6:34 › 订阅服务商在 1920 像素下可登录、取消、退出和切换账号（模拟授权） (6.5s)
+  ok 53 tests\desktop\subscription-cards.spec.mjs:6:34 › 订阅服务商在 360 像素下可登录、取消、退出和切换账号（模拟授权） (9.5s)
+  ok 54 tests\desktop\system-prompts.spec.mjs:7:1 › 系统提示词保存、取消、失败重试、重启及实际请求 (9.0s)
+  -  55 tests\desktop\upgrade.spec.mjs:8:1 › existing data and encrypted models survive the packaged upgrade and subsequent restart
+  x  56 tests\desktop\window-shell.spec.mjs:6:1 › desktop shell opens at a readable size, preserves bounds, and shows the refined conversation UI (41.7s)
+
+
+  1) tests\desktop\ai.spec.mjs:9:1 › real Pi process persists analysis reports and dialogue through the isolated desktop bridge 
+
+    Error: expect(received).toMatchObject(expected)
+
+    - Expected  - 2
+    + Received  + 2
+
+      Object {
+    -   "analyzedMessages": 1,
+    -   "state": "completed",
+    +   "analyzedMessages": 0,
+    +   "state": "failed",
+        "usage": Object {
+          "inputTokens": 40,
+          "outputTokens": 20,
+        },
+      }
+
+    Call Log:
+    - Timeout 30000ms exceeded while waiting on the predicate
+
+      65 |     expect(requests).toHaveLength(0)
+      66 |     const task = await page.evaluate(token => window.whomi.ai.confirmAnalysis({ token, requestId: 'analysis-one' }), preparation.token)
+    > 67 |     await expect.poll(() => page.evaluate(id => window.whomi.ai.getAnalysis(id), task.id), { timeout: 30000 }).toMatchObject({ state: 'completed', analyzedMessages: 1, usage: { inputTokens: 40, outputTokens: 20 } })
+         |                                                                                                                ^
+      68 |     expect(await page.evaluate(id => window.whomi.ai.getReport(id), task.id)).toMatchObject({ format: 'memory-v4', events: [{ title: '约好通话' }] })
+      69 |     const thread = await page.evaluate(() => window.whomi.ai.openThread('1'))
+      70 |     await page.getByRole('button', { name: '选择消息', exact: true }).click()
+        at D:\University\github\whomi\tests\desktop\ai.spec.mjs:67:112
+
+    Error Context: test-results\tests-desktop-ai-real-Pi-p-04d48-the-isolated-desktop-bridge\error-context.md
+
+  2) tests\desktop\analysis-resume.spec.mjs:9:1 › resume a paused analysis after restart, retaining committed work and reporting against the same task 
+
+    TimeoutError: locator.click: Timeout 30000ms exceeded.
+    Call log:
+      - waiting for getByRole('button', { name: '整理成记忆', exact: true })
+
+
+      69 |     await page.getByRole('button', { name: '展开会话列表' }).click()
+      70 |     await page.getByRole('navigation').getByRole('button', { name: title, exact: true }).click()
+    > 71 |     await page.getByRole('button', { name: '整理成记忆', exact: true }).click()
+         |                                                                    ^
+      72 |   }
+      73 |   const screenshot = name => page.screenshot({ path: join(evidence, name + '.png'), animations: 'disabled' })
+      74 |   const tasks = () => app.evaluate(() => globalThis.__whomiRuntimeProbe.request('probe.tasks', null))
+        at openConversation (D:\University\github\whomi\tests\desktop\analysis-resume.spec.mjs:71:68)
+        at D:\University\github\whomi\tests\desktop\analysis-resume.spec.mjs:106:5
+
+    Error Context: test-results\tests-desktop-analysis-res-09551-rting-against-the-same-task\error-context.md
+
+  3) tests\desktop\conversation-entry.spec.mjs:8:3 › 首条 AI 对话与缺模型时的设置往返 · 1440 ─────────────────────
+
+    TimeoutError: locator.click: Timeout 30000ms exceeded.
+    Call log:
+      - waiting for getByRole('button', { name: '整理成记忆', exact: true })
+
+
+      48 |       expect(await page.evaluate(async () => (await window.whomi.ai.listThreads('1')).length)).toBe(1)
+      49 |       await page.keyboard.press('Escape')
+    > 50 |       await button('整理成记忆').click()
+         |                             ^
+      51 |       await screenshot('确认去设置')
+      52 |       await button('配置模型').click()
+      53 |       await expect(page.getByLabel('搜索服务商', {exact:true})).toBeVisible()
+        at D:\University\github\whomi\tests\desktop\conversation-entry.spec.mjs:50:29
+
+    Error Context: test-results\tests-desktop-conversation-entry-首条-AI-对话与缺模型时的设置往返-·-1440\error-context.md
+
+  4) tests\desktop\conversation-entry.spec.mjs:8:3 › 首条 AI 对话与缺模型时的设置往返 · 360 ──────────────────────
+
+    TimeoutError: locator.click: Timeout 30000ms exceeded.
+    Call log:
+      - waiting for getByRole('button', { name: '整理成记忆', exact: true })
+
+
+      48 |       expect(await page.evaluate(async () => (await window.whomi.ai.listThreads('1')).length)).toBe(1)
+      49 |       await page.keyboard.press('Escape')
+    > 50 |       await button('整理成记忆').click()
+         |                             ^
+      51 |       await screenshot('确认去设置')
+      52 |       await button('配置模型').click()
+      53 |       await expect(page.getByLabel('搜索服务商', {exact:true})).toBeVisible()
+        at D:\University\github\whomi\tests\desktop\conversation-entry.spec.mjs:50:29
+
+    Error Context: test-results\tests-desktop-conversation-entry-首条-AI-对话与缺模型时的设置往返-·-360\error-context.md
+
+  5) tests\desktop\memory-scoring.spec.mjs:7:1 › local manuscripts vote once per relationship and retract on identity correction 
+
+    Error: expect(received).toMatchObject(expected)
+
+    - Expected  - 13
+    + Received  +  1
+
+      Object {
+    -   "report": Object {
+    -     "dimensions": Object {
+    -       "JP": "J",
+    -     },
+    -     "eventVotes": Object {
+    -       "JP": Array [
+    -         3,
+    -         0,
+    -       ],
+    -     },
+    -     "format": "memory-v4",
+    -   },
+    -   "state": "completed",
+    +   "state": "failed",
+      }
+
+    Call Log:
+    - Timeout 30000ms exceeded while waiting on the predicate
+
+      64 |         return (await window.whomi.ai.confirmAnalysis({ token: prepared.token, requestId: crypto.randomUUID() })).id
+      65 |       }, { conversationId, modelId })
+    > 66 |       await expect.poll(() => page.evaluate(id => window.whomi.ai.getAnalysis(id), id), { timeout: 30000 }).toMatchObject({
+         |                                                                                                             ^
+      67 |         state: 'completed', report: { format: 'memory-v4', dimensions: { JP: conversationId === '1' ? 'J' : 'P' }, eventVotes: { JP: conversationId === '1' ? [3,0] : [0,5] } },
+      68 |       })
+      69 |     }
+        at D:\University\github\whomi\tests\desktop\memory-scoring.spec.mjs:66:109
+
+    Error Context: test-results\tests-desktop-memory-scori-33bc3-ract-on-identity-correction\error-context.md
+
+  6) tests\desktop\primary-empty-pages.spec.mjs:8:34 › 首次整理在 1280 像素窗口从总览、问一问、仓库到真实文稿 ──────────────
+
+    TimeoutError: locator.click: Timeout 30000ms exceeded.
+    Call log:
+      - waiting for getByRole('button', { name: '记忆仓库', exact: true })
+
+
+      64 |     await expect(page.getByRole('heading',{name:/Spark/})).toBeVisible()
+      65 |     await snap('overview-empty')
+    > 66 |     await button('记忆仓库').click()
+         |                          ^
+      67 |     await expect(page.getByText('文稿预览',{exact:true})).toBeVisible()
+      68 |     await snap('library-empty')
+      69 |     await button('问一问').click()
+        at D:\University\github\whomi\tests\desktop\primary-empty-pages.spec.mjs:66:26
+
+    Error Context: test-results\tests-desktop-primary-empt-e5c82-理在-1280-像素窗口从总览、问一问、仓库到真实文稿\error-context.md
+
+  7) tests\desktop\primary-empty-pages.spec.mjs:8:34 › 首次整理在 360 像素窗口从总览、问一问、仓库到真实文稿 ───────────────
+
+    TimeoutError: locator.click: Timeout 30000ms exceeded.
+    Call log:
+      - waiting for getByRole('button', { name: '记忆仓库', exact: true })
+
+
+      64 |     await expect(page.getByRole('heading',{name:/Spark/})).toBeVisible()
+      65 |     await snap('overview-empty')
+    > 66 |     await button('记忆仓库').click()
+         |                          ^
+      67 |     await expect(page.getByText('文稿预览',{exact:true})).toBeVisible()
+      68 |     await snap('library-empty')
+      69 |     await button('问一问').click()
+        at D:\University\github\whomi\tests\desktop\primary-empty-pages.spec.mjs:66:26
+
+    Error Context: test-results\tests-desktop-primary-empt-f1891-整理在-360-像素窗口从总览、问一问、仓库到真实文稿\error-context.md
+
+  8) tests\desktop\settings-shared-shell.spec.mjs:7:1 › 设置保留导航和对话草稿，主导航等待有效配置保存后切换 ─────────────────
+
+    TimeoutError: locator.click: Timeout 30000ms exceeded.
+    Call log:
+      - waiting for getByRole('button', { name: '记忆仓库', exact: true })
+
+
+      66 |     await button('设置').click()
+      67 |     await address.fill('无效地址')
+    > 68 |     await button('记忆仓库').click()
+         |                          ^
+      69 |     await expect(address).toBeVisible()
+      70 |     await expect(address).toHaveValue('无效地址')
+      71 |     await address.fill('http://127.0.0.1:9/v2')
+        at D:\University\github\whomi\tests\desktop\settings-shared-shell.spec.mjs:68:26
+
+    Error Context: test-results\tests-desktop-settings-sha-da616--设置保留导航和对话草稿，主导航等待有效配置保存后切换\error-context.md
+
+  9) tests\desktop\settings.spec.mjs:8:1 › settings persist real models, process outbound chat, preserve drafts and migrate conversation storage 
+
+    TimeoutError: locator.click: Timeout 30000ms exceeded.
+    Call log:
+      - waiting for getByRole('button', { name: '整理成记忆', exact: true })
+
+
+      115 |     await page.getByRole('option', { name: 'synthetic-chat', exact: true }).click()
+      116 |     await page.getByRole('button', { name: '关闭 AI 对话' }).click()
+    > 117 |     await page.getByRole('button', { name: '整理成记忆', exact: true }).click()
+          |                                                                    ^
+      118 |     await page.getByRole('combobox', { name: '分析模型' }).click()
+      119 |     await page.getByRole('option', { name: '合成分析', exact: true }).click()
+      120 |     await page.keyboard.press('Escape')
+        at D:\University\github\whomi\tests\desktop\settings.spec.mjs:117:68
+
+    Error Context: test-results\tests-desktop-settings-set-ee8f5-igrate-conversation-storage\error-context.md
+
+  10) tests\desktop\subscription-cards.spec.mjs:6:34 › 订阅服务商在 1920 像素下可登录、取消、退出和切换账号（模拟授权） ─────────
+
+    Error: expect(received).toBeLessThanOrEqual(expected)
+
+    Expected: <= 1
+    Received:    308
+
+      90 |       })
+      91 |       for (const box of boxes) {
+    > 92 |         expect(Math.abs(box.left - contentLeft)).toBeLessThanOrEqual(1)
+         |                                                  ^
+      93 |         expect(box.right).toBeLessThanOrEqual(contentRight + 1)
+      94 |         expect(box.width).toBe(boxes[0].width)
+      95 |       }
+        at verifyDetailAlignment (D:\University\github\whomi\tests\desktop\subscription-cards.spec.mjs:92:50)
+        at D:\University\github\whomi\tests\desktop\subscription-cards.spec.mjs:97:5
+
+    Error Context: test-results\tests-desktop-subscription-7db6c-920-像素下可登录、取消、退出和切换账号（模拟授权）\error-context.md
+
+  11) tests\desktop\window-shell.spec.mjs:6:1 › desktop shell opens at a readable size, preserves bounds, and shows the refined conversation UI 
+
+    TimeoutError: locator.click: Timeout 30000ms exceeded.
+    Call log:
+      - waiting for getByRole('button', { name: '整理成记忆', exact: true })
+
+
+      78 |     await page.keyboard.press('Escape')
+      79 |     await page.getByRole('button', { name: '关闭 AI 对话' }).click()
+    > 80 |     await page.getByRole('button', { name: '整理成记忆', exact: true }).click()
+         |                                                                    ^
+      81 |     await expect(page.getByRole('button', { name: '生成记忆' })).toBeEnabled()
+      82 |     await expect(page.locator('.analysis-description').filter({ hasText: '界面验证 · 虚构会话' })).toBeVisible()
+      83 |     await page.screenshot({ path: join(evidence, 'analysis-confirmation.png') })
+        at D:\University\github\whomi\tests\desktop\window-shell.spec.mjs:80:68
+
+    Error Context: test-results\tests-desktop-window-shell-55276-the-refined-conversation-UI\error-context.md
+
+  11 failed
+    tests\desktop\ai.spec.mjs:9:1 › real Pi process persists analysis reports and dialogue through the isolated desktop bridge 
+    tests\desktop\analysis-resume.spec.mjs:9:1 › resume a paused analysis after restart, retaining committed work and reporting against the same task 
+    tests\desktop\conversation-entry.spec.mjs:8:3 › 首条 AI 对话与缺模型时的设置往返 · 1440 ──────────────────────
+    tests\desktop\conversation-entry.spec.mjs:8:3 › 首条 AI 对话与缺模型时的设置往返 · 360 ───────────────────────
+    tests\desktop\memory-scoring.spec.mjs:7:1 › local manuscripts vote once per relationship and retract on identity correction 
+    tests\desktop\primary-empty-pages.spec.mjs:8:34 › 首次整理在 1280 像素窗口从总览、问一问、仓库到真实文稿 ───────────────
+    tests\desktop\primary-empty-pages.spec.mjs:8:34 › 首次整理在 360 像素窗口从总览、问一问、仓库到真实文稿 ────────────────
+    tests\desktop\settings-shared-shell.spec.mjs:7:1 › 设置保留导航和对话草稿，主导航等待有效配置保存后切换 ──────────────────
+    tests\desktop\settings.spec.mjs:8:1 › settings persist real models, process outbound chat, preserve drafts and migrate conversation storage 
+    tests\desktop\subscription-cards.spec.mjs:6:34 › 订阅服务商在 1920 像素下可登录、取消、退出和切换账号（模拟授权） ───────────
+    tests\desktop\window-shell.spec.mjs:6:1 › desktop shell opens at a readable size, preserves bounds, and shows the refined conversation UI 
+  2 skipped
+  43 passed (14.2m)

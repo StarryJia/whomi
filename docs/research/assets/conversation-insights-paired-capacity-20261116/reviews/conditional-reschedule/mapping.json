@@ -1,0 +1,25 @@
+{
+  "caseName": "conditional-reschedule",
+  "output": "release\\conversation-insights-20261115\\blind-source-order\\paired-conditional-reschedule",
+  "absentBaseline": {
+    "state": "failed",
+    "error": "INVALID_EVIDENCE",
+    "calls": 4
+  },
+  "mapping": [
+    {
+      "label": "report-89081a29",
+      "arm": "current",
+      "method": "adaptive",
+      "file": "release\\conversation-insights-20261115\\long-comparison-runs\\memory-capacity-current-v2-20261116\\conditional-reschedule-adaptive\\report.json",
+      "anonymousSha256": "e424dffc0f76ba3f34e3fbf0159e99115e6092717c447dabae5d16f6059b2829"
+    },
+    {
+      "label": "report-6bf52596",
+      "arm": "current",
+      "method": "direct",
+      "file": "release\\conversation-insights-20261115\\long-comparison-runs\\memory-capacity-current-v2-20261116\\conditional-reschedule-direct\\report.json",
+      "anonymousSha256": "1b8b54202b6af619f46aef49e816c16610a838cc864f2a3d9d200eec5b6dc274"
+    }
+  ]
+}

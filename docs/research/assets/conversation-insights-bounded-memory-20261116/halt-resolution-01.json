@@ -1,0 +1,15 @@
+{
+  "createdAt": "2026-11-15T16:27:50.674Z",
+  "cause": "unknown note contains known context; original response preserves both known and unresolved portions",
+  "fix": "allow splitting known portions only when every corresponding unknown input retains unknown coverage",
+  "recovery": "same reading checkpoint at compression cursor; keep all prior requests and usage",
+  "haltSha256": "966cc6c129b345c528a63e2cada7850073ce5cb0c10af52f61514a536c7a6e13",
+  "checkpointSha256": "32c9a0100146908fea90a8fcde8eed10a6ae2ef0bae8ddc0906f2b0209d559ee",
+  "originalResponseSha256": "9a4485df083ebaca5ce2c11ef5a379f698235613f2f6647be38a6733679482ad",
+  "precedingRequests": 24,
+  "taskLimit": 50,
+  "totalLimit": 104,
+  "offlineResponseReplayPassed": true,
+  "productRegressionTests": 70,
+  "toolTests": 24
+}

@@ -1,0 +1,36 @@
+
+> whomi@0.1.11 test:backend
+> vitest run --config vitest.backend.config.ts tests/backend/insight-generation.test.ts -t known context from
+
+
+ RUN  v5.0.5 D:/University/github/whomi
+
+ ❯ tests/backend/insight-generation.test.ts (66 tests | 1 failed | 64 skipped) 25ms
+   × compaction can separate known context from an unknown note while preserving that note as unresolved 19ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/backend/insight-generation.test.ts > compaction can separate known context from an unknown note while preserving that note as unresolved
+Error: 洞察引用的原文无法验证，请重新生成。
+ ❯ invalidEvidence electron/main/insight-generation.ts:140:9
+    138|
+    139| function invalidEvidence(): never {
+    140|   throw new BoundaryError('INVALID_EVIDENCE', '洞察引用的原文无法验证，请重新生成。')
+       |         ^
+    141| }
+    142|
+ ❯ electron/main/insight-generation.ts:119:86
+ ❯ array electron/main/insight-generation.ts:166:16
+ ❯ compressedFacts electron/main/insight-generation.ts:114:17
+ ❯ compactMemory electron/main/insight-generation.ts:792:25
+ ❯ generateInsight electron/main/insight-generation.ts:818:3
+ ❯ tests/backend/insight-generation.test.ts:109:3
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 1 passed | 64 skipped (66)
+   Start at  00:23:25
+   Duration  558ms (transform 52%, import 35%, tests 9%, worker 5%)
+

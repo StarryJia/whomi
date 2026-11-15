@@ -1,0 +1,83 @@
+{
+  "methodology": "Independent agent qualitative rubric, not human acceptance or statistical accuracy; 0–5 on four domains, sum out of 20.",
+  "reports": [
+    {
+      "caseName": "shared-workload",
+      "label": "report-3da761ff",
+      "arm": "baseline",
+      "method": "adaptive",
+      "total": 14,
+      "maximum": 20,
+      "anonymousSha256": "1f8bfc51efb3beef7a6f41cba671e0b31eab570f936929316ac8d5cfc4fc9381",
+      "projectionVerified": true
+    },
+    {
+      "caseName": "shared-workload",
+      "label": "report-ed5f6233",
+      "arm": "baseline",
+      "method": "direct",
+      "total": 12,
+      "maximum": 20,
+      "anonymousSha256": "439b75e8c1e8afba12305214ecec079a3fe2a457ad5980c250575a82945f52cb",
+      "projectionVerified": true
+    },
+    {
+      "caseName": "shared-workload",
+      "label": "report-4ce609dc",
+      "arm": "current-v2",
+      "method": "adaptive",
+      "total": 15,
+      "maximum": 20,
+      "anonymousSha256": "899b971248ed975c1c89ad54075329edbea312e6cc5d08e9f6c59f33d5e6fa9a",
+      "projectionVerified": true
+    },
+    {
+      "caseName": "shared-workload",
+      "label": "report-72606602",
+      "arm": "current-v2",
+      "method": "direct",
+      "total": 18,
+      "maximum": 20,
+      "anonymousSha256": "f531f88eb1983b62782d398d94355e5ddd0a1a3fb127056a9b0eb067b77e2f85",
+      "projectionVerified": true
+    },
+    {
+      "caseName": "conditional-reschedule",
+      "label": "report-89081a29",
+      "arm": "current-v2",
+      "method": "adaptive",
+      "total": 12,
+      "maximum": 20,
+      "anonymousSha256": "e424dffc0f76ba3f34e3fbf0159e99115e6092717c447dabae5d16f6059b2829",
+      "projectionVerified": true
+    },
+    {
+      "caseName": "conditional-reschedule",
+      "label": "report-6bf52596",
+      "arm": "current-v2",
+      "method": "direct",
+      "total": 14,
+      "maximum": 20,
+      "anonymousSha256": "1b8b54202b6af619f46aef49e816c16610a838cc864f2a3d9d200eec5b6dc274",
+      "projectionVerified": true
+    }
+  ],
+  "comparisonScope": [
+    {
+      "caseName": "shared-workload",
+      "baselineOutcome": "reports-completed",
+      "currentV2Outcome": "reports-completed",
+      "fourReportComparisonAvailable": true,
+      "currentV2AbsoluteReviewAvailable": true,
+      "accuracyScoredByThisAudit": false
+    },
+    {
+      "caseName": "conditional-reschedule",
+      "baselineOutcome": "stopped-after-failure",
+      "currentV2Outcome": "reports-completed",
+      "fourReportComparisonAvailable": false,
+      "currentV2AbsoluteReviewAvailable": true,
+      "accuracyScoredByThisAudit": false
+    }
+  ]
+}

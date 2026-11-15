@@ -1,0 +1,16 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
+const root='release/conversation-insights-20261115/long-comparison-runs/memory-source-order-20261116';
+fs.mkdirSync(root,{recursive:true});
+const files=['electron/data/ai/insight-prompts.ts','electron/main/insight-checkpoint.ts','electron/main/insight-generation.ts','scripts/insight-quality.mjs','tests/backend/insight-generation.test.ts','tests/backend/insight-reading-memory.test.ts','tests/quality/insight-comparison-profile.mjs','tests/quality/insight-comparison-run.mjs','tests/quality/insight-comparison-resume.ts','tests/quality/insight-comparison.test.mjs','tests/quality/insight-comparison.ts','tests/quality/insight-quality.ts','tests/quality/insight-long-comparison-material.mjs'];
+const hash=b=>createHash('sha256').update(b).digest('hex');
+const items=files.map(file=>{const bytes=fs.readFileSync(file);const destination=path.join(root,'source',file);fs.mkdirSync(path.dirname(destination),{recursive:true});fs.writeFileSync(destination,bytes,{flag:'wx'});return{file,sha256:hash(bytes)};});
+const patch=execFileSync('git',['diff','--',...files]);
+fs.writeFileSync(path.join(root,'implementation.patch'),patch,{flag:'wx'});
+fs.writeFileSync(path.join(root,'implementation.json'),JSON.stringify({createdAt:new Date().toISOString(),baseCommit:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),precedingActualRequestsInThisRun:0,priorClosedRuns:{requests:50,inputTokens:93526,outputTokens:48670},taskCalls:50,totalRequests:104,navigationFactsVersion:2,nodeVersion:process.version,files:items,patchSha256:hash(patch)},null,2)+'\n',{flag:'wx'});
+fs.writeFileSync(path.join(root,'preregistration.md'),fs.readFileSync('docs/research/conversation-insights-source-order-20261116.md'),{flag:'wx'});
+fs.mkdirSync(path.join(root,'offline'),{recursive:true});
+for(const file of ['source-order-packing.json','source-order-migration.json','source-order-green-final.log','source-order-typecheck.log','source-order-resume-red.log','source-order-resume-green.log','source-order-resume-typecheck.log']) fs.writeFileSync(path.join(root,'offline',file),fs.readFileSync(path.join('release/conversation-insights-20261115/memory-retest',file)),{flag:'wx'});
+console.log(JSON.stringify({root,files:items.length,taskCalls:50,totalRequests:104,priorRequests:50,modelCalls:0}));

@@ -1,0 +1,105 @@
+
+> whomi@0.1.11 test:backend
+> vitest run --config vitest.backend.config.ts tests/backend/insight-generation.test.ts -t finding overlap|valid-source overlap|overlapping valid evidence|shared visible source
+
+
+ RUN  v5.0.5 D:/University/github/whomi
+
+ ❯ tests/backend/insight-generation.test.ts (58 tests | 4 failed | 53 skipped) 33ms
+   × a valid-source overlap in a reading finding receives one repair and then resolves the same candidate 15ms
+   × an unrepaired finding overlap stops after one repair without accepting the candidate update 7ms
+   × checking repairs overlapping valid evidence roles without changing its existing round limit 3ms
+   × a shared visible source cannot close two different old unknowns when only one has an answer 3ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/backend/insight-generation.test.ts > a valid-source overlap in a reading finding receives one repair and then resolves the same candidate
+Error: 洞察引用的原文无法验证，请重新生成。
+ ❯ invalidEvidence electron/main/insight-generation.ts:114:9
+    112|
+    113| function invalidEvidence(): never {
+    114|   throw new BoundaryError('INVALID_EVIDENCE', '洞察引用的原文无法验证，请重新生成。')
+       |         ^
+    115| }
+    116|
+ ❯ parseFinding electron/main/insight-generation.ts:172:72
+ ❯ electron/main/insight-generation.ts:207:48
+ ❯ array electron/main/insight-generation.ts:140:16
+ ❯ parseReading electron/main/insight-generation.ts:200:28
+ ❯ generateInsight electron/main/insight-generation.ts:636:17
+ ❯ tests/backend/insight-generation.test.ts:574:3
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  tests/backend/insight-generation.test.ts > an unrepaired finding overlap stops after one repair without accepting the candidate update
+AssertionError: expected Error: 洞察引用的原文无法验证，请重新生成。 { …(2) } to match object { code: 'INVALID_INSIGHT_OUTPUT' }
+(1 matching property omitted from actual)
+
+- Expected
++ Received
+
+- {
+-   "code": "INVALID_INSIGHT_OUTPUT",
++ BoundaryError {
++   "code": "INVALID_EVIDENCE",
+  }
+
+ ❯ tests/backend/insight-generation.test.ts:582:45
+    580| test('an unrepaired finding overlap stops after one repair without acc…
+    581|   const { input, deps, state, attempts } = readingFindingFixture(() =>…
+    582|   await expect(generateInsight(input, deps)).rejects.toMatchObject({ c…
+       |                                             ^
+    583|   expect(attempts()).toBe(2)
+    584|   expect(state.checkpoint?.checks[0]).toMatchObject({ state: 'pending'…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  tests/backend/insight-generation.test.ts > checking repairs overlapping valid evidence roles without changing its existing round limit
+Error: 洞察引用的原文无法验证，请重新生成。
+ ❯ invalidEvidence electron/main/insight-generation.ts:114:9
+    112|
+    113| function invalidEvidence(): never {
+    114|   throw new BoundaryError('INVALID_EVIDENCE', '洞察引用的原文无法验证，请重新生成。')
+       |         ^
+    115| }
+    116|
+ ❯ parseFinding electron/main/insight-generation.ts:172:72
+ ❯ parseChecking electron/main/insight-generation.ts:263:39
+ ❯ generateInsight electron/main/insight-generation.ts:827:18
+ ❯ tests/backend/insight-generation.test.ts:606:3
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  tests/backend/insight-generation.test.ts > a shared visible source cannot close two different old unknowns when only one has an answer
+AssertionError: expected [] to deep equally contain { Object (text, sourceIds) }
+
+- Expected:
+{
+  "sourceIds": [
+    "1",
+  ],
+  "text": "台灯是否已取回？",
+}
+
++ Received:
+[]
+
+ ❯ Object.run tests/backend/insight-generation.test.ts:622:33
+    620|       return result({ ...noObservations, observations: [{ text: '本人已经吃…
+    621|     }
+    622|     expect(payload.openThreads).toContainEqual(lamp)
+       |                                 ^
+    623|     return result(noConclusion)
+    624|   })
+ ❯ call electron/main/insight-generation.ts:531:27
+ ❯ generateInsight electron/main/insight-generation.ts:889:22
+ ❯ tests/backend/insight-generation.test.ts:629:3
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 1 passed | 53 skipped (58)
+   Start at  23:32:34
+   Duration  396ms (transform 50%, import 29%, tests 17%, worker 4%)
+
