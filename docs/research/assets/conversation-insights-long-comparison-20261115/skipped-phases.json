@@ -1,0 +1,8 @@
+{
+  "phases": [
+    "shared-workload-direct-rich",
+    "conditional-reschedule-direct-rich"
+  ],
+  "actualRequests": 0,
+  "reason": "两组均无实际派发的核查原文，未满足预注册的带摘录对照运行条件。"
+}

@@ -1,0 +1,97 @@
+{
+  "format": "conversation-insights-v1",
+  "aboutYou": [
+    {
+      "content": [
+        {
+          "text": "在这次聚餐筹备中，你把同意将300元订金转为店内余额理解为也授权了改期，随后取消旧餐厅座位、预订新店并修改海报。ta否认曾授权改期后，你承认自己没有再次核实。这里需要区分：你确实推进了具体安排，但对订金处理方式的接受，并不等于改期已经得到双方确认。",
+          "citationId": "1"
+        },
+        {
+          "text": "你们也保留了一些未定事项的边界：群里只说明仍在协调，印刷费另行记账，海报的制作或修改不构成日期、地点已经定案。",
+          "citationId": "1"
+        }
+      ]
+    }
+  ],
+  "relationship": [
+    {
+      "content": [
+        {
+          "text": "这次分歧的核心是双方对同意范围的理解不同。聚餐原约10月31日，改到11月1日原本还需满足林舟确认出席、300元订金原路退回的条件；后来餐厅只称已转为余额，未见核验，林舟的出席也没有确定。因此，订金出现另一种处理方案，不能视为原先的改期条件已经全部满足。",
+          "citationId": "1"
+        },
+        {
+          "text": "截至10月28日，沟通分歧已经伴随实际选择空间的收窄：旧包间已被订走，大厅只保留到29日下午，新店取消期限却是29日中午，而林舟排班要到当晚才确定。你已经采取行动，ta则否认这些行动获得了改期授权；双方尚未形成共同确认的最终日期和地点，且需要在关键信息齐全之前面对取消期限。",
+          "citationId": "1"
+        }
+      ]
+    }
+  ],
+  "citations": [
+    {
+      "id": "1",
+      "conversationId": "1",
+      "fragments": [
+        {
+          "sources": [
+            {
+              "messageId": "1",
+              "revision": "f0c4d8c8dd69b8e6b0df65388a1195766eb24bcfd0f29c3e751356d31a7d78c2"
+            },
+            {
+              "messageId": "25",
+              "revision": "f6ab8046ea80019ba5024ec8a91fc652ea5597e27215b2c52f25a74477ec242b"
+            },
+            {
+              "messageId": "28",
+              "revision": "f72bb2b8a155e29a6fb075a30427db16800c4f8103f023a59b23cef36775b981"
+            },
+            {
+              "messageId": "63",
+              "revision": "baf50cd8b12e6cce0fa3a590f47a8fe2f42430f30bd05ef7fb071985d7286f40"
+            },
+            {
+              "messageId": "77",
+              "revision": "de35cc619019c71b94f4143edd5c5fc2a0b02c040238b355ca1ad01b5b5eb303"
+            },
+            {
+              "messageId": "87",
+              "revision": "54851169b731a34775d3c904849c03b0749a0636313586ae409e54de7179dac8"
+            },
+            {
+              "messageId": "98",
+              "revision": "3ce91d9ac1d7324e6aac0910c88a07b38f6d68de8633a7a7d9533bb0971411b0"
+            },
+            {
+              "messageId": "100",
+              "revision": "80c815caf5a5845608e936e235f026f304d732d18cc30ecdc72786cdadc422b5"
+            },
+            {
+              "messageId": "102",
+              "revision": "df9b2c616e1f20955813ebf88e37fc3de184c648bd55a5c39f41da79f8e30d8e"
+            },
+            {
+              "messageId": "110",
+              "revision": "82788b6b2adaf581d5237b2030d8c8e7ccb3118a62d92389abd594cc74bfa66f"
+            },
+            {
+              "messageId": "114",
+              "revision": "2eff78f83a33fe34c580d7b2e5dd05b8167af120ba54b1960cc913cefa26083d"
+            },
+            {
+              "messageId": "119",
+              "revision": "6dd1de3d0322571575f82113d3dab8f25733443f608e0ade3d9531a3b54ca81e"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "未提供授权沟通和群通知的原文，无法进一步核对双方当时的具体措辞、同意范围及通知先后。",
+    "餐厅所称转入余额尚未见核验；300元能否原路退回、余额的有效期和使用限制也未获最终确认。",
+    "未见10月29日之后的处理结果，无法确认林舟能否出席、两家餐厅最终如何处理，以及聚餐最终的日期和地点。"
+  ],
+  "judgments": []
+}

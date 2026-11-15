@@ -1,0 +1,17 @@
+{
+  "state": "completed",
+  "calls": 18,
+  "httpRequests": 18,
+  "elapsedMs": 325427,
+  "inputCharged": 34334,
+  "outputCharged": 15374,
+  "trialRequestsAfterPhase": 39,
+  "accounting": {
+    "incremental": {
+      "httpRequests": 18,
+      "elapsedMs": 325427,
+      "inputCharged": 34334,
+      "outputCharged": 15374
+    }
+  }
+}

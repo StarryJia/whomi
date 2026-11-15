@@ -12,11 +12,17 @@ import { computeInsightInputBudget, countInsightInput, resolveInsightCapacity } 
 import { generateInsight } from '../../electron/main/insight-generation'
 import { remainingInsightBudget, type InsightCheckpoint } from '../../electron/main/insight-checkpoint'
 import { buildInsightPrompt, defaultInsightPrompts } from '../../electron/data/ai/insight-prompts'
-import { comparisonOutputLimit, comparisonPackingLimit, comparisonPhases, insightComparisonCases, trialRequestLimit } from './insight-comparison-material.mjs'
+import { comparisonOutputLimit, trialRequestLimit } from './insight-comparison-material.mjs'
+import { comparisonProfile, shortComparisonLimits as verificationLimits } from './insight-comparison-profile.mjs'
 import {
-  assertTrialNotHalted, comparisonDigest, comparisonDirectEvidence, comparisonDirectPayload, comparisonWritingBase,
-  comparisonWritingPrompt, createTrialOutboundGuard, recordComparisonHalt, validateComparisonWriting, type TrialOutboundAttempt,
+  assertTrialNotHalted, comparisonDigest, comparisonDirectEvidence, comparisonDirectPayload, comparisonReadEvidence,
+  comparisonWritingBase, comparisonWritingPrompt, createTrialOutboundGuard, hasDispatchedCheckingOriginals,
+  longComparisonWritingPrompt, recordComparisonHalt, validateComparisonWriting, type TrialOutboundAttempt,
 } from './insight-comparison'
+import {
+  archivedReadingHaltName, assertReadingRecoverySettled, sumComparisonCharges, validateReadingResume,
+  type ComparisonCharge, type ComparisonPhaseResult,
+} from './insight-comparison-resume'
 import { insightQualityCases } from './insight-material.mjs'
 import { insightVerificationCases } from './insight-verification-material.mjs'
 
@@ -24,7 +30,6 @@ const selectedProvider = process.env.WHOMI_QUALITY_PROVIDER_ID
 const selectedModel = process.env.WHOMI_QUALITY_MODEL_ID
 const authorizedOrigin = 'https://api.openai.com'
 const originalLimits = { maxChecks: 1, maxRoundsPerCheck: 3, maxCalls: 6, maxInputTokens: 80_000, maxOutputTokens: 6_000, maxElapsedMs: 300_000 }
-const verificationLimits = { maxChecks: 2, maxRoundsPerCheck: 4, maxCalls: 8, maxInputTokens: 120_000, maxOutputTokens: 12_000, maxElapsedMs: 300_000 }
 const distantReadingCap = 6_000
 const scratch = resolve(process.env.WHOMI_QUALITY_SCRATCH!)
 const output = resolve(process.env.WHOMI_QUALITY_OUTPUT!)
@@ -96,12 +101,17 @@ function totalInput(usage: AiUsage): number | undefined {
 
 async function main() {
   const args = process.argv.slice(2)
-  if (args[0] !== '--comparison') return runTrial(args)
+  const profile = comparisonProfile(args[0])
+  if (!profile) return runTrial(args)
   mkdirSync(output, { recursive: true })
   const lock = join(output, '.active-comparison')
   try { mkdirSync(lock) } catch { return fault('COMPARISON_LOCK_UNAVAILABLE') }
   try {
     assertTrialNotHalted(output)
+    if (args[0] === '--long-comparison') {
+      const resumeCase = args[2] === 'reading' && args[3] === '--resume-reading' ? args[1] : undefined
+      assertReadingRecoverySettled(output, Object.keys(profile.cases), resumeCase)
+    }
     await runTrial(args)
   } finally {
     rmdirSync(lock)
@@ -111,14 +121,23 @@ async function main() {
 async function runTrial(args: string[]) {
   const { model, apiKey } = selectModel()
   const verification = args[0] === '--verification'
-  const comparison = args[0] === '--comparison'
+  const profile = comparisonProfile(args[0])
+  const comparison = !!profile
+  const longComparison = args[0] === '--long-comparison'
+  const totalRequestLimit = profile?.requestLimit ?? trialRequestLimit
+  const perTaskLimits = profile?.perTaskLimits ?? verificationLimits
+  const comparisonRequestOutputLimit = profile?.outputLimit ?? comparisonOutputLimit
+  const writingPrompt = longComparison ? longComparisonWritingPrompt : comparisonWritingPrompt
   const detailedArtifacts = verification || comparison
   const [caseName, variant, runOption] = detailedArtifacts ? args.slice(1) : args
+  const resumeReading = longComparison && variant === 'reading' && runOption === '--resume-reading'
   const probe = verification && variant?.startsWith('probe-')
-  const singleComparison = comparison && ['direct', 'full'].includes(variant)
+  const directComparison = comparison && ['direct', 'direct-rich'].includes(variant)
+  const richComparison = longComparison && variant === 'direct-rich'
+  const singleComparison = directComparison || comparison && variant === 'full'
   const limits = detailedArtifacts
-    ? { ...verificationLimits, ...(probe ? { maxCalls: 1 } : {}),
-      ...(singleComparison ? { maxCalls: 1, maxOutputTokens: comparisonOutputLimit } : {}) }
+    ? { ...perTaskLimits, ...(probe ? { maxCalls: 1 } : {}),
+      ...(singleComparison ? { maxCalls: 1, maxOutputTokens: comparisonRequestOutputLimit } : {}) }
     : originalLimits
   const originalReading = verification
     ? readFileSync(join(process.cwd(), 'tests/quality/insight-verification-reading-original.txt'), 'utf8') : ''
@@ -138,10 +157,9 @@ async function runTrial(args: string[]) {
     return
   }
   const verificationSample = verification ? insightVerificationCases[caseName as keyof typeof insightVerificationCases] : undefined
-  const sample = comparison ? insightComparisonCases[caseName as keyof typeof insightComparisonCases]
+  const sample = profile ? Object.entries(profile.cases).find(([name]) => name === caseName)?.[1]
     : verification ? verificationSample : insightQualityCases[caseName as keyof typeof insightQualityCases]
-  const variants = comparison ? comparisonPhases
-    : verification ? ['probe-original', 'probe-current', 'flow-original', 'flow-current'] : ['baseline', 'insight']
+  const variants = profile?.phases ?? (verification ? ['probe-original', 'probe-current', 'flow-original', 'flow-current'] : ['baseline', 'insight'])
   if (!sample || !variants.includes(variant)) return fault('UNAPPROVED_TRIAL_TASK')
   if (verification && runOption && (!probe || !['--run=1', '--run=2'].includes(runOption))) return fault('UNAPPROVED_TRIAL_TASK')
   const runNumber = verification && runOption === '--run=2' ? 2 : 1
@@ -153,13 +171,13 @@ async function runTrial(args: string[]) {
   const messages: InsightSourceMessage[] = sample.messages
   const excluded: InsightSourceMessage = sample.excluded
   const configuredCapacity = comparison ? resolveInsightCapacity(model) : undefined
-  if (configuredCapacity && configuredCapacity.maxOutputTokens < comparisonOutputLimit) return fault('INVALID_COMPARISON_OUTPUT_LIMIT')
-  const inputLimit = comparison ? variant === 'full' ? undefined : Math.min(comparisonPackingLimit, model.maxInputTokens ?? Infinity)
+  if (configuredCapacity && configuredCapacity.maxOutputTokens < comparisonRequestOutputLimit) return fault('INVALID_COMPARISON_OUTPUT_LIMIT')
+  const inputLimit = profile ? variant === 'full' ? undefined : Math.min(profile.packingLimit, model.maxInputTokens ?? Infinity)
     : verification ? verificationSample?.inputLimit : caseName === 'distant-reply' && variant === 'insight' ? distantReadingCap : undefined
   if (inputLimit !== undefined && (!Number.isSafeInteger(inputLimit) || inputLimit < 1)) return fault('INVALID_TRIAL_INPUT_LIMIT')
   const byId = new Map(messages.map(message => [message.id, message]))
   const refs = new Map<string, InsightSourceRef>(messages.map(({ id, revision }) => [id, { messageId: id, revision }]))
-  const taskId = comparison ? caseName === 'shared-planning' ? '101' : '102'
+  const taskId = profile ? String(profile.taskIdStart + Object.keys(profile.cases).indexOf(caseName))
     : caseName === 'later-counterexample' ? (variant === 'baseline' ? '1' : '2') : (variant === 'baseline' ? '3' : '4')
   let snapshot: InsightSnapshot = {
     taskId, scope: sample.scope as InsightSnapshot['scope'], timezone: sample.scope.timezone,
@@ -172,7 +190,7 @@ async function runTrial(args: string[]) {
     .filter(file => existsSync(file))
     .flatMap(file => readFileSync(file, 'utf8').split('\n').filter(Boolean))
     .filter(line => JSON.parse(line).kind === 'dispatched').length
-  if (comparison && previousDispatched >= trialRequestLimit) {
+  if (comparison && previousDispatched >= totalRequestLimit) {
     recordComparisonHalt(output, 'TRIAL_CALL_LIMIT', JSON.stringify({
       caseName, variant, state: 'failed', error: 'TRIAL_CALL_LIMIT', httpRequests: 0, trialRequestsAfterPhase: previousDispatched,
     }))
@@ -184,36 +202,77 @@ async function runTrial(args: string[]) {
     if (!existsSync(file)) return fault('COMPARISON_ARTIFACT_MISSING')
     return JSON.parse(readFileSync(file, 'utf8')) as T
   }
-  type Charge = { httpRequests: number; inputCharged: number; outputCharged: number; elapsedMs: number }
   type WritingRecord = { call: number; sharedBaseHash: string; readingCheckpointHash: string; repair?: boolean; outputLimit?: number }
   type CapturedWriting = { prompt: string; stage: string; systemPrompt: string; outputLimit: number }
   let frozenCheckpoint: InsightCheckpoint | undefined
-  let sharedReading: Charge | undefined
-  if (comparison && ['adaptive', 'direct'].includes(variant)) {
-    const reading = load<Charge & { state: string }>('reading', 'result.json')
-    const frozenSnapshot = load<InsightSnapshot>('reading', 'snapshot.json')
-    const checkpoint = load<InsightCheckpoint>('reading', 'checkpoint.json')
-    if (reading.state !== 'completed' || checkpoint.stage !== 'checking' || checkpoint.modelId !== comparisonModelId
-      || checkpoint.modelVersion !== model.version || checkpoint.pendingRead || !checkpoint.navigation
-      || checkpoint.attempts.some(attempt => attempt.stage !== 'reading' || attempt.status === 'pending')
-      || JSON.stringify(checkpoint.coveredMessageIds) !== JSON.stringify(messages.map(message => message.id))
+  let priorReading: ComparisonCharge | undefined
+  let sharedReading: ComparisonCharge | undefined
+  let resumeCheckpointHash: string | undefined
+  if (resumeReading || comparison && (variant === 'adaptive' || directComparison)) {
+    const phase = !resumeReading && longComparison && existsSync(artifact('reading-resume', 'result.json')) ? 'reading-resume' : 'reading'
+    const reading = load<ComparisonPhaseResult>(phase, 'result.json')
+    const frozenSnapshot = load<InsightSnapshot>(phase, 'snapshot.json')
+    const checkpoint = load<InsightCheckpoint>(phase, 'checkpoint.json')
+    const sourceIds = messages.map(message => message.id)
+    if (checkpoint.modelId !== comparisonModelId || checkpoint.modelVersion !== model.version
       || comparisonDigest({ ...snapshot, createdAtMs: frozenSnapshot.createdAtMs }) !== comparisonDigest(frozenSnapshot)) {
       return fault('INVALID_COMPARISON_CHECKPOINT')
     }
+    const { httpRequests, inputCharged, outputCharged, elapsedMs } = reading
+    const chargedPhase = { httpRequests, inputCharged, outputCharged, elapsedMs }
+    if (resumeReading) {
+      const originalInput = load<Record<string, unknown>>('reading', 'input.json')
+      const expectedInput = {
+        caseName, variant, experiment: profile!.experiment, scope: snapshot.scope, messages, excluded, limits, model: model.model,
+        protocol: model.protocol, configuredCapacity, syntheticPackingInputEstimateLimit: inputLimit,
+        perRequestOutputLimit: comparisonRequestOutputLimit, totalRequestLimit,
+      }
+      if (checkpoint.version !== 1 || checkpoint.taskId !== snapshot.taskId
+        || comparisonDigest(checkpoint.prompts) !== comparisonDigest(defaultInsightPrompts)
+        || Object.entries(expectedInput).some(([key, expected]) => JSON.stringify(originalInput[key]) !== JSON.stringify(expected))) {
+        return fault('INVALID_COMPARISON_READING_RESUME')
+      }
+      validateReadingResume({
+        caseName, originalResult: reading, archivedHalt: load('reading', archivedReadingHaltName), checkpoint,
+        expectedLimits: perTaskLimits, sourceIds, ledger: readFileSync(artifact('reading', 'attempts.jsonl'), 'utf8'),
+      })
+      priorReading = chargedPhase
+      resumeCheckpointHash = comparisonDigest(checkpoint)
+    } else {
+      if (reading.state !== 'completed' || checkpoint.stage !== 'checking' || checkpoint.pendingRead || !checkpoint.navigation
+        || checkpoint.attempts.some(attempt => attempt.stage !== 'reading' || attempt.status === 'pending')
+        || JSON.stringify(checkpoint.coveredMessageIds) !== JSON.stringify(sourceIds)) return fault('INVALID_COMPARISON_CHECKPOINT')
+      sharedReading = phase === 'reading-resume'
+        ? sumComparisonCharges(load<ComparisonPhaseResult>('reading', 'result.json'), chargedPhase) : chargedPhase
+    }
     snapshot = frozenSnapshot
     frozenCheckpoint = { ...checkpoint, modelId: model.id }
-    const { httpRequests, inputCharged, outputCharged, elapsedMs } = reading
-    sharedReading = { httpRequests, inputCharged, outputCharged, elapsedMs }
   }
   let capturedAdaptive: { record: WritingRecord; request: CapturedWriting } | undefined
-  if (comparison && variant === 'direct') {
+  let readingExcerpts: ReturnType<typeof comparisonReadEvidence> | undefined
+  if (directComparison) {
     const record = load<WritingRecord>('adaptive', 'writing-base.json')
-    if (!Number.isSafeInteger(record.call) || record.call < 1 || record.call > verificationLimits.maxCalls) {
+    if (!Number.isSafeInteger(record.call) || record.call < 1 || record.call > perTaskLimits.maxCalls) {
       return fault('INVALID_COMPARISON_WRITING_BASE')
     }
-    capturedAdaptive = { record, request: load<CapturedWriting>('adaptive', 'request-' + String(record.call).padStart(2, '0') + '.json') }
+    const loadRequest = (call: number) => load<CapturedWriting>('adaptive', 'request-' + String(call).padStart(2, '0') + '.json')
+    capturedAdaptive = { record, request: loadRequest(record.call) }
+    if (richComparison) {
+      if (!hasDispatchedCheckingOriginals(readFileSync(artifact('adaptive', 'attempts.jsonl'), 'utf8'), loadRequest)) {
+        return fault('COMPARISON_NO_CHECKING_ORIGINALS')
+      }
+      try {
+        readingExcerpts = comparisonReadEvidence(frozenCheckpoint!.checks, byId)
+      } catch (error) {
+        const code = errorCode(error)
+        recordComparisonHalt(output, code, JSON.stringify({ caseName, variant, state: 'failed', error: code, httpRequests: 0 }))
+        throw error
+      }
+      if (!readingExcerpts.length) return fault('COMPARISON_NO_READING_EXCERPTS')
+    }
   }
-  const folder = join(output, caseName + '-' + variant + (regression ? runOption.slice(1) : '') + (runNumber === 2 ? '-run2' : ''))
+  const folder = join(output, caseName + '-' + variant + (resumeReading ? '-resume' : '')
+    + (regression ? runOption.slice(1) : '') + (runNumber === 2 ? '-run2' : ''))
   mkdirSync(folder)
   const prefix = (name: string) => join(folder, name)
   let calls = 0, sent = 0, inputCharged = 0, outputCharged = 0
@@ -233,12 +292,13 @@ async function runTrial(args: string[]) {
   json('input.json', { caseName, variant, regression, scope: snapshot.scope, messages, excluded, limits, model: model.model, protocol: model.protocol,
     ...(inputLimit ? { perRequestEstimateCeiling: inputLimit } : {}),
     ...(verification ? { experiment: 'autonomous-verification', runNumber, totalRequestLimit: 24, precedingRequests: previousDispatched } : {}),
-    ...(comparison ? { experiment: 'candidate-comparison', totalRequestLimit: trialRequestLimit, precedingRequests: previousDispatched,
-      configuredCapacity, syntheticPackingInputEstimateLimit: inputLimit, perRequestOutputLimit: comparisonOutputLimit } : {}) })
+    ...(profile ? { experiment: profile.experiment, totalRequestLimit, precedingRequests: previousDispatched,
+      configuredCapacity, syntheticPackingInputEstimateLimit: inputLimit, perRequestOutputLimit: comparisonRequestOutputLimit } : {}),
+    ...(resumeCheckpointHash ? { recovery: { sourcePhase: caseName + '-reading', checkpointHash: resumeCheckpointHash } } : {}) })
 
   const nativeFetch = globalThis.fetch.bind(globalThis)
   const outboundGuard = createTrialOutboundGuard({
-    getActive: () => active, hasDispatchBudget: () => sent < limits.maxCalls && previousDispatched + sent < trialRequestLimit,
+    getActive: () => active, hasDispatchBudget: () => sent < limits.maxCalls && previousDispatched + sent < totalRequestLimit,
     authorizedOrigin, modelName: model.model, excludedText: excluded.text,
     dispatch: async (request, outbound, cap) => {
       log({ kind: 'dispatched', call: outbound.call, wireOutputLimit: cap, at: Date.now() })
@@ -261,6 +321,10 @@ async function runTrial(args: string[]) {
   function assertSources(request: RuntimeInput): string {
     if (request.prompt.includes(excluded.text)) return fault('OUTSIDE_EVIDENCE')
     const payload = JSON.parse(request.prompt)
+    if (longComparison && (payload.readEvidence !== undefined || richComparison)
+      && (!richComparison || JSON.stringify(payload.readEvidence) !== JSON.stringify(readingExcerpts))) {
+      return fault('OUTSIDE_EVIDENCE')
+    }
     for (const field of ['messages', 'relatedMessages', 'evidence', 'earlierEvidence']) {
       for (const part of payload[field] ?? []) {
         const original = byId.get(part.id)
@@ -276,13 +340,14 @@ async function runTrial(args: string[]) {
 
   function effectiveRequest(request: RuntimeInput): RuntimeInput {
     const payload = JSON.parse(request.prompt)
-    if (comparison && payload.stage === 'writing') return { ...request, systemPrompt: comparisonWritingPrompt }
+    if (comparison && payload.stage === 'writing') return { ...request, systemPrompt: writingPrompt }
     return verification && variant.endsWith('-original') && payload.stage === 'reading' && !payload.operation
       ? { ...request, systemPrompt: originalReading } : request
   }
 
   let writingRecord: WritingRecord | undefined
   let directWireOutputLimit: number | undefined
+  let writingCapacity: { inputEstimate: number; inputBudget: number } | undefined
   let latestWritingResponse: string | undefined
   let latestCheckpoint: InsightCheckpoint | undefined
   const sharedReadingComplete = new Error('SHARED_READING_COMPLETE')
@@ -294,9 +359,10 @@ async function runTrial(args: string[]) {
     if (comparison && variant === 'reading' && JSON.parse(request.prompt).stage !== 'reading') return fault('COMPARISON_READING_BOUNDARY')
     if (comparison && (redact(request.prompt) !== request.prompt || redact(request.systemPrompt) !== request.systemPrompt)) return fault('UNSAFE_RESPONSE')
     const stage = assertSources(request)
+    if (longComparison && stage === 'writing' && JSON.parse(request.prompt).repair === true) return fault('COMPARISON_WRITING_REPAIR_DISABLED')
     const tokens = (await countInsightInput(request, request.model)).tokens
     const reservedOutput = request.outputTokenLimit
-    if (calls >= limits.maxCalls || !reservedOutput || comparison && reservedOutput > comparisonOutputLimit
+    if (calls >= limits.maxCalls || !reservedOutput || comparison && reservedOutput > comparisonRequestOutputLimit
       || tokens + inputCharged > limits.maxInputTokens
       || reservedOutput + outputCharged > limits.maxOutputTokens) return fault('TRIAL_BUDGET_LIMIT')
     const call = ++calls
@@ -334,7 +400,7 @@ async function runTrial(args: string[]) {
           repair: JSON.parse(request.prompt).repair === true, outputLimit: attempt.wireOutputLimit }
         latestWritingResponse = returnedText
       }
-      if (comparison && variant === 'direct' && stage === 'writing') directWireOutputLimit = attempt.wireOutputLimit
+      if (directComparison && stage === 'writing') directWireOutputLimit = attempt.wireOutputLimit
       if (inputCharged > limits.maxInputTokens || outputCharged > limits.maxOutputTokens) return fault('TRIAL_BUDGET_LIMIT')
     }
   }
@@ -342,14 +408,14 @@ async function runTrial(args: string[]) {
   async function runSingleComparison(): Promise<InsightReport> {
     let prompt
     let allowedRefs = refs
-    let budget = verificationLimits
+    let budget = perTaskLimits
     let requestSignal = signal
-    if (variant === 'direct') {
+    if (directComparison) {
       const { record, request: captured } = capturedAdaptive!
       const base = comparisonWritingBase(captured.prompt)
-      const payload = comparisonDirectPayload(base, frozenCheckpoint!.checks)
+      const payload = comparisonDirectPayload(base, frozenCheckpoint!.checks, readingExcerpts)
       if (record.readingCheckpointHash !== comparisonDigest(storedCheckpoint(frozenCheckpoint!))
-        || captured.stage !== 'writing' || captured.systemPrompt !== comparisonWritingPrompt || base.timezone !== snapshot.timezone
+        || captured.stage !== 'writing' || captured.systemPrompt !== writingPrompt || base.timezone !== snapshot.timezone
         || comparisonDigest(base) !== record.sharedBaseHash) return fault('INVALID_COMPARISON_WRITING_BASE')
       prompt = JSON.stringify(payload)
       if (comparisonDigest(comparisonWritingBase(prompt)) !== record.sharedBaseHash) return fault('INVALID_COMPARISON_WRITING_BASE')
@@ -359,22 +425,23 @@ async function runTrial(args: string[]) {
       if ([...allowedIds].some(id => !refs.has(id))) return fault('OUTSIDE_EVIDENCE')
       allowedRefs = new Map([...refs].filter(([id]) => allowedIds.has(id)))
       const remaining = remainingInsightBudget(frozenCheckpoint!)
-      if (remaining.calls < 1 || remaining.outputTokens < comparisonOutputLimit || remaining.elapsedMs < 1) return fault('TRIAL_BUDGET_LIMIT')
-      budget = { ...verificationLimits, maxInputTokens: remaining.inputTokens }
+      if (remaining.calls < 1 || remaining.outputTokens < comparisonRequestOutputLimit || remaining.elapsedMs < 1) return fault('TRIAL_BUDGET_LIMIT')
+      budget = { ...perTaskLimits, maxInputTokens: remaining.inputTokens }
       requestSignal = AbortSignal.any([signal, AbortSignal.timeout(Math.floor(remaining.elapsedMs))])
     } else {
       prompt = JSON.stringify({ stage: 'writing', timezone: snapshot.timezone, messages })
       event({ kind: 'source-read', stage: 'full', ids: messages.map(message => message.id) })
     }
     const request: RuntimeInput = {
-      key: 'comparison-' + taskId + '-' + variant, model: { ...model, maxTokens: comparisonOutputLimit },
-      outputTokenLimit: comparisonOutputLimit, systemPrompt: comparisonWritingPrompt, prompt, history: [],
+      key: 'comparison-' + taskId + '-' + variant, model: { ...model, maxTokens: comparisonRequestOutputLimit },
+      outputTokenLimit: comparisonRequestOutputLimit, systemPrompt: writingPrompt, prompt, history: [],
     }
     const capacity = configuredCapacity!
     const inputBudget = computeInsightInputBudget({
-      ...capacity, maxInputTokens: inputLimit ?? capacity.maxInputTokens, reservedOutput: comparisonOutputLimit, occupiedInput: 0,
+      ...capacity, maxInputTokens: inputLimit ?? capacity.maxInputTokens, reservedOutput: comparisonRequestOutputLimit, occupiedInput: 0,
     })
     const inputEstimate = (await countInsightInput(request, request.model)).tokens
+    if (longComparison) writingCapacity = { inputEstimate, inputBudget }
     if (inputEstimate > inputBudget) return fault('CONTEXT_TOO_LARGE')
     if (inputEstimate > budget.maxInputTokens) return fault('TRIAL_BUDGET_LIMIT')
     requestSignal.throwIfAborted()
@@ -386,31 +453,30 @@ async function runTrial(args: string[]) {
     return result
   }
 
-  function comparisonAccounting(incremental: Charge) {
+  function comparisonAccounting(incremental: ComparisonCharge) {
     if (!comparison) return {}
     const pairWarnings = []
     if (writingRecord?.repair) pairWarnings.push('adaptive-writing-repair')
-    if (writingRecord?.outputLimit !== undefined && writingRecord.outputLimit < comparisonOutputLimit) pairWarnings.push('adaptive-output-limit')
-    if (directWireOutputLimit !== undefined && directWireOutputLimit < comparisonOutputLimit) pairWarnings.push('direct-output-limit')
+    if (writingRecord?.outputLimit !== undefined && writingRecord.outputLimit < comparisonRequestOutputLimit) pairWarnings.push('adaptive-output-limit')
+    if (directWireOutputLimit !== undefined && directWireOutputLimit < comparisonRequestOutputLimit) pairWarnings.push('direct-output-limit')
     return {
       trialRequestsAfterPhase: previousDispatched + sent,
       accounting: {
         incremental,
+        ...(priorReading ? { priorReading, combinedReading: sumComparisonCharges(priorReading, incremental) } : {}),
         ...(sharedReading ? {
           sharedReading,
-          hypotheticalArmTotal: {
-            httpRequests: sharedReading.httpRequests + incremental.httpRequests,
-            inputCharged: sharedReading.inputCharged + incremental.inputCharged,
-            outputCharged: sharedReading.outputCharged + incremental.outputCharged,
-            elapsedMs: sharedReading.elapsedMs + incremental.elapsedMs,
-          },
+          hypotheticalArmTotal: sumComparisonCharges(sharedReading, incremental),
         } : {}),
       },
+      ...(resumeCheckpointHash ? { resumedFrom: caseName + '-reading', resumeCheckpointHash } : {}),
       ...(writingRecord ? {
         sharedBaseHash: writingRecord.sharedBaseHash, pairWarnings,
         adaptiveWriting: { repair: writingRecord.repair, outputLimit: writingRecord.outputLimit },
         ...(directWireOutputLimit !== undefined ? { directOutputLimit: directWireOutputLimit } : {}),
       } : {}),
+      ...(readingExcerpts ? { readingExcerptCount: readingExcerpts.length } : {}),
+      ...(writingCapacity ? { writingCapacity } : {}),
     }
   }
 
@@ -447,7 +513,7 @@ async function runTrial(args: string[]) {
       report = baselineReport(response.text, refs, '1')
     } else {
       const packedModel = { ...model, ...(inputLimit ? { maxInputTokens: inputLimit } : {}),
-        ...(comparison ? { maxTokens: comparisonOutputLimit } : {}) }
+        ...(comparison ? { maxTokens: comparisonRequestOutputLimit } : {}) }
       let lastState = ''
       let savedStage = frozenCheckpoint ? 'snapshot-load' : 'initial'
       try {
@@ -458,7 +524,7 @@ async function runTrial(args: string[]) {
             countInsightInput(effectiveRequest(request), currentModel) } : {}),
           read: async ids => {
             if (detailedArtifacts) event({ kind: 'source-read', stage: savedStage, ids })
-            if (savedStage === 'snapshot-load') savedStage = 'checking'
+            if (savedStage === 'snapshot-load') savedStage = resumeReading ? 'reading' : 'checking'
             return ids.map(id => byId.get(id) ?? fault('OUTSIDE_EVIDENCE'))
           },
           saveCheckpoint: async checkpoint => {

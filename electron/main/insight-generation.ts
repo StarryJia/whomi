@@ -141,9 +141,14 @@ function parseFinding(body: Record<string, unknown>, evidence: ReadonlySet<strin
   }
 }
 
-function parseReading(response: RuntimeResult, originalEvidence: readonly InsightSourcePart[], knownCandidates: readonly VisibleCandidate[]): ReadResult {
+function parseReading(
+  response: RuntimeResult, originalEvidence: readonly InsightSourcePart[], knownCandidates: readonly VisibleCandidate[],
+  openThreads: readonly InsightNote[],
+): ReadResult {
   const body = outputObject(response)
   const rawIds = new Set(originalEvidence.map(part => part.id))
+  // 关闭已显示的旧事项不要求重复提供原文，也不授予新增事实的引用资格。
+  const resolvableThreadIds = new Set([...rawIds, ...openThreads.flatMap(note => note.sourceIds)])
   const candidateIds = new Set(knownCandidates.map(candidate => candidate.id))
   const updateEvidence = new Set([...rawIds, ...knownCandidates.flatMap(candidate => candidate.evidenceNotes.map(note => note.sourceId))])
   const parseNote = (value: unknown) => {
@@ -177,7 +182,7 @@ function parseReading(response: RuntimeResult, originalEvidence: readonly Insigh
         evidenceNotes: parseEvidenceNotes(candidate.evidenceNotes ?? [], originalEvidence),
       }
     }),
-    resolvedThreadSourceIds: body.resolvedThreadSourceIds === undefined ? [] : sourceIds(body.resolvedThreadSourceIds, rawIds),
+    resolvedThreadSourceIds: body.resolvedThreadSourceIds === undefined ? [] : sourceIds(body.resolvedThreadSourceIds, resolvableThreadIds),
     candidateUpdates,
   }
 }
@@ -576,7 +581,7 @@ export async function generateInsight(input: InsightGenerationInput, deps: Insig
     }
     let reading: ReadResult
     try {
-      reading = parseReading(await call('reading', payload), [...payload.messages, ...payload.relatedMessages], payload.knownCandidates)
+      reading = parseReading(await call('reading', payload), [...payload.messages, ...payload.relatedMessages], payload.knownCandidates, payload.openThreads)
     } catch (error) {
       if (codeOf(error) === 'MODEL_CONTEXT_LIMIT' && layout.depth < maxShrinkDepth) {
         const to = shrinkInsightSources(messages, layout.from, layout.to)
@@ -599,8 +604,11 @@ export async function generateInsight(input: InsightGenerationInput, deps: Insig
     }
     state.observations = appendNotes(state.observations, reading.observations)
     const resolved = new Set(reading.resolvedThreadSourceIds)
+    const visibleThreads = new Set(payload.openThreads)
+    const rawIds = new Set([...payload.messages, ...payload.relatedMessages].map(message => message.id))
     state.openThreads = appendNotes(
-      state.openThreads.filter(note => !note.sourceIds.some(id => resolved.has(id))), reading.openThreads,
+      state.openThreads.filter(note => !note.sourceIds.some(id => resolved.has(id) && (rawIds.has(id) || visibleThreads.has(note)))),
+      reading.openThreads,
     ).slice(-maximumNotesPerBatch)
     applyCandidateUpdates(state, reading.candidateUpdates, byId, covered)
     queueCandidates(state, reading.candidates, byId, covered)

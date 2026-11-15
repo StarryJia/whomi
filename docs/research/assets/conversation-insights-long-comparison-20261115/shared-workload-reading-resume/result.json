@@ -1,0 +1,31 @@
+{
+  "state": "completed",
+  "calls": 17,
+  "httpRequests": 17,
+  "elapsedMs": 280875,
+  "inputCharged": 31623,
+  "outputCharged": 14411,
+  "trialRequestsAfterPhase": 19,
+  "accounting": {
+    "incremental": {
+      "httpRequests": 17,
+      "elapsedMs": 280875,
+      "inputCharged": 31623,
+      "outputCharged": 14411
+    },
+    "priorReading": {
+      "httpRequests": 2,
+      "inputCharged": 3891,
+      "outputCharged": 2018,
+      "elapsedMs": 36638
+    },
+    "combinedReading": {
+      "httpRequests": 19,
+      "inputCharged": 35514,
+      "outputCharged": 16429,
+      "elapsedMs": 317513
+    }
+  },
+  "resumedFrom": "shared-workload-reading",
+  "resumeCheckpointHash": "65ac9634a5fa5c37b40b31e64bd8121c6fd34d922a55fb94298c36459254ac27"
+}

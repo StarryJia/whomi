@@ -1,0 +1,160 @@
+{
+  "format": "conversation-insights-v1",
+  "aboutYou": [
+    {
+      "content": [
+        {
+          "text": "在读书活动的组织中，你反复提到自己承担预约、通知和多路答疑，感到疲累，也觉得自己常是默认兜底的人，但10月的活动仍持续举办。你提出的困难不只是某一项任务繁重，还包括临时变动和重复回应不断占用精力；当晚关闭群提醒只能暂时减轻打扰，尚不能等同于责任已被持续接走。",
+          "citationId": "63"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "text": "你也修正了对分工的概括：10月22日承认ta已有贡献，收回了此前把安排都归于自己的说法。27日活动后，你认可减少重复答疑确实让自己轻松了一些，同时明确，这不表示你今后可以长期多承担。你对这次改善的肯定，与对长期负担的限制是并存的。",
+          "citationId": "35"
+        }
+      ]
+    }
+  ],
+  "relationship": [
+    {
+      "content": [
+        {
+          "text": "双方围绕活动分工的沟通，出现了从表达负担到约定具体任务、再反馈效果的推进。10月25日约定由ta回应报名和路线问题，你最终核对名单；27日实到10人，之后你反馈重复答疑减少、自己较轻松。这支持此次分工在答疑环节起到了减负作用，但不能据此认定整体责任已经均衡，或双方已经形成稳定的长期安排。",
+          "citationId": "35"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "text": "此前，你已提出月底活动需要说清分工，ta当时表示正在路上，暂时无法列出安排；当晚也有由ta留意临时变动的安排。这些回应需要与后来25日的具体约定一起看，不能把较早尚未谈妥的状态当作最终结果。不过，现有材料仍未确认11月如何分工，书单、库存和收据的交付也尚待核实，因此一次活动的改善还不能代表后续安排已经落实。",
+          "citationId": "63"
+        }
+      ]
+    }
+  ],
+  "citations": [
+    {
+      "id": "63",
+      "conversationId": "1",
+      "fragments": [
+        {
+          "sources": [
+            {
+              "messageId": "63",
+              "revision": "5aa8b100938d7a86875cc69f2a67a131e769bc58b2b8a02ec1a5188e9d8371d5"
+            },
+            {
+              "messageId": "64",
+              "revision": "74e1749f1c8b226d0f505b0bc6a23783aa89fddd95cdcd8873afb0918ecd4612"
+            },
+            {
+              "messageId": "65",
+              "revision": "ec0677ecc68abcacc0d17b089bc7bd1954390e663dff612953560525eeb80718"
+            },
+            {
+              "messageId": "66",
+              "revision": "ec15616096ca5c657e97699a307c66efb6e5096d63793434aa8f170e33b309bc"
+            },
+            {
+              "messageId": "67",
+              "revision": "61c388b33ca8bf899a5108215a95d267aaf1588cf6428f4e418aa415bdd9e5e9"
+            }
+          ]
+        },
+        {
+          "sources": [
+            {
+              "messageId": "97",
+              "revision": "308f36b4fe135371bcac0ba3e217df3d8093bcf8adb0a0cf52208b4b74732de1"
+            },
+            {
+              "messageId": "98",
+              "revision": "7ac6b3d7c2cf4b19c6ed615167d25bb561d5633133131bdbe439de49ef37c429"
+            },
+            {
+              "messageId": "106",
+              "revision": "8de3ce7e896b237df40658b032520a946a7eac95f2e080b4f8620b8d97c4ff24"
+            },
+            {
+              "messageId": "108",
+              "revision": "114e1c4bc3a42fd6b04d51d44b4334632d5e06b47b02211aec902e2af87c9060"
+            },
+            {
+              "messageId": "111",
+              "revision": "b9c9a9394df320e5045d0ea635f7639f2f7af5234441ee2b3d21170f4780f34d"
+            },
+            {
+              "messageId": "112",
+              "revision": "a3351f31f81ac41efa711457e0499fe59085e20de06ff76b96ec31e95fb4b636"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "35",
+      "conversationId": "1",
+      "fragments": [
+        {
+          "sources": [
+            {
+              "messageId": "35",
+              "revision": "85ef7bc26f7fffa0bd19c37933361cbfaca386975dc61a4b5fa558db5dbb8f33"
+            },
+            {
+              "messageId": "63",
+              "revision": "5aa8b100938d7a86875cc69f2a67a131e769bc58b2b8a02ec1a5188e9d8371d5"
+            },
+            {
+              "messageId": "73",
+              "revision": "74b3e0d29dc6c100f5ffec2600c25edfa06375ce3f78e8ace54d3a61334b1666"
+            },
+            {
+              "messageId": "75",
+              "revision": "3d470cca2aca92c934aef181b6564397032bc86e575dcf18016617b5d1596ca9"
+            },
+            {
+              "messageId": "76",
+              "revision": "6fde443a769039cee150f599015ae7bba5ffe587d5bc2cad68ece81bd3c3b167"
+            },
+            {
+              "messageId": "97",
+              "revision": "308f36b4fe135371bcac0ba3e217df3d8093bcf8adb0a0cf52208b4b74732de1"
+            },
+            {
+              "messageId": "98",
+              "revision": "7ac6b3d7c2cf4b19c6ed615167d25bb561d5633133131bdbe439de49ef37c429"
+            },
+            {
+              "messageId": "106",
+              "revision": "8de3ce7e896b237df40658b032520a946a7eac95f2e080b4f8620b8d97c4ff24"
+            },
+            {
+              "messageId": "108",
+              "revision": "114e1c4bc3a42fd6b04d51d44b4334632d5e06b47b02211aec902e2af87c9060"
+            },
+            {
+              "messageId": "111",
+              "revision": "b9c9a9394df320e5045d0ea635f7639f2f7af5234441ee2b3d21170f4780f34d"
+            },
+            {
+              "messageId": "112",
+              "revision": "a3351f31f81ac41efa711457e0499fe59085e20de06ff76b96ec31e95fb4b636"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "材料尚不能确认11月的具体分工、书单和库存由谁负责，以及收据是否完成交付，也不能确认此次答疑分工是否会持续。",
+    "重复答疑减少是你对当次活动的反馈，尚不足以判断双方总体投入是否均衡。",
+    "编号86明确回复编号63，但所指正文未提供，无法进一步判断其具体回应了哪一部分诉求。",
+    "茶和纸杯跨场次使用，不能将相关采购全部计入10月18日活动。"
+  ],
+  "judgments": []
+}

@@ -312,6 +312,63 @@ test('an explicit reply and an unfinished item carry earlier sources into the ne
   await expect(generateInsight(input, deps)).resolves.toMatchObject({ format: 'conversation-insights-v1' })
 })
 
+function laterThreadReply(response: unknown, sharedSource = false) {
+  const messages = [source('1', true, sharedSource ? '还没吃午饭，台灯也还没取。' : '还没吃午饭。'),
+    source('2', false, '台灯稍后取。'), source('3', true, '已经吃到饭了。')]
+  const visible = { text: '是否已吃午饭？', sourceIds: ['1'] }
+  const hidden = { text: '未发送事项：台灯是否取回？', sourceIds: [sharedSource ? '1' : '2'] }
+  const { input, deps, state } = setup(messages, async request => {
+    const payload = JSON.parse(request.prompt)
+    if (payload.stage !== 'reading') return result(noConclusion)
+    if (payload.messages[0].id === '1') {
+      expect(payload.messages.map((message: InsightSourceMessage) => message.id)).toEqual(['1', '2'])
+      return result({ ...noObservations, openThreads: [hidden, visible] })
+    }
+    expect(payload.messages.map((message: InsightSourceMessage) => message.id)).toEqual(['3'])
+    expect(payload.relatedMessages).toEqual([])
+    expect(payload.openThreads).toEqual([visible])
+    return result(response)
+  })
+  // 旧原文及较长事项装不下，短事项仍可用于后续状态更新。
+  deps.countInput = async request => {
+    const payload = JSON.parse(request.prompt)
+    if (payload.stage !== 'reading') return { method: 'tokenizer', tokens: 100 }
+    return { method: 'tokenizer', tokens: 100
+      + (payload.messages ?? []).reduce((sum: number, message: InsightSourceMessage) => sum + (message.id === '3' ? 1100 : 200), 0)
+      + 10000 * (payload.relatedMessages?.length ?? 0)
+      + (payload.openThreads ?? []).reduce((sum: number, note: { text: string }) => sum + (note.text.startsWith('未发送事项') ? 1800 : 100), 0) }
+  }
+  return { input: { ...input, model: { ...model, maxInputTokens: 1700 } }, deps, state, hidden }
+}
+
+test('a later answer resolves a visible earlier thread without requiring its original text again', async () => {
+  const { input, deps, state, hidden } = laterThreadReply({
+    ...noObservations, observations: [{ text: '本人已经吃过饭。', sourceIds: ['3'] }], resolvedThreadSourceIds: ['1'],
+  })
+  await expect(generateInsight(input, deps)).resolves.toMatchObject({ format: 'conversation-insights-v1' })
+  expect(state.checkpoint?.openThreads).toEqual([hidden])
+  expect(state.checkpoint?.coveredMessageIds).toEqual(['1', '2', '3'])
+})
+
+test('resolving a visible old thread preserves an undisplayed thread with the same source', async () => {
+  const { input, deps, state, hidden } = laterThreadReply({ ...noObservations, resolvedThreadSourceIds: ['1'] }, true)
+  await expect(generateInsight(input, deps)).resolves.toMatchObject({ format: 'conversation-insights-v1' })
+  expect(state.checkpoint?.openThreads).toEqual([hidden])
+})
+
+test.each(['2', '99'])('reading cannot resolve an undisplayed earlier thread or unknown source %s', async id => {
+  const { input, deps, state } = laterThreadReply({ ...noObservations, resolvedThreadSourceIds: [id] })
+  await expect(generateInsight(input, deps)).rejects.toMatchObject({ code: 'INVALID_EVIDENCE' })
+  expect(state.checkpoint?.openThreads).toHaveLength(2)
+})
+
+test.each(['observations', 'openThreads', 'candidates'])('a visible old thread does not authorize new %s to cite its missing original', async field => {
+  const value = field === 'candidates' ? { observation: '本人已经吃过饭。', supportingIds: ['1'] }
+    : { text: '本人已经吃过饭。', sourceIds: ['1'] }
+  const { input, deps } = laterThreadReply({ ...noObservations, [field]: [value], resolvedThreadSourceIds: ['1'] })
+  await expect(generateInsight(input, deps)).rejects.toMatchObject({ code: 'INVALID_EVIDENCE' })
+})
+
 test('selecting a visible leaf note rereads its original sources and supports revising the initial observation', async () => {
   const messages = [
     source('2', true, '每次都等着我来安排，想到这些就有点累。'),

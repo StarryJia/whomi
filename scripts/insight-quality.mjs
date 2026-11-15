@@ -5,14 +5,14 @@ import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { tmpdir } from 'node:os'
-import { comparisonOutputLimit, comparisonPackingLimit, comparisonPhases, insightComparisonCases, trialRequestLimit } from '../tests/quality/insight-comparison-material.mjs'
+import { comparisonProfile } from '../tests/quality/insight-comparison-profile.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const args = process.argv.slice(2)
 const verification = args[0] === '--verification'
-const comparison = args[0] === '--comparison'
-const output = join(root, 'release', 'conversation-insights-20261115', comparison ? 'comparison' : verification ? 'verification' : 'quality')
-const runtime = join(dirname(output), comparison ? '.comparison-runtime' : '.quality-runtime')
+const comparison = comparisonProfile(args[0])
+const output = join(root, 'release', 'conversation-insights-20261115', comparison?.outputDirectory ?? (verification ? 'verification' : 'quality'))
+const runtime = join(dirname(output), comparison?.runtimeDirectory ?? '.quality-runtime')
 const validCases = ['later-counterexample', 'distant-reply']
 const validVariants = ['baseline', 'insight']
 const verificationVariants = ['probe-original', 'probe-current', 'flow-original', 'flow-current']
@@ -21,16 +21,18 @@ const verificationRun = verification && (args.length === 3 || args.length === 4 
   && /^[a-z][a-z0-9-]{0,60}$/.test(args[1]) && verificationVariants.includes(args[2])
 const regression = args.length === 3 && args[0] === 'distant-reply' && args[1] === 'insight' && ['--regression', '--writing-regression'].includes(args[2])
 const comparisonDryRun = comparison && args.length === 2 && args[1] === '--dry-run'
-const comparisonRun = comparison && args.length === 3 && Object.hasOwn(insightComparisonCases, args[1]) && comparisonPhases.includes(args[2])
+const resumeReading = args.length === 4 && args[0] === '--long-comparison' && args[2] === 'reading' && args[3] === '--resume-reading'
+const comparisonRun = comparison && (args.length === 3 || resumeReading) && Object.hasOwn(comparison.cases, args[1]) && comparison.phases.includes(args[2])
 if (!dryRun && !verificationRun && !comparisonDryRun && !comparisonRun && !regression
   && (args.length !== 2 || !validCases.includes(args[0]) || !validVariants.includes(args[1]))) {
-  throw new Error('Usage: node scripts/insight-quality.mjs --dry-run | <later-counterexample|distant-reply> <baseline|insight> | distant-reply insight [--regression|--writing-regression] | --verification <case> <probe-original|probe-current|flow-original|flow-current> [--run=1|--run=2] | --verification --dry-run | --comparison <shared-planning|conditional-permission> <reading|adaptive|direct|full> | --comparison --dry-run')
+  throw new Error('Usage: node scripts/insight-quality.mjs --dry-run | <later-counterexample|distant-reply> <baseline|insight> | distant-reply insight [--regression|--writing-regression] | --verification <case> <probe-original|probe-current|flow-original|flow-current> [--run=1|--run=2] | --verification --dry-run | --comparison <shared-planning|conditional-permission> <reading|adaptive|direct|full> | --comparison --dry-run | --long-comparison <shared-workload|conditional-reschedule> <reading|adaptive|direct|direct-rich> | --long-comparison <case> reading --resume-reading | --long-comparison --dry-run')
 }
 if (comparisonDryRun) {
   console.log(JSON.stringify({
-    state: 'planned', modelCalls: 0, phases: comparisonPhases, totalRequestLimit: trialRequestLimit,
-    syntheticPackingInputEstimateLimit: comparisonPackingLimit, perRequestOutputLimit: comparisonOutputLimit,
-    cases: Object.entries(insightComparisonCases).map(([caseName, sample]) => ({
+    state: 'planned', modelCalls: 0, phases: comparison.phases, totalRequestLimit: comparison.requestLimit,
+    syntheticPackingInputEstimateLimit: comparison.packingLimit, perRequestOutputLimit: comparison.outputLimit,
+    ...(args[0] === '--long-comparison' ? { outputDirectory: comparison.outputDirectory, perTaskLimits: comparison.perTaskLimits } : {}),
+    cases: Object.entries(comparison.cases).map(([caseName, sample]) => ({
       caseName, messageCount: sample.messages.length, scope: sample.scope, messageIds: sample.messages.map(message => message.id),
     })),
   }))
