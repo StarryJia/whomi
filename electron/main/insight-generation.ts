@@ -19,6 +19,7 @@ import {
 const maxShrinkDepth = 8
 const maxOutputRepairs = 1
 const maximumNotesPerBatch = 48
+const maximumEvidenceNotes = 24
 
 export type InsightGenerationDeps = {
   run: RuntimeRunner['run']
@@ -40,7 +41,19 @@ type InsightGenerationInput = {
   thinkingLevel?: RuntimeInput['thinkingLevel']
 }
 
-type ReadResult = { observations: InsightNote[]; openThreads: InsightNote[]; candidates: InsightCandidate[]; resolvedThreadSourceIds: string[] }
+type ReadCandidate = InsightCandidate & { evidenceNotes: InsightEvidenceNote[] }
+type CandidateUpdate = { id: string; evidenceNotes: InsightEvidenceNote[] } & (
+  | { action: 'revise'; candidate: InsightCandidate }
+  | { action: 'resolve'; finding: InsightFinding }
+)
+type VisibleCandidate = InsightCandidate & Pick<InsightCheck, 'id' | 'state'> & {
+  finding: Pick<InsightFinding, 'revisedObservation' | 'supportingIds' | 'counterexampleIds'> | null
+  evidenceNotes: (InsightEvidenceNote & Pick<InsightSourceMessage, 'sentAtMs' | 'senderName' | 'isSelf' | 'replyToMessageId'>)[]
+}
+type ReadResult = {
+  observations: InsightNote[]; openThreads: InsightNote[]; candidates: ReadCandidate[];
+  resolvedThreadSourceIds: string[]; candidateUpdates: CandidateUpdate[];
+}
 type VisibleNavigation = InsightNote & { navigationId: number; childCount: number }
 type NavigationPage = { id: number; nodes: VisibleNavigation[]; nextOffset: number | null }
 type CheckResult =
@@ -108,20 +121,64 @@ function explanations(value: unknown): string[] {
   return array(value, 24, item => string(item, 3000))
 }
 
-function parseReading(response: RuntimeResult, allowedIds: ReadonlySet<string>): ReadResult {
+function parseEvidenceNotes(value: unknown, evidence: readonly InsightSourcePart[]): InsightEvidenceNote[] {
+  return array(value, maximumEvidenceNotes, item => {
+    const note = object(item)
+    const sourceId = string(note.sourceId, 256)
+    const quote = string(note.quote, 240)
+    if (!evidence.some(part => part.id === sourceId && part.text.includes(quote))) return invalidEvidence()
+    return { sourceId, quote, text: string(note.text, 480) }
+  })
+}
+
+function parseFinding(body: Record<string, unknown>, evidence: ReadonlySet<string>): InsightFinding {
+  const supportingIds = sourceIds(body.supportingIds, evidence)
+  const counterexampleIds = sourceIds(body.counterexampleIds, evidence)
+  if (supportingIds.some(id => counterexampleIds.includes(id))) return invalidEvidence()
+  return {
+    revisedObservation: string(body.revisedObservation, 3000), supportingIds, counterexampleIds,
+    alternativeExplanations: explanations(body.alternativeExplanations ?? []), limitations: explanations(body.limitations),
+  }
+}
+
+function parseReading(response: RuntimeResult, originalEvidence: readonly InsightSourcePart[], knownCandidates: readonly VisibleCandidate[]): ReadResult {
   const body = outputObject(response)
+  const rawIds = new Set(originalEvidence.map(part => part.id))
+  const candidateIds = new Set(knownCandidates.map(candidate => candidate.id))
+  const updateEvidence = new Set([...rawIds, ...knownCandidates.flatMap(candidate => candidate.evidenceNotes.map(note => note.sourceId))])
   const parseNote = (value: unknown) => {
     const note = object(value)
-    return { text: string(note.text, 1200), sourceIds: sourceIds(note.sourceIds, allowedIds, true) }
+    return { text: string(note.text, 1200), sourceIds: sourceIds(note.sourceIds, rawIds, true) }
   }
+  const candidateUpdates = array(body.candidateUpdates ?? [], maximumNotesPerBatch, (value): CandidateUpdate => {
+    const update = object(value)
+    const id = string(update.id, 128)
+    if (!candidateIds.has(id)) return invalidEvidence()
+    candidateIds.delete(id)
+    const notes = parseEvidenceNotes(update.evidenceNotes ?? [], originalEvidence)
+    if (update.action === 'resolve') {
+      return { id, action: 'resolve', finding: parseFinding(object(update.finding), updateEvidence), evidenceNotes: notes }
+    }
+    if (update.action !== 'revise') return invalidOutput()
+    const candidate = {
+      observation: string(update.observation, 1200), supportingIds: sourceIds(update.supportingIds, updateEvidence, true),
+      reason: string(update.reason, 1200),
+    }
+    return { id, action: 'revise', candidate, evidenceNotes: notes }
+  })
   return {
     observations: array(body.observations, maximumNotesPerBatch, parseNote),
     openThreads: array(body.openThreads, maximumNotesPerBatch, parseNote),
     candidates: array(body.candidates, maximumNotesPerBatch, value => {
       const candidate = object(value)
-      return { observation: string(candidate.observation, 1200), supportingIds: sourceIds(candidate.supportingIds, allowedIds, true) }
+      return {
+        observation: string(candidate.observation, 1200), supportingIds: sourceIds(candidate.supportingIds, rawIds, true),
+        ...(candidate.reason === undefined ? {} : { reason: string(candidate.reason, 1200) }),
+        evidenceNotes: parseEvidenceNotes(candidate.evidenceNotes ?? [], originalEvidence),
+      }
     }),
-    resolvedThreadSourceIds: body.resolvedThreadSourceIds === undefined ? [] : sourceIds(body.resolvedThreadSourceIds, allowedIds),
+    resolvedThreadSourceIds: body.resolvedThreadSourceIds === undefined ? [] : sourceIds(body.resolvedThreadSourceIds, rawIds),
+    candidateUpdates,
   }
 }
 
@@ -132,13 +189,7 @@ function parseChecking(
   const body = outputObject(response)
   if (body.checkId !== checkId) return invalidOutput()
   if (body.action === 'read' || body.action === 'navigate') {
-    const evidenceNotes = array(body.evidenceNotes ?? [], 24, value => {
-      const note = object(value)
-      const sourceId = string(note.sourceId, 256)
-      const quote = string(note.quote, 240)
-      if (!currentEvidence.some(part => part.id === sourceId && part.text.includes(quote))) return invalidEvidence()
-      return { sourceId, quote, text: string(note.text, 480) }
-    })
+    const evidenceNotes = parseEvidenceNotes(body.evidenceNotes ?? [], currentEvidence)
     if (currentEvidence.some(part => part.fragment && !evidenceNotes.some(note => note.sourceId === part.id))) return invalidOutput()
     if (body.action === 'read') {
       return { action: 'read', messageIds: sourceIds(body.messageIds, covered, !hasMoreEvidence), purpose: string(body.purpose, 1200), evidenceNotes }
@@ -159,16 +210,7 @@ function parseChecking(
   }
   if (body.action !== 'finish') return invalidOutput()
   if (hasMoreEvidence) return invalidOutput()
-  const supportingIds = sourceIds(body.supportingIds, evidence)
-  const counterexampleIds = sourceIds(body.counterexampleIds, evidence)
-  if (supportingIds.some(id => counterexampleIds.includes(id))) return invalidEvidence()
-  return {
-    action: 'finish',
-    finding: {
-      revisedObservation: string(body.revisedObservation, 3000), supportingIds, counterexampleIds,
-      alternativeExplanations: explanations(body.alternativeExplanations ?? []), limitations: explanations(body.limitations),
-    },
-  }
+  return { action: 'finish', finding: parseFinding(body, evidence) }
 }
 
 function parseReport(
@@ -234,22 +276,77 @@ function appendNotes(existing: InsightNote[], added: InsightNote[]): InsightNote
   return [...notes.values()]
 }
 
-function queueCandidates(state: InsightCheckpoint, candidates: InsightCandidate[], messages: ReadonlyMap<string, InsightSourceMessage>, covered: ReadonlySet<string>) {
+function firstCheckSources(ids: readonly string[], messages: ReadonlyMap<string, InsightSourceMessage>, covered: ReadonlySet<string>) {
+  return unique(ids.flatMap(id => {
+    const reply = messages.get(id)?.replyToMessageId
+    return reply && covered.has(reply) ? [reply, id] : [id]
+  }))
+}
+
+function queueCandidates(state: InsightCheckpoint, candidates: ReadCandidate[], messages: ReadonlyMap<string, InsightSourceMessage>, covered: ReadonlySet<string>) {
   for (const candidate of candidates) {
     if (state.checks.length >= state.limits.maxChecks) break
     const normalized = candidate.observation.trim().replace(/\s+/g, '').toLowerCase()
     if (state.checks.some(check => check.observation.trim().replace(/\s+/g, '').toLowerCase() === normalized
       || (check.supportingIds.length === candidate.supportingIds.length && check.supportingIds.every(id => candidate.supportingIds.includes(id))))) continue
-    const pendingIds = unique(candidate.supportingIds.flatMap(id => {
-      const reply = messages.get(id)?.replyToMessageId
-      return reply && covered.has(reply) ? [reply, id] : [id]
-    }))
     state.checks.push({
       ...candidate, id: String(state.checks.length + 1), state: 'pending', rounds: 0, seenEvidenceIds: [],
-      evidenceNotes: [], navigationRequests: [], pendingNavigation: null,
-      pendingIds, pendingCursor: startingInsightCursor, pendingThrough: null, shrinkDepth: 0, repairs: 0,
-      purpose: null, finding: null,
+      navigationRequests: [], pendingNavigation: null,
+      pendingIds: firstCheckSources(candidate.supportingIds, messages, covered),
+      pendingCursor: startingInsightCursor, pendingThrough: null, shrinkDepth: 0, repairs: 0,
+      purpose: candidate.reason ?? null, finding: null,
     })
+  }
+}
+
+function appendEvidenceNotes(check: InsightCheck, notes: readonly InsightEvidenceNote[]) {
+  for (const note of notes) {
+    if (!check.evidenceNotes.some(prior => prior.sourceId === note.sourceId && prior.quote === note.quote && prior.text === note.text)) {
+      check.evidenceNotes.push(note)
+    }
+  }
+}
+
+function applyCandidateUpdates(state: InsightCheckpoint, updates: CandidateUpdate[], messages: ReadonlyMap<string, InsightSourceMessage>, covered: ReadonlySet<string>) {
+  for (const update of updates) {
+    const check = state.checks.find(item => item.id === update.id)!
+    appendEvidenceNotes(check, update.evidenceNotes)
+    check.evidenceNotes = check.evidenceNotes.slice(-maximumEvidenceNotes)
+    if (update.action === 'resolve') {
+      check.state = 'finished'
+      check.finding = update.finding
+      delete check.reason
+      check.purpose = null
+      continue
+    }
+    Object.assign(check, update.candidate, {
+      state: 'pending', finding: null, purpose: update.candidate.reason,
+      seenEvidenceIds: [], pendingIds: firstCheckSources(update.candidate.supportingIds, messages, covered),
+      navigationRequests: [], pendingNavigation: null, pendingCursor: startingInsightCursor, pendingThrough: null,
+      shrinkDepth: 0, repairs: 0,
+    })
+  }
+}
+
+function evidenceFromSource(note: InsightEvidenceNote, { sentAtMs, senderName, isSelf, replyToMessageId }: InsightSourceMessage) {
+  return { ...note, sentAtMs, senderName, isSelf, replyToMessageId }
+}
+
+function candidateSources(check: InsightCheck) {
+  return [...check.supportingIds, ...check.finding?.supportingIds ?? [], ...check.finding?.counterexampleIds ?? [],
+    ...check.evidenceNotes.map(note => note.sourceId)]
+}
+
+function visibleCandidate(check: InsightCheck): VisibleCandidate {
+  const { id, state, reason, finding } = check
+  return {
+    id, state, observation: check.observation.slice(0, 240), supportingIds: check.supportingIds.slice(0, 12),
+    ...(reason === undefined ? {} : { reason: reason.slice(0, 180) }),
+    finding: finding && {
+      revisedObservation: finding.revisedObservation.slice(0, 240), supportingIds: finding.supportingIds.slice(0, 12),
+      counterexampleIds: finding.counterexampleIds.slice(0, 12),
+    },
+    evidenceNotes: [],
   }
 }
 
@@ -414,7 +511,7 @@ export async function generateInsight(input: InsightGenerationInput, deps: Insig
 
   const readingPayload = (parts: InsightSourcePart[], repair = false) => ({
     stage: 'reading', timezone: snapshot.timezone, messages: parts, relatedMessages: [] as InsightSourceMessage[],
-    observations: [] as InsightNote[], openThreads: [] as InsightNote[], knownCandidates: [] as InsightCandidate[],
+    observations: [] as InsightNote[], openThreads: [] as InsightNote[], knownCandidates: [] as VisibleCandidate[],
     relatedSourceIds: [] as string[], ...(repair ? { repair: true } : {}),
   })
 
@@ -422,9 +519,11 @@ export async function generateInsight(input: InsightGenerationInput, deps: Insig
     await checkActive()
     const budget = await requestCapacity('reading')
     const measure = async (payload: unknown) => (await count(runtimeInput('reading', payload, budget.reservedOutput))).tokens
+    const candidateReserve = state.checks.length === 0 ? 0 : Math.max(0,
+      Math.floor((budget.availableTokens - await measure(readingPayload([]))) / 4))
     if (!state.pendingRead) {
       const packed = await packInsightSources({
-        messages, cursor: state.cursor, availableTokens: budget.availableTokens,
+        messages, cursor: state.cursor, availableTokens: budget.availableTokens - candidateReserve,
         count: text => measure(readingPayload(JSON.parse(text))),
       })
       state.pendingRead = { from: state.cursor, to: packed.nextCursor, depth: 0, repairs: 0 }
@@ -436,6 +535,24 @@ export async function generateInsight(input: InsightGenerationInput, deps: Insig
     const baseCost = await measure(payload)
     const backgroundLimit = Math.min(budget.availableTokens, baseCost + Math.floor(budget.availableTokens / 4))
     const batchIds = new Set(payload.messages.map(message => message.id))
+    const anchors = new Set([...batchIds, ...payload.messages.flatMap(({ replyToMessageId }) => replyToMessageId ? [replyToMessageId] : [])])
+    const linked = (ids: readonly string[]) => ids.some(id => anchors.has(id))
+    const candidates = [...state.checks].reverse().map(check => ({ check, linked: linked(candidateSources(check)) }))
+      .sort((left, right) => Number(right.linked) - Number(left.linked)).slice(0, 12)
+    const candidateLimit = Math.min(budget.availableTokens, baseCost + candidateReserve)
+    for (const { check } of candidates) {
+      const candidate = visibleCandidate(check)
+      payload.knownCandidates.push(candidate)
+      if (await measure(payload) > candidateLimit) {
+        payload.knownCandidates.pop()
+        continue
+      }
+      const notes = [...check.evidenceNotes].reverse().sort((left, right) => Number(anchors.has(right.sourceId)) - Number(anchors.has(left.sourceId)))
+      for (const note of notes.slice(0, 4)) {
+        candidate.evidenceNotes.push(evidenceFromSource(note, byId.get(note.sourceId)!))
+        if (await measure(payload) > candidateLimit) candidate.evidenceNotes.pop()
+      }
+    }
     const relevant = unique([
       ...payload.messages.flatMap(message => message.replyToMessageId ? [message.replyToMessageId] : []),
       ...state.openThreads.flatMap(note => note.sourceIds),
@@ -457,14 +574,9 @@ export async function generateInsight(input: InsightGenerationInput, deps: Insig
       payload.observations.push(note)
       if (await measure(payload) > backgroundLimit) payload.observations.pop()
     }
-    for (const { observation, supportingIds } of state.checks.slice(-12)) {
-      payload.knownCandidates.push({ observation, supportingIds })
-      if (await measure(payload) > backgroundLimit) payload.knownCandidates.pop()
-    }
     let reading: ReadResult
     try {
-      const allowedIds = new Set([...batchIds, ...payload.relatedMessages.map(message => message.id)])
-      reading = parseReading(await call('reading', payload), allowedIds)
+      reading = parseReading(await call('reading', payload), [...payload.messages, ...payload.relatedMessages], payload.knownCandidates)
     } catch (error) {
       if (codeOf(error) === 'MODEL_CONTEXT_LIMIT' && layout.depth < maxShrinkDepth) {
         const to = shrinkInsightSources(messages, layout.from, layout.to)
@@ -490,6 +602,7 @@ export async function generateInsight(input: InsightGenerationInput, deps: Insig
     state.openThreads = appendNotes(
       state.openThreads.filter(note => !note.sourceIds.some(id => resolved.has(id))), reading.openThreads,
     ).slice(-maximumNotesPerBatch)
+    applyCandidateUpdates(state, reading.candidateUpdates, byId, covered)
     queueCandidates(state, reading.candidates, byId, covered)
     state.cursor = layout.to
     state.readLayouts.push({ from: layout.from, to: layout.to, depth: layout.depth })
@@ -571,10 +684,7 @@ export async function generateInsight(input: InsightGenerationInput, deps: Insig
       const budget = await requestCapacity('checking')
       const noted = new Set(check.evidenceNotes.map(note => note.sourceId))
       const earlierEvidence = check.seenEvidenceIds.filter(id => !noted.has(id)).map(id => byId.get(id)!)
-      const evidenceNotes = check.evidenceNotes.map(note => {
-        const { sentAtMs, senderName, isSelf, replyToMessageId } = byId.get(note.sourceId)!
-        return { ...note, sentAtMs, senderName, isSelf, replyToMessageId }
-      })
+      const evidenceNotes = check.evidenceNotes.map(note => evidenceFromSource(note, byId.get(note.sourceId)!))
       const checkPayload = (parts: InsightSourcePart[], hasMoreEvidence = false) => ({
         stage: 'checking', timezone: snapshot.timezone,
         check: { id: check.id, round: check.rounds + 1, observation: check.observation, purpose: check.purpose, supportingIds: check.supportingIds },
@@ -596,7 +706,8 @@ export async function generateInsight(input: InsightGenerationInput, deps: Insig
         : { messages: [], completedMessageIds: [], nextCursor: check.pendingCursor }
       const stillUnread = batch.nextCursor.messageIndex < check.pendingIds.length
       const payload = checkPayload(batch.messages, stillUnread)
-      const supported = new Set([...check.seenEvidenceIds, ...batch.completedMessageIds])
+      const seen = new Set([...check.seenEvidenceIds, ...batch.completedMessageIds])
+      const supported = new Set([...seen, ...noted])
       if (check.pendingNavigation) {
         const { id, offset } = check.pendingNavigation
         const children = navigation.nodes[id].children
@@ -640,7 +751,7 @@ export async function generateInsight(input: InsightGenerationInput, deps: Insig
       check.shrinkDepth = 0
       check.pendingThrough = null
       check.pendingNavigation = null
-      check.seenEvidenceIds = [...supported]
+      check.seenEvidenceIds = [...seen]
       check.pendingCursor = batch.nextCursor
       if (action.action === 'finish') {
         check.state = 'finished'
@@ -654,22 +765,17 @@ export async function generateInsight(input: InsightGenerationInput, deps: Insig
         }
       } else {
         const queued = check.pendingIds.slice(check.pendingCursor.messageIndex)
-        const newIds = action.messageIds.filter(id => !supported.has(id) && !queued.includes(id))
+        const fullSourceIds = new Set([...payload.evidence.filter(part => !part.fragment), ...payload.earlierEvidence].map(part => part.id))
+        const newIds = action.messageIds.filter(id => !fullSourceIds.has(id) && !queued.includes(id))
         if (newIds.length) {
-          const read = await readFrozen(newIds)
-          check.pendingIds.push(...newIds)
-          evidence.push(...read)
+          check.pendingIds = [...queued, ...newIds]
+          check.pendingCursor = { messageIndex: 0, textOffset: check.pendingCursor.textOffset }
+          evidence = []
         }
         check.purpose = action.purpose
         if (!newIds.length && !stillUnread) check.state = 'inconclusive'
       }
-      if (action.action !== 'finish') {
-        for (const note of action.evidenceNotes) {
-          if (!check.evidenceNotes.some(prior => prior.sourceId === note.sourceId && prior.quote === note.quote && prior.text === note.text)) {
-            check.evidenceNotes.push(note)
-          }
-        }
-      }
+      if (action.action !== 'finish') appendEvidenceNotes(check, action.evidenceNotes)
       await save()
     }
   }
@@ -680,7 +786,9 @@ export async function generateInsight(input: InsightGenerationInput, deps: Insig
     const budget = await requestCapacity('writing')
     const payload = {
       stage: 'writing', timezone: snapshot.timezone, observations, openThreads: [] as InsightNote[],
-      checks: state.checks.map(({ id, state: status, finding, observation }) => ({ id, state: status, finding, observation })),
+      checks: state.checks.map(({ id, state: status, finding, observation }) => ({
+        id, state: status, finding, ...(finding ? {} : { observation }),
+      })),
       ...(state.writingRepairs ? { repair: true } : {}),
     }
     const measure = async () => (await count(runtimeInput('writing', payload, budget.reservedOutput))).tokens

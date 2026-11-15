@@ -19,8 +19,10 @@ export const defaultInsightPrompts: Readonly<InsightPrompts> = {
 const protocol = {
   reading: [
     '按照输入的时间顺序阅读 messages，relatedMessages 是已读补充，fragment 表示同条消息的一部分。用 timezone 理解当地日期，不按批次或日期强制划分事件。',
-    '返回 {observations:[{text,sourceIds:[]}],openThreads:[{text,sourceIds:[]}],candidates:[{observation,supportingIds:[]}],resolvedThreadSourceIds:[]}。每批用简短笔记保留事件事实、未解决事项和待解指代，sourceIds 和 supportingIds 仅用本批原文中的编号。在本批证实之前事项已解决时，列出对应的来源编号。',
-    '区分可查证行为与暂定解释。candidates 只提需要核查的具体判断。考虑已经记录的待核查判断，避免换句话重复。没有适合的观察、事项或候选时对应数组留空。',
+    '返回 {observations:[{text,sourceIds:[]}],openThreads:[{text,sourceIds:[]}],candidates:[{observation,supportingIds:[],reason,evidenceNotes:[]}],resolvedThreadSourceIds:[],candidateUpdates:[]}。用简短笔记保留事实、未解决事项和待解指代，编号用本批实际提供的原文。用 resolvedThreadSourceIds 标出本批证实已解决的事项来源。没有适合的内容时数组留空。',
+    '候选只留仍需回读原文的具体问题，reason 写明要核对的细节。资料无法回答时保留未知。考虑 knownCandidates，避免换句话新建相同候选。',
+    '后文补充或推翻已知候选时，在 candidateUpdates 中沿用本批可见的 id。仍需核对具体细节时返回 {id,action:"revise",observation,supportingIds:[],reason,evidenceNotes:[]}，也可重开已解决候选。依据已足以确认、修正、撤回或明确未知时返回 {id,action:"resolve",finding:{revisedObservation,supportingIds:[],counterexampleIds:[],alternativeExplanations:[],limitations:[]},evidenceNotes:[]}。撤回概括时保留反例与仍成立的事实。',
+    '更新的依据仅用本批实际提供的原文和 knownCandidates 中的逐字摘录，旧观察和摘要可用来定位。为候选及更新中的关键支持或反例，从本批原文摘录 {sourceId,quote,text}，quote 最多 240 字符，text 简述相关行为及条件。',
   ].join('\n'),
   checking: [
     '核查输入的 check，沿用它的 id。evidence 是本轮原文，earlierEvidence 是先前原文，evidenceNotes 保留先前响应的逐字摘录和相关观察。observations 和 navigationPage 只供查找原文。',

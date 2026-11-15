@@ -16,6 +16,19 @@ const source = (id: string, isSelf: boolean, text: string, replyToMessageId: str
 
 const noObservations = { observations: [], openThreads: [], candidates: [] }
 const noConclusion = { aboutYou: [], relationship: [], citations: [], limitations: ['材料有限。'], judgments: [] }
+const previousArrangement = '每次都是我来安排，想到这些就有点累。'
+const lastMonthArrangement = '上个月是我订场地，本月轮到你。'
+const acknowledgeArrangement = '上个月确实是你张罗，说每次不准确。'
+const arrangementNote = { sourceId: '1', quote: previousArrangement, text: '本人说每次都是自己安排，提到疲惫。' }
+const arrangementCandidate = {
+  observation: '本人是否一直单独负责聚会？', supportingIds: ['1'], reason: '核对其他月份由谁订场地。', evidenceNotes: [arrangementNote],
+}
+const arrangementFinding = {
+  revisedObservation: '撤回每次均由本人安排的概括。当次安排使本人感到疲惫。',
+  supportingIds: ['1'], counterexampleIds: ['3', '4'], alternativeExplanations: ['轮流分工。'], limitations: ['仅限已见月份。'],
+}
+const paddedSource = (id: string, isSelf: boolean, text: string, replyToMessageId: string | null = null) =>
+  source(id, isSelf, text + 'x'.repeat(1300), replyToMessageId)
 const result = (payload: unknown, usage: { inputTokens?: number; outputTokens?: number } = { inputTokens: 18, outputTokens: 10 }) => ({
   text: JSON.stringify(payload), usage, checkpoint: '',
 })
@@ -49,6 +62,176 @@ function setup(messages: InsightSourceMessage[], run: InsightGenerationDeps['run
   }
   return { input, deps, state }
 }
+
+test('reading a later correction settles a candidate without a separate check and keeps the counterexample citable after recovery', async () => {
+  const messages = [paddedSource('1', true, previousArrangement), source('2', false, '这次事情碰在一起。'),
+    paddedSource('3', false, lastMonthArrangement, '1'), source('4', true, acknowledgeArrangement, '3')]
+  const stages: string[] = []
+  let writingFailed = false
+  const { input, deps, state } = setup(messages, async request => {
+    const payload = JSON.parse(request.prompt)
+    stages.push(payload.stage)
+    if (payload.stage === 'reading' && payload.messages[0].id === '1') {
+      return result({ ...noObservations, candidates: [arrangementCandidate] })
+    }
+    if (payload.stage === 'reading') {
+      expect(payload.messages.map(({ id }: InsightSourceMessage) => id)).toEqual(['3', '4'])
+      expect(payload.knownCandidates[0]).toMatchObject({
+        id: '1', state: 'pending', reason: '核对其他月份由谁订场地。', evidenceNotes: [{
+          ...arrangementNote, sentAtMs: messages[0].sentAtMs, senderName: '本人', isSelf: true, replyToMessageId: null,
+        }],
+      })
+      return result({ ...noObservations, candidateUpdates: [
+        { id: '1', action: 'resolve', finding: arrangementFinding, evidenceNotes: [] },
+      ] })
+    }
+    expect(payload.stage).toBe('writing')
+    expect(payload.checks[0]).toMatchObject({ id: '1', state: 'finished', finding: arrangementFinding })
+    expect(payload.checks[0]).not.toHaveProperty('observation')
+    if (!writingFailed) {
+      writingFailed = true
+      throw new Error('fixture interruption during writing')
+    }
+    return result({
+      ...noConclusion,
+      relationship: [{ content: [{ text: 'ta 上个月订了场地，你随后修正了每次的说法。', citationId: 'last-month' }] }],
+      citations: [{ id: 'last-month', fragments: [{ messageIds: ['3', '4'] }] }],
+    })
+  })
+  const configured = { ...input, limits: { ...limits, maxCalls: 4 } }
+  await expect(generateInsight(configured, deps)).rejects.toThrow('fixture interruption during writing')
+  expect(state.checkpoint).toMatchObject({ callsReserved: 3, checks: [{ id: '1', state: 'finished', rounds: 0, finding: arrangementFinding }] })
+  const report = await generateInsight({ ...configured, checkpoint: state.checkpoint }, deps)
+  expect(stages).toEqual(['reading', 'reading', 'writing', 'writing'])
+  expect(state.checkpoint?.callsReserved).toBe(4)
+  expect(report.citations[0].fragments[0].sources).toEqual([{ messageId: '3', revision: 'rev-3' }, { messageId: '4', revision: 'rev-4' }])
+})
+
+test('reading can revise a candidate, settle it, and reopen the same record when new evidence requires a check', async () => {
+  const revisionReason = '核对上个月是否同时安排了场地和餐饮。'
+  const reopenedReason = '回读原约定，确认订餐是否也在分工内。'
+  const revisedFinding = { ...arrangementFinding, revisedObservation: '对方只回了场地消息，后文确认上月场地由对方负责。', supportingIds: ['2'] }
+  const messages = [paddedSource('1', true, previousArrangement), paddedSource('2', false, '上月我只回复了场地那条消息。', '1'),
+    paddedSource('3', false, lastMonthArrangement, '2'), source('4', true, acknowledgeArrangement, '3'),
+    paddedSource('5', true, '本月餐饮临时换人，需要看起初说的是场地还是全部。')]
+  const { input, deps, state } = setup(messages, async request => {
+    const payload = JSON.parse(request.prompt)
+    if (payload.stage === 'reading') {
+      const firstId = payload.messages[0].id
+      if (firstId === '1') return result({ ...noObservations, candidates: [arrangementCandidate] })
+      const candidate = payload.knownCandidates.find((item: { id: string }) => item.id === '1')
+      if (firstId === '2') return result({ ...noObservations, candidateUpdates: [{
+        id: '1', action: 'revise', observation: '安排范围是订场地还是包含餐饮？', supportingIds: ['2'],
+        reason: revisionReason, evidenceNotes: [{ sourceId: '2', quote: '上月我只回复了场地那条消息。', text: '回应仅限场地。' }],
+      }] })
+      if (firstId === '3') {
+        expect(candidate).toMatchObject({ id: '1', state: 'pending', reason: revisionReason })
+        return result({ ...noObservations, candidateUpdates: [
+          { id: '1', action: 'resolve', finding: revisedFinding, evidenceNotes: [] },
+        ] })
+      }
+      expect(firstId).toBe('5')
+      expect(candidate).toMatchObject({ id: '1', state: 'finished', finding: { revisedObservation: revisedFinding.revisedObservation } })
+      return result({ ...noObservations, candidateUpdates: [{
+        id: '1', action: 'revise', observation: '核对之前的分工是否涉及餐饮。', supportingIds: ['5'],
+        reason: reopenedReason, evidenceNotes: [],
+      }] })
+    }
+    if (payload.stage === 'checking') {
+      expect(payload.check).toMatchObject({ id: '1', round: 1, observation: '核对之前的分工是否涉及餐饮。', purpose: reopenedReason })
+      expect(payload.evidence.map(({ id }: InsightSourceMessage) => id)).toEqual(['5'])
+      expect(payload.evidenceNotes).toContainEqual(expect.objectContaining(arrangementNote))
+      return result({ action: 'finish', checkId: '1', revisedObservation: '只能确认场地安排，餐饮分工未知。',
+        supportingIds: ['1', '5'], counterexampleIds: [], alternativeExplanations: [], limitations: ['未见餐饮原约定。'] })
+    }
+    return result(noConclusion)
+  })
+  await generateInsight({ ...input, limits: { ...limits, maxChecks: 1 } }, deps)
+  expect(state.checkpoint?.checks).toMatchObject([{ id: '1', rounds: 1, reason: reopenedReason,
+    finding: { revisedObservation: '只能确认场地安排，餐饮分工未知。', supportingIds: ['1', '5'], counterexampleIds: [] } }])
+})
+
+test('candidate packing reserves room for a related earlier candidate even when raw messages would fill the request', async () => {
+  const messages = [source('1', true, '分工原话' + 'x'.repeat(450)), source('2', true, '无关议题'),
+    source('3', false, '现在是轮流安排' + 'x'.repeat(2250), '1')]
+  const { input, deps, state } = setup(messages, async request => {
+    const payload = JSON.parse(request.prompt)
+    if (payload.stage !== 'reading') return result(noConclusion)
+    if (payload.messages[0].id === '1') return result({ ...noObservations, candidates: [
+      { observation: '分工是否轮换？', supportingIds: ['1'], reason: '核对谁安排下一场。' },
+    ] })
+    expect(payload.knownCandidates[0]).toMatchObject({ id: '1', observation: '分工是否轮换？' })
+    expect((await deps.countInput!(request, request.model)).tokens).toBeLessThanOrEqual(2944)
+    if (!payload.messages[0].text.startsWith('现在是轮流安排')) return result(noObservations)
+    return result({ ...noObservations, candidateUpdates: [{
+      id: '1', action: 'resolve', finding: { ...arrangementFinding, supportingIds: [], counterexampleIds: ['3'] }, evidenceNotes: [],
+    }] })
+  })
+  await expect(generateInsight(input, deps)).resolves.toMatchObject({ citations: [] })
+  expect(state.checkpoint?.checks).toMatchObject([{ id: '1', state: 'finished', rounds: 0 }])
+})
+
+test.each(['unknown ID', 'hidden source', 'forged quote'])('reading rejects an update with a %s', async fault => {
+  const messages = [paddedSource('1', true, previousArrangement), source('2', false, '未发送给后续阅读的原文。'),
+    paddedSource('3', false, lastMonthArrangement), source('4', true, acknowledgeArrangement)]
+  const { input, deps, state } = setup(messages, async request => {
+    const payload = JSON.parse(request.prompt)
+    if (payload.stage === 'reading' && payload.messages[0].id === '1') {
+      return result({ ...noObservations, candidates: [arrangementCandidate] })
+    }
+    if (payload.stage !== 'reading') return result(noConclusion)
+    return result({ ...noObservations, candidateUpdates: [{
+      id: fault === 'unknown ID' ? '99' : '1', action: 'resolve',
+      finding: { ...arrangementFinding, supportingIds: fault === 'hidden source' ? ['2'] : ['1'] },
+      evidenceNotes: fault === 'forged quote' ? [{ sourceId: '3', quote: '上个月没人负责。', text: '虚构的摘录。' }] : [],
+    }] })
+  })
+  await expect(generateInsight(input, deps)).rejects.toMatchObject({ code: 'INVALID_EVIDENCE' })
+  expect(state.checkpoint).toMatchObject({ coveredMessageIds: ['1', '2'], checks: [{ id: '1', state: 'pending', finding: null }] })
+})
+
+test('reading cannot update a real candidate whose record did not fit in the request', async () => {
+  const messages = [source('1', true, '首个议题' + 'x'.repeat(450)), source('2', true, '另一个议题' + 'y'.repeat(450)),
+    paddedSource('3', false, '后续回复', '1')]
+  const readingStages: string[] = []
+  const { input, deps, state } = setup(messages, async request => {
+    const payload = JSON.parse(request.prompt)
+    readingStages.push(payload.stage)
+    if (payload.stage !== 'reading') return result(noConclusion)
+    if (payload.messages[0].id === '1') return result({ ...noObservations, candidates: [
+      { observation: '第一个问题。', supportingIds: ['1'] },
+      { observation: '第二个问题。', supportingIds: ['2'] },
+    ] })
+    expect(payload.knownCandidates[0]).toMatchObject({ id: '1' })
+    expect(payload.knownCandidates.every((candidate: { id?: string }) => candidate.id !== '2')).toBe(true)
+    return result({ ...noObservations, candidateUpdates: [{ id: '2', action: 'resolve', finding: {
+      ...arrangementFinding, supportingIds: ['3'], counterexampleIds: [],
+    }, evidenceNotes: [] }] })
+  })
+  // This model fits one candidate and the new source, but two candidate records exceed its limit.
+  deps.countInput = async request => {
+    const payload = JSON.parse(request.prompt)
+    return { method: 'tokenizer', tokens: 100 + 520 * (payload.knownCandidates?.length ?? 0)
+      + Buffer.byteLength(JSON.stringify(payload.messages ?? [])) }
+  }
+  await expect(generateInsight({ ...input, model: { ...model, maxInputTokens: 2500 } }, deps)).rejects.toMatchObject({ code: 'INVALID_EVIDENCE' })
+  expect(readingStages).toEqual(['reading', 'reading'])
+  expect(state.checkpoint?.checks).toHaveLength(2)
+})
+
+test('checking cannot cite covered sources that the request received neither as original text nor as verified quotes', async () => {
+  const messages = [source('1', true, previousArrangement), source('2', false, '尚未提供给核查的原文。')]
+  const { input, deps, state } = setup(messages, async request => {
+    const payload = JSON.parse(request.prompt)
+    if (payload.stage === 'reading') return result({ ...noObservations, candidates: [arrangementCandidate] })
+    expect(payload.stage).toBe('checking')
+    expect(payload.evidence.map(({ id }: InsightSourceMessage) => id)).toEqual(['1'])
+    expect(payload.evidenceNotes).toContainEqual(expect.objectContaining(arrangementNote))
+    return result({ action: 'finish', checkId: '1', ...arrangementFinding, counterexampleIds: ['2'] })
+  })
+  await expect(generateInsight(input, deps)).rejects.toMatchObject({ code: 'INVALID_EVIDENCE' })
+  expect(state.checkpoint).toMatchObject({ coveredMessageIds: ['1', '2'], checks: [{ state: 'pending', finding: null }] })
+})
 
 test('later evidence revises a first impression through a bounded reread without increasing coverage', async () => {
   const messages = [
@@ -205,9 +388,12 @@ test.each(['read', 'navigate'])('a repeated %s ends with an explicit uncertainty
       candidates: [{ observation: '需要确认', supportingIds: ['1'] }],
     })
     if (payload.stage === 'checking') {
-      if (payload.check.round === 2) expect(payload.earlierEvidence.map((message: InsightSourceMessage) => message.text)).toEqual(['首句'])
+      if (payload.check.round === 2) {
+        expect(payload.earlierEvidence.map((message: InsightSourceMessage) => message.text)).toEqual(['首句'])
+        expect(payload.evidence.map((message: InsightSourceMessage) => message.text)).toEqual(['后句'])
+      }
       return result(action === 'read'
-        ? { action, checkId: payload.check.id, messageIds: ['2'], purpose: '需要再看' }
+        ? { action, checkId: payload.check.id, messageIds: payload.check.round === 2 ? ['1', '2'] : ['2'], purpose: '需要再看' }
         : { action, checkId: payload.check.id, navigationId: 0, offset: 0 })
     }
     expect(payload.checks[0]).toMatchObject({ state: 'inconclusive', finding: null })
@@ -215,6 +401,77 @@ test.each(['read', 'navigate'])('a repeated %s ends with an explicit uncertainty
   })
   await expect(generateInsight(input, deps)).resolves.toMatchObject({ judgments: [] })
   expect(state.reads.filter(ids => ids.length === 1 && ids[0] === '2')).toHaveLength(1)
+  expect(state.checkpoint?.checks[0].rounds).toBe(2)
+})
+
+test('checking rereads a source when the current request includes only an earlier quote', async () => {
+  const messages = [source('1', true, '我安排场地，但餐饮由你负责。'), source('2', false, '那天你也订餐了。')]
+  const { input, deps, state } = setup(messages, async request => {
+    const payload = JSON.parse(request.prompt)
+    if (payload.stage === 'reading') return result({ ...noObservations, candidates: [
+      { observation: '实际分工是什么？', supportingIds: ['1'], reason: '核对餐饮是否属于本人分工。' },
+    ] })
+    if (payload.stage !== 'checking') return result(noConclusion)
+    if (payload.check.round === 1) return result({ action: 'read', checkId: '1', messageIds: ['2'], purpose: '查看实际订餐情况。',
+      evidenceNotes: [{ sourceId: '1', quote: '我安排场地', text: '本人安排场地。' }] })
+    if (payload.check.round === 2) {
+      expect(payload.evidence.map(({ id }: InsightSourceMessage) => id)).toEqual(['2'])
+      expect(payload.earlierEvidence).toEqual([])
+      expect(payload.evidenceNotes[0].quote).toBe('我安排场地')
+      return result({ action: 'read', checkId: '1', messageIds: ['1'], purpose: '核对分工是否包含餐饮。' })
+    }
+    expect(payload.evidence.map(({ text }: InsightSourceMessage) => text)).toEqual(['我安排场地，但餐饮由你负责。'])
+    return result({ action: 'finish', checkId: '1', revisedObservation: '原分工由对方负责餐饮，当日订餐与分工不同。',
+      supportingIds: ['1', '2'], counterexampleIds: [], limitations: ['仅限该次聚会。'], alternativeExplanations: [] })
+  })
+  await generateInsight({ ...input, limits: { ...limits, maxRoundsPerCheck: 4 } }, deps)
+  expect(state.reads.filter(ids => ids.join(',') === '1')).toHaveLength(2)
+  expect(state.checkpoint?.checks[0]).toMatchObject({ state: 'finished', rounds: 3,
+    finding: { revisedObservation: '原分工由对方负责餐饮，当日订餐与分工不同。' } })
+})
+
+test('a quote-only reread added during a fragment preserves the unfinished queue and offset across recovery', async () => {
+  const messages = [source('1', true, '我安排场地，但餐饮由你负责。'), source('2', false, '这里是订餐记录。' + 'x'.repeat(580)),
+    source('3', true, '订餐结束。')]
+  let firstFragment = ''
+  const { input, deps, state } = setup(messages, async request => {
+    const payload = JSON.parse(request.prompt)
+    if (payload.stage === 'reading') return result({ ...noObservations, candidates: [
+      { observation: '需要核对餐饮分工。', supportingIds: ['1'] },
+    ] })
+    if (payload.stage !== 'checking') return result(noConclusion)
+    if (payload.check.round === 1) return result({ action: 'read', checkId: '1', messageIds: ['2', '3'], purpose: '看订餐记录。',
+      evidenceNotes: [{ sourceId: '1', quote: '我安排场地', text: '本人安排场地。' }] })
+    if (payload.check.round === 2) {
+      expect(payload.hasMoreEvidence).toBe(true)
+      expect(payload.evidence.map(({ id }: InsightSourceMessage) => id)).toEqual(['2'])
+      firstFragment = payload.evidence[0].text
+      return result({ action: 'read', checkId: '1', messageIds: ['1'], purpose: '查原分工是否另有餐饮约定。',
+        evidenceNotes: [{ sourceId: '2', quote: '这里是订餐记录。', text: '此条为订餐记录。' }] })
+    }
+    if (payload.check.round === 3) throw new Error('fixture interruption during fragment reread')
+    expect(payload.evidence.map(({ id }: InsightSourceMessage) => id)).toEqual(['2', '3', '1'])
+    expect(firstFragment + payload.evidence[0].text).toBe(messages[1].text)
+    expect(payload.evidence[2].text).toBe('我安排场地，但餐饮由你负责。')
+    return result({ action: 'finish', checkId: '1', revisedObservation: '原约定由对方负责餐饮。',
+      supportingIds: ['1', '2', '3'], counterexampleIds: [], limitations: ['仅限该次聚会。'], alternativeExplanations: [] })
+  })
+  const fixtureCount = deps.countInput!
+  deps.countInput = async (request, configuredModel) => {
+    const payload = JSON.parse(request.prompt)
+    if (payload.stage !== 'checking') return fixtureCount(request, configuredModel)
+    const tokens = payload.evidence.reduce((total: number, part: InsightSourceMessage) => total + part.text.length + 60, 2500)
+    return { method: 'tokenizer', tokens }
+  }
+  const configured = { ...input, limits: { ...limits, maxRoundsPerCheck: 4 } }
+  await expect(generateInsight(configured, deps)).rejects.toThrow('fixture interruption during fragment reread')
+  expect(firstFragment).not.toBe('')
+  expect(state.checkpoint?.checks[0]).toMatchObject({
+    pendingIds: ['2', '3', '1'], pendingCursor: { messageIndex: 0, textOffset: firstFragment.length }, rounds: 3,
+  })
+  await generateInsight({ ...configured, checkpoint: state.checkpoint }, deps)
+  expect(state.checkpoint?.checks[0]).toMatchObject({ state: 'finished', rounds: 4 })
+  expect(state.checkpoint?.callsReserved).toBe(6)
 })
 
 test('a crash after the provider response keeps the reserved call and does not let recovery reset its allowance', async () => {

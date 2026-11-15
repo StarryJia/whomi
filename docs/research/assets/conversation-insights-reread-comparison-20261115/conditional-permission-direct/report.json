@@ -1,0 +1,113 @@
+{
+  "format": "conversation-insights-v1",
+  "aboutYou": [
+    {
+      "content": [
+        {
+          "text": "10月8日，你先同意餐厅暂留周六。",
+          "citationId": "2"
+        },
+        {
+          "text": "到10月10日，你表示小林只说可能有空、尚未明确答复，但你已将餐厅改至周日，并预约了周日的蛋糕。受到质疑后，你解释自己记得可以改期，以为两件事能一起办；这次行动依据的是你对可改期的记忆，没有保留先获小林确认这一条件。",
+          "citationId": "21"
+        }
+      ]
+    }
+  ],
+  "relationship": [
+    {
+      "content": [
+        {
+          "text": "这次分歧的关键不在于能否安排周日，而在于改餐厅需要满足什么条件：ta此前明确要求，只有小林确认周日方便才改，否则保留周六。",
+          "citationId": "1"
+        },
+        {
+          "text": "蛋糕则被单独安排在周日送，并不等同于餐厅也已获准改期。",
+          "citationId": "3"
+        },
+        {
+          "text": "10月10日，ta认可蛋糕安排，却对餐厅改期提出异议，延续了对两项安排的区分。因此，这次互动呈现的是你们对同一约定的理解与执行出现了偏差，不能据此推断ta反对全部安排，或你有意忽略ta的要求。",
+          "citationId": "20"
+        }
+      ]
+    }
+  ],
+  "citations": [
+    {
+      "id": "2",
+      "conversationId": "1",
+      "fragments": [
+        {
+          "sources": [
+            {
+              "messageId": "2",
+              "revision": "bd0283fb3251ac2604353d03bf12619f9e739029097bdebb7d79fdf9d9195209"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "21",
+      "conversationId": "1",
+      "fragments": [
+        {
+          "sources": [
+            {
+              "messageId": "21",
+              "revision": "b790fca0d1061169e6212248c4fe43408cc97b56f2c1ccfa02f1d938f664503b"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "1",
+      "conversationId": "1",
+      "fragments": [
+        {
+          "sources": [
+            {
+              "messageId": "1",
+              "revision": "1b9316b3557fb99e2d0d8b7302dfa1001a8a3fe76a22caf179987c84856d8e51"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "3",
+      "conversationId": "1",
+      "fragments": [
+        {
+          "sources": [
+            {
+              "messageId": "3",
+              "revision": "654fa9e9b7ec0e37246330195b3b8da577177fd2b22454d49aee931c74f073ee"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "20",
+      "conversationId": "1",
+      "fragments": [
+        {
+          "sources": [
+            {
+              "messageId": "20",
+              "revision": "00fb0b332f747196feeee302c4f730ec1d611afa9dd7ca4c9ce8c07bf411d5bc"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "截至10月10日，材料未显示小林已明确确认周日方便，也未显示ta提出异议后餐厅最终保留周日、恢复周六，还是另作安排。",
+    "蛋糕虽已报告预约且获得ta认可，但是否实际送达仍不清楚。",
+    "现有材料不足以判断这次对改期条件的理解偏差是否曾反复发生。"
+  ],
+  "judgments": []
+}

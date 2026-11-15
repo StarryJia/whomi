@@ -1,0 +1,135 @@
+{
+  "format": "conversation-insights-v1",
+  "aboutYou": [
+    {
+      "content": [
+        {
+          "text": "10月8日，你报告已完成周末聚会的订场地、买票和通知工作。",
+          "citationId": "1"
+        },
+        {
+          "text": "当时你感到安排事务的负担集中在自己身上，并将其概括为总由自己负责。",
+          "citationId": "2"
+        },
+        {
+          "text": "你随后表示要先休息，但聚会仍照常，并未因此取消安排。",
+          "citationId": "4"
+        },
+        {
+          "text": "到10月10日，在ta提醒此前的轮流安排后，你确认了这一背景，撤回先前的概括，将这次压力重新表述为事情赶在了一起。这次互动中，你既表达了负担，也根据补充的事实修正了自己的说法。",
+          "citationId": "20"
+        }
+      ]
+    }
+  ],
+  "relationship": [
+    {
+      "content": [
+        {
+          "text": "面对你的抱怨，ta最初将情况解释为事情碰在了一起；这次回应本身没有展开讨论如何调整分工。",
+          "citationId": "3"
+        },
+        {
+          "text": "10月10日，ta进一步指出，上月聚会由ta张罗，本月原已约定轮到你。这为理解本次分工提供了重要背景，不能仅凭你当时的抱怨认定筹备长期由你单方面承担。",
+          "citationId": "19"
+        },
+        {
+          "text": "你接受了这一提醒。因此，材料呈现的是一次从负担表达转向澄清既有约定的互动，而不是已经确认的长期分工失衡；也未见双方在这次交流中重新议定分工。",
+          "citationId": "20"
+        }
+      ]
+    }
+  ],
+  "citations": [
+    {
+      "id": "1",
+      "conversationId": "1",
+      "fragments": [
+        {
+          "sources": [
+            {
+              "messageId": "1",
+              "revision": "c9fbcd7ba20c9bfaf6a9058e6c167011555c4a67cc3163ce61b0d2c5f6534e2e"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "2",
+      "conversationId": "1",
+      "fragments": [
+        {
+          "sources": [
+            {
+              "messageId": "2",
+              "revision": "756a70a0b9503e5edf9d3d8d57bf26abc6406102b4348066f4b08bdc6649d002"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "3",
+      "conversationId": "1",
+      "fragments": [
+        {
+          "sources": [
+            {
+              "messageId": "3",
+              "revision": "36b8d12e68274b199cc22fe2ec69d82b1e70b1a908192b5d564355dc2cf3fbdc"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "4",
+      "conversationId": "1",
+      "fragments": [
+        {
+          "sources": [
+            {
+              "messageId": "4",
+              "revision": "8c4a429917005c13f461d40440bd9bd268b2c25d56850c52e8b5229a4ae4da55"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "19",
+      "conversationId": "1",
+      "fragments": [
+        {
+          "sources": [
+            {
+              "messageId": "19",
+              "revision": "959ab6a8662024c13c185dac3151468d6875e7da7f72dd7be7f51db01f24af51"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "20",
+      "conversationId": "1",
+      "fragments": [
+        {
+          "sources": [
+            {
+              "messageId": "20",
+              "revision": "efd53131197a4ce2ad4d53c3930dbbec3eab19ac938077a97bf3f6e0ef3676a5"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "材料没有聚会实际举行的后续，也无法确认你休息后负担是否减轻。",
+    "除双方确认的上月、本月轮流安排外，缺少更长期的分工记录，无法判断整体承担是否均衡。",
+    "20中的时间措辞与10月8日抱怨之间存在间隔，具体所指仍未核实，不能据此补出一次更近的同类争执。"
+  ],
+  "judgments": []
+}

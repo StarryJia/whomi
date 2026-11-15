@@ -18,7 +18,7 @@ export type InsightEvidenceNote = { sourceId: string; quote: string; text: strin
 type InsightNavigationNode = InsightNote & { children: number[] }
 export type InsightNavigation = { nodes: InsightNavigationNode[]; roots: number[]; cursor: number; nextRoots: number[]; repairs: number }
 export type InsightNavigationRequest = { id: number; offset: number }
-export type InsightCandidate = { observation: string; supportingIds: string[] }
+export type InsightCandidate = { observation: string; supportingIds: string[]; reason?: string }
 export type InsightFinding = {
   revisedObservation: string
   supportingIds: string[]

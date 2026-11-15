@@ -1,0 +1,30 @@
+{
+  "state": "completed",
+  "calls": 1,
+  "httpRequests": 1,
+  "elapsedMs": 23288,
+  "inputCharged": 758,
+  "outputCharged": 867,
+  "trialRequestsAfterPhase": 4,
+  "accounting": {
+    "incremental": {
+      "httpRequests": 1,
+      "elapsedMs": 23288,
+      "inputCharged": 758,
+      "outputCharged": 867
+    },
+    "sharedReading": {
+      "httpRequests": 3,
+      "inputCharged": 4946,
+      "outputCharged": 2009,
+      "elapsedMs": 50204
+    },
+    "hypotheticalArmTotal": {
+      "httpRequests": 4,
+      "inputCharged": 5704,
+      "outputCharged": 2876,
+      "elapsedMs": 73492
+    }
+  },
+  "sharedBaseHash": "a9d4a530dc3b55bb88f8c98efe254a69d838ac7d4da40b67eca45387bae158df"
+}

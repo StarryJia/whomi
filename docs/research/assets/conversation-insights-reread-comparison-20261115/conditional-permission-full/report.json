@@ -1,0 +1,101 @@
+{
+  "format": "conversation-insights-v1",
+  "aboutYou": [
+    {
+      "content": [
+        {
+          "text": "在这次安排中，你起初回复先保留周六，与 ta 提出的条件一致：只有小林确认周日方便，才把餐厅改到周日。",
+          "citationId": "1"
+        },
+        {
+          "text": "但后来你在小林仅表示周日可能有空、尚未确认时，就把餐厅改到了周日，并将蛋糕也安排在周日。被问起后，你解释自己记得 ta 说过可以改，以为能一起办完。这次执行中，你保留了“可以改”的印象，却没有落实餐厅改期所需的前提；这不足以说明你在其他事情上也会如此。",
+          "citationId": "20"
+        }
+      ]
+    }
+  ],
+  "relationship": [
+    {
+      "content": [
+        {
+          "text": "这次分歧的关键是两项安排适用的条件不同，而不是 ta 一概反对改到周日。ta 对餐厅要求先等小林确认，对蛋糕则明确表示不用等、周日送来即可；你汇报后，ta 也认可蛋糕安排，只追问餐厅为何直接改期。因此，现有记录更支持你们对条件的记忆和执行出现了偏差，而非 ta 临时改变要求。",
+          "citationId": "3"
+        },
+        {
+          "text": "面对追问，你给出了自己当时的理解；记录到这里为止，还没有呈现双方如何处理这一偏差。",
+          "citationId": "20"
+        }
+      ]
+    }
+  ],
+  "citations": [
+    {
+      "id": "1",
+      "conversationId": "1",
+      "fragments": [
+        {
+          "sources": [
+            {
+              "messageId": "1",
+              "revision": "1b9316b3557fb99e2d0d8b7302dfa1001a8a3fe76a22caf179987c84856d8e51"
+            },
+            {
+              "messageId": "2",
+              "revision": "bd0283fb3251ac2604353d03bf12619f9e739029097bdebb7d79fdf9d9195209"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "20",
+      "conversationId": "1",
+      "fragments": [
+        {
+          "sources": [
+            {
+              "messageId": "20",
+              "revision": "00fb0b332f747196feeee302c4f730ec1d611afa9dd7ca4c9ce8c07bf411d5bc"
+            },
+            {
+              "messageId": "22",
+              "revision": "feb609a6602c53b4ed5761e18aba094ead2d221199db2b626f4a10ba500b9f5c"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "3",
+      "conversationId": "1",
+      "fragments": [
+        {
+          "sources": [
+            {
+              "messageId": "1",
+              "revision": "1b9316b3557fb99e2d0d8b7302dfa1001a8a3fe76a22caf179987c84856d8e51"
+            },
+            {
+              "messageId": "3",
+              "revision": "654fa9e9b7ec0e37246330195b3b8da577177fd2b22454d49aee931c74f073ee"
+            },
+            {
+              "messageId": "20",
+              "revision": "00fb0b332f747196feeee302c4f730ec1d611afa9dd7ca4c9ce8c07bf411d5bc"
+            },
+            {
+              "messageId": "21",
+              "revision": "b790fca0d1061169e6212248c4fe43408cc97b56f2c1ccfa02f1d938f664503b"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "无法确认小林后来是否确认周日方便，以及餐厅最终是否再次调整、是否产生实际影响。",
+    "没有你解释之后的对话，无法判断 ta 是否接受解释，以及双方是否完成协调。",
+    "这一次安排上的偏差不足以判断双方长期的沟通模式、信任状况或关系性质。"
+  ],
+  "judgments": []
+}

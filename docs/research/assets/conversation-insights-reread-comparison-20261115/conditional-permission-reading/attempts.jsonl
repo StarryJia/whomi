@@ -1,0 +1,15 @@
+{"kind":"reserved","call":1,"stage":"reading","inputEstimate":6638,"outputLimit":3000,"at":1794747917528}
+{"kind":"dispatched","call":1,"wireOutputLimit":3000,"at":1794747919379}
+{"kind":"http-status","call":1,"status":200,"at":1794747928956}
+{"kind":"returned","call":1,"stopReason":"stop"}
+{"kind":"settled","call":1,"usage":{"cacheReadTokens":0,"cacheWriteTokens":2064,"inputTokens":3,"totalInputTokens":2067,"outputTokens":1080,"outputTokensPerSecond":58.02865099091794,"durationMs":18611.495899999998,"firstTokenMs":9789.1464,"startedAt":1794747919171,"completedAt":1794747937783,"incomplete":false},"charged":{"input":2067,"output":1080},"at":1794747937784}
+{"kind":"reserved","call":2,"stage":"reading","inputEstimate":6502,"outputLimit":3000,"at":1794747937787}
+{"kind":"dispatched","call":2,"wireOutputLimit":3000,"at":1794747937800}
+{"kind":"http-status","call":2,"status":200,"at":1794747951659}
+{"kind":"returned","call":2,"stopReason":"stop"}
+{"kind":"settled","call":2,"usage":{"cacheReadTokens":0,"cacheWriteTokens":1987,"inputTokens":3,"totalInputTokens":1990,"outputTokens":1081,"outputTokensPerSecond":49.812546310461656,"durationMs":21701.359999999997,"firstTokenMs":13876.427899999999,"startedAt":1794747937796,"completedAt":1794747959497,"incomplete":false},"charged":{"input":4057,"output":2161},"at":1794747959498}
+{"kind":"reserved","call":3,"stage":"compress-navigation","inputEstimate":4623,"outputLimit":3000,"at":1794747959500}
+{"kind":"dispatched","call":3,"wireOutputLimit":3000,"at":1794747959515}
+{"kind":"http-status","call":3,"status":200,"at":1794747963774}
+{"kind":"returned","call":3,"stopReason":"stop"}
+{"kind":"settled","call":3,"usage":{"cacheReadTokens":0,"cacheWriteTokens":1321,"inputTokens":3,"totalInputTokens":1324,"outputTokens":243,"outputTokensPerSecond":38.85803619448574,"durationMs":6253.532699999996,"firstTokenMs":4264.995999999999,"startedAt":1794747959511,"completedAt":1794747965764,"incomplete":false},"charged":{"input":5381,"output":2404},"at":1794747965765}
