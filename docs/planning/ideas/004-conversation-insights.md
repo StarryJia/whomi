@@ -2,8 +2,8 @@
 
 - 提出日期：2026-11-11
 - 来源与原意：用户希望大模型像第三方连续阅读聊天，主动分析自己和双方关系，随证据修正理解；共同经历融入分析，替代独立回忆散文。
-- 状态：规划中；首期主要界面均已确认，用户已授权核对需求和设计后发布工单，产品未开工。
-- 下一步：按[设计清点表](../../designs/conversation-insights/design-inventory.md)与[工单目录](../issues/2026-11-13-conversation-insights/README.md)核对发布结果；实施前明确工单列出的行为与数据契约。问一问、心事屋分别按 005、006 独立计划推进。
+- 状态：规划中；首期主要界面已确认，已发布[总跟踪 #10](https://github.com/StarryJia/whomi/issues/10)及 #11—#17 子工单，产品未开工。
+- 下一步：按[设计清点表](../../designs/conversation-insights/design-inventory.md)与[工单目录](../issues/2026-11-13-conversation-insights/README.md)进入后续实施准备；实施前明确工单列出的行为与数据契约。问一问、心事屋分别按 005、006 独立计划推进。
 - 工作分支：沿用用户已授权的 codex/conversation-insights；2026-11-15 发布前 fetch 与 pull 后基线为 6910b80，与 origin/main 无差异。本次仅整理并发布规划文档和工单，不修改产品代码。
 
 ## 已确认方向

@@ -4,7 +4,7 @@
 
 | 阶段 | 目标 | 状态与下一步 |
 |---|---|---|
-| 当前：004 对话洞察 | 从选定范围的聊天形成关于你、你们的相处，并可回查原文 | [实施待办](docs/superpowers/plans/2026-11-13-conversation-insights.md)与[工单目录](docs/planning/issues/2026-11-13-conversation-insights/README.md)已整理；[首期七类界面](docs/designs/conversation-insights/design-inventory.md)已有图，已获核对后发布工单授权；产品实现未开始 |
+| 当前：004 对话洞察 | 从选定范围的聊天形成关于你、你们的相处，并可回查原文 | [实施待办](docs/superpowers/plans/2026-11-13-conversation-insights.md)与[工单目录](docs/planning/issues/2026-11-13-conversation-insights/README.md)已整理；[首期七类界面](docs/designs/conversation-insights/design-inventory.md)已有图，已发布[总跟踪 #10](https://github.com/StarryJia/whomi/issues/10)及子工单；产品实现未开始 |
 | 后续：005 问一问 | 明确提问、澄清及认识更新流程，评估检索帮助理解用户 | [独立计划](docs/superpowers/plans/2026-11-13-ask-plan.md)，先需求和复用选型，再出图及实施拆分 |
 | 后续：006 心事屋 | 规划不依附原始会话的交流及允许资料的复用 | [独立计划](docs/superpowers/plans/2026-11-13-heart-room-plan.md)，与问一问协调共享检索；两者实施先后待选型确定 |
 
