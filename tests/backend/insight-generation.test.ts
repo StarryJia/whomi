@@ -129,6 +129,58 @@ test('an explicit reply and an unfinished item carry earlier sources into the ne
   await expect(generateInsight(input, deps)).resolves.toMatchObject({ format: 'conversation-insights-v1' })
 })
 
+test('selecting a visible leaf note rereads its original sources and supports revising the initial observation', async () => {
+  const messages = [
+    source('2', true, '每次都等着我来安排，想到这些就有点累。'),
+    source('3', false, '这次几件事情碰在一起，是挺费精力的。', '2'),
+    source('4', true, '我现在只想先歇一会，聚会还是照常。', '3'),
+    source('19', false, '上个月是我订场地，本月说好轮到你。', '2'),
+    source('20', true, '上个月确实是你张罗，说每次不准确。', '19'),
+  ]
+  const { input, deps, state } = setup(messages, async request => {
+    const payload = JSON.parse(request.prompt)
+    if (payload.stage === 'reading') return result({
+      ...noObservations,
+      observations: [
+        { text: '本人陈述反复承担。', sourceIds: ['2'] },
+        { text: '对方回应本次疲惫。', sourceIds: ['3'] },
+        { text: '本人暂时休息。', sourceIds: ['4'] },
+        { text: '当次聚会照常。', sourceIds: ['4'] },
+        { text: '陈述与回应的时间范围不同。', sourceIds: ['2', '3'] },
+        { text: '后文明确轮流分工，本人撤回每次的概括。', sourceIds: ['2', '19', '20'] },
+      ], candidates: [{ observation: '是否长期由本人承担安排，需要核实其他场次。', supportingIds: ['2', '3', '4'] }],
+    })
+    if (payload.stage === 'checking' && payload.check.round === 1) return result({
+      action: 'navigate', checkId: payload.check.id, navigationId: 5, offset: 0,
+      evidenceNotes: [{ sourceId: '2', quote: '每次都等着我来安排，想到这些就有点累。', text: '不能据此确认长期分工。' }],
+    })
+    if (payload.stage === 'checking') {
+      expect(payload.evidence.map((message: InsightSourceMessage) => message.id)).toEqual(['19', '20'])
+      expect(payload.evidenceNotes[0].quote).toBe('每次都等着我来安排，想到这些就有点累。')
+      return result({ action: 'finish', checkId: payload.check.id, revisedObservation: '撤回长期单方承担的概括，已有轮流分工；当次疲惫仍有依据。',
+        supportingIds: ['2'], counterexampleIds: ['19', '20'], alternativeExplanations: ['当次事情集中。'], limitations: ['仅限已见场次。'] })
+    }
+    return result(noConclusion)
+  })
+  await generateInsight(input, deps)
+  expect(state.reads).toContainEqual(['19', '20'])
+  expect(state.checkpoint?.checks[0].finding).toMatchObject({
+    revisedObservation: '撤回长期单方承担的概括，已有轮流分工；当次疲惫仍有依据。', counterexampleIds: ['19', '20'],
+  })
+  expect(state.checkpoint?.coveredMessageIds).toEqual(['2', '3', '4', '19', '20'])
+  expect(state.checkpoint?.attempts.filter(attempt => attempt.stage === 'checking')).toHaveLength(2)
+})
+
+test.each([{ navigationId: 99, offset: 0 }, { navigationId: 0, offset: 1 }])('navigation rejects an unavailable node or invalid leaf offset: %j', async navigation => {
+  const { input, deps, state } = setup([source('1', true, '有待核实的安排。')], async request => {
+    if (JSON.parse(request.prompt).stage === 'reading') return result({ ...noObservations,
+      observations: [{ text: '安排尚未确认。', sourceIds: ['1'] }], candidates: [{ observation: '需要核对安排。', supportingIds: ['1'] }] })
+    return result({ action: 'navigate', checkId: '1', ...navigation, evidenceNotes: [] })
+  })
+  await expect(generateInsight(input, deps)).rejects.toMatchObject({ code: 'INVALID_EVIDENCE' })
+  expect(state.reads).toEqual([['1'], ['1']])
+})
+
 test('a fabricated check read outside frozen sources reaches neither the source reader nor the manuscript', async () => {
   const { input, deps, state } = setup([source('1', true, '原文', '99')], async request => {
     const payload = JSON.parse(request.prompt)
@@ -145,15 +197,18 @@ test('a fabricated check read outside frozen sources reaches neither the source 
   expect(state.reads.flat()).not.toContain('99')
 })
 
-test('a repeated reread ends with an explicit uncertainty and neither invents a judgment nor loops', async () => {
+test.each(['read', 'navigate'])('a repeated %s ends with an explicit uncertainty and neither invents a judgment nor loops', async action => {
   const { input, deps, state } = setup([source('1', true, '首句'), source('2', false, '后句')], async request => {
     const payload = JSON.parse(request.prompt)
     if (payload.stage === 'reading') return result({
-      ...noObservations, candidates: [{ observation: '需要确认', supportingIds: ['1'] }],
+      ...noObservations, observations: [{ text: '后续回应。', sourceIds: ['2'] }],
+      candidates: [{ observation: '需要确认', supportingIds: ['1'] }],
     })
     if (payload.stage === 'checking') {
       if (payload.check.round === 2) expect(payload.earlierEvidence.map((message: InsightSourceMessage) => message.text)).toEqual(['首句'])
-      return result({ action: 'read', checkId: payload.check.id, messageIds: ['2'], purpose: '需要再看' })
+      return result(action === 'read'
+        ? { action, checkId: payload.check.id, messageIds: ['2'], purpose: '需要再看' }
+        : { action, checkId: payload.check.id, navigationId: 0, offset: 0 })
     }
     expect(payload.checks[0]).toMatchObject({ state: 'inconclusive', finding: null })
     return result(noConclusion)

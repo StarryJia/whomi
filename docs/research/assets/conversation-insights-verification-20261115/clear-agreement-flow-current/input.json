@@ -1,0 +1,73 @@
+{
+  "caseName": "clear-agreement",
+  "variant": "flow-current",
+  "regression": false,
+  "scope": {
+    "kind": "dates",
+    "startDate": "2026-10-08",
+    "endDate": "2026-10-10",
+    "timezone": "Asia/Shanghai"
+  },
+  "messages": [
+    {
+      "id": "1",
+      "revision": "272e3ff3a30dac36f5a968ed08973316748516cd98979811cd457777e83079e0",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "就订我们刚才选好的那家酒店，两晚，你帮我下单吧。",
+      "sentAtMs": 1791446460000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "2",
+      "revision": "b2326508c93ffff89f59a7f8555d016c24782b2884a420f904fc95386b92cc75",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "订好了，是刚才选的酒店和日期，两晚，确认单发给你了。",
+      "sentAtMs": 1791446520000,
+      "replyToMessageId": "1"
+    },
+    {
+      "id": "3",
+      "revision": "7c98325f30595c13b221d0349cf211383043973ddf539ecdb6021e6e4d24329f",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "我看了确认单，酒店、日期和房型都对，谢谢。",
+      "sentAtMs": 1791446580000,
+      "replyToMessageId": "2"
+    },
+    {
+      "id": "4",
+      "revision": "eb32a04f055b62f2dd27747ebdb21ba6e761b931e5ef21c3fa4cae9721a26ebb",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "收到。",
+      "sentAtMs": 1791446640000,
+      "replyToMessageId": "3"
+    }
+  ],
+  "excluded": {
+    "id": "99",
+    "revision": "cad004adcbe806ceb84878c9ccd949fdc9b4a1895b3c4e35944a6936231012dc",
+    "senderName": "合成对方",
+    "isSelf": false,
+    "text": "范围外的合成记录，只能在本地核对，不发送给模型。",
+    "sentAtMs": 1792489140000,
+    "replyToMessageId": null
+  },
+  "limits": {
+    "maxChecks": 2,
+    "maxRoundsPerCheck": 4,
+    "maxCalls": 8,
+    "maxInputTokens": 120000,
+    "maxOutputTokens": 12000,
+    "maxElapsedMs": 300000
+  },
+  "model": "gpt-6.1-sol",
+  "protocol": "openai-completions",
+  "perRequestEstimateCeiling": 7000,
+  "experiment": "autonomous-verification",
+  "runNumber": 1,
+  "totalRequestLimit": 24,
+  "precedingRequests": 12
+}

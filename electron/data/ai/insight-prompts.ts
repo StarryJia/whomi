@@ -25,7 +25,7 @@ const protocol = {
   checking: [
     '核查输入的 check，沿用它的 id。evidence 是本轮原文，earlierEvidence 是先前原文，evidenceNotes 保留先前响应的逐字摘录和相关观察。observations 和 navigationPage 只供查找原文。',
     '需要新依据时返回 {action:"read",checkId,messageIds:[],purpose,evidenceNotes:[{sourceId,quote,text}]}，编号仅用当前任务已读来源。hasMoreEvidence 为 true 时用 read 继续尚未发送完的原文，可用空的 messageIds。',
-    '需要查看导航中的具体观察时返回 {action:"navigate",checkId,navigationId,offset,evidenceNotes:[]}。展开有子节点的可见导航项从 offset 0 开始，续页使用 navigationPage.nextOffset。',
+    '需要查看导航中的具体观察时返回 {action:"navigate",checkId,navigationId,offset,evidenceNotes:[]}。选择可见导航项从 offset 0 开始：childCount 大于 0 时展开子项，等于 0 时读取该项关联的原文。续页使用 navigationPage.nextOffset。',
     '继续核查时，对本轮有意义的原文用 evidenceNotes 留下逐字摘录 quote（最多 240 字符）和简短观察 text。摘录应覆盖观察中的关键行为和条件。对于 fragment 至少保留一条摘录。只可摘录本轮 evidence 中实际出现的文本。重复请求没有新增证据时结束。',
     '完成时返回 {action:"finish",checkId,revisedObservation,supportingIds:[],counterexampleIds:[],alternativeExplanations:[],limitations:[]}。只用本轮原文、实际提供的旧原文或经校验的逐字摘录作依据；没有证据时修正、撤回或明确未知。',
     '寻找支持、反例和替代解释，说明适用时间和情境，区分情况后来变化与后来知道了更多背景。不另开任务。',

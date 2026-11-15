@@ -59,8 +59,8 @@ test('isolated Electron resumes a scoped insight, retries writing, and preserves
       env: { ...process.env, WHOMI_RUNTIME_TEST: directory },
     })
     application = await launch()
-    await application.evaluate(() => globalThis.__whomiRuntimeProbe.request('probe.seedInsight', null))
     let page = await application.firstWindow()
+    await application.evaluate(() => globalThis.__whomiRuntimeProbe.request('probe.seedInsight', null))
     const model = await page.evaluate(async baseUrl => {
       const provider = await window.whomi.settings.saveProvider({ name: '合成本地服务', baseUrl, enabled: true, apiKey: 'test-only-key' })
       return window.whomi.settings.saveModel({ providerId: provider.id, label: '合成洞察模型', model: 'example', contextWindow: 12000, maxTokens: 1000, enabled: true })

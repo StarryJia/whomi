@@ -1,0 +1,73 @@
+{
+  "format": "conversation-insights-v1",
+  "aboutYou": [
+    {
+      "content": [
+        {
+          "text": "这次代订中，你按此前选定的酒店和日期订好了两晚，并向 ta 发送了确认单，让 ta 可以核对预订结果。",
+          "citationId": "c1"
+        }
+      ]
+    }
+  ],
+  "relationship": [
+    {
+      "content": [
+        {
+          "text": "你们这次的配合有明确的交接：ta 请你代订此前选定的酒店、入住两晚；你完成预订并发送确认单后，ta 确认酒店、日期和房型都正确，并向你致谢，你随后回复“收到。”这段互动呈现了从提出请求、完成预订到核对结果的过程，没有出现明确的分歧。",
+          "citationId": "c2"
+        },
+        {
+          "text": "以后遇到类似代订，可以继续采用发送确认单、请 ta 核对酒店、日期和房型的方式，让双方都能确认实际预订是否符合约定。"
+        }
+      ]
+    }
+  ],
+  "citations": [
+    {
+      "id": "c1",
+      "conversationId": "1",
+      "fragments": [
+        {
+          "sources": [
+            {
+              "messageId": "2",
+              "revision": "b2326508c93ffff89f59a7f8555d016c24782b2884a420f904fc95386b92cc75"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "conversationId": "1",
+      "fragments": [
+        {
+          "sources": [
+            {
+              "messageId": "1",
+              "revision": "272e3ff3a30dac36f5a968ed08973316748516cd98979811cd457777e83079e0"
+            },
+            {
+              "messageId": "2",
+              "revision": "b2326508c93ffff89f59a7f8555d016c24782b2884a420f904fc95386b92cc75"
+            },
+            {
+              "messageId": "3",
+              "revision": "7c98325f30595c13b221d0349cf211383043973ddf539ecdb6021e6e4d24329f"
+            },
+            {
+              "messageId": "4",
+              "revision": "eb32a04f055b62f2dd27747ebdb21ba6e761b931e5ef21c3fa4cae9721a26ebb"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "材料仅涉及一次酒店代订，不能据此判断你们长期的分工、相处模式或各自承担事务的比例。",
+    "材料未列出酒店名称及具体入住日期，也未呈现此前如何共同选定这些安排，因此不能进一步解释你们作出选择的理由。"
+  ],
+  "judgments": []
+}

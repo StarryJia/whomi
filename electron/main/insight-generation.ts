@@ -145,7 +145,14 @@ function parseChecking(
     }
     const { navigationId, offset } = body
     if (typeof navigationId !== 'number' || typeof offset !== 'number') return invalidOutput()
-    const start = offset === 0 && visibleNavigation.some(node => node.navigationId === navigationId && node.childCount > 0)
+    const selected = visibleNavigation.find(node => node.navigationId === navigationId)
+    if (offset === 0 && selected?.childCount === 0) {
+      return {
+        action: 'read', messageIds: sourceIds(selected.sourceIds, covered, true),
+        purpose: '读取所选观察的关联原文', evidenceNotes,
+      }
+    }
+    const start = offset === 0 && selected !== undefined && selected.childCount > 0
     const next = navigationPage?.id === navigationId && navigationPage.nextOffset === offset
     if (!start && !next) return invalidEvidence()
     return { action: 'navigate', navigation: { id: navigationId, offset }, evidenceNotes }

@@ -7,15 +7,19 @@ import { fileURLToPath } from 'node:url'
 import { tmpdir } from 'node:os'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const output = join(root, 'release', 'conversation-insights-20261115', 'quality')
-const runtime = join(dirname(output), '.quality-runtime')
 const args = process.argv.slice(2)
+const verification = args[0] === '--verification'
+const output = join(root, 'release', 'conversation-insights-20261115', verification ? 'verification' : 'quality')
+const runtime = join(dirname(output), '.quality-runtime')
 const validCases = ['later-counterexample', 'distant-reply']
 const validVariants = ['baseline', 'insight']
-const dryRun = args.length === 1 && args[0] === '--dry-run'
+const verificationVariants = ['probe-original', 'probe-current', 'flow-original', 'flow-current']
+const dryRun = args.length === 1 && args[0] === '--dry-run' || verification && args.length === 2 && args[1] === '--dry-run'
+const verificationRun = verification && (args.length === 3 || args.length === 4 && args[2]?.startsWith('probe-') && /^--run=[12]$/.test(args[3]))
+  && /^[a-z][a-z0-9-]{0,60}$/.test(args[1]) && verificationVariants.includes(args[2])
 const regression = args.length === 3 && args[0] === 'distant-reply' && args[1] === 'insight' && ['--regression', '--writing-regression'].includes(args[2])
-if (!dryRun && !regression && (args.length !== 2 || !validCases.includes(args[0]) || !validVariants.includes(args[1]))) {
-  throw new Error('Usage: node scripts/insight-quality.mjs --dry-run | <later-counterexample|distant-reply> <baseline|insight> | distant-reply insight [--regression|--writing-regression]')
+if (!dryRun && !verificationRun && !regression && (args.length !== 2 || !validCases.includes(args[0]) || !validVariants.includes(args[1]))) {
+  throw new Error('Usage: node scripts/insight-quality.mjs --dry-run | <later-counterexample|distant-reply> <baseline|insight> | distant-reply insight [--regression|--writing-regression] | --verification <case> <probe-original|probe-current|flow-original|flow-current> [--run=1|--run=2] | --verification --dry-run')
 }
 if (!process.env.WHOMI_QUALITY_DB || !process.env.WHOMI_QUALITY_PROVIDER_ID || !process.env.WHOMI_QUALITY_MODEL_ID) {
   throw new Error('Set WHOMI_QUALITY_DB, WHOMI_QUALITY_PROVIDER_ID and WHOMI_QUALITY_MODEL_ID to the approved configuration.')
