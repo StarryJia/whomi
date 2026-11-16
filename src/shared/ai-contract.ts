@@ -26,6 +26,7 @@ export type AiMethods = {
   listSkills(): Promise<AiSkill[]>
   previewInsightScope(input: InsightScopeInput): Promise<InsightScopePreview>
   prepareAnalysis(input: PrepareAnalysisInput): Promise<AnalysisPreparation>
+  discardAnalysisPreparation(token: string): Promise<void>
   confirmAnalysis(input: { token: string; requestId: string }): Promise<AnalysisTask>
   getAnalysis(taskId: string): Promise<AnalysisTask>
   listAnalyses(conversationId?: string): Promise<AnalysisTask[]>

@@ -140,7 +140,8 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
         changes.set(task.id, task)
         setTasks(items => {
           const stored = items.find(item => item.id === task.id)
-          return stored && stored.eventSequence > task.eventSequence ? items : [task, ...items.filter(item => item.id !== task.id)]
+          if (stored && stored.eventSequence > task.eventSequence) return items
+          return stored ? items.map(item => item.id === task.id ? task : item) : [task, ...items]
         })
         if (task.state === 'completed') refreshMemories()
       }

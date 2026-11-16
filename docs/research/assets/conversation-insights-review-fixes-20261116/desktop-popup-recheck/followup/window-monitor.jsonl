@@ -1,0 +1,8 @@
+{"event":"monitor-start","desktop":{"Station":"WinSta0","ThreadDesktop":"Default","InputDesktop":"Default"},"at":"2026-11-16T17:29:17.0385553+08:00","sessionId":1}
+{"ownerProcess":"electron","errorDialog":false,"event":"window","baseline":false,"at":"2026-11-16T17:29:20.4156275+08:00","window":{"Handle":853584,"OwnerId":18780,"Title":"Whomi","Class":"Chrome_WidgetWin_1"}}
+{"ownerProcess":"electron","errorDialog":false,"event":"window","baseline":false,"at":"2026-11-16T17:29:25.7491566+08:00","window":{"Handle":658006,"OwnerId":22328,"Title":"Whomi","Class":"Chrome_WidgetWin_1"}}
+{"ownerProcess":"electron","errorDialog":false,"event":"window","baseline":false,"at":"2026-11-16T17:29:32.3925566+08:00","window":{"Handle":2296382,"OwnerId":16160,"Title":"Whomi","Class":"Chrome_WidgetWin_1"}}
+{"ownerProcess":"electron","errorDialog":false,"event":"window","baseline":false,"at":"2026-11-16T17:29:47.9710896+08:00","window":{"Handle":1313046,"OwnerId":7380,"Title":"Whomi","Class":"Chrome_WidgetWin_1"}}
+{"ownerProcess":"electron","errorDialog":false,"event":"window","baseline":false,"at":"2026-11-16T17:29:55.4067053+08:00","window":{"Handle":1051222,"OwnerId":26800,"Title":"Whomi","Class":"Chrome_WidgetWin_1"}}
+{"ownerProcess":"electron","errorDialog":false,"event":"window","baseline":false,"at":"2026-11-16T17:30:06.6860987+08:00","window":{"Handle":4917878,"OwnerId":22292,"Title":"Whomi","Class":"Chrome_WidgetWin_1"}}
+{"event":"monitor-end","at":"2026-11-16T17:30:25.1874778+08:00","summary":{"afterExitSeconds":10,"desktopAtEnd":{"Station":"WinSta0","ThreadDesktop":"Default","InputDesktop":"Default"},"newErrorDialogs":0,"newElectronWindows":6,"baselineErrorDialogs":0,"failedSamples":0,"polls":486}}

@@ -1,0 +1,10 @@
+
+Running 5 tests using 1 worker
+
+  ok 1 tests\desktop\conversation-insights.spec.mjs:14:1 › isolated Electron resumes a scoped insight, retries writing, and preserves exact citations through rename and deletion (10.8s)
+  ok 2 tests\desktop\insight-ui.spec.mjs:113:1 › real Electron insight UI validates scope, pauses and retries, reads exact sources, renames and deletes (15.8s)
+  ok 3 tests\desktop\insight-ui.spec.mjs:298:1 › real Electron requires self selection and a model before creating an insight (7.3s)
+  ok 4 tests\desktop\insight-ui.spec.mjs:323:1 › real Electron report list shows loading and retryable first-read failure (10.8s)
+  ok 5 tests\desktop\insight-ui.spec.mjs:355:1 › real Electron preserves long report reading position and fits an 80-character title at 960 by 640 (10.9s)
+
+  5 passed (57.1s)

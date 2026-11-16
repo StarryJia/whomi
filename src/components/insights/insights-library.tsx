@@ -148,6 +148,7 @@ export function InsightsLibrary({ tasks, conversations, selectedId, onSelect, on
     group.tasks.push(task)
     groups.set(task.conversationId, group)
   }
+  for (const group of groups.values()) group.tasks.sort((a, b) => Number(!!b.pinned) - Number(!!a.pinned))
   const orderedGroups = [...groups.entries()].sort((a, b) => Number(b[1].pinned) - Number(a[1].pinned))
 
   function rowFor(taskId: string) {

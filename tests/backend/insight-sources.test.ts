@@ -35,6 +35,52 @@ async function setup() {
   return { store, repository, temp }
 }
 
+test('取消准备释放完整快照，重复取消和迟到取消不删除已确认任务', async () => {
+  const { repository, store } = await setup()
+  const cancelled = await repository.prepareAnalysis({ conversationId: '1', modelId: 'example' })
+  expect(store.reader.prepare('SELECT insight_snapshot FROM ai_preparations WHERE token=?').get(cancelled.token)).toMatchObject({ insight_snapshot: expect.any(String) })
+  await repository.discardAnalysisPreparation(cancelled.token)
+  await repository.discardAnalysisPreparation(cancelled.token)
+  expect(store.reader.prepare('SELECT token FROM ai_preparations WHERE token=?').get(cancelled.token)).toBeUndefined()
+  await expect(repository.confirmAnalysis({ token: cancelled.token, requestId: 'cancelled' })).rejects.toHaveProperty('code', 'CONFIRMATION_EXPIRED')
+
+  const accepted = await repository.prepareAnalysis({ conversationId: '1', modelId: 'example' })
+  const task = await repository.confirmAnalysis({ token: accepted.token, requestId: 'accepted' })
+  await repository.discardAnalysisPreparation(accepted.token)
+  expect(store.reader.prepare('SELECT insight_snapshot FROM ai_preparations WHERE token=?').get(accepted.token)).toEqual({ insight_snapshot: null })
+  expect(repository.analysisContext(task.id).snapshot?.sources).toHaveLength(4)
+  await expect(repository.confirmAnalysis({ token: accepted.token, requestId: 'accepted' })).resolves.toMatchObject({ id: task.id })
+})
+
+test('再次准备会清理过期快照并保留尚未过期的确认窗口', async () => {
+  const { repository, store } = await setup()
+  const abandoned = await repository.prepareAnalysis({ conversationId: '1', modelId: 'example' }, 1000)
+  const stillOpen = await repository.prepareAnalysis({ conversationId: '1', modelId: 'example' }, abandoned.expiresAt - 1)
+  const latest = await repository.prepareAnalysis({ conversationId: '1', modelId: 'example' }, abandoned.expiresAt)
+  const tokens = store.reader.prepare('SELECT token FROM ai_preparations ORDER BY expires_at_ms').all()
+  expect(tokens).toEqual([{ token: stillOpen.token }, { token: latest.token }])
+  await expect(repository.confirmAnalysis({ token: stillOpen.token, requestId: 'still-open' }, abandoned.expiresAt)).resolves.toMatchObject({ totalMessages: 4 })
+})
+
+test('恢复时清理旧版遗留的过期准备快照并保留任务来源和有效准备', async () => {
+  const { repository, store } = await setup()
+  const before = Date.now() - 6 * 60 * 1000
+  const abandoned = await repository.prepareAnalysis({ conversationId: '1', modelId: 'example' }, before)
+  const accepted = await repository.prepareAnalysis({ conversationId: '1', modelId: 'example' }, before)
+  const task = await repository.confirmAnalysis({ token: accepted.token, requestId: 'recover-accepted' }, before)
+  // 旧版本遗留的快照可与有效准备同时存在。
+  store.writer.prepare('UPDATE ai_preparations SET expires_at_ms=? WHERE token=?').run(Date.now() + 60_000, abandoned.token)
+  const stillOpen = await repository.prepareAnalysis({ conversationId: '1', modelId: 'example' })
+  store.writer.prepare('UPDATE ai_preparations SET expires_at_ms=? WHERE token=?').run(before, abandoned.token)
+
+  await repository.recover()
+  expect(store.reader.prepare('SELECT token FROM ai_preparations WHERE token=?').get(abandoned.token)).toBeUndefined()
+  expect(store.reader.prepare('SELECT token FROM ai_preparations WHERE token=?').get(stillOpen.token)).toEqual({ token: stillOpen.token })
+  expect(repository.getAnalysis(task.id)).toMatchObject({ state: 'interrupted' })
+  expect(repository.analysisContext(task.id).snapshot?.sources).toHaveLength(4)
+  await expect(repository.confirmAnalysis({ token: accepted.token, requestId: 'recover-accepted' })).resolves.toMatchObject({ id: task.id })
+})
+
 test('日期范围包含上海时区首日零点和最后一日最后一毫秒', async () => {
   const { repository, store } = await setup()
   const input = { conversationId: '1', modelId: 'example', scope: october }

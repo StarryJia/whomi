@@ -1,0 +1,40 @@
+{
+  "revision": "dd34362979a84ec10c398b367c0424bcbeb6cd79",
+  "branch": "codex/fix-insight-review",
+  "workingTree": [],
+  "environment": "Codex require_escalated normal user; Electron sandbox unchanged",
+  "sessionId": 1,
+  "desktop": {
+    "Station": "WinSta0",
+    "ThreadDesktop": "Default",
+    "InputDesktop": "Default"
+  },
+  "workingDirectory": "D:\\University\\github\\whomi",
+  "command": "D:\\nodejs\\node.exe node_modules/@playwright/test/cli.js test tests/desktop/conversation-insights.spec.mjs tests/desktop/insight-ui.spec.mjs --workers=1 --timeout=90000 --max-failures=1 --retries=0 --reporter=list,json --output=\"D:\\University\\github\\whomi\\artifacts\\desktop-insights-recheck\\first-20261116-172757-860\\test-results\"",
+  "debug": "pw:browser*",
+  "electron": "45.1.0",
+  "mainBuild": {
+    "lastWrite": "2026-11-16T15:45:32.2205995+08:00",
+    "sha256": "FA3748948CA080B776056DF6A130FE6C5A024186A2A7E69AA021ECE693FE3980"
+  },
+  "startedAt": "2026-11-16T17:27:59.6459400+08:00",
+  "testRunnerProcessId": 13316,
+  "exitedAt": "2026-11-16T17:28:28.1972852+08:00",
+  "observationEndedAt": "2026-11-16T17:28:38.2359876+08:00",
+  "exitCode": 1,
+  "monitor": {
+    "desktopAtEnd": {
+      "Station": "WinSta0",
+      "ThreadDesktop": "Default",
+      "InputDesktop": "Default"
+    },
+    "polls": 277,
+    "afterExitSeconds": 10,
+    "failedSamples": 0,
+    "newErrorDialogs": 0,
+    "newElectronWindows": 1,
+    "baselineErrorDialogs": 0
+  },
+  "windowsErrorEvents": 0,
+  "windowsEventQueryErrors": []
+}

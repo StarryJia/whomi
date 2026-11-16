@@ -37,6 +37,7 @@ export type ConversationAiAdapter = {
   models: readonly ModelOption[]
   skills: readonly { id: string; label: string }[]
   prepareAnalysis?: (request: PrepareAnalysisInput) => Promise<AnalysisPreparation>
+  discardAnalysisPreparation?: AiMethods['discardAnalysisPreparation']
   previewInsightScope?: AiMethods['previewInsightScope']
   arrangeThread?: import('../../shared/ai-contract').AiMethods['arrangeThread']
   deleteThread?: import('../../shared/ai-contract').AiMethods['deleteThread']

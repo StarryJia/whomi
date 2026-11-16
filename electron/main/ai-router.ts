@@ -18,6 +18,7 @@ export function createAiRouter(service: AiMethods) {
       validateAiCall(method, args)
       const input = args as unknown[]
       if (method === 'confirmAnalysis') requireOwner('token', (input[0] as { token: string }).token, owner)
+      if (method === 'discardAnalysisPreparation') requireOwner('token', input[0] as string, owner)
       if (method === 'arrangeThread') claim('thread', (input[1] as { id: string }).id, owner)
       if (method === 'deleteThread') claim('thread', input[1] as string, owner)
       if (method === 'sendTurn') requireOwner('thread', (input[0] as { threadId: string }).threadId, owner)

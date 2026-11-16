@@ -35,3 +35,22 @@ test('洞察改名和原文引用只从持有对应报告的窗口调用', async
   await expect(router.invoke(1, 'renameAnalysis', [{ taskId: '1', title: '那次合作' }])).resolves.toMatchObject({ title: '那次合作' })
   await expect(router.invoke(1, 'readInsightCitation', [{ taskId: '1', citationId: 'time', fragmentIndex: 0 }])).resolves.toEqual({ status: 'unavailable' })
 })
+
+test('准备快照只能由原窗口释放，释放后不影响其他窗口的准备', async () => {
+  const model = { id: 'm', label: '示例', model: 'm', baseUrl: 'http://localhost:9900/v1', contextWindow: 8000, maxTokens: 1000, version: 1, enabled: true, hasCredential: false }
+  const pending = new Set<string>()
+  let next = 0
+  const router = createAiRouter({
+    prepareAnalysis: async () => {
+      const token = `token-${++next}`
+      pending.add(token)
+      return { token, conversationId: '1', title: '示例', selfName: '我', totalMessages: 1, analyzableMessages: 1, snapshotMaxId: '1', expiresAt: 2000, model }
+    },
+    discardAnalysisPreparation: async (token: string) => { pending.delete(token) },
+  } as any)
+  await router.invoke(1, 'prepareAnalysis', [{ conversationId: '1', modelId: 'm' }])
+  await router.invoke(2, 'prepareAnalysis', [{ conversationId: '1', modelId: 'm' }])
+  await expect(router.invoke(2, 'discardAnalysisPreparation', ['token-1'])).rejects.toHaveProperty('code', 'INVALID_OWNER')
+  await expect(router.invoke(1, 'discardAnalysisPreparation', ['token-1'])).resolves.toBeUndefined()
+  expect([...pending]).toEqual(['token-2'])
+})

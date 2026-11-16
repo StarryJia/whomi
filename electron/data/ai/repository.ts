@@ -76,6 +76,10 @@ export function saveAiModelVersion(db: Store['writer'], input: ModelInput, encry
 
 export function createAiRepository(store: Store, write: WriterQueue) {
   const db = store.writer, reader = store.reader
+  function discardExpiredPreparations(now: number) {
+    db.prepare(`DELETE FROM ai_preparations WHERE expires_at_ms<=?
+      AND NOT EXISTS (SELECT 1 FROM ai_analysis_tasks WHERE preparation_token=ai_preparations.token)`).run(now)
+  }
   const queries = createQueries(store)
   function conversation(conversationId: string) {
     const row = reader.prepare('SELECT title,kind FROM conversations WHERE id=?').get(id(conversationId)) as { title: string; kind: string } | undefined
@@ -292,6 +296,7 @@ export function createAiRepository(store: Store, write: WriterQueue) {
       if (input.thinkingLevel !== undefined && !isThinkingLevel(input.thinkingLevel)) fail('INVALID_ARGUMENT')
       if (input.scope !== undefined && !isInsightScope(input.scope)) fail('INVALID_ARGUMENT', '请选择有效的日期范围。')
       return write(() => {
+        discardExpiredPreparations(now)
         const { title } = conversation(input.conversationId), self = identity(input.conversationId)
         if (!self.selfName) fail('SELF_REQUIRED', '请先确认当前会话中的本人身份。')
         const model = enabledModel(input.modelId)
@@ -307,6 +312,14 @@ export function createAiRepository(store: Store, write: WriterQueue) {
         db.prepare('INSERT INTO ai_preparations(token,conversation_id,data,self_fingerprint,model_version,prompt_version,expires_at_ms,insight_snapshot) VALUES(?,?,?,?,?,?,?,?)')
           .run(preparation.token, id(input.conversationId), JSON.stringify(preparation), self.fingerprint, model.version, INSIGHT_PROMPT_VERSION, preparation.expiresAt, JSON.stringify({ ...snapshot, createdAtMs: now }))
         return preparation
+      })
+    },
+    async discardAnalysisPreparation(token: string): Promise<void> {
+      if (!key(token)) fail('INVALID_ARGUMENT')
+      await write(() => {
+        // 迟到的取消不能删除已确认任务依赖的准备记录。
+        db.prepare(`DELETE FROM ai_preparations WHERE token=?
+          AND NOT EXISTS (SELECT 1 FROM ai_analysis_tasks WHERE preparation_token=ai_preparations.token)`).run(token)
       })
     },
     async confirmAnalysis(input: { token: string; requestId: string }, now = Date.now()): Promise<AnalysisTask> {
@@ -631,6 +644,7 @@ export function createAiRepository(store: Store, write: WriterQueue) {
     },
     async recover(): Promise<void> {
       await write(() => db.transaction(() => {
+        discardExpiredPreparations(Date.now())
         db.prepare("UPDATE ai_analysis_tasks SET state='interrupted',event_sequence=event_sequence+1 WHERE state IN ('queued','running','summarizing')").run()
         db.prepare("UPDATE ai_turns SET state='interrupted',event_sequence=event_sequence+1 WHERE state IN ('queued','running','summarizing')").run()
       })())
