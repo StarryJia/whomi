@@ -44,7 +44,10 @@ export function ImportProgress({ snapshot, busy, onCancel, onOpen, onRetrySummar
     {visibleIssues(unassignedIssues).map((issue, index) => <p className="import-error" key={index}>{issue.action}</p>)}
     {snapshot.results.length > 0 && <ul className="import-results">{snapshot.results.map(result => {
       const persisted = isPersistedResult(result)
-      const title = snapshot.candidates.find(candidate => candidate.candidateId === result.candidateId)?.title || `导入项 ${result.candidateId}`
+      const matchedTitle = result.matchedConversationTitle
+      const title = persisted && matchedTitle !== undefined
+        ? `发现已有会话：${matchedTitle.trim() ? matchedTitle : '未命名会话'}`
+        : snapshot.candidates.find(candidate => candidate.candidateId === result.candidateId)?.title || `导入项 ${result.candidateId}`
       return <li key={result.candidateId}>
         <h3>{title}</h3>
         {!replaceSingleFile && <p>{persisted ? result.status === 'duplicate' ? `新增 0 条消息，重复 ${result.duplicates} 条。` : `已保存 ${result.inserted} 条消息。` : result.status === 'saved' || result.status === 'duplicate' ? '请重新查询保存结果。' : resultLabels[result.status]}</p>}

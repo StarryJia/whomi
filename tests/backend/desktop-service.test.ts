@@ -102,6 +102,9 @@ async function commitIdentity(context: Awaited<ReturnType<typeof setup>>, staged
   await context.service.idle()
   const saved = await context.dispatch('getImport', [staged.jobId]) as ImportSnapshot
   expect(saved.status).toBe('completed')
+  for (const result of saved.results) {
+    expect(result.matchedConversationTitle).toBe(conversationId ? 'Synthetic identity' : undefined)
+  }
   return saved.results[0].conversationId!
 }
 async function selfState(context: Awaited<ReturnType<typeof setup>>, id: string) {

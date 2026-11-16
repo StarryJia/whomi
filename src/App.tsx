@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import {
   ContactRound,
   FileText,
-  Heart,
+  HouseHeart,
   MessageCircleQuestion,
   PanelLeftClose,
   PanelLeftOpen,
@@ -482,7 +482,7 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
               <span className="control-label" aria-hidden="true">问一问</span>
             </button>
           </Tooltip>
-          <UnavailableDestination label="心事屋" icon={Heart} />
+          <UnavailableDestination label="心事屋" icon={HouseHeart} />
           <ConversationNavigation wide={open} conversations={reader.conversations} activeId={!settingsOpen && view === 'conversation' ? activeId : undefined}
             openRequest={conversationNavigationRequest}
             arrange={api?.arrangeConversation && (async change => { await api.arrangeConversation(change); await reader.refresh({ preserveReader: true }) })}
