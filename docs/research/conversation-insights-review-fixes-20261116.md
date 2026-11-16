@@ -37,6 +37,17 @@
 
 桌面覆盖范围：设置取消、日期范围与本人/模型门槛、暂停恢复、成稿失败重试、来源定位与前后分页、改名、删除、列表读取失败重试，以及960×640窗口中的长标题和阅读位置恢复。置顶顺序由新增 App 组件回归验证；本轮没有另做置顶的桌面自动操作。
 
+## 按新约束复测桌面弹窗
+
+2026-11-16 在 `dd34362979a84ec10c398b367c0424bcbeb6cd79` 上复测上述5项。两轮均直接经工具授权在 Windows 正常用户桌面执行，沿用同一应用构建和 Electron 自身沙箱，使用隔离资料库与本地合成模型服务。两轮都启用了 `DEBUG=pw:browser*`，各自保留执行命令、构建摘要、开始与结束时间、退出码、完整输出及测试报告。以下时间为北京时间。
+
+| 运行 | 测试结果 | Electron 观察 | 证据 |
+| --- | --- | --- | --- |
+| 首轮，17:27:59 启动 | 首项已启动应用并确认分析任务，但15秒内未观察到预期的阅读和核查请求。测试进程退出码为1，其余4项因首败即停未执行。超时原因尚未查明。 | 记录到1个 Whomi 窗口，Electron 退出码为0。 | [标准输出](assets/conversation-insights-review-fixes-20261116/desktop-popup-recheck/first/stdout.log)、[启动诊断](assets/conversation-insights-review-fixes-20261116/desktop-popup-recheck/first/stderr.log)、[失败上下文](assets/conversation-insights-review-fixes-20261116/desktop-popup-recheck/first/error-context.md) |
+| 重跑，17:29:17 启动 | 在独立目录取消首败即停，5项均通过，用时57.1秒。测试进程退出码为0。 | 记录到6个 Whomi 窗口，Playwright 记录的10次 Electron 退出码均为0。 | [标准输出](assets/conversation-insights-review-fixes-20261116/desktop-popup-recheck/followup/stdout.log)、[启动诊断](assets/conversation-insights-review-fixes-20261116/desktop-popup-recheck/followup/stderr.log)、[测试报告](assets/conversation-insights-review-fixes-20261116/desktop-popup-recheck/followup/playwright-report.json) |
+
+两轮都在交互桌面枚举可见窗口，持续观察至测试进程退出后10秒。窗口监测未发现新的 Electron 错误弹窗，Windows 应用事件未记录对应崩溃，启动诊断未出现 `0x80000003` 或原生致命错误。这两轮未复现先前弹窗。首轮生成了错误上下文，测试未生成截图。两轮归档保留完整文本内容，统一了换行与行尾空格，本地保留原始文件。[首轮窗口记录](assets/conversation-insights-review-fixes-20261116/desktop-popup-recheck/first/window-monitor.jsonl)、[重跑窗口记录](assets/conversation-insights-review-fixes-20261116/desktop-popup-recheck/followup/window-monitor.jsonl)
+
 ## 关键状态截图
 
 截图来自本轮构建的实际 Electron 窗口，数据及模型响应为合成材料。沿用已确认的单列报告和管理列表布局，未修改视觉设计。核对结果：报告保留两节正文、返回与引用入口；失败状态保留重试操作；窄窗口中列表名称与范围信息可见。

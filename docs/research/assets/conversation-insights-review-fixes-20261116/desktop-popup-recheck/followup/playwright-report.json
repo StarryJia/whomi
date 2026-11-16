@@ -1,0 +1,992 @@
+{
+  "config": {
+    "argv": [
+      "D:\\nodejs\\node.exe",
+      "D:\\University\\github\\whomi\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "tests/desktop/conversation-insights.spec.mjs",
+      "tests/desktop/insight-ui.spec.mjs",
+      "--workers=1",
+      "--timeout=90000",
+      "--max-failures=0",
+      "--retries=0",
+      "--reporter=list,json",
+      "--output=D:\\University\\github\\whomi\\artifacts\\desktop-insights-recheck\\followup-20261116-172916-476\\test-results"
+    ],
+    "rootDir": "D:/University/github/whomi",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "D:/University/github/whomi/artifacts/desktop-insights-recheck/followup-20261116-172916-476/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "D:/University/github/whomi",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 90000
+      }
+    ],
+    "filteredProjects": [
+      {
+        "grep": {},
+        "grepInvert": null,
+        "outputDir": "D:\\University\\github\\whomi\\artifacts\\desktop-insights-recheck\\followup-20261116-172916-476\\test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "name": "",
+        "testDir": "D:\\University\\github\\whomi",
+        "snapshotDir": "D:\\University\\github\\whomi",
+        "testIgnore": [],
+        "testMatch": "**/*.@(spec|test).?(c|m)[jt]s?(x)",
+        "timeout": 90000,
+        "use": {},
+        "dependencies": [],
+        "ignoreSnapshots": false,
+        "__projectId": ""
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list"
+      ],
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "default",
+    "updateSourceMethod": "patch",
+    "version": "1.64.1",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "tests\\desktop\\conversation-insights.spec.mjs",
+      "file": "tests/desktop/conversation-insights.spec.mjs",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "isolated Electron resumes a scoped insight, retries writing, and preserves exact citations through rename and deletion",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 10757,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [
+                    {
+                      "text": "2026-11-16T09:29:19.248Z pw:browser <launching> \"D:\\University\\github\\whomi\\node_modules\\electron\\dist\\electron.exe\" \"-r\" \"D:\\University\\github\\whomi\\node_modules\\playwright-core\\lib\\server\\electron\\loader.js\" \"--inspect=0\" \"--remote-debugging-port=0\" \"D:\\University\\github\\whomi\\out\\main\\index.cjs\" \"--whomi-runtime-test\" \n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:19.261Z pw:browser <launched> pid=18932\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:19.302Z pw:browser [pid=18932][out] \n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:19.373Z pw:browser [pid=18932][err] Debugger listening on ws://127.0.0.1:9062/33a1cd38-b1fb-4fb5-ad4b-d26679c126a1\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:19.373Z pw:browser [pid=18932][err] For help, see: https://nodejs.org/learn/getting-started/debugging\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:19.374Z pw:browser <ws connecting> ws://127.0.0.1:9062/33a1cd38-b1fb-4fb5-ad4b-d26679c126a1\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:19.380Z pw:browser <ws connected> ws://127.0.0.1:9062/33a1cd38-b1fb-4fb5-ad4b-d26679c126a1\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:19.381Z pw:browser [pid=18932][err] Debugger attached.\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:19.390Z pw:browser [pid=18932][err] (node:18780) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:19.390Z pw:browser [pid=18932][err] (Use `electron --trace-warnings ...` to show where the warning was created)\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:19.745Z pw:browser [pid=18932][err] \n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:19.745Z pw:browser [pid=18932][err] DevTools listening on ws://127.0.0.1:9065/devtools/browser/b83ea423-e821-4e18-8531-bbbb87b9d5ee\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:19.746Z pw:browser <ws connecting> ws://127.0.0.1:9065/devtools/browser/b83ea423-e821-4e18-8531-bbbb87b9d5ee\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:19.751Z pw:browser <ws connected> ws://127.0.0.1:9065/devtools/browser/b83ea423-e821-4e18-8531-bbbb87b9d5ee\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:20.190Z pw:browser [pid=18932][err] (electron) 'safeStorage.isEncryptionAvailable' is deprecated and will be removed. Please use 'safeStorage.isAsyncEncryptionAvailable' instead.\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:20.190Z pw:browser [pid=18932][err] (electron) 'safeStorage.encryptString' is deprecated and will be removed. Please use 'safeStorage.encryptStringAsync' instead.\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:21.386Z pw:browser [pid=18932][err] (electron) 'safeStorage.decryptString' is deprecated and will be removed. Please use 'safeStorage.decryptStringAsync' instead.\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:24.297Z pw:browser <ws disconnecting> ws://127.0.0.1:9062/33a1cd38-b1fb-4fb5-ad4b-d26679c126a1\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:24.298Z pw:browser <ws disconnected> ws://127.0.0.1:9062/33a1cd38-b1fb-4fb5-ad4b-d26679c126a1 code=1005 reason=\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:24.298Z pw:browser [pid=18932][err] Debugger ending on ws://127.0.0.1:9062/33a1cd38-b1fb-4fb5-ad4b-d26679c126a1\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:24.298Z pw:browser [pid=18932][err] For help, see: https://nodejs.org/learn/getting-started/debugging\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:24.533Z pw:browser <ws disconnected> ws://127.0.0.1:9065/devtools/browser/b83ea423-e821-4e18-8531-bbbb87b9d5ee code=1006 reason=\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:24.552Z pw:browser [pid=18932] <process did exit: exitCode=0, signal=null>\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:24.553Z pw:browser [pid=18932] starting temporary directories cleanup\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:24.554Z pw:browser [pid=18932] finished temporary directories cleanup\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:24.555Z pw:browser <launching> \"D:\\University\\github\\whomi\\node_modules\\electron\\dist\\electron.exe\" \"-r\" \"D:\\University\\github\\whomi\\node_modules\\playwright-core\\lib\\server\\electron\\loader.js\" \"--inspect=0\" \"--remote-debugging-port=0\" \"D:\\University\\github\\whomi\\out\\main\\index.cjs\" \"--whomi-runtime-test\" \n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:24.559Z pw:browser <launched> pid=23028\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:24.624Z pw:browser [pid=23028][out] \n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:24.724Z pw:browser [pid=23028][err] Debugger listening on ws://127.0.0.1:9097/ced07f16-8dd1-4a54-a015-e6da217d14c5\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:24.724Z pw:browser [pid=23028][err] For help, see: https://nodejs.org/learn/getting-started/debugging\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:24.724Z pw:browser <ws connecting> ws://127.0.0.1:9097/ced07f16-8dd1-4a54-a015-e6da217d14c5\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:24.727Z pw:browser <ws connected> ws://127.0.0.1:9097/ced07f16-8dd1-4a54-a015-e6da217d14c5\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:24.727Z pw:browser [pid=23028][err] Debugger attached.\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:24.747Z pw:browser [pid=23028][err] (node:22328) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:24.747Z pw:browser [pid=23028][err] (Use `electron --trace-warnings ...` to show where the warning was created)\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:25.135Z pw:browser [pid=23028][err] \n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:25.135Z pw:browser [pid=23028][err] DevTools listening on ws://127.0.0.1:9103/devtools/browser/37e59cdf-82a9-4ce2-8a40-ef85baf8a7cb\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:25.135Z pw:browser <ws connecting> ws://127.0.0.1:9103/devtools/browser/37e59cdf-82a9-4ce2-8a40-ef85baf8a7cb\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:25.140Z pw:browser <ws connected> ws://127.0.0.1:9103/devtools/browser/37e59cdf-82a9-4ce2-8a40-ef85baf8a7cb\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:25.544Z pw:browser [pid=23028][err] (electron) 'safeStorage.isEncryptionAvailable' is deprecated and will be removed. Please use 'safeStorage.isAsyncEncryptionAvailable' instead.\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:25.545Z pw:browser [pid=23028][err] (electron) 'safeStorage.decryptString' is deprecated and will be removed. Please use 'safeStorage.decryptStringAsync' instead.\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:29.741Z pw:browser <ws disconnecting> ws://127.0.0.1:9097/ced07f16-8dd1-4a54-a015-e6da217d14c5\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:29.741Z pw:browser <ws disconnected> ws://127.0.0.1:9097/ced07f16-8dd1-4a54-a015-e6da217d14c5 code=1005 reason=\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:29.742Z pw:browser [pid=23028][err] Debugger ending on ws://127.0.0.1:9097/ced07f16-8dd1-4a54-a015-e6da217d14c5\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:29.742Z pw:browser [pid=23028][err] For help, see: https://nodejs.org/learn/getting-started/debugging\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:29.956Z pw:browser <ws disconnected> ws://127.0.0.1:9103/devtools/browser/37e59cdf-82a9-4ce2-8a40-ef85baf8a7cb code=1006 reason=\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:29.972Z pw:browser [pid=23028] <process did exit: exitCode=0, signal=null>\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:29.972Z pw:browser [pid=23028] starting temporary directories cleanup\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:29.974Z pw:browser [pid=23028] finished temporary directories cleanup\n"
+                    }
+                  ],
+                  "retry": 0,
+                  "startTime": "2026-11-16T09:29:19.200Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "6313ee29ad091ee9e3b0-fee063abac1e6d1b01d2",
+          "file": "tests/desktop/conversation-insights.spec.mjs",
+          "line": 14,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "tests\\desktop\\insight-ui.spec.mjs",
+      "file": "tests/desktop/insight-ui.spec.mjs",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "real Electron insight UI validates scope, pauses and retries, reads exact sources, renames and deletes",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 15791,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [
+                    {
+                      "text": "2026-11-16T09:29:30.044Z pw:browser <launching> \"D:\\University\\github\\whomi\\node_modules\\electron\\dist\\electron.exe\" \"-r\" \"D:\\University\\github\\whomi\\node_modules\\playwright-core\\lib\\server\\electron\\loader.js\" \"--inspect=0\" \"--remote-debugging-port=0\" \"D:\\University\\github\\whomi\\out\\main\\index.cjs\" \"--whomi-runtime-test\" \n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:30.047Z pw:browser <launched> pid=2768\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:30.085Z pw:browser [pid=2768][out] \n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:30.163Z pw:browser [pid=2768][err] Debugger listening on ws://127.0.0.1:9119/7bc2ec81-de9e-4a54-a934-2505a06ee3f2\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:30.164Z pw:browser [pid=2768][err] For help, see: https://nodejs.org/learn/getting-started/debugging\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:30.164Z pw:browser <ws connecting> ws://127.0.0.1:9119/7bc2ec81-de9e-4a54-a934-2505a06ee3f2\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:30.166Z pw:browser <ws connected> ws://127.0.0.1:9119/7bc2ec81-de9e-4a54-a934-2505a06ee3f2\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:30.166Z pw:browser [pid=2768][err] Debugger attached.\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:30.184Z pw:browser [pid=2768][err] (node:26316) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:30.184Z pw:browser [pid=2768][err] (Use `electron --trace-warnings ...` to show where the warning was created)\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:30.634Z pw:browser [pid=2768][err] \n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:30.634Z pw:browser [pid=2768][err] DevTools listening on ws://127.0.0.1:9145/devtools/browser/574e1681-94e1-4548-b8ad-2a36ee41bfe8\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:30.634Z pw:browser <ws connecting> ws://127.0.0.1:9145/devtools/browser/574e1681-94e1-4548-b8ad-2a36ee41bfe8\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:30.641Z pw:browser <ws connected> ws://127.0.0.1:9145/devtools/browser/574e1681-94e1-4548-b8ad-2a36ee41bfe8\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:31.087Z pw:browser [pid=2768][err] (electron) 'safeStorage.isEncryptionAvailable' is deprecated and will be removed. Please use 'safeStorage.isAsyncEncryptionAvailable' instead.\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:31.088Z pw:browser [pid=2768][err] (electron) 'safeStorage.encryptString' is deprecated and will be removed. Please use 'safeStorage.encryptStringAsync' instead.\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:31.127Z pw:browser <ws disconnecting> ws://127.0.0.1:9119/7bc2ec81-de9e-4a54-a934-2505a06ee3f2\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:31.128Z pw:browser <ws disconnected> ws://127.0.0.1:9119/7bc2ec81-de9e-4a54-a934-2505a06ee3f2 code=1005 reason=\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:31.128Z pw:browser [pid=2768][err] Debugger ending on ws://127.0.0.1:9119/7bc2ec81-de9e-4a54-a934-2505a06ee3f2\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:31.128Z pw:browser [pid=2768][err] For help, see: https://nodejs.org/learn/getting-started/debugging\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:31.271Z pw:browser <ws disconnected> ws://127.0.0.1:9145/devtools/browser/574e1681-94e1-4548-b8ad-2a36ee41bfe8 code=1006 reason=\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:31.283Z pw:browser [pid=2768] <process did exit: exitCode=0, signal=null>\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:31.283Z pw:browser [pid=2768] starting temporary directories cleanup\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:31.284Z pw:browser [pid=2768] finished temporary directories cleanup\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:31.284Z pw:browser <launching> \"D:\\University\\github\\whomi\\node_modules\\electron\\dist\\electron.exe\" \"-r\" \"D:\\University\\github\\whomi\\node_modules\\playwright-core\\lib\\server\\electron\\loader.js\" \"--inspect=0\" \"--remote-debugging-port=0\" \"D:\\University\\github\\whomi\\out\\main\\index.cjs\" \"--whomi-runtime-test\" \n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:31.287Z pw:browser <launched> pid=12068\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:31.318Z pw:browser [pid=12068][out] \n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:31.388Z pw:browser [pid=12068][err] Debugger listening on ws://127.0.0.1:9155/45623031-2049-465d-a60f-69878ed1f1fa\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:31.388Z pw:browser [pid=12068][err] For help, see: https://nodejs.org/learn/getting-started/debugging\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:31.388Z pw:browser <ws connecting> ws://127.0.0.1:9155/45623031-2049-465d-a60f-69878ed1f1fa\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:31.389Z pw:browser <ws connected> ws://127.0.0.1:9155/45623031-2049-465d-a60f-69878ed1f1fa\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:31.390Z pw:browser [pid=12068][err] Debugger attached.\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:31.404Z pw:browser [pid=12068][err] (node:16160) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:31.404Z pw:browser [pid=12068][err] (Use `electron --trace-warnings ...` to show where the warning was created)\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:31.784Z pw:browser [pid=12068][err] \n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:31.785Z pw:browser [pid=12068][err] DevTools listening on ws://127.0.0.1:9157/devtools/browser/00aa0e45-82d5-48d3-953a-9fdc811589e1\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:31.785Z pw:browser <ws connecting> ws://127.0.0.1:9157/devtools/browser/00aa0e45-82d5-48d3-953a-9fdc811589e1\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:31.790Z pw:browser <ws connected> ws://127.0.0.1:9157/devtools/browser/00aa0e45-82d5-48d3-953a-9fdc811589e1\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:37.861Z pw:browser [pid=12068][err] (electron) 'safeStorage.isEncryptionAvailable' is deprecated and will be removed. Please use 'safeStorage.isAsyncEncryptionAvailable' instead.\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:37.861Z pw:browser [pid=12068][err] (electron) 'safeStorage.decryptString' is deprecated and will be removed. Please use 'safeStorage.decryptStringAsync' instead.\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:45.609Z pw:browser <ws disconnecting> ws://127.0.0.1:9155/45623031-2049-465d-a60f-69878ed1f1fa\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:45.610Z pw:browser <ws disconnected> ws://127.0.0.1:9155/45623031-2049-465d-a60f-69878ed1f1fa code=1005 reason=\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:45.611Z pw:browser [pid=12068][err] Debugger ending on ws://127.0.0.1:9155/45623031-2049-465d-a60f-69878ed1f1fa\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:45.611Z pw:browser [pid=12068][err] For help, see: https://nodejs.org/learn/getting-started/debugging\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:45.791Z pw:browser <ws disconnected> ws://127.0.0.1:9157/devtools/browser/00aa0e45-82d5-48d3-953a-9fdc811589e1 code=1006 reason=\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:45.810Z pw:browser [pid=12068] <process did exit: exitCode=0, signal=null>\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:45.810Z pw:browser [pid=12068] starting temporary directories cleanup\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:45.813Z pw:browser [pid=12068] finished temporary directories cleanup\n"
+                    }
+                  ],
+                  "retry": 0,
+                  "startTime": "2026-11-16T09:29:30.024Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "d19b47173f86992bb2fe-69bce954f931982009f3",
+          "file": "tests/desktop/insight-ui.spec.mjs",
+          "line": 113,
+          "column": 1
+        },
+        {
+          "title": "real Electron requires self selection and a model before creating an insight",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 7349,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [
+                    {
+                      "text": "2026-11-16T09:29:45.843Z pw:browser <launching> \"D:\\University\\github\\whomi\\node_modules\\electron\\dist\\electron.exe\" \"-r\" \"D:\\University\\github\\whomi\\node_modules\\playwright-core\\lib\\server\\electron\\loader.js\" \"--inspect=0\" \"--remote-debugging-port=0\" \"D:\\University\\github\\whomi\\out\\main\\index.cjs\" \"--whomi-runtime-test\" \n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:45.846Z pw:browser <launched> pid=26100\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:45.890Z pw:browser [pid=26100][out] \n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:45.967Z pw:browser [pid=26100][err] Debugger listening on ws://127.0.0.1:9267/ad30f970-42e5-4248-b298-e67d52947ec6\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:45.967Z pw:browser [pid=26100][err] For help, see: https://nodejs.org/learn/getting-started/debugging\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:45.967Z pw:browser <ws connecting> ws://127.0.0.1:9267/ad30f970-42e5-4248-b298-e67d52947ec6\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:45.974Z pw:browser <ws connected> ws://127.0.0.1:9267/ad30f970-42e5-4248-b298-e67d52947ec6\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:45.974Z pw:browser [pid=26100][err] Debugger attached.\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:45.985Z pw:browser [pid=26100][err] (node:19040) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:45.985Z pw:browser [pid=26100][err] (Use `electron --trace-warnings ...` to show where the warning was created)\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:46.342Z pw:browser [pid=26100][err] \n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:46.342Z pw:browser [pid=26100][err] DevTools listening on ws://127.0.0.1:9269/devtools/browser/c002226d-2478-468e-8335-67107083c277\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:46.343Z pw:browser <ws connecting> ws://127.0.0.1:9269/devtools/browser/c002226d-2478-468e-8335-67107083c277\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:46.349Z pw:browser <ws connected> ws://127.0.0.1:9269/devtools/browser/c002226d-2478-468e-8335-67107083c277\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:46.798Z pw:browser <ws disconnecting> ws://127.0.0.1:9267/ad30f970-42e5-4248-b298-e67d52947ec6\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:46.799Z pw:browser <ws disconnected> ws://127.0.0.1:9267/ad30f970-42e5-4248-b298-e67d52947ec6 code=1005 reason=\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:46.799Z pw:browser [pid=26100][err] Debugger ending on ws://127.0.0.1:9267/ad30f970-42e5-4248-b298-e67d52947ec6\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:46.799Z pw:browser [pid=26100][err] For help, see: https://nodejs.org/learn/getting-started/debugging\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:46.947Z pw:browser <ws disconnected> ws://127.0.0.1:9269/devtools/browser/c002226d-2478-468e-8335-67107083c277 code=1006 reason=\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:46.960Z pw:browser [pid=26100] <process did exit: exitCode=0, signal=null>\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:46.960Z pw:browser [pid=26100] starting temporary directories cleanup\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:46.962Z pw:browser [pid=26100] finished temporary directories cleanup\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:46.963Z pw:browser <launching> \"D:\\University\\github\\whomi\\node_modules\\electron\\dist\\electron.exe\" \"-r\" \"D:\\University\\github\\whomi\\node_modules\\playwright-core\\lib\\server\\electron\\loader.js\" \"--inspect=0\" \"--remote-debugging-port=0\" \"D:\\University\\github\\whomi\\out\\main\\index.cjs\" \"--whomi-runtime-test\" \n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:46.965Z pw:browser <launched> pid=8580\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:47.001Z pw:browser [pid=8580][out] \n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:47.073Z pw:browser [pid=8580][err] Debugger listening on ws://127.0.0.1:9283/02822ef1-0f4e-4123-a6f4-63580019da43\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:47.073Z pw:browser [pid=8580][err] For help, see: https://nodejs.org/learn/getting-started/debugging\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:47.073Z pw:browser <ws connecting> ws://127.0.0.1:9283/02822ef1-0f4e-4123-a6f4-63580019da43\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:47.074Z pw:browser <ws connected> ws://127.0.0.1:9283/02822ef1-0f4e-4123-a6f4-63580019da43\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:47.074Z pw:browser [pid=8580][err] Debugger attached.\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:47.090Z pw:browser [pid=8580][err] (node:7380) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:47.090Z pw:browser [pid=8580][err] (Use `electron --trace-warnings ...` to show where the warning was created)\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:47.465Z pw:browser [pid=8580][err] \n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:47.465Z pw:browser [pid=8580][err] DevTools listening on ws://127.0.0.1:9285/devtools/browser/ed96fbe9-c9dd-41df-89d4-42302577b183\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:47.465Z pw:browser <ws connecting> ws://127.0.0.1:9285/devtools/browser/ed96fbe9-c9dd-41df-89d4-42302577b183\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:47.469Z pw:browser <ws connected> ws://127.0.0.1:9285/devtools/browser/ed96fbe9-c9dd-41df-89d4-42302577b183\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:52.980Z pw:browser <ws disconnecting> ws://127.0.0.1:9283/02822ef1-0f4e-4123-a6f4-63580019da43\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:52.980Z pw:browser <ws disconnected> ws://127.0.0.1:9283/02822ef1-0f4e-4123-a6f4-63580019da43 code=1005 reason=\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:52.981Z pw:browser [pid=8580][err] Debugger ending on ws://127.0.0.1:9283/02822ef1-0f4e-4123-a6f4-63580019da43\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:52.981Z pw:browser [pid=8580][err] For help, see: https://nodejs.org/learn/getting-started/debugging\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:53.162Z pw:browser <ws disconnected> ws://127.0.0.1:9285/devtools/browser/ed96fbe9-c9dd-41df-89d4-42302577b183 code=1006 reason=\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:53.174Z pw:browser [pid=8580] <process did exit: exitCode=0, signal=null>\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:53.174Z pw:browser [pid=8580] starting temporary directories cleanup\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:53.175Z pw:browser [pid=8580] finished temporary directories cleanup\n"
+                    }
+                  ],
+                  "retry": 0,
+                  "startTime": "2026-11-16T09:29:45.828Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "d19b47173f86992bb2fe-7111535bf93d2ff82dab",
+          "file": "tests/desktop/insight-ui.spec.mjs",
+          "line": 298,
+          "column": 1
+        },
+        {
+          "title": "real Electron report list shows loading and retryable first-read failure",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 10826,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [
+                    {
+                      "text": "2026-11-16T09:29:53.199Z pw:browser <launching> \"D:\\University\\github\\whomi\\node_modules\\electron\\dist\\electron.exe\" \"-r\" \"D:\\University\\github\\whomi\\node_modules\\playwright-core\\lib\\server\\electron\\loader.js\" \"--inspect=0\" \"--remote-debugging-port=0\" \"D:\\University\\github\\whomi\\out\\main\\index.cjs\" \"--whomi-runtime-test\" \n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:53.202Z pw:browser <launched> pid=21588\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:53.231Z pw:browser [pid=21588][out] \n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:53.306Z pw:browser [pid=21588][err] Debugger listening on ws://127.0.0.1:9317/954798bf-e627-4ce7-88dc-efeb916fdd2b\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:53.306Z pw:browser [pid=21588][err] For help, see: https://nodejs.org/learn/getting-started/debugging\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:53.306Z pw:browser <ws connecting> ws://127.0.0.1:9317/954798bf-e627-4ce7-88dc-efeb916fdd2b\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:53.307Z pw:browser <ws connected> ws://127.0.0.1:9317/954798bf-e627-4ce7-88dc-efeb916fdd2b\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:53.308Z pw:browser [pid=21588][err] Debugger attached.\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:53.322Z pw:browser [pid=21588][err] (node:26132) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:53.322Z pw:browser [pid=21588][err] (Use `electron --trace-warnings ...` to show where the warning was created)\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:53.659Z pw:browser [pid=21588][err] \n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:53.659Z pw:browser [pid=21588][err] DevTools listening on ws://127.0.0.1:9319/devtools/browser/66968117-f6eb-4673-8068-10ba6b2a7ccd\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:53.659Z pw:browser <ws connecting> ws://127.0.0.1:9319/devtools/browser/66968117-f6eb-4673-8068-10ba6b2a7ccd\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:53.663Z pw:browser <ws connected> ws://127.0.0.1:9319/devtools/browser/66968117-f6eb-4673-8068-10ba6b2a7ccd\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:54.150Z pw:browser <ws disconnecting> ws://127.0.0.1:9317/954798bf-e627-4ce7-88dc-efeb916fdd2b\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:54.151Z pw:browser <ws disconnected> ws://127.0.0.1:9317/954798bf-e627-4ce7-88dc-efeb916fdd2b code=1005 reason=\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:54.151Z pw:browser [pid=21588][err] Debugger ending on ws://127.0.0.1:9317/954798bf-e627-4ce7-88dc-efeb916fdd2b\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:54.151Z pw:browser [pid=21588][err] For help, see: https://nodejs.org/learn/getting-started/debugging\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:54.294Z pw:browser <ws disconnected> ws://127.0.0.1:9319/devtools/browser/66968117-f6eb-4673-8068-10ba6b2a7ccd code=1006 reason=\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:54.306Z pw:browser [pid=21588] <process did exit: exitCode=0, signal=null>\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:54.306Z pw:browser [pid=21588] starting temporary directories cleanup\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:54.307Z pw:browser [pid=21588] finished temporary directories cleanup\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:54.307Z pw:browser <launching> \"D:\\University\\github\\whomi\\node_modules\\electron\\dist\\electron.exe\" \"-r\" \"D:\\University\\github\\whomi\\node_modules\\playwright-core\\lib\\server\\electron\\loader.js\" \"--inspect=0\" \"--remote-debugging-port=0\" \"D:\\University\\github\\whomi\\out\\main\\index.cjs\" \"--whomi-runtime-test\" \n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:54.309Z pw:browser <launched> pid=25996\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:54.339Z pw:browser [pid=25996][out] \n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:54.410Z pw:browser [pid=25996][err] Debugger listening on ws://127.0.0.1:9329/6f7a4354-c8e0-4f82-9195-a33ff986d475\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:54.410Z pw:browser [pid=25996][err] For help, see: https://nodejs.org/learn/getting-started/debugging\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:54.410Z pw:browser <ws connecting> ws://127.0.0.1:9329/6f7a4354-c8e0-4f82-9195-a33ff986d475\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:54.412Z pw:browser <ws connected> ws://127.0.0.1:9329/6f7a4354-c8e0-4f82-9195-a33ff986d475\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:54.412Z pw:browser [pid=25996][err] Debugger attached.\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:54.427Z pw:browser [pid=25996][err] (node:26800) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:54.427Z pw:browser [pid=25996][err] (Use `electron --trace-warnings ...` to show where the warning was created)\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:54.857Z pw:browser [pid=25996][err] \n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:54.857Z pw:browser [pid=25996][err] DevTools listening on ws://127.0.0.1:9331/devtools/browser/f77061f8-ae42-4239-9497-c307a2a8bb69\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:54.857Z pw:browser <ws connecting> ws://127.0.0.1:9331/devtools/browser/f77061f8-ae42-4239-9497-c307a2a8bb69\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:29:54.865Z pw:browser <ws connected> ws://127.0.0.1:9331/devtools/browser/f77061f8-ae42-4239-9497-c307a2a8bb69\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:03.782Z pw:browser <ws disconnecting> ws://127.0.0.1:9329/6f7a4354-c8e0-4f82-9195-a33ff986d475\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:03.783Z pw:browser <ws disconnected> ws://127.0.0.1:9329/6f7a4354-c8e0-4f82-9195-a33ff986d475 code=1005 reason=\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:03.783Z pw:browser [pid=25996][err] Debugger ending on ws://127.0.0.1:9329/6f7a4354-c8e0-4f82-9195-a33ff986d475\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:03.783Z pw:browser [pid=25996][err] For help, see: https://nodejs.org/learn/getting-started/debugging\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:03.994Z pw:browser <ws disconnected> ws://127.0.0.1:9331/devtools/browser/f77061f8-ae42-4239-9497-c307a2a8bb69 code=1006 reason=\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:04.008Z pw:browser [pid=25996] <process did exit: exitCode=0, signal=null>\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:04.008Z pw:browser [pid=25996] starting temporary directories cleanup\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:04.010Z pw:browser [pid=25996] finished temporary directories cleanup\n"
+                    }
+                  ],
+                  "retry": 0,
+                  "startTime": "2026-11-16T09:29:53.188Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "d19b47173f86992bb2fe-03a0f5041bf6b69bf086",
+          "file": "tests/desktop/insight-ui.spec.mjs",
+          "line": 323,
+          "column": 1
+        },
+        {
+          "title": "real Electron preserves long report reading position and fits an 80-character title at 960 by 640",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 10923,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [
+                    {
+                      "text": "2026-11-16T09:30:04.044Z pw:browser <launching> \"D:\\University\\github\\whomi\\node_modules\\electron\\dist\\electron.exe\" \"-r\" \"D:\\University\\github\\whomi\\node_modules\\playwright-core\\lib\\server\\electron\\loader.js\" \"--inspect=0\" \"--remote-debugging-port=0\" \"D:\\University\\github\\whomi\\out\\main\\index.cjs\" \"--whomi-runtime-test\" \n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:04.048Z pw:browser <launched> pid=25672\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:04.097Z pw:browser [pid=25672][out] \n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:04.230Z pw:browser [pid=25672][err] Debugger listening on ws://127.0.0.1:9473/f7403a7b-db4f-41d2-bde1-f380fd838b02\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:04.231Z pw:browser <ws connecting> ws://127.0.0.1:9473/f7403a7b-db4f-41d2-bde1-f380fd838b02\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:04.233Z pw:browser [pid=25672][err] For help, see: https://nodejs.org/learn/getting-started/debugging\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:04.234Z pw:browser <ws connected> ws://127.0.0.1:9473/f7403a7b-db4f-41d2-bde1-f380fd838b02\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:04.234Z pw:browser [pid=25672][err] Debugger attached.\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:04.263Z pw:browser [pid=25672][err] (node:27324) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:04.263Z pw:browser [pid=25672][err] (Use `electron --trace-warnings ...` to show where the warning was created)\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:04.783Z pw:browser [pid=25672][err] \n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:04.783Z pw:browser [pid=25672][err] DevTools listening on ws://127.0.0.1:9490/devtools/browser/48f50ac6-335c-4fd1-ae37-f6826c1b4e58\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:04.783Z pw:browser <ws connecting> ws://127.0.0.1:9490/devtools/browser/48f50ac6-335c-4fd1-ae37-f6826c1b4e58\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:04.788Z pw:browser <ws connected> ws://127.0.0.1:9490/devtools/browser/48f50ac6-335c-4fd1-ae37-f6826c1b4e58\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:05.335Z pw:browser [pid=25672][err] (electron) 'safeStorage.isEncryptionAvailable' is deprecated and will be removed. Please use 'safeStorage.isAsyncEncryptionAvailable' instead.\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:05.336Z pw:browser [pid=25672][err] (electron) 'safeStorage.encryptString' is deprecated and will be removed. Please use 'safeStorage.encryptStringAsync' instead.\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:05.355Z pw:browser <ws disconnecting> ws://127.0.0.1:9473/f7403a7b-db4f-41d2-bde1-f380fd838b02\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:05.356Z pw:browser <ws disconnected> ws://127.0.0.1:9473/f7403a7b-db4f-41d2-bde1-f380fd838b02 code=1005 reason=\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:05.357Z pw:browser [pid=25672][err] Debugger ending on ws://127.0.0.1:9473/f7403a7b-db4f-41d2-bde1-f380fd838b02\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:05.357Z pw:browser [pid=25672][err] For help, see: https://nodejs.org/learn/getting-started/debugging\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:05.558Z pw:browser <ws disconnected> ws://127.0.0.1:9490/devtools/browser/48f50ac6-335c-4fd1-ae37-f6826c1b4e58 code=1006 reason=\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:05.580Z pw:browser [pid=25672] <process did exit: exitCode=0, signal=null>\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:05.580Z pw:browser [pid=25672] starting temporary directories cleanup\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:05.582Z pw:browser [pid=25672] finished temporary directories cleanup\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:05.582Z pw:browser <launching> \"D:\\University\\github\\whomi\\node_modules\\electron\\dist\\electron.exe\" \"-r\" \"D:\\University\\github\\whomi\\node_modules\\playwright-core\\lib\\server\\electron\\loader.js\" \"--inspect=0\" \"--remote-debugging-port=0\" \"D:\\University\\github\\whomi\\out\\main\\index.cjs\" \"--whomi-runtime-test\" \n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:05.585Z pw:browser <launched> pid=21316\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:05.620Z pw:browser [pid=21316][out] \n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:05.696Z pw:browser [pid=21316][err] Debugger listening on ws://127.0.0.1:9500/06ebe105-3fe6-4b02-a689-1de5e3c14226\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:05.696Z pw:browser [pid=21316][err] For help, see: https://nodejs.org/learn/getting-started/debugging\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:05.696Z pw:browser <ws connecting> ws://127.0.0.1:9500/06ebe105-3fe6-4b02-a689-1de5e3c14226\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:05.697Z pw:browser <ws connected> ws://127.0.0.1:9500/06ebe105-3fe6-4b02-a689-1de5e3c14226\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:05.697Z pw:browser [pid=21316][err] Debugger attached.\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:05.716Z pw:browser [pid=21316][err] (node:22292) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:05.716Z pw:browser [pid=21316][err] (Use `electron --trace-warnings ...` to show where the warning was created)\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:06.103Z pw:browser [pid=21316][err] \n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:06.103Z pw:browser [pid=21316][err] DevTools listening on ws://127.0.0.1:9522/devtools/browser/d2bf8437-4e06-495a-a643-699f0cdebf56\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:06.104Z pw:browser <ws connecting> ws://127.0.0.1:9522/devtools/browser/d2bf8437-4e06-495a-a643-699f0cdebf56\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:06.109Z pw:browser <ws connected> ws://127.0.0.1:9522/devtools/browser/d2bf8437-4e06-495a-a643-699f0cdebf56\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:11.098Z pw:browser [pid=21316][err] (electron) 'safeStorage.isEncryptionAvailable' is deprecated and will be removed. Please use 'safeStorage.isAsyncEncryptionAvailable' instead.\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:11.098Z pw:browser [pid=21316][err] (electron) 'safeStorage.decryptString' is deprecated and will be removed. Please use 'safeStorage.decryptStringAsync' instead.\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:14.754Z pw:browser <ws disconnecting> ws://127.0.0.1:9500/06ebe105-3fe6-4b02-a689-1de5e3c14226\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:14.755Z pw:browser <ws disconnected> ws://127.0.0.1:9500/06ebe105-3fe6-4b02-a689-1de5e3c14226 code=1005 reason=\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:14.755Z pw:browser [pid=21316][err] Debugger ending on ws://127.0.0.1:9500/06ebe105-3fe6-4b02-a689-1de5e3c14226\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:14.755Z pw:browser [pid=21316][err] For help, see: https://nodejs.org/learn/getting-started/debugging\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:14.932Z pw:browser <ws disconnected> ws://127.0.0.1:9522/devtools/browser/d2bf8437-4e06-495a-a643-699f0cdebf56 code=1006 reason=\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:14.947Z pw:browser [pid=21316] <process did exit: exitCode=0, signal=null>\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:14.947Z pw:browser [pid=21316] starting temporary directories cleanup\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:30:14.949Z pw:browser [pid=21316] finished temporary directories cleanup\n"
+                    }
+                  ],
+                  "retry": 0,
+                  "startTime": "2026-11-16T09:30:04.027Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "d19b47173f86992bb2fe-0b007b5fa297583cfdcb",
+          "file": "tests/desktop/insight-ui.spec.mjs",
+          "line": 355,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-11-16T09:29:17.848Z",
+    "duration": 57148.155,
+    "expected": 5,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

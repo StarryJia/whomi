@@ -1,0 +1,27 @@
+(node:26532) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-11-16T09:28:03.836Z pw:browser <launching> "D:\University\github\whomi\node_modules\electron\dist\electron.exe" "-r" "D:\University\github\whomi\node_modules\playwright-core\lib\server\electron\loader.js" "--inspect=0" "--remote-debugging-port=0" "D:\University\github\whomi\out\main\index.cjs" "--whomi-runtime-test"
+2026-11-16T09:28:03.850Z pw:browser <launched> pid=4844
+2026-11-16T09:28:04.097Z pw:browser [pid=4844][out]
+2026-11-16T09:28:04.184Z pw:browser [pid=4844][err] Debugger listening on ws://127.0.0.1:8815/d4d7dcbc-2004-4676-8388-82e08b53b5b8
+2026-11-16T09:28:04.184Z pw:browser [pid=4844][err] For help, see: https://nodejs.org/learn/getting-started/debugging
+2026-11-16T09:28:04.185Z pw:browser <ws connecting> ws://127.0.0.1:8815/d4d7dcbc-2004-4676-8388-82e08b53b5b8
+2026-11-16T09:28:04.192Z pw:browser <ws connected> ws://127.0.0.1:8815/d4d7dcbc-2004-4676-8388-82e08b53b5b8
+2026-11-16T09:28:04.193Z pw:browser [pid=4844][err] Debugger attached.
+2026-11-16T09:28:04.215Z pw:browser [pid=4844][err] (node:4992) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+2026-11-16T09:28:04.215Z pw:browser [pid=4844][err] (Use `electron --trace-warnings ...` to show where the warning was created)
+2026-11-16T09:28:08.343Z pw:browser [pid=4844][err]
+2026-11-16T09:28:08.343Z pw:browser [pid=4844][err] DevTools listening on ws://127.0.0.1:8825/devtools/browser/0071db6b-1b28-4455-832d-55ddf68cf2f5
+2026-11-16T09:28:08.343Z pw:browser <ws connecting> ws://127.0.0.1:8825/devtools/browser/0071db6b-1b28-4455-832d-55ddf68cf2f5
+2026-11-16T09:28:08.384Z pw:browser <ws connected> ws://127.0.0.1:8825/devtools/browser/0071db6b-1b28-4455-832d-55ddf68cf2f5
+2026-11-16T09:28:09.428Z pw:browser [pid=4844][err] (electron) 'safeStorage.isEncryptionAvailable' is deprecated and will be removed. Please use 'safeStorage.isAsyncEncryptionAvailable' instead.
+2026-11-16T09:28:09.429Z pw:browser [pid=4844][err] (electron) 'safeStorage.encryptString' is deprecated and will be removed. Please use 'safeStorage.encryptStringAsync' instead.
+2026-11-16T09:28:09.588Z pw:browser [pid=4844][err] (electron) 'safeStorage.decryptString' is deprecated and will be removed. Please use 'safeStorage.decryptStringAsync' instead.
+2026-11-16T09:28:24.547Z pw:browser <ws disconnecting> ws://127.0.0.1:8815/d4d7dcbc-2004-4676-8388-82e08b53b5b8
+2026-11-16T09:28:24.549Z pw:browser [pid=4844][err] Debugger ending on ws://127.0.0.1:8815/d4d7dcbc-2004-4676-8388-82e08b53b5b8
+2026-11-16T09:28:24.549Z pw:browser [pid=4844][err] For help, see: https://nodejs.org/learn/getting-started/debugging
+2026-11-16T09:28:24.549Z pw:browser <ws disconnected> ws://127.0.0.1:8815/d4d7dcbc-2004-4676-8388-82e08b53b5b8 code=1005 reason=
+2026-11-16T09:28:28.054Z pw:browser <ws disconnected> ws://127.0.0.1:8825/devtools/browser/0071db6b-1b28-4455-832d-55ddf68cf2f5 code=1006 reason=
+2026-11-16T09:28:28.068Z pw:browser [pid=4844] <process did exit: exitCode=0, signal=null>
+2026-11-16T09:28:28.068Z pw:browser [pid=4844] starting temporary directories cleanup
+2026-11-16T09:28:28.069Z pw:browser [pid=4844] finished temporary directories cleanup

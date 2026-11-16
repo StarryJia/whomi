@@ -1,0 +1,3 @@
+{"sessionId":1,"at":"2026-11-16T17:27:59.5858654+08:00","event":"monitor-start","desktop":{"Station":"WinSta0","ThreadDesktop":"Default","InputDesktop":"Default"}}
+{"errorDialog":false,"event":"window","at":"2026-11-16T17:28:09.9822582+08:00","ownerProcess":"electron","window":{"Handle":1507914,"OwnerId":4992,"Title":"Whomi","Class":"Chrome_WidgetWin_1"},"baseline":false}
+{"at":"2026-11-16T17:28:38.2390157+08:00","summary":{"desktopAtEnd":{"Station":"WinSta0","ThreadDesktop":"Default","InputDesktop":"Default"},"polls":277,"afterExitSeconds":10,"failedSamples":0,"newErrorDialogs":0,"newElectronWindows":1,"baselineErrorDialogs":0},"event":"monitor-end"}

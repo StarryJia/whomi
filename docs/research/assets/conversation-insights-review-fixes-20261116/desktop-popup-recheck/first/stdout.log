@@ -1,0 +1,38 @@
+
+Running 5 tests using 1 worker
+
+  x  1 tests\desktop\conversation-insights.spec.mjs:14:1 › isolated Electron resumes a scoped insight, retries writing, and preserves exact citations through rename and deletion (24.3s)
+Testing stopped early after 1 maximum allowed failures.
+
+
+  1) tests\desktop\conversation-insights.spec.mjs:14:1 › isolated Electron resumes a scoped insight, retries writing, and preserves exact citations through rename and deletion
+
+    Error: expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 4
+    + Received  + 1
+
+    - Array [
+    -   "reading",
+    -   "checking",
+    - ]
+    + Array []
+
+    Call Log:
+    - Timeout 15000ms exceeded while waiting on the predicate
+
+      76 |     const task = await page.evaluate(() => window.whomi.ai.confirmAnalysis({ token: window.syntheticInsightPreparation.token, requestId: 'synthetic-insight' }))
+      77 |     expect(task).toMatchObject({ title: '会话洞察', totalMessages: 3, scope: syntheticInsightScope })
+    > 78 |     await expect.poll(() => requests.map(request => request.prompt.stage), { timeout: 15_000 }).toEqual(['reading', 'checking'])
+         |                                                                                                 ^
+      79 |     const paused = await page.evaluate(id => window.whomi.ai.stopAnalysis(id), task.id)
+      80 |     expect(paused).toMatchObject({ state: 'stopped', analyzedMessages: 3 })
+      81 |     await expect(page.evaluate(id => window.whomi.ai.getReport(id), task.id)).rejects.toThrow()
+        at D:\University\github\whomi\tests\desktop\conversation-insights.spec.mjs:78:97
+
+    Error Context: artifacts\desktop-insights-recheck\first-20261116-172757-860\test-results\tests-desktop-conversation-2fe33-through-rename-and-deletion\error-context.md
+
+  1 failed
+    tests\desktop\conversation-insights.spec.mjs:14:1 › isolated Electron resumes a scoped insight, retries writing, and preserves exact citations through rename and deletion
+  4 did not run
+  1 error was not a part of any test, see above for details

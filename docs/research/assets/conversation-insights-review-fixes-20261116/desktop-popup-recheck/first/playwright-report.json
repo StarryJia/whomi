@@ -1,0 +1,342 @@
+{
+  "config": {
+    "argv": [
+      "D:\\nodejs\\node.exe",
+      "D:\\University\\github\\whomi\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "tests/desktop/conversation-insights.spec.mjs",
+      "tests/desktop/insight-ui.spec.mjs",
+      "--workers=1",
+      "--timeout=90000",
+      "--max-failures=1",
+      "--retries=0",
+      "--reporter=list,json",
+      "--output=D:\\University\\github\\whomi\\artifacts\\desktop-insights-recheck\\first-20261116-172757-860\\test-results"
+    ],
+    "rootDir": "D:/University/github/whomi",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 1,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "D:/University/github/whomi/artifacts/desktop-insights-recheck/first-20261116-172757-860/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "D:/University/github/whomi",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 90000
+      }
+    ],
+    "filteredProjects": [
+      {
+        "grep": {},
+        "grepInvert": null,
+        "outputDir": "D:\\University\\github\\whomi\\artifacts\\desktop-insights-recheck\\first-20261116-172757-860\\test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "name": "",
+        "testDir": "D:\\University\\github\\whomi",
+        "snapshotDir": "D:\\University\\github\\whomi",
+        "testIgnore": [],
+        "testMatch": "**/*.@(spec|test).?(c|m)[jt]s?(x)",
+        "timeout": 90000,
+        "use": {},
+        "dependencies": [],
+        "ignoreSnapshots": false,
+        "__projectId": ""
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list"
+      ],
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "default",
+    "updateSourceMethod": "patch",
+    "version": "1.64.1",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "tests\\desktop\\conversation-insights.spec.mjs",
+      "file": "tests/desktop/conversation-insights.spec.mjs",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "isolated Electron resumes a scoped insight, retries writing, and preserves exact citations through rename and deletion",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 24286,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  - 4\u001b[39m\n\u001b[31m+ Received  + 1\u001b[39m\n\n\u001b[32m- Array [\u001b[39m\n\u001b[32m-   \"reading\",\u001b[39m\n\u001b[32m-   \"checking\",\u001b[39m\n\u001b[32m- ]\u001b[39m\n\u001b[31m+ Array []\u001b[39m\n\nCall Log:\n- Timeout 15000ms exceeded while waiting on the predicate",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  - 4\u001b[39m\n\u001b[31m+ Received  + 1\u001b[39m\n\n\u001b[32m- Array [\u001b[39m\n\u001b[32m-   \"reading\",\u001b[39m\n\u001b[32m-   \"checking\",\u001b[39m\n\u001b[32m- ]\u001b[39m\n\u001b[31m+ Array []\u001b[39m\n\nCall Log:\n- Timeout 15000ms exceeded while waiting on the predicate\n    at D:\\University\\github\\whomi\\tests\\desktop\\conversation-insights.spec.mjs:78:97",
+                    "location": {
+                      "file": "D:\\University\\github\\whomi\\tests\\desktop\\conversation-insights.spec.mjs",
+                      "column": 97,
+                      "line": 78
+                    },
+                    "snippet": "  76 |     const task = await page.evaluate(() => window.whomi.ai.confirmAnalysis({ token: window.syntheticInsightPreparation.token, requestId: 'synthetic-insight' }))\n  77 |     expect(task).toMatchObject({ title: '会话洞察', totalMessages: 3, scope: syntheticInsightScope })\n> 78 |     await expect.poll(() => requests.map(request => request.prompt.stage), { timeout: 15_000 }).toEqual(['reading', 'checking'])\n     |                                                                                                 ^\n  79 |     const paused = await page.evaluate(id => window.whomi.ai.stopAnalysis(id), task.id)\n  80 |     expect(paused).toMatchObject({ state: 'stopped', analyzedMessages: 3 })\n  81 |     await expect(page.evaluate(id => window.whomi.ai.getReport(id), task.id)).rejects.toThrow()"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "D:\\University\\github\\whomi\\tests\\desktop\\conversation-insights.spec.mjs",
+                        "column": 97,
+                        "line": 78
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  - 4\u001b[39m\n\u001b[31m+ Received  + 1\u001b[39m\n\n\u001b[32m- Array [\u001b[39m\n\u001b[32m-   \"reading\",\u001b[39m\n\u001b[32m-   \"checking\",\u001b[39m\n\u001b[32m- ]\u001b[39m\n\u001b[31m+ Array []\u001b[39m\n\nCall Log:\n- Timeout 15000ms exceeded while waiting on the predicate\n\n  76 |     const task = await page.evaluate(() => window.whomi.ai.confirmAnalysis({ token: window.syntheticInsightPreparation.token, requestId: 'synthetic-insight' }))\n  77 |     expect(task).toMatchObject({ title: '会话洞察', totalMessages: 3, scope: syntheticInsightScope })\n> 78 |     await expect.poll(() => requests.map(request => request.prompt.stage), { timeout: 15_000 }).toEqual(['reading', 'checking'])\n     |                                                                                                 ^\n  79 |     const paused = await page.evaluate(id => window.whomi.ai.stopAnalysis(id), task.id)\n  80 |     expect(paused).toMatchObject({ state: 'stopped', analyzedMessages: 3 })\n  81 |     await expect(page.evaluate(id => window.whomi.ai.getReport(id), task.id)).rejects.toThrow()\n    at D:\\University\\github\\whomi\\tests\\desktop\\conversation-insights.spec.mjs:78:97"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [
+                    {
+                      "text": "2026-11-16T09:28:03.836Z pw:browser <launching> \"D:\\University\\github\\whomi\\node_modules\\electron\\dist\\electron.exe\" \"-r\" \"D:\\University\\github\\whomi\\node_modules\\playwright-core\\lib\\server\\electron\\loader.js\" \"--inspect=0\" \"--remote-debugging-port=0\" \"D:\\University\\github\\whomi\\out\\main\\index.cjs\" \"--whomi-runtime-test\" \n"
+                    },
+                    {
+                      "text": "2026-11-16T09:28:03.850Z pw:browser <launched> pid=4844\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:28:04.097Z pw:browser [pid=4844][out] \n"
+                    },
+                    {
+                      "text": "2026-11-16T09:28:04.184Z pw:browser [pid=4844][err] Debugger listening on ws://127.0.0.1:8815/d4d7dcbc-2004-4676-8388-82e08b53b5b8\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:28:04.184Z pw:browser [pid=4844][err] For help, see: https://nodejs.org/learn/getting-started/debugging\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:28:04.185Z pw:browser <ws connecting> ws://127.0.0.1:8815/d4d7dcbc-2004-4676-8388-82e08b53b5b8\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:28:04.192Z pw:browser <ws connected> ws://127.0.0.1:8815/d4d7dcbc-2004-4676-8388-82e08b53b5b8\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:28:04.193Z pw:browser [pid=4844][err] Debugger attached.\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:28:04.215Z pw:browser [pid=4844][err] (node:4992) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:28:04.215Z pw:browser [pid=4844][err] (Use `electron --trace-warnings ...` to show where the warning was created)\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:28:08.343Z pw:browser [pid=4844][err] \n"
+                    },
+                    {
+                      "text": "2026-11-16T09:28:08.343Z pw:browser [pid=4844][err] DevTools listening on ws://127.0.0.1:8825/devtools/browser/0071db6b-1b28-4455-832d-55ddf68cf2f5\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:28:08.343Z pw:browser <ws connecting> ws://127.0.0.1:8825/devtools/browser/0071db6b-1b28-4455-832d-55ddf68cf2f5\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:28:08.384Z pw:browser <ws connected> ws://127.0.0.1:8825/devtools/browser/0071db6b-1b28-4455-832d-55ddf68cf2f5\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:28:09.428Z pw:browser [pid=4844][err] (electron) 'safeStorage.isEncryptionAvailable' is deprecated and will be removed. Please use 'safeStorage.isAsyncEncryptionAvailable' instead.\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:28:09.429Z pw:browser [pid=4844][err] (electron) 'safeStorage.encryptString' is deprecated and will be removed. Please use 'safeStorage.encryptStringAsync' instead.\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:28:09.588Z pw:browser [pid=4844][err] (electron) 'safeStorage.decryptString' is deprecated and will be removed. Please use 'safeStorage.decryptStringAsync' instead.\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:28:24.547Z pw:browser <ws disconnecting> ws://127.0.0.1:8815/d4d7dcbc-2004-4676-8388-82e08b53b5b8\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:28:24.549Z pw:browser [pid=4844][err] Debugger ending on ws://127.0.0.1:8815/d4d7dcbc-2004-4676-8388-82e08b53b5b8\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:28:24.549Z pw:browser [pid=4844][err] For help, see: https://nodejs.org/learn/getting-started/debugging\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:28:24.549Z pw:browser <ws disconnected> ws://127.0.0.1:8815/d4d7dcbc-2004-4676-8388-82e08b53b5b8 code=1005 reason=\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:28:28.054Z pw:browser <ws disconnected> ws://127.0.0.1:8825/devtools/browser/0071db6b-1b28-4455-832d-55ddf68cf2f5 code=1006 reason=\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:28:28.068Z pw:browser [pid=4844] <process did exit: exitCode=0, signal=null>\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:28:28.068Z pw:browser [pid=4844] starting temporary directories cleanup\n"
+                    },
+                    {
+                      "text": "2026-11-16T09:28:28.069Z pw:browser [pid=4844] finished temporary directories cleanup\n"
+                    }
+                  ],
+                  "retry": 0,
+                  "startTime": "2026-11-16T09:28:03.764Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "D:\\University\\github\\whomi\\artifacts\\desktop-insights-recheck\\first-20261116-172757-860\\test-results\\tests-desktop-conversation-2fe33-through-rename-and-deletion\\error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "D:\\University\\github\\whomi\\tests\\desktop\\conversation-insights.spec.mjs",
+                    "column": 97,
+                    "line": 78
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "6313ee29ad091ee9e3b0-fee063abac1e6d1b01d2",
+          "file": "tests/desktop/conversation-insights.spec.mjs",
+          "line": 14,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "tests\\desktop\\insight-ui.spec.mjs",
+      "file": "tests/desktop/insight-ui.spec.mjs",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "real Electron insight UI validates scope, pauses and retries, reads exact sources, renames and deletes",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "d19b47173f86992bb2fe-69bce954f931982009f3",
+          "file": "tests/desktop/insight-ui.spec.mjs",
+          "line": 113,
+          "column": 1
+        },
+        {
+          "title": "real Electron requires self selection and a model before creating an insight",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "d19b47173f86992bb2fe-7111535bf93d2ff82dab",
+          "file": "tests/desktop/insight-ui.spec.mjs",
+          "line": 298,
+          "column": 1
+        },
+        {
+          "title": "real Electron report list shows loading and retryable first-read failure",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "d19b47173f86992bb2fe-03a0f5041bf6b69bf086",
+          "file": "tests/desktop/insight-ui.spec.mjs",
+          "line": 323,
+          "column": 1
+        },
+        {
+          "title": "real Electron preserves long report reading position and fits an 80-character title at 960 by 640",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "d19b47173f86992bb2fe-0b007b5fa297583cfdcb",
+          "file": "tests/desktop/insight-ui.spec.mjs",
+          "line": 355,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "message": "\u001b[31mTesting stopped early after 1 maximum allowed failures.\u001b[39m"
+    }
+  ],
+  "stats": {
+    "startTime": "2026-11-16T09:28:01.938Z",
+    "duration": 26171.495,
+    "expected": 0,
+    "skipped": 4,
+    "unexpected": 1,
+    "flaky": 0
+  }
+}
