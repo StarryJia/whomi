@@ -1,0 +1,29 @@
+{
+  "kind": "offline-compression-coverage-repair",
+  "networkCalls": 0,
+  "originalResponseUnmodified": true,
+  "parserCode": "INVALID_INSIGHT_OUTPUT",
+  "inputEntries": 16,
+  "outputEntries": 12,
+  "missing": [],
+  "knownOnlyMappedUnknown": [
+    "8:0",
+    "11:0"
+  ],
+  "checkpointUnchanged": {
+    "calls": 20,
+    "repairs": 0,
+    "cursor": 0
+  },
+  "originalHashes": {
+    "request-20.json": "ed69fa6b429eb2c9d442bd9362b9a366b89d8bb38c256a2cf2cd3137e085b9ef",
+    "response-20.txt": "653caac2f246a6bc88e5de9bb3676d25f3f741dec3ce31c3de8dafb87ecedc3b",
+    "checkpoint.json": "9d1dd08bfe121660ec878019062b03bc91ac895ac89b93d8a2f8dae7cfc21ede"
+  },
+  "originalsUnchanged": true,
+  "productHashes": {
+    "electron/main/insight-generation.ts": "2b509a15aac97b8719894c48198e961c22b5a9e6cb6bde35c4080db9621bcf94",
+    "tests/backend/insight-generation.test.ts": "a4161be0ba57aa8f44f1d9756113da23c11b7238eb38bb265444069613b7dc74",
+    "tests/backend/fixtures/insight-compression-coverage.json": "7dc05df843baa237af30e1f633fb1661ae66ac9bc7ab9242bd9b97eefa7bece8"
+  }
+}

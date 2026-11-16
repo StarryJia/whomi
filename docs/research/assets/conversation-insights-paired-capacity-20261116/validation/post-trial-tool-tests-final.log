@@ -1,0 +1,44 @@
+✔ comparison dry run lists both fixed cases without opening the configuration database (232.3401ms)
+✔ the long trial has separate phases and limits without opening the configuration database (461.4207ms)
+✔ a named long trial isolates its output and keeps the frozen cases and budgets (233.2521ms)
+✔ named trial parsing rejects ambiguous or escaping destinations before configuration access (1661.1178ms)
+✔ a named long trial can reserve natural checking room without changing the total request budget (238.8558ms)
+✔ an explicit task request limit requires a named long trial and stays within the shared budget (0.832ms)
+✔ a bounded compaction trial reserves both task budgets and their comparison reports before dispatch (232.6366ms)
+✔ a named input capacity changes packing without changing task budgets or accessing credentials (262.0506ms)
+✔ input capacity requires one trailing option in a named long trial (0.509ms)
+✔ input capacity freezes before any phase can change it (8.2963ms)
+✔ an engine manifest is restricted to a named long trial and removed from phase arguments (0.9373ms)
+✔ only an unchanged local baseline bundle can be loaded and frozen for a run (24.9085ms)
+✔ baseline manifests reject another commit or paths outside release before configuration access (272.0775ms)
+✔ starting the other case cannot raise a legacy run budget before configuration access (259.0916ms)
+✔ a new run freezes all budgets and material hashes without rewriting its profile (14.7114ms)
+✔ legacy task and one-call comparison phases migrate without changing their artifacts (24.613ms)
+✔ legacy migration checks every case and rejects incomplete dispatched artifacts (13.5915ms)
+✔ compression recovery preserves completed reading, existing navigation and cumulative charges (54.7625ms)
+✔ version two recovery verifies earliest snapshot source order with stable fact and unknown ties (0.66ms)
+✔ version two recovery rejects wrong leaf order, missing leaves, changed sources and unknown versions (2.0894ms)
+✔ legacy coverage failure consumes exactly one repair on an immutable recovery copy (291.2306ms)
+✔ a complete fact reclassified as unknown cannot be recovered as a legacy coverage failure (0.8866ms)
+✔ coverage recovery rejects other format, evidence, history and budget failures (7.1783ms)
+✔ the second recovery accepts a failed compression repair without resetting attempts or repairs (2.2552ms)
+✔ compression recovery rejects unread sources, invalid navigation and non-reading failures (3.2254ms)
+✔ second reading recovery requires an unbroken failed chain and keeps cumulative charges (2.2938ms)
+✔ reading recovery cannot skip a generation or overwrite an existing destination (10.6768ms)
+✔ direct writing keeps the shared notes and the frozen findings without citing pending guesses (0.5525ms)
+✔ the rich control sends only exact excerpts from the frozen reading state (0.5309ms)
+✔ the rich control needs a dispatched check that contained original text (0.3563ms)
+✔ an outbound rejection survives SDK wrapping and stops later comparison phases (10.1985ms)
+✔ invalid compression output or insufficient capacity stops later trial phases (4.5447ms)
+✔ the production insight budget halts the comparison while a normal provider failure does not (1.4769ms)
+✔ a prohibited writing repair stops subsequent long comparison phases (2.3866ms)
+✔ reading recovery requires the archived halt and a matching reading-only pending batch (0.551ms)
+✔ only the halted reading phase may start before a successful recovery is recorded (6.5104ms)
+ℹ tests 36
+ℹ suites 0
+ℹ pass 36
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4438.6786

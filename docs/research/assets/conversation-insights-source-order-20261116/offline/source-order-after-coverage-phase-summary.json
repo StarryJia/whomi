@@ -1,0 +1,124 @@
+{
+  "kind": "completed-diagnostic-phase-audit-not-trial-closure",
+  "totals": {
+    "dispatched": 34,
+    "settled": 34,
+    "inputTokens": 58342,
+    "outputTokens": 29217,
+    "readingRequests": 19,
+    "compressionRequests": 15,
+    "checkingRequests": 0,
+    "writingRequests": 0
+  },
+  "result": {
+    "state": "failed",
+    "error": "INVALID_INSIGHT_OUTPUT",
+    "calls": 14,
+    "httpRequests": 14,
+    "elapsedMs": 188087,
+    "inputCharged": 20826,
+    "outputCharged": 11220,
+    "trialRequestsAfterPhase": 34,
+    "accounting": {
+      "incremental": {
+        "httpRequests": 14,
+        "elapsedMs": 188087,
+        "inputCharged": 20826,
+        "outputCharged": 11220
+      },
+      "priorReading": {
+        "httpRequests": 20,
+        "inputCharged": 37516,
+        "outputCharged": 17997,
+        "elapsedMs": 350864
+      },
+      "combinedReading": {
+        "httpRequests": 34,
+        "inputCharged": 58342,
+        "outputCharged": 29217,
+        "elapsedMs": 538951
+      }
+    },
+    "resumedFrom": "shared-workload-reading",
+    "resumeCheckpointHash": "a306e673fd9e976249cee6ebca2599e69dde1b6bc19a186400bff0ae5dae503b"
+  },
+  "issues": [],
+  "pending": [],
+  "originalFilesChecked": 48,
+  "originalFilesUnchanged": true,
+  "candidateUnchanged": true,
+  "candidate": {
+    "count": 1,
+    "state": "finished",
+    "rounds": 0,
+    "evidenceIds": [
+      "86",
+      "87",
+      "91"
+    ]
+  },
+  "acceptedNodeIds": [
+    142,
+    143,
+    144,
+    145,
+    146,
+    147,
+    148,
+    149,
+    150,
+    151,
+    152
+  ],
+  "navigation": {
+    "factsVersion": 2,
+    "nodes": 153,
+    "roots": [
+      142,
+      143,
+      144,
+      145,
+      146,
+      147,
+      148,
+      149,
+      150,
+      151
+    ],
+    "cursor": 1,
+    "nextRoots": [
+      152
+    ],
+    "repairs": 1
+  },
+  "finalResponses": [
+    {
+      "localCall": 13,
+      "globalCall": 33,
+      "parserAcceptedFacts": true,
+      "topTextLength": 49,
+      "topTextWithin720": true,
+      "inputFactBytes": 2694,
+      "outputFactBytes": 2210,
+      "netReductionBytes": 484,
+      "netReductionFraction": 0.17965850037119524,
+      "strictTwentyPercentPassed": false,
+      "repair": false
+    },
+    {
+      "localCall": 14,
+      "globalCall": 34,
+      "parserAcceptedFacts": true,
+      "topTextLength": 44,
+      "topTextWithin720": true,
+      "inputFactBytes": 2694,
+      "outputFactBytes": 2192,
+      "netReductionBytes": 502,
+      "netReductionFraction": 0.18634001484780993,
+      "strictTwentyPercentPassed": false,
+      "repair": true
+    }
+  ],
+  "reportPresent": false,
+  "secondCaseStarted": false
+}

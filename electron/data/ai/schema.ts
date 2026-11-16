@@ -91,3 +91,19 @@ CREATE TABLE ai_request_usage (
  PRIMARY KEY(owner_kind,owner_id,request_id)
 ) STRICT;
 `
+
+export const insightSchema = `
+ALTER TABLE ai_preparations ADD COLUMN insight_snapshot TEXT CHECK(insight_snapshot IS NULL OR json_valid(insight_snapshot));
+ALTER TABLE ai_analysis_tasks ADD COLUMN title TEXT;
+ALTER TABLE ai_analysis_tasks ADD COLUMN elapsed_ms INTEGER NOT NULL DEFAULT 0 CHECK(elapsed_ms>=0);
+ALTER TABLE ai_reports ADD COLUMN content_revision TEXT;
+CREATE TABLE ai_insight_snapshots (
+ task_id INTEGER PRIMARY KEY REFERENCES ai_analysis_tasks(id) ON DELETE CASCADE,
+ scope TEXT NOT NULL CHECK(json_valid(scope)),
+ timezone TEXT NOT NULL,
+ created_at_ms INTEGER NOT NULL,
+ source_start_time_ms INTEGER,
+ source_end_time_ms INTEGER,
+ sources TEXT NOT NULL CHECK(json_valid(sources) AND json_type(sources)='array')
+) STRICT;
+`

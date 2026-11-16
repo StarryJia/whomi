@@ -18,20 +18,19 @@ function failure(error: unknown) {
 function phaseOf(task: AnalysisTask): Phase {
   if (!task.valid) return 'failed'
   switch (task.state) {
-    case 'completed': return 'done'
+    case 'completed': return task.report ? 'done' : 'failed'
     case 'failed': case 'stopped': case 'interrupted': return task.state
     default: return 'running'
   }
 }
 
 export function useAnalysisTask(adapter: ConversationAiAdapter | undefined, conversationId: string, identityRevision: number, initialTaskId?: string, fromMemory = false) {
-  const resumeOnEntry = useRef(fromMemory ? initialTaskId : undefined)
   const preferredTask = useRef(initialTaskId)
   const [phase, setPhase] = useState<Phase>('idle')
   const [progress, setProgress] = useState<AnalysisProgress>()
   const [result, setResult] = useState<AnalysisResult>()
   const [error, setError] = useState('')
-  const [confirming, setConfirming] = useState(true)
+  const [confirming, setConfirming] = useState(!initialTaskId)
   const [blocked, setBlocked] = useState(false)
   const [stopping, setStopping] = useState(false)
   const operation = useRef<AbortController | undefined>(undefined)
@@ -52,13 +51,13 @@ export function useAnalysisTask(adapter: ConversationAiAdapter | undefined, conv
     const observer = new AbortController()
     const version = ++generation.current
     setPhase('idle'); setProgress(undefined); setResult(undefined)
-    setError(''); setConfirming(true); setBlocked(false); setStopping(false)
+    setError(''); setConfirming(!preferredTask.current); setBlocked(false); setStopping(false)
     if (!fromMemory || preferredTask.current) void adapter?.watchAnalysis?.(conversationId, snapshot => {
       if (version === generation.current) receive(snapshot)
     }, observer.signal, preferredTask.current).catch(cause => {
       if (version !== generation.current) return
       setError(failure(cause))
-      if (cannotResume(cause)) { setPhase('failed'); setBlocked(true) }
+      if (preferredTask.current || cannotResume(cause)) { setPhase('failed'); setConfirming(false); setBlocked(true) }
     })
     return () => {
       generation.current++
@@ -87,7 +86,8 @@ export function useAnalysisTask(adapter: ConversationAiAdapter | undefined, conv
         : await adapter.continueAnalysis!(task!.id, controller.signal, update)
       if (version !== generation.current) return
       if (outcome?.task) receive(outcome.task)
-      else { setResult(outcome || undefined); setPhase('done') }
+      else if (outcome?.taskId) { setResult(outcome); setPhase('done') }
+      else { setPhase('failed'); setError('报告尚未保存，请重试。') }
     } catch (cause) {
       if (version !== generation.current) return
       // 新分析在创建前失败时，原任务的断点仍应可用。
@@ -99,12 +99,6 @@ export function useAnalysisTask(adapter: ConversationAiAdapter | undefined, conv
       if (operation.current === controller) operation.current = undefined
     }
   }
-
-  useEffect(() => {
-    if (!task || task.id !== resumeOnEntry.current) return
-    resumeOnEntry.current = undefined
-    if (resumable) void run()
-  }, [task, resumable])
 
   async function stop() {
     if (stopping || phase !== 'running') return

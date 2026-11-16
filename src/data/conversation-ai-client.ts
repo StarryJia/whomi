@@ -233,6 +233,7 @@ export async function createConversationAiClient(api: AiApi, settings?: Settings
       return followAnalysis(initial, signal, onProgress)
     },
     prepareAnalysis: request => api.prepareAnalysis(request),
+    ...(api.previewInsightScope && { previewInsightScope: request => api.previewInsightScope(request) }),
     arrangeThread: (conversationId, change) => api.arrangeThread(conversationId, change),
     async deleteThread(conversationId, threadId) { await api.deleteThread(conversationId, threadId); threads.delete(conversationId) },
     listThreads: conversationId => api.listThreads(conversationId),
@@ -290,8 +291,11 @@ export async function createConversationAiClient(api: AiApi, settings?: Settings
       check(signal)
       const tasks = await api.listAnalyses(conversationId)
       check(signal)
-      const latest = taskId ? tasks.find(task => task.id === taskId) : tasks[0]
-      if (!latest && taskId) throw new Error('这项记忆任务已移除，请返回仓库。')
+      const active = (task: AnalysisTask) => task.valid && ['queued', 'running', 'summarizing'].includes(task.state)
+      const latest = taskId ? tasks.find(task => task.id === taskId) : [...tasks].sort((a, b) =>
+        Number(active(b)) - Number(active(a)) || (b.createdAtMs ?? 0) - (a.createdAtMs ?? 0) ||
+        b.id.localeCompare(a.id, 'en', { numeric: true }))[0]
+      if (!latest && taskId) throw new Error('这项洞察任务已移除，请返回列表。')
       if (!latest) return
       await observe(latest, signal, 'analysis', () => api.getAnalysis(latest.id), undefined, onChange)
     },

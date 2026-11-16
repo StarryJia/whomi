@@ -1,0 +1,38 @@
+✖ starting the other case cannot raise a legacy run budget before configuration access (314.4223ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 428.5048
+
+✖ failing tests:
+
+test at tests\quality\insight-comparison.test.mjs:135:1
+✖ starting the other case cannot raise a legacy run budget before configuration access (314.4223ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /INVALID_COMPARISON_RUN_PROFILE/. Input:
+  
+  'file:///D:/University/github/whomi/scripts/insight-quality.mjs:43\r\n' +
+    "  throw new Error('Set WHOMI_QUALITY_DB, WHOMI_QUALITY_PROVIDER_ID and WHOMI_QUALITY_MODEL_ID to the approved configuration.')\r\n" +
+    '        ^\r\n' +
+    '\r\n' +
+    'Error: Set WHOMI_QUALITY_DB, WHOMI_QUALITY_PROVIDER_ID and WHOMI_QUALITY_MODEL_ID to the approved configuration.\r\n' +
+    '    at file:///D:/University/github/whomi/scripts/insight-quality.mjs:43:9\r\n' +
+    '    at ModuleJob.run (node:internal/modules/esm/module_job:413:25)\r\n' +
+    '    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:660:26)\r\n' +
+    '    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)\r\n' +
+    '\r\n' +
+    'Node.js v24.12.0\r\n'
+  
+      at TestContext.<anonymous> (file:///D:/University/github/whomi/tests/quality/insight-comparison.test.mjs:164:10)
+      at async Test.run (node:internal/test_runner/test:1113:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:358:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: "file:///D:/University/github/whomi/scripts/insight-quality.mjs:43\r\n  throw new Error('Set WHOMI_QUALITY_DB, WHOMI_QUALITY_PROVIDER_ID and WHOMI_QUALITY_MODEL_ID to the approved configuration.')\r\n        ^\r\n\r\nError: Set WHOMI_QUALITY_DB, WHOMI_QUALITY_PROVIDER_ID and WHOMI_QUALITY_MODEL_ID to the approved configuration.\r\n    at file:///D:/University/github/whomi/scripts/insight-quality.mjs:43:9\r\n    at ModuleJob.run (node:internal/modules/esm/module_job:413:25)\r\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:660:26)\r\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)\r\n\r\nNode.js v24.12.0\r\n",
+    expected: /INVALID_COMPARISON_RUN_PROFILE/,
+    operator: 'match',
+    diff: 'simple'
+  }

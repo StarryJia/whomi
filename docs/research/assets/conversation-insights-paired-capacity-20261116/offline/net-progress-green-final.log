@@ -1,0 +1,37 @@
+
+ RUN  v5.0.5 D:/University/github/whomi
+
+ ❯ tests/backend/insight-generation.test.ts (83 tests | 1 failed) 191ms
+   × nearly verbatim compression like the real long run stops after one repair before replacing any original facts 16ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/backend/insight-generation.test.ts > nearly verbatim compression like the real long run stops after one repair before replacing any original facts
+AssertionError: expected Error: 已达到洞察预算。请缩短日期范围后重新生成。 { …(2) } to match object { code: 'INVALID_INSIGHT_OUTPUT' }
+(1 matching property omitted from actual)
+
+- Expected
++ Received
+
+- {
+-   "code": "INVALID_INSIGHT_OUTPUT",
++ BoundaryError {
++   "code": "INSIGHT_BUDGET_EXHAUSTED",
+  }
+
+ ❯ tests/backend/insight-generation.test.ts:157:45
+    155|       .map((entry: { entryId: string; kind: string; text: string }) =>…
+    156|   }
+    157|   await expect(generateInsight(input, deps)).rejects.toMatchObject({ c…
+       |                                             ^
+    158|   expect(attempts).toBe(2)
+    159|   expect(state.checkpoint?.navigation?.cursor).toBe(0)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  1 failed | 86 passed (87)
+   Start at  01:30:04
+   Duration  557ms (tests 46%, transform 34%, import 17%, worker 3%)
+

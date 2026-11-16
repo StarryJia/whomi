@@ -1,6 +1,7 @@
 import { isSubscriptionId } from './chatgpt-plan'
 import type { AiEvent, AiMethods } from './ai-contract'
-import { BoundaryError, listArrangement, localId } from './desktop-validation'
+import { BoundaryError, availableSourceWindowFields, listArrangement, localId } from './desktop-validation'
+import { insightTitle, isInsightScope, isInsightTimezone, type InsightCitationWindow } from './conversation-insights'
 import { isModelProtocol } from './model-protocol'
 
 type Check = (value: unknown) => boolean
@@ -9,6 +10,7 @@ const key = text(128, true)
 const bool: Check = value => typeof value === 'boolean'
 const thinking: Check = value => ['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'].includes(value as string)
 const count: Check = value => typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
+const timestamp: Check = value => typeof value === 'number' && Number.isSafeInteger(value)
 const positive: Check = value => count(value) && (value as number) > 0
 const metric: Check = value => typeof value === 'number' && Number.isFinite(value) && value >= 0
 const optional = (check: Check): Check => value => value === undefined || check(value)
@@ -30,22 +32,44 @@ const scoredReport = object({ ...memoryFields, format: value => value === 'memor
 const explanation = nullable(object({ text: text(4000, true), evidenceMessageIds: ids }))
 const explainedReport = object({ ...memoryFields, format: value => value === 'memory-v4', eventVotes: object({ EI: votePair, SN: votePair, TF: votePair, JP: votePair }),
   dimensionExplanations: object({ EI: explanation, SN: explanation, TF: explanation, JP: explanation }) })
-const report: Check = value => legacyReport(value) || memoryReport(value) || scoredReport(value) || explainedReport(value)
+const revision: Check = value => typeof value === 'string' && /^[0-9a-f]{64}$/.test(value)
+const sourceRef = object({ messageId: localId, revision })
+const sourceRefs: Check = value => array(sourceRef, 2000)(value) && new Set((value as { messageId: string }[]).map(source => source.messageId)).size === (value as unknown[]).length
+const fragment = object({ sources: value => sourceRefs(value) && (value as unknown[]).length > 0 })
+const citation = object({ id: key, conversationId: localId, fragments: value => array(fragment, 200)(value) && (value as unknown[]).length > 0 })
+const paragraphs = array(object({ content: array(object({ text: text(20000, true), citationId: optional(key) }), 200) }), 200)
+const notes = array(text(4000, true), 200)
+const judgmentFields = { text: text(4000, true), supportingSources: value => sourceRefs(value) && (value as unknown[]).length > 0, counterexampleSources: sourceRefs, alternativeExplanations: notes, limitations: notes } satisfies Record<string, Check>
+const judgments = array(value => ['EI', 'SN', 'TF', 'JP'].some(dimension => object({ dimension: name => name === dimension, direction: direction(dimension), ...judgmentFields })(value)), 200)
+const insightReport = object({ format: value => value === 'conversation-insights-v1', aboutYou: paragraphs, relationship: paragraphs, citations: array(citation, 2000), limitations: notes, judgments: optional(judgments) })
+const report: Check = value => legacyReport(value) || memoryReport(value) || scoredReport(value) || explainedReport(value) || insightReport(value)
 const modelIdentity = object({ id: key, version: positive, label: text(256, true), model: key })
-const analysis = object({ id: localId, conversationId: localId, conversationTitle: optional(text(100000)), counterpartName: optional(text(100000)), modelId: key, modelIdentity: optional(modelIdentity), createdAtMs: optional(nullable(count)), completedAtMs: optional(nullable(count)), sourceStartTimeMs: optional(nullable(count)), sourceEndTimeMs: optional(nullable(count)), pinned: optional(bool), thinkingLevel: optional(thinking), state, analyzedMessages: count, totalMessages: count, skippedMessages: count, usage, error: optional(text(2000)), report: optional(report), valid: bool, eventSequence: count })
+const analysis = object({ id: localId, conversationId: localId, conversationTitle: optional(text(100000)), counterpartName: optional(text(100000)), title: optional(value => typeof value === 'string' && insightTitle(value) === value), scope: optional(isInsightScope), insightContentRevision: optional(revision), insightSelfFingerprint: optional(revision), elapsedMs: optional(count), modelId: key, modelIdentity: optional(modelIdentity), createdAtMs: optional(nullable(count)), completedAtMs: optional(nullable(count)), sourceStartTimeMs: optional(nullable(timestamp)), sourceEndTimeMs: optional(nullable(timestamp)), pinned: optional(bool), thinkingLevel: optional(thinking), state, analyzedMessages: count, totalMessages: count, skippedMessages: count, usage, error: optional(text(2000)), report: optional(report), valid: bool, eventSequence: count })
 const turn = object({ id: localId, threadId: localId, requestId: key, prompt: text(100000, true), referenceIds: ids, modelId: key, modelIdentity: optional(modelIdentity), thinkingLevel: optional(thinking), skillId: optional(key), text: text(2 * 1024 ** 2), state, attempt: positive, usage, error: optional(text(2000)), eventSequence: count })
 const threadFields = { pinned: optional(bool), id: localId, conversationId: localId, title: text(200, true), createdAtMs: count, updatedAtMs: count }
 const thread = object({ ...threadFields, turns: array(turn, 10000) })
-const preparation = object({ token: key, conversationId: localId, title: text(2000), selfName: text(2000), totalMessages: count, analyzableMessages: count, snapshotMaxId: localId, expiresAt: count, thinkingLevel: optional(thinking), model })
+const preparation = object({ token: key, conversationId: localId, title: text(2000), selfName: text(2000), scope: optional(isInsightScope), timezone: optional(isInsightTimezone), totalMessages: count, analyzableMessages: count, snapshotMaxId: localId, expiresAt: count, thinkingLevel: optional(thinking), model })
+const availableCitation = object({ ...availableSourceWindowFields, highlightIds: value => ids(value) && (value as unknown[]).length > 0 })
+const citationWindow: Check = value => {
+  if (object({ status: status => status === 'expired' || status === 'unavailable' })(value)) return true
+  if (!availableCitation(value)) return false
+  const window = value as Extract<InsightCitationWindow, { status: 'available' }>
+  return window.startMessageId === window.start.id && window.endMessageId === window.end.id &&
+    window.highlightIds[0] === window.startMessageId && window.highlightIds.at(-1) === window.endMessageId &&
+    window.page.items.every(message => message.conversationId === window.conversationId)
+}
 const input: Record<keyof AiMethods, Check[]> = {
   listModels: [], saveModel: [object({ ...modelFields, apiKey: optional(text(16384)) })], testModel: [key], listSkills: [],
-  prepareAnalysis: [object({ conversationId: localId, modelId: key, thinkingLevel: optional(thinking) })], confirmAnalysis: [object({ token: key, requestId: key })],
-  getAnalysis: [localId], listAnalyses: [optional(localId)], arrangeAnalysis: [listArrangement], deleteAnalysis: [localId], stopAnalysis: [localId], continueAnalysis: [localId], getReport: [localId],
+  previewInsightScope: [object({ conversationId: localId, scope: optional(isInsightScope) })],
+  prepareAnalysis: [object({ conversationId: localId, modelId: key, thinkingLevel: optional(thinking), scope: optional(isInsightScope) })], confirmAnalysis: [object({ token: key, requestId: key })],
+  getAnalysis: [localId], listAnalyses: [optional(localId)], arrangeAnalysis: [listArrangement], renameAnalysis: [object({ taskId: localId, title: value => insightTitle(value) !== null })], deleteAnalysis: [localId], stopAnalysis: [localId], continueAnalysis: [localId], getReport: [localId],
+  readInsightCitation: [object({ taskId: localId, citationId: key, fragmentIndex: count })],
   openThread: [localId], listThreads: [localId], createThread: [localId], getThread: [localId], arrangeThread: [localId, listArrangement], deleteThread: [localId, localId], sendTurn: [object({ threadId: localId, requestId: key, prompt: text(100000, true), referenceIds: ids, modelId: key, thinkingLevel: optional(thinking), skillId: optional(key) })], retryTurn: [localId], stopTurn: [localId],
 }
 const output: Record<keyof AiMethods, Check> = {
   listModels: array(model, 1000), saveModel: model, testModel: value => value === undefined, listSkills: array(object({ id: key, label: text(256, true), version: key }), 1000),
-  prepareAnalysis: preparation, confirmAnalysis: analysis, getAnalysis: analysis, listAnalyses: array(analysis), arrangeAnalysis: value => value === undefined, deleteAnalysis: value => value === undefined, stopAnalysis: analysis, continueAnalysis: analysis, getReport: report,
+  previewInsightScope: object({ scope: isInsightScope, timezone: isInsightTimezone, totalMessages: count, analyzableMessages: count, sourceStartTimeMs: nullable(timestamp), sourceEndTimeMs: nullable(timestamp) }),
+  prepareAnalysis: preparation, confirmAnalysis: analysis, getAnalysis: analysis, listAnalyses: array(analysis), arrangeAnalysis: value => value === undefined, renameAnalysis: analysis, deleteAnalysis: value => value === undefined, stopAnalysis: analysis, continueAnalysis: analysis, getReport: report, readInsightCitation: citationWindow,
   openThread: thread, listThreads: array(object(threadFields)), createThread: thread, getThread: thread, arrangeThread: value => value === undefined, deleteThread: value => value === undefined, sendTurn: turn, retryTurn: turn, stopTurn: turn,
 }
 export function validateAiCall(method: unknown, args: unknown): asserts method is keyof AiMethods {

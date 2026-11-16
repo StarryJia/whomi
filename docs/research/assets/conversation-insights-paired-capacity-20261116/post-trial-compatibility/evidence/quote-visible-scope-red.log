@@ -1,0 +1,38 @@
+
+ RUN  v5.0.5 D:/University/github/whomi
+
+ ❯ tests/backend/insight-quote-reuse.test.ts (15 tests | 1 failed | 13 skipped) 18ms
+   × an update can reuse verified evidence from another currently visible candidate 9ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/backend/insight-quote-reuse.test.ts > an update can reuse verified evidence from another currently visible candidate
+AssertionError: expected Error: 洞察引用的原文无法验证，请重新生成。 { …(2) } to be Error: fixture accepted response without … // Object.is equality
+
+- Expected
++ Received
+
+- Error {
+-   "message": "fixture accepted response without continuing the model task",
++ BoundaryError {
++   "message": "洞察引用的原文无法验证，请重新生成。",
++   "code": "INVALID_EVIDENCE",
++   "action": "洞察引用的原文无法验证，请重新生成。",
+  }
+
+ ❯ tests/backend/insight-quote-reuse.test.ts:103:45
+    101|       finding: { ...finding, supportingIds: ['2'] }, evidenceNotes: [o…
+    102|   }
+    103|   await expect(generateInsight(input, deps)).rejects.toBe(accepted)
+       |                                             ^
+    104|   expect(state.checkpoint?.checks[0]).toMatchObject({ state: 'finished…
+    105|   expect(state.checkpoint?.checks[0].evidenceNotes).toContainEqual(oth…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 1 passed | 13 skipped (15)
+   Start at  02:32:48
+   Duration  313ms (transform 47%, import 33%, tests 14%, worker 5%)
+

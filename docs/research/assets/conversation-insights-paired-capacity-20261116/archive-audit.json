@@ -1,0 +1,2278 @@
+{
+  "kind": "paired-capacity-evidence-archive",
+  "closed": true,
+  "resumePermitted": false,
+  "trialOutcomes": [
+    {
+      "arm": "baseline",
+      "runId": "memory-capacity-baseline-20261116",
+      "totals": {
+        "requests": 13,
+        "settled": 13,
+        "inputTokens": 44861,
+        "outputTokens": 19031,
+        "reading": 9,
+        "compression": 2,
+        "checking": 0,
+        "writing": 2
+      },
+      "comparisons": [
+        {
+          "caseName": "shared-workload",
+          "sourceHash": "6f63b461c034eacaebc473ea5637bef13119aae59e286fa1d449347d9c6af756",
+          "completePair": true,
+          "naturalCandidates": 0,
+          "acceptedCandidateUpdates": 0,
+          "checkingRequestsWithOriginals": 0,
+          "modelReadRequests": 0,
+          "modelNavigationRequests": 0,
+          "availableReports": {
+            "adaptive": true,
+            "direct": true,
+            "rich": false
+          },
+          "failedPhases": [],
+          "outcome": "reports-completed",
+          "readingRelatedOriginals": {
+            "requestsWithRelatedOriginals": 1,
+            "relatedOriginalPresentations": 3,
+            "distinctRelatedOriginalIds": [
+              "10",
+              "11",
+              "12"
+            ],
+            "previouslySeenPresentations": 3,
+            "presentations": [
+              {
+                "request": "request-05.json",
+                "sourceId": "10",
+                "seenInEarlierRequest": true
+              },
+              {
+                "request": "request-05.json",
+                "sourceId": "11",
+                "seenInEarlierRequest": true
+              },
+              {
+                "request": "request-05.json",
+                "sourceId": "12",
+                "seenInEarlierRequest": true
+              }
+            ]
+          },
+          "sameBase": true,
+          "sameWriter": true
+        },
+        {
+          "caseName": "conditional-reschedule",
+          "sourceHash": "907c6b680d1acc0e4c021e7ae6c26393d1fd144c9c6f45d6ee4a47b316640b2d",
+          "completePair": false,
+          "naturalCandidates": 1,
+          "acceptedCandidateUpdates": 0,
+          "checkingRequestsWithOriginals": 0,
+          "modelReadRequests": 0,
+          "modelNavigationRequests": 0,
+          "availableReports": {
+            "adaptive": false,
+            "direct": false,
+            "rich": false
+          },
+          "failedPhases": [
+            {
+              "name": "conditional-reschedule-reading",
+              "error": "INVALID_EVIDENCE",
+              "requests": 4
+            }
+          ],
+          "outcome": "stopped-after-failure",
+          "readingRelatedOriginals": {
+            "requestsWithRelatedOriginals": 1,
+            "relatedOriginalPresentations": 2,
+            "distinctRelatedOriginalIds": [
+              "1",
+              "2"
+            ],
+            "previouslySeenPresentations": 2,
+            "presentations": [
+              {
+                "request": "request-04.json",
+                "sourceId": "1",
+                "seenInEarlierRequest": true
+              },
+              {
+                "request": "request-04.json",
+                "sourceId": "2",
+                "seenInEarlierRequest": true
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "arm": "current-v2",
+      "runId": "memory-capacity-current-v2-20261116",
+      "totals": {
+        "requests": 29,
+        "settled": 29,
+        "inputTokens": 95385,
+        "outputTokens": 48779,
+        "reading": 14,
+        "compression": 11,
+        "checking": 0,
+        "writing": 4
+      },
+      "comparisons": [
+        {
+          "caseName": "shared-workload",
+          "sourceHash": "6f63b461c034eacaebc473ea5637bef13119aae59e286fa1d449347d9c6af756",
+          "completePair": true,
+          "naturalCandidates": 0,
+          "acceptedCandidateUpdates": 0,
+          "checkingRequestsWithOriginals": 0,
+          "modelReadRequests": 0,
+          "modelNavigationRequests": 0,
+          "availableReports": {
+            "adaptive": true,
+            "direct": true,
+            "rich": false
+          },
+          "failedPhases": [],
+          "outcome": "reports-completed",
+          "readingRelatedOriginals": {
+            "requestsWithRelatedOriginals": 0,
+            "relatedOriginalPresentations": 0,
+            "distinctRelatedOriginalIds": [],
+            "previouslySeenPresentations": 0,
+            "presentations": []
+          },
+          "sameBase": true,
+          "sameWriter": true
+        },
+        {
+          "caseName": "conditional-reschedule",
+          "sourceHash": "907c6b680d1acc0e4c021e7ae6c26393d1fd144c9c6f45d6ee4a47b316640b2d",
+          "completePair": true,
+          "naturalCandidates": 0,
+          "acceptedCandidateUpdates": 0,
+          "checkingRequestsWithOriginals": 0,
+          "modelReadRequests": 0,
+          "modelNavigationRequests": 0,
+          "availableReports": {
+            "adaptive": true,
+            "direct": true,
+            "rich": false
+          },
+          "failedPhases": [],
+          "outcome": "reports-completed",
+          "readingRelatedOriginals": {
+            "requestsWithRelatedOriginals": 0,
+            "relatedOriginalPresentations": 0,
+            "distinctRelatedOriginalIds": [],
+            "previouslySeenPresentations": 0,
+            "presentations": []
+          },
+          "sameBase": true,
+          "sameWriter": true
+        }
+      ]
+    }
+  ],
+  "retiredInitialCurrent": {
+    "runId": "memory-capacity-current-20261116",
+    "closed": true,
+    "resumePermitted": false,
+    "originalFilesVerified": 30,
+    "reportGenerated": false,
+    "readingRelatedOriginals": {
+      "requestsWithRelatedOriginals": 0,
+      "relatedOriginalPresentations": 0,
+      "distinctRelatedOriginalIds": [],
+      "previouslySeenPresentations": 0,
+      "presentations": []
+    }
+  },
+  "costs": {
+    "priorClosedDiagnostics": {
+      "requests": 84,
+      "inputTokens": 151868,
+      "outputTokens": 77887
+    },
+    "retiredInitialCurrent": {
+      "requests": 11,
+      "inputTokens": 36211,
+      "outputTokens": 15693
+    },
+    "pairedBaselineAndCurrentV2": {
+      "requests": 42,
+      "inputTokens": 140246,
+      "outputTokens": 67810
+    },
+    "allActual": {
+      "requests": 137,
+      "inputTokens": 328325,
+      "outputTokens": 161390
+    },
+    "tokenCharges": "settled requests only",
+    "thisPairedExperimentIncludingRetired": {
+      "requests": 53,
+      "inputTokens": 176457,
+      "outputTokens": 83503
+    }
+  },
+  "implementations": [
+    {
+      "directory": "implementations/paired-capacity-frozen",
+      "currentFiles": 24,
+      "baselineFiles": 9,
+      "sourceHashesVerified": true,
+      "baselineBundleSha256": "ef302a81ebdbd5ad8e1b402d57bf91dc6e87b9a46bba0211caf0e8ac65676b54"
+    },
+    {
+      "directory": "implementations/paired-capacity-v2-frozen",
+      "currentFiles": 25,
+      "baselineFiles": 9,
+      "sourceHashesVerified": true,
+      "baselineBundleSha256": "ef302a81ebdbd5ad8e1b402d57bf91dc6e87b9a46bba0211caf0e8ac65676b54"
+    }
+  ],
+  "postTrialOfflineEvidenceIncluded": true,
+  "allOriginalCopiesByteIdentical": true,
+  "originalFilesUnchanged": true,
+  "sensitivePatternMatches": 0,
+  "copiedFiles": 334,
+  "copiedBytes": 5123692,
+  "excluded": [
+    "Full source.tar",
+    "Whole baseline source tree",
+    "Desktop runtime",
+    "Databases",
+    "Installed model configuration",
+    "Credentials",
+    "Earlier three closed archives"
+  ],
+  "files": [
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/conditional-reschedule-reading/attempts.jsonl",
+      "file": "runs/memory-capacity-baseline-20261116/conditional-reschedule-reading/attempts.jsonl",
+      "bytes": 2670,
+      "sha256": "5e3bf09e1dfda4d2b6e5e1639a87d00eaf1412321b618d78c59a74beb34e3050"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/conditional-reschedule-reading/checkpoint.json",
+      "file": "runs/memory-capacity-baseline-20261116/conditional-reschedule-reading/checkpoint.json",
+      "bytes": 22888,
+      "sha256": "f61efdafcb4836f7532d1d0665ddc3f2deb3a50ff44b9a8069af4e6fb8273ab3"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/conditional-reschedule-reading/events.jsonl",
+      "file": "runs/memory-capacity-baseline-20261116/conditional-reschedule-reading/events.jsonl",
+      "bytes": 10011,
+      "sha256": "fc6c157b56cd449bd5a8e2194534b6167c3b503e5700cc2b29dc9cc870f23a2c"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/conditional-reschedule-reading/input.json",
+      "file": "runs/memory-capacity-baseline-20261116/conditional-reschedule-reading/input.json",
+      "bytes": 57471,
+      "sha256": "da38ce5f8750c8fa3bf5b401394762b9f1260898526b55c366832d8f07533491"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/conditional-reschedule-reading/request-01.json",
+      "file": "runs/memory-capacity-baseline-20261116/conditional-reschedule-reading/request-01.json",
+      "bytes": 12503,
+      "sha256": "946aad720bf0309270b0aff94331ea54948b022c53dc925939df75c0e96d6b81"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/conditional-reschedule-reading/request-02.json",
+      "file": "runs/memory-capacity-baseline-20261116/conditional-reschedule-reading/request-02.json",
+      "bytes": 12799,
+      "sha256": "e3e670d8be239c33d3718968a1c646c76e595891036769739c5dec73d8c863e7"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/conditional-reschedule-reading/request-03.json",
+      "file": "runs/memory-capacity-baseline-20261116/conditional-reschedule-reading/request-03.json",
+      "bytes": 12775,
+      "sha256": "1c6829b1862e666151129a28bb2e8d574b7a0bdf44507fbb397daebe57593383"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/conditional-reschedule-reading/request-04.json",
+      "file": "runs/memory-capacity-baseline-20261116/conditional-reschedule-reading/request-04.json",
+      "bytes": 12755,
+      "sha256": "8495afa07457fe5f80c56ce2ea30968eb1be41a7618adefd41d1ebc35e422475"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/conditional-reschedule-reading/response-01.txt",
+      "file": "runs/memory-capacity-baseline-20261116/conditional-reschedule-reading/response-01.txt",
+      "bytes": 5676,
+      "sha256": "0b97c480a527e7499fb1205648b38ff95405eac87b896e88bb86c2166c3c6f7d"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/conditional-reschedule-reading/response-02.txt",
+      "file": "runs/memory-capacity-baseline-20261116/conditional-reschedule-reading/response-02.txt",
+      "bytes": 4559,
+      "sha256": "512e37c008426d954e151ba40158603817230fe8f55faffa5812574b5197ebe2"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/conditional-reschedule-reading/response-03.txt",
+      "file": "runs/memory-capacity-baseline-20261116/conditional-reschedule-reading/response-03.txt",
+      "bytes": 5117,
+      "sha256": "d3474bdfa5e8e9448f380b7ed69cada61633c228e3b59be7a31f5f0cb42bd40a"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/conditional-reschedule-reading/response-04.txt",
+      "file": "runs/memory-capacity-baseline-20261116/conditional-reschedule-reading/response-04.txt",
+      "bytes": 7179,
+      "sha256": "49a75c0483c97688f51185f582885e1aa6c435967fa52a12c181d7a5120298e3"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/conditional-reschedule-reading/result.json",
+      "file": "runs/memory-capacity-baseline-20261116/conditional-reschedule-reading/result.json",
+      "bytes": 355,
+      "sha256": "94efc00e8ebbf127a8f5ecf4d2641cb83e9fa9f98fc042dba7b5e82caf590f5c"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/conditional-reschedule-reading/snapshot.json",
+      "file": "runs/memory-capacity-baseline-20261116/conditional-reschedule-reading/snapshot.json",
+      "bytes": 15081,
+      "sha256": "fe738a045df85dad5f53caa5554a3f3044cccf3ff91d691e19f39fbcabaffdc8"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/halt.json",
+      "file": "runs/memory-capacity-baseline-20261116/halt.json",
+      "bytes": 327,
+      "sha256": "81be88d64e4f3cbb5c2211aa6d8ad946c5490d42a26179c1508f527735a535b4"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/run-profile.json",
+      "file": "runs/memory-capacity-baseline-20261116/run-profile.json",
+      "bytes": 995,
+      "sha256": "68c6169bd20e2edc718a58b512e9ccbfcdb5fe11dea6d40d4d4818841f48e0cd"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/shared-workload-adaptive/attempts.jsonl",
+      "file": "runs/memory-capacity-baseline-20261116/shared-workload-adaptive/attempts.jsonl",
+      "bytes": 657,
+      "sha256": "e522a52f9cf3f5e3a53ac34eeb747b76c1e2507b0c82b3ca5f3076dedac5e5cb"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/shared-workload-adaptive/checkpoint.json",
+      "file": "runs/memory-capacity-baseline-20261116/shared-workload-adaptive/checkpoint.json",
+      "bytes": 65874,
+      "sha256": "ee5bd63af7c516c42d368371a567597c37ce68364b02a5f02aaaba4d74551593"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/shared-workload-adaptive/events.jsonl",
+      "file": "runs/memory-capacity-baseline-20261116/shared-workload-adaptive/events.jsonl",
+      "bytes": 2203,
+      "sha256": "328c3561c254c642d09325ccafe0e8ac8c2d6be5ff2f766489711af71672285e"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/shared-workload-adaptive/input.json",
+      "file": "runs/memory-capacity-baseline-20261116/shared-workload-adaptive/input.json",
+      "bytes": 56095,
+      "sha256": "119102629f59927beb252d61813b7f3868735c0bdba6d646c55bbe5d2563dd0d"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/shared-workload-adaptive/report.json",
+      "file": "runs/memory-capacity-baseline-20261116/shared-workload-adaptive/report.json",
+      "bytes": 7682,
+      "sha256": "f46b6fd3f0e13b9d9a355ad407c60e2f0cca1eb7c2e82c3dbcdf88a168545f6a"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/shared-workload-adaptive/request-01.json",
+      "file": "runs/memory-capacity-baseline-20261116/shared-workload-adaptive/request-01.json",
+      "bytes": 8760,
+      "sha256": "31a268d0cc4cebaadb840af56f2723f9416711aa7d3f7a80338faa19b471e62c"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/shared-workload-adaptive/response-01.txt",
+      "file": "runs/memory-capacity-baseline-20261116/shared-workload-adaptive/response-01.txt",
+      "bytes": 3688,
+      "sha256": "a335b4e03053d082e86fbada55df37606f59646d256a2d92733b74c6dc0fb3b3"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/shared-workload-adaptive/result.json",
+      "file": "runs/memory-capacity-baseline-20261116/shared-workload-adaptive/result.json",
+      "bytes": 791,
+      "sha256": "b601e44d3f1d858df537f2384af40a24db51336362516c9cfbec738b1a032ba4"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/shared-workload-adaptive/snapshot.json",
+      "file": "runs/memory-capacity-baseline-20261116/shared-workload-adaptive/snapshot.json",
+      "bytes": 15081,
+      "sha256": "6c1c25dd37af21372cdb343c7ca6734ce71586751c16c7c617f025fa8d947587"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/shared-workload-adaptive/writing-base.json",
+      "file": "runs/memory-capacity-baseline-20261116/shared-workload-adaptive/writing-base.json",
+      "bytes": 241,
+      "sha256": "d689ec9aefa5e6dfe1c84fcca87a3ae384461abbff7167bc2d0c48f30b305f64"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/shared-workload-direct/attempts.jsonl",
+      "file": "runs/memory-capacity-baseline-20261116/shared-workload-direct/attempts.jsonl",
+      "bytes": 673,
+      "sha256": "045f42ecb00cc0902cdff015fe2c391af8aa939ae673e88d89b857bb1f2e2ab8"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/shared-workload-direct/input.json",
+      "file": "runs/memory-capacity-baseline-20261116/shared-workload-direct/input.json",
+      "bytes": 56091,
+      "sha256": "0b426df5b1222e5df0a404b81ce29c9e719f643236f1627e654d1bc5597935d7"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/shared-workload-direct/report.json",
+      "file": "runs/memory-capacity-baseline-20261116/shared-workload-direct/report.json",
+      "bytes": 6236,
+      "sha256": "5e3cf5b672319759d093a533bbb055a17a95b95095720f8ba6270f930030208a"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/shared-workload-direct/request-01.json",
+      "file": "runs/memory-capacity-baseline-20261116/shared-workload-direct/request-01.json",
+      "bytes": 8760,
+      "sha256": "31a268d0cc4cebaadb840af56f2723f9416711aa7d3f7a80338faa19b471e62c"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/shared-workload-direct/response-01.txt",
+      "file": "runs/memory-capacity-baseline-20261116/shared-workload-direct/response-01.txt",
+      "bytes": 3785,
+      "sha256": "30960fff3e47eee8626ae0039853f0182622c027359e46a2e72f8154ead1157b"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/shared-workload-direct/result.json",
+      "file": "runs/memory-capacity-baseline-20261116/shared-workload-direct/result.json",
+      "bytes": 900,
+      "sha256": "837f9f971915bb13876a6aacf5245629adf7196de805141383da63f32c774145"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/shared-workload-direct/snapshot.json",
+      "file": "runs/memory-capacity-baseline-20261116/shared-workload-direct/snapshot.json",
+      "bytes": 15081,
+      "sha256": "6c1c25dd37af21372cdb343c7ca6734ce71586751c16c7c617f025fa8d947587"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/shared-workload-reading/attempts.jsonl",
+      "file": "runs/memory-capacity-baseline-20261116/shared-workload-reading/attempts.jsonl",
+      "bytes": 4706,
+      "sha256": "62333b99cc84fbc43343041cea3d1b793a5e22be29327f2ecc98cc97de12dbcd"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/shared-workload-reading/checkpoint.json",
+      "file": "runs/memory-capacity-baseline-20261116/shared-workload-reading/checkpoint.json",
+      "bytes": 57153,
+      "sha256": "387514f0d8560cc1d1661a5ad4d5ca8f8388983e683e899db3629deeedd3e165"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/shared-workload-reading/events.jsonl",
+      "file": "runs/memory-capacity-baseline-20261116/shared-workload-reading/events.jsonl",
+      "bytes": 10696,
+      "sha256": "243f33e307b164b2b988a2ae2870da027277b0809f19ca748eef110bb0551716"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/shared-workload-reading/input.json",
+      "file": "runs/memory-capacity-baseline-20261116/shared-workload-reading/input.json",
+      "bytes": 56094,
+      "sha256": "6919b780b1aef6f5f9e99b8c2860e08fabd78effcf6eecbd394ad768f312d90f"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/shared-workload-reading/request-01.json",
+      "file": "runs/memory-capacity-baseline-20261116/shared-workload-reading/request-01.json",
+      "bytes": 12490,
+      "sha256": "b386559867669f27225ae1359760c4a657bb5e829b072fcceb6f2b5a9fca85c6"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/shared-workload-reading/request-02.json",
+      "file": "runs/memory-capacity-baseline-20261116/shared-workload-reading/request-02.json",
+      "bytes": 12801,
+      "sha256": "20f50bd585dbe4f6c45553e2e15782b60172788add4e183eb4644bf3e9610a63"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/shared-workload-reading/request-03.json",
+      "file": "runs/memory-capacity-baseline-20261116/shared-workload-reading/request-03.json",
+      "bytes": 12809,
+      "sha256": "1155117b59449caba7b07013333f0eb2b108e5f7bd21d94eb0ec01f990c9f009"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/shared-workload-reading/request-04.json",
+      "file": "runs/memory-capacity-baseline-20261116/shared-workload-reading/request-04.json",
+      "bytes": 12771,
+      "sha256": "9e767fcba33dc2c695fa2e4706a1e52f8a02a4211fc800ba4bbef4eccda95fa2"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/shared-workload-reading/request-05.json",
+      "file": "runs/memory-capacity-baseline-20261116/shared-workload-reading/request-05.json",
+      "bytes": 12768,
+      "sha256": "c64abf24eae5d0669087389a45823230995576d9af3f75f11cadd331d5661eee"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/shared-workload-reading/request-06.json",
+      "file": "runs/memory-capacity-baseline-20261116/shared-workload-reading/request-06.json",
+      "bytes": 12752,
+      "sha256": "a8f9e482ca38b3bf6e014d95ba1fd62db545adeba799ba339d292bbdeb166a72"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/shared-workload-reading/request-07.json",
+      "file": "runs/memory-capacity-baseline-20261116/shared-workload-reading/request-07.json",
+      "bytes": 7909,
+      "sha256": "9d797214aa4ae9da8ad7b6431fc10f9544995d6d59edd5337ae9e050c511fbf1"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/shared-workload-reading/response-01.txt",
+      "file": "runs/memory-capacity-baseline-20261116/shared-workload-reading/response-01.txt",
+      "bytes": 4274,
+      "sha256": "8b7624bbe724933a5f9b98a887938ef2f1f8137327404dfaed5c2b031a1b5c3d"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/shared-workload-reading/response-02.txt",
+      "file": "runs/memory-capacity-baseline-20261116/shared-workload-reading/response-02.txt",
+      "bytes": 4466,
+      "sha256": "dcaca230d98845c63a72f69421ca230f61c690a5fc17016ae3a839780577354f"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/shared-workload-reading/response-03.txt",
+      "file": "runs/memory-capacity-baseline-20261116/shared-workload-reading/response-03.txt",
+      "bytes": 4635,
+      "sha256": "af52478b5b7fc1dd41ce316310a224125c60a86597ae0c7a484cb3e3243829f0"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/shared-workload-reading/response-04.txt",
+      "file": "runs/memory-capacity-baseline-20261116/shared-workload-reading/response-04.txt",
+      "bytes": 5053,
+      "sha256": "abab0b87caf38f42e6d01db8692d17c58a6ab16753295778797ce3e1b4b49240"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/shared-workload-reading/response-05.txt",
+      "file": "runs/memory-capacity-baseline-20261116/shared-workload-reading/response-05.txt",
+      "bytes": 5688,
+      "sha256": "8564753aa3065d6f9f65986f5d318c3cb25f7f462bf6931141b51ae23f5ab800"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/shared-workload-reading/response-06.txt",
+      "file": "runs/memory-capacity-baseline-20261116/shared-workload-reading/response-06.txt",
+      "bytes": 615,
+      "sha256": "1b12cd632341e797b3e299be37b3e1b85cac064579017de7d52ebd0e3e6c0b81"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/shared-workload-reading/response-07.txt",
+      "file": "runs/memory-capacity-baseline-20261116/shared-workload-reading/response-07.txt",
+      "bytes": 586,
+      "sha256": "c8161031350608ac9623d743dbddefd84ee979579c1ea963da845d6ff47e4b0d"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/shared-workload-reading/result.json",
+      "file": "runs/memory-capacity-baseline-20261116/shared-workload-reading/result.json",
+      "bytes": 326,
+      "sha256": "079d0b0235f65b7c3f5a10cfff6a313aa5f431aa56d046fb58264f7104259e23"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/shared-workload-reading/snapshot.json",
+      "file": "runs/memory-capacity-baseline-20261116/shared-workload-reading/snapshot.json",
+      "bytes": 15081,
+      "sha256": "6c1c25dd37af21372cdb343c7ca6734ce71586751c16c7c617f025fa8d947587"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/halt.json",
+      "file": "runs/memory-capacity-current-20261116/halt.json",
+      "bytes": 331,
+      "sha256": "714b1547dff3d817ab3bc7b17c1479f5a86b3822e1d856711936f86cfe9d7e32"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/run-profile.json",
+      "file": "runs/memory-capacity-current-20261116/run-profile.json",
+      "bytes": 720,
+      "sha256": "dee5ece6b472e32e0c812f434af21aaca0888393015d567c22ccf8043473b0c7"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/attempts.jsonl",
+      "file": "runs/memory-capacity-current-20261116/shared-workload-reading/attempts.jsonl",
+      "bytes": 7441,
+      "sha256": "85be01c1f9d9eb9d30cad329eeda652eafc74e04151f224707de10c245ad84a8"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/checkpoint.json",
+      "file": "runs/memory-capacity-current-20261116/shared-workload-reading/checkpoint.json",
+      "bytes": 129719,
+      "sha256": "9342327c4d9301d5b099e9b047f042dbaafdf9e0393f885507c319f9ccdfec18"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/events.jsonl",
+      "file": "runs/memory-capacity-current-20261116/shared-workload-reading/events.jsonl",
+      "bytes": 15461,
+      "sha256": "9d782ac6b68325f779627442dc44b212359dd1086d34608c37aed830ef44aa72"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/input.json",
+      "file": "runs/memory-capacity-current-20261116/shared-workload-reading/input.json",
+      "bytes": 55819,
+      "sha256": "9a8c84640ced4cfc35b7105a01960cead56f1c1497c2d3405d6fcef009041868"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/request-01.json",
+      "file": "runs/memory-capacity-current-20261116/shared-workload-reading/request-01.json",
+      "bytes": 12493,
+      "sha256": "e268b35451f9d4b81bf2c543faaf3b0de0072da0e6c484cc4d563fc7f051f774"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/request-02.json",
+      "file": "runs/memory-capacity-current-20261116/shared-workload-reading/request-02.json",
+      "bytes": 12813,
+      "sha256": "d8812ad87d0b57e0c80a2ad2dd9f196d8cc4f9247963eea0ecd260ba47085735"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/request-03.json",
+      "file": "runs/memory-capacity-current-20261116/shared-workload-reading/request-03.json",
+      "bytes": 12757,
+      "sha256": "a1adb2ddd21834bc4c67d3ed1cab75e1ce393c7078f2a3a0881c8169a22d499a"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/request-04.json",
+      "file": "runs/memory-capacity-current-20261116/shared-workload-reading/request-04.json",
+      "bytes": 12810,
+      "sha256": "2fa4c5d36bc0cb0ee6a07d3d90dfa90485c20dcef89cd63a5f3f68c4278b627e"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/request-05.json",
+      "file": "runs/memory-capacity-current-20261116/shared-workload-reading/request-05.json",
+      "bytes": 12813,
+      "sha256": "4dfbd8758377e76fc0a86e1820098b37c953a84daf47266ebcde44a1bb657528"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/request-06.json",
+      "file": "runs/memory-capacity-current-20261116/shared-workload-reading/request-06.json",
+      "bytes": 12813,
+      "sha256": "feaf003574f78aef65bdea9cdf0fcc3ac6882e43fbca76e1c6868d405d87c944"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/request-07.json",
+      "file": "runs/memory-capacity-current-20261116/shared-workload-reading/request-07.json",
+      "bytes": 7307,
+      "sha256": "d843203e01ed4c6e4feedb547e1da6e4f59bf78312f823c0e7b1591ef90a511a"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/request-08.json",
+      "file": "runs/memory-capacity-current-20261116/shared-workload-reading/request-08.json",
+      "bytes": 12793,
+      "sha256": "5a5cdee77560467d4aea52dd24c8b0eac5fcd4d0462d92e9fe6abe5ba456278d"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/request-09.json",
+      "file": "runs/memory-capacity-current-20261116/shared-workload-reading/request-09.json",
+      "bytes": 12604,
+      "sha256": "a614b3903b87553939f76f233397b38d23584280815013280104c90d862956ae"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/request-10.json",
+      "file": "runs/memory-capacity-current-20261116/shared-workload-reading/request-10.json",
+      "bytes": 9363,
+      "sha256": "3a5eef5c6bc57bae318302540b501aa27331e25e9a8b24fc953130e5212e21e0"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/request-11.json",
+      "file": "runs/memory-capacity-current-20261116/shared-workload-reading/request-11.json",
+      "bytes": 9379,
+      "sha256": "9df314ecdfd62739b36f7118a4748025e41b8376c62ba9c5c3f8048d90f802c6"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/response-01.txt",
+      "file": "runs/memory-capacity-current-20261116/shared-workload-reading/response-01.txt",
+      "bytes": 5323,
+      "sha256": "ced2df64daf6def0b1673ced8bb3e7594bf079c97f15fbd48ad91f7251eb3a0d"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/response-02.txt",
+      "file": "runs/memory-capacity-current-20261116/shared-workload-reading/response-02.txt",
+      "bytes": 3275,
+      "sha256": "06a107e07f09a3688c19efe227477e650b64c6a24c863e878bcdf8e164b4c33b"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/response-03.txt",
+      "file": "runs/memory-capacity-current-20261116/shared-workload-reading/response-03.txt",
+      "bytes": 3393,
+      "sha256": "e7b71c0f92c83abdd0c311264f4ce3f6c34975224375102147ffea23007822b4"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/response-04.txt",
+      "file": "runs/memory-capacity-current-20261116/shared-workload-reading/response-04.txt",
+      "bytes": 3697,
+      "sha256": "14b3a632054581bb738a17d22f16f760669fbd7dd700c19fae321d4a558ea73c"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/response-05.txt",
+      "file": "runs/memory-capacity-current-20261116/shared-workload-reading/response-05.txt",
+      "bytes": 4226,
+      "sha256": "b7cb48c265228494be716cf452edd4ce48e7b0a63e1bc3c758bd32a75ae3b973"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/response-06.txt",
+      "file": "runs/memory-capacity-current-20261116/shared-workload-reading/response-06.txt",
+      "bytes": 5104,
+      "sha256": "0ea6e3b804537a3f01e9ab957a4432ec3049fe9f0075d3a1b40fec0cb5b44b93"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/response-07.txt",
+      "file": "runs/memory-capacity-current-20261116/shared-workload-reading/response-07.txt",
+      "bytes": 1225,
+      "sha256": "3ff3ffbee6042b0b4beba05785c5fab24708b80ba134f608efeca25ad26a34e0"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/response-08.txt",
+      "file": "runs/memory-capacity-current-20261116/shared-workload-reading/response-08.txt",
+      "bytes": 6004,
+      "sha256": "ccabf76c38e90f18742fd5e3f480b2d648d291aac1e2f608a2e3118310223df4"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/response-09.txt",
+      "file": "runs/memory-capacity-current-20261116/shared-workload-reading/response-09.txt",
+      "bytes": 5811,
+      "sha256": "425c41c41f15f3c956b5e74b7e64ec9b51c8c45840850aa2fa895264b8e0137f"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/response-10.txt",
+      "file": "runs/memory-capacity-current-20261116/shared-workload-reading/response-10.txt",
+      "bytes": 4078,
+      "sha256": "c4f9d39e5c2c41f4a1d1eb76c48d465e1ce7b2209550938ef39c2db2283f4488"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/response-11.txt",
+      "file": "runs/memory-capacity-current-20261116/shared-workload-reading/response-11.txt",
+      "bytes": 3825,
+      "sha256": "917fa709a7d11ef770d0036880a1226916258688e8b21a14d713bd2934ef1e35"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/result.json",
+      "file": "runs/memory-capacity-current-20261116/shared-workload-reading/result.json",
+      "bytes": 366,
+      "sha256": "140a6cab91a80cc3ea7fdc98efb61cb2d220f7031595da9c18015b59ea4860dc"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-20261116/shared-workload-reading/snapshot.json",
+      "file": "runs/memory-capacity-current-20261116/shared-workload-reading/snapshot.json",
+      "bytes": 15081,
+      "sha256": "645f7d8e18027258c55830a512251e03d60150ead9c0762c6a0faf8be2659723"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/conditional-reschedule-adaptive/attempts.jsonl",
+      "file": "runs/memory-capacity-current-v2-20261116/conditional-reschedule-adaptive/attempts.jsonl",
+      "bytes": 665,
+      "sha256": "e13a0dcd6b29e9ba70c68b21b4dd94ca72df809e441ab6dd11f9eedce7dec9d1"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/conditional-reschedule-adaptive/checkpoint.json",
+      "file": "runs/memory-capacity-current-v2-20261116/conditional-reschedule-adaptive/checkpoint.json",
+      "bytes": 176686,
+      "sha256": "a8c42cc97840d0e8ae10663b45166f9e1ab1b0dc4860e21e3ed3b43b1925e29c"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/conditional-reschedule-adaptive/events.jsonl",
+      "file": "runs/memory-capacity-current-v2-20261116/conditional-reschedule-adaptive/events.jsonl",
+      "bytes": 2205,
+      "sha256": "61744c28dae3c8287c5e07ee328c32a01d40b381c438c2378f2fb18b7aab99d8"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/conditional-reschedule-adaptive/input.json",
+      "file": "runs/memory-capacity-current-v2-20261116/conditional-reschedule-adaptive/input.json",
+      "bytes": 57201,
+      "sha256": "3854016915cf0c35854f5846d6bb6ae07c7b5a972a913b3f006ad7316e3edaa9"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/conditional-reschedule-adaptive/report.json",
+      "file": "runs/memory-capacity-current-v2-20261116/conditional-reschedule-adaptive/report.json",
+      "bytes": 21005,
+      "sha256": "06fa28d0e3f09416f53e2aab48c4ce2820319703eacd200fd7bc1252ffef42cb"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/conditional-reschedule-adaptive/request-01.json",
+      "file": "runs/memory-capacity-current-v2-20261116/conditional-reschedule-adaptive/request-01.json",
+      "bytes": 8941,
+      "sha256": "b5c55ce2dc80bfc03d1bc8edb33fe86893fffb4fb5111cdc418fa012b63756d2"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/conditional-reschedule-adaptive/response-01.txt",
+      "file": "runs/memory-capacity-current-v2-20261116/conditional-reschedule-adaptive/response-01.txt",
+      "bytes": 4525,
+      "sha256": "19e186485caf2771a37b573dae4f46568f9a545b9f23acc10b5738440a98ff40"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/conditional-reschedule-adaptive/result.json",
+      "file": "runs/memory-capacity-current-v2-20261116/conditional-reschedule-adaptive/result.json",
+      "bytes": 795,
+      "sha256": "a3af9fce6aa451d83e4fc6c5ea1bb05970088bbf204f9518f91b981da9e79e75"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/conditional-reschedule-adaptive/snapshot.json",
+      "file": "runs/memory-capacity-current-v2-20261116/conditional-reschedule-adaptive/snapshot.json",
+      "bytes": 15081,
+      "sha256": "a3839d7ee092bffb1ad20b6a3bd2c2030b2737afd3d9032818ca03e490d1956f"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/conditional-reschedule-adaptive/writing-base.json",
+      "file": "runs/memory-capacity-current-v2-20261116/conditional-reschedule-adaptive/writing-base.json",
+      "bytes": 241,
+      "sha256": "8e494db7ab4c0e8a68716a44e70fd90d883be7d5f71af9a7ea3ab96ac7b70bac"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/conditional-reschedule-direct/attempts.jsonl",
+      "file": "runs/memory-capacity-current-v2-20261116/conditional-reschedule-direct/attempts.jsonl",
+      "bytes": 665,
+      "sha256": "c7f87cbb48a9d3837f94b79208763664303eb7e36bd4f91ebc78658a993e4382"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/conditional-reschedule-direct/input.json",
+      "file": "runs/memory-capacity-current-v2-20261116/conditional-reschedule-direct/input.json",
+      "bytes": 57197,
+      "sha256": "8ecaea082772fa4ba10c65c13a4ab96fd50a556e875f78b419be4030e2076f58"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/conditional-reschedule-direct/report.json",
+      "file": "runs/memory-capacity-current-v2-20261116/conditional-reschedule-direct/report.json",
+      "bytes": 20168,
+      "sha256": "4083deb83d8c5d79b7abcdb5de5f766570e9b0f052af84f500eda38c35fa624a"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/conditional-reschedule-direct/request-01.json",
+      "file": "runs/memory-capacity-current-v2-20261116/conditional-reschedule-direct/request-01.json",
+      "bytes": 8941,
+      "sha256": "b5c55ce2dc80bfc03d1bc8edb33fe86893fffb4fb5111cdc418fa012b63756d2"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/conditional-reschedule-direct/response-01.txt",
+      "file": "runs/memory-capacity-current-v2-20261116/conditional-reschedule-direct/response-01.txt",
+      "bytes": 5966,
+      "sha256": "42ae6da2758d84a0edda09622b6186053aff6221b80a223f44f804b7134904e5"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/conditional-reschedule-direct/result.json",
+      "file": "runs/memory-capacity-current-v2-20261116/conditional-reschedule-direct/result.json",
+      "bytes": 904,
+      "sha256": "8a2039a2d55c28e168a861bd63b49fbc7311622845245c9140880d6e89bb5950"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/conditional-reschedule-direct/snapshot.json",
+      "file": "runs/memory-capacity-current-v2-20261116/conditional-reschedule-direct/snapshot.json",
+      "bytes": 15081,
+      "sha256": "a3839d7ee092bffb1ad20b6a3bd2c2030b2737afd3d9032818ca03e490d1956f"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/attempts.jsonl",
+      "file": "runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/attempts.jsonl",
+      "bytes": 8136,
+      "sha256": "0569d872813d56d1212f0492e8ece5729e1fa2106a696dad6698ba58778072c5"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/checkpoint.json",
+      "file": "runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/checkpoint.json",
+      "bytes": 153970,
+      "sha256": "e5396de12e91f5ec27b8a79aacc68156ede69a51e1454d39ba1caec954d46c84"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/events.jsonl",
+      "file": "runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/events.jsonl",
+      "bytes": 16718,
+      "sha256": "a2837bc47956089575adee226ee7ef83c82ae19f0204fd5695ab23b1552f5fe8"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/input.json",
+      "file": "runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/input.json",
+      "bytes": 57200,
+      "sha256": "2a167046fa981c82f0d3f71b40fa130ddf45a4950f2e35c34bd1e2fe60d5105c"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/request-01.json",
+      "file": "runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/request-01.json",
+      "bytes": 12508,
+      "sha256": "83591a70d1f03cc30281bf0abe6d38f0a9893c9e3bf81a2c8b1c7b84067d7f4f"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/request-02.json",
+      "file": "runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/request-02.json",
+      "bytes": 12814,
+      "sha256": "e8232506fbcce567fe7716573c2d6671db7adf17def477f5dc3a2d4db59a2d36"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/request-03.json",
+      "file": "runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/request-03.json",
+      "bytes": 12813,
+      "sha256": "db5695107576b66f1ae257c520f80459e04ae94e73b31afaca286c3f76b8f24d"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/request-04.json",
+      "file": "runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/request-04.json",
+      "bytes": 12814,
+      "sha256": "e6495f40ae53a945027603cc0fd017ccac7000fcaa7236aa8133dc4b51819a4c"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/request-05.json",
+      "file": "runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/request-05.json",
+      "bytes": 12810,
+      "sha256": "2b96ea33763719d9fdc449eec431b7453f21aa72c1dc444f387af48a6b20a959"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/request-06.json",
+      "file": "runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/request-06.json",
+      "bytes": 12808,
+      "sha256": "8daf6d502d602d26e6b6538375469f19130253608ff2274f89c69bb15cdeecef"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/request-07.json",
+      "file": "runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/request-07.json",
+      "bytes": 9035,
+      "sha256": "81a07b0ef5a58e703830e3b2f76c22572eca4c3e99d2de78e0f7f99f1d2f5ae2"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/request-08.json",
+      "file": "runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/request-08.json",
+      "bytes": 12785,
+      "sha256": "1735a13fe388e6d056fd3f3eb34fd1de78a5db70874b046d38cbe14df03773ed"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/request-09.json",
+      "file": "runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/request-09.json",
+      "bytes": 12534,
+      "sha256": "ef6621c54c1b9c5c4a77bd162447ca2fc94a602c6684d62f73e3d71857552b34"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/request-10.json",
+      "file": "runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/request-10.json",
+      "bytes": 8821,
+      "sha256": "1337b5cf56971852cb70c1486200b0cc9ed7264441f65146e7ce40db74c37182"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/request-11.json",
+      "file": "runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/request-11.json",
+      "bytes": 11525,
+      "sha256": "f5b291f65d7c909372ac48a898db294659a1d114925fb42b46bb19820c933ceb"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/request-12.json",
+      "file": "runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/request-12.json",
+      "bytes": 11815,
+      "sha256": "1ce6e2de70332dc155595c87b981a18af27484741714194437e2b4ea8e9b4cec"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/response-01.txt",
+      "file": "runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/response-01.txt",
+      "bytes": 5277,
+      "sha256": "c453a8fd52bc7f7d686baa439c5cec19a765594e9af0adac2065054ff8417db5"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/response-02.txt",
+      "file": "runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/response-02.txt",
+      "bytes": 3559,
+      "sha256": "7eac547417b8946eba85f1551248e396ae8208b1ad1818c435533377769994f8"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/response-03.txt",
+      "file": "runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/response-03.txt",
+      "bytes": 3935,
+      "sha256": "46d254a1b0a5ff50fe4d4cb942ddf9ca24521a9411ed224ce67906e0a352ee26"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/response-04.txt",
+      "file": "runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/response-04.txt",
+      "bytes": 3352,
+      "sha256": "c1ab9136e86ef0dd681981e3c6e9a94400295b6a6e651e10532eefc44e79fca4"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/response-05.txt",
+      "file": "runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/response-05.txt",
+      "bytes": 3767,
+      "sha256": "00d3ec4350bc9cc27b2262d19a06135c4d318cf2723636fbe4d1a1a1b5ab9619"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/response-06.txt",
+      "file": "runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/response-06.txt",
+      "bytes": 4459,
+      "sha256": "27cb4b3142333b4a676d42cbb7cdeba7ed16b424cfa776b4aa7880faf2a9691a"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/response-07.txt",
+      "file": "runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/response-07.txt",
+      "bytes": 2605,
+      "sha256": "5030e0bcf5b3ebe48b9b6317f68d0eb8f2fb77533f4ea283683535c34a73d6e6"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/response-08.txt",
+      "file": "runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/response-08.txt",
+      "bytes": 5317,
+      "sha256": "cf72cc7fc7facd1b9d092679eb4404c771119e7d16d905c94436991b0af85c4c"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/response-09.txt",
+      "file": "runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/response-09.txt",
+      "bytes": 4575,
+      "sha256": "9b2d831506a13aa03062048ce29103f6bb77785fd7bff5922d1cc656e6e53497"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/response-10.txt",
+      "file": "runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/response-10.txt",
+      "bytes": 3110,
+      "sha256": "8b33392d93445f951774b2c982773ea5b43b84cfec1ed8dddff22ec4eb226d6e"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/response-11.txt",
+      "file": "runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/response-11.txt",
+      "bytes": 7653,
+      "sha256": "34b77ce7e040ca1a3aba98aa64d852b3dbc3145fae5ee1814292d1b0a06bd854"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/response-12.txt",
+      "file": "runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/response-12.txt",
+      "bytes": 6576,
+      "sha256": "2542fea325b35541f4a9dc1a56e75a6a515c3d5af9895c9c86ddf99e75f187b0"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/result.json",
+      "file": "runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/result.json",
+      "bytes": 332,
+      "sha256": "7f4016786285bd3285d20c3751e8660c491ff8ad697e63902b5607df6061d315"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/snapshot.json",
+      "file": "runs/memory-capacity-current-v2-20261116/conditional-reschedule-reading/snapshot.json",
+      "bytes": 15081,
+      "sha256": "a3839d7ee092bffb1ad20b6a3bd2c2030b2737afd3d9032818ca03e490d1956f"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/run-profile.json",
+      "file": "runs/memory-capacity-current-v2-20261116/run-profile.json",
+      "bytes": 723,
+      "sha256": "25ba11a39bf4f613c97e97fed789eeab5c74099336124c8e682d00b4fe89b68a"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-adaptive/attempts.jsonl",
+      "file": "runs/memory-capacity-current-v2-20261116/shared-workload-adaptive/attempts.jsonl",
+      "bytes": 666,
+      "sha256": "d60d6d49f5ece9ddd19741255ac764d164e269ffa66ff0e4908625b37ed1e1d7"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-adaptive/checkpoint.json",
+      "file": "runs/memory-capacity-current-v2-20261116/shared-workload-adaptive/checkpoint.json",
+      "bytes": 186346,
+      "sha256": "fa21756743836e3c853c1f302b5531bf6ea207d3ad3c6136b1e05d21d0c36744"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-adaptive/events.jsonl",
+      "file": "runs/memory-capacity-current-v2-20261116/shared-workload-adaptive/events.jsonl",
+      "bytes": 2205,
+      "sha256": "6e33b3f1c5c10a1384945fee5c337afdf68d25f45f5eb2bfd2a617105cd9ff34"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-adaptive/input.json",
+      "file": "runs/memory-capacity-current-v2-20261116/shared-workload-adaptive/input.json",
+      "bytes": 55824,
+      "sha256": "7afafdce35b9fcca0248f9e8817f056ae00e5cae4c0e059213916a5758b8b52e"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-adaptive/report.json",
+      "file": "runs/memory-capacity-current-v2-20261116/shared-workload-adaptive/report.json",
+      "bytes": 13846,
+      "sha256": "cecfb2caa8c6e69272a48895f6509f538ce7a352dee98ee93d7aa3d402b2bc33"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-adaptive/request-01.json",
+      "file": "runs/memory-capacity-current-v2-20261116/shared-workload-adaptive/request-01.json",
+      "bytes": 10291,
+      "sha256": "74b163f5bab532337520b19800086bcd359481d327201a6e663c746711bdf6e0"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-adaptive/response-01.txt",
+      "file": "runs/memory-capacity-current-v2-20261116/shared-workload-adaptive/response-01.txt",
+      "bytes": 5975,
+      "sha256": "e2e8382b34b4249ed938c73bf9a29e4e49e686c4ec48a4eb9d63b09a7e5ec0a5"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-adaptive/result.json",
+      "file": "runs/memory-capacity-current-v2-20261116/shared-workload-adaptive/result.json",
+      "bytes": 795,
+      "sha256": "cc2d95bf24b90e10611c1a0b7ad251318bc98a4cd43bb4f35e79a5fc50850d81"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-adaptive/snapshot.json",
+      "file": "runs/memory-capacity-current-v2-20261116/shared-workload-adaptive/snapshot.json",
+      "bytes": 15081,
+      "sha256": "10f6c3771e10d2ba23732022102c1c3bd81abcfe2e7f5292ec34ac9556611c00"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-adaptive/writing-base.json",
+      "file": "runs/memory-capacity-current-v2-20261116/shared-workload-adaptive/writing-base.json",
+      "bytes": 241,
+      "sha256": "8b60a712de6cc271e35ccd1283822f3f9c58b5a0b2c8d31c56dd15f2f63cbb82"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-direct/attempts.jsonl",
+      "file": "runs/memory-capacity-current-v2-20261116/shared-workload-direct/attempts.jsonl",
+      "bytes": 658,
+      "sha256": "d5626447cc007c0038ee9f07f1fd0998465f4427dc34f1e19ff04969526d8c37"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-direct/input.json",
+      "file": "runs/memory-capacity-current-v2-20261116/shared-workload-direct/input.json",
+      "bytes": 55820,
+      "sha256": "4de0ea1e7b7a39b275253403da35607bee2baac2b7debaeb812d1f8e8de82a88"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-direct/report.json",
+      "file": "runs/memory-capacity-current-v2-20261116/shared-workload-direct/report.json",
+      "bytes": 15362,
+      "sha256": "2e55f87d98f82633f5ea034e04ce1fdfc080846782a57c94e8d3e1b8c5434555"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-direct/request-01.json",
+      "file": "runs/memory-capacity-current-v2-20261116/shared-workload-direct/request-01.json",
+      "bytes": 10291,
+      "sha256": "74b163f5bab532337520b19800086bcd359481d327201a6e663c746711bdf6e0"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-direct/response-01.txt",
+      "file": "runs/memory-capacity-current-v2-20261116/shared-workload-direct/response-01.txt",
+      "bytes": 6112,
+      "sha256": "ce133252f52d0b7c85b1743716fd73d71de31c13ae4fb66dd4215b4fe8e35206"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-direct/result.json",
+      "file": "runs/memory-capacity-current-v2-20261116/shared-workload-direct/result.json",
+      "bytes": 905,
+      "sha256": "80869e9eca876eaefe8b1a144a72b7dfa2f6f4a2e8374070b18fe1ed5878eb5c"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-direct/snapshot.json",
+      "file": "runs/memory-capacity-current-v2-20261116/shared-workload-direct/snapshot.json",
+      "bytes": 15081,
+      "sha256": "10f6c3771e10d2ba23732022102c1c3bd81abcfe2e7f5292ec34ac9556611c00"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/attempts.jsonl",
+      "file": "runs/memory-capacity-current-v2-20261116/shared-workload-reading/attempts.jsonl",
+      "bytes": 8839,
+      "sha256": "d41be0773c8247d4bf991308730a6e006c1e2cf15bb9108db6d7741cf62528ed"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/checkpoint.json",
+      "file": "runs/memory-capacity-current-v2-20261116/shared-workload-reading/checkpoint.json",
+      "bytes": 171140,
+      "sha256": "438c615f96d4ae74463ba401a22719c2422880d018d70bbc810b65431526832a"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/events.jsonl",
+      "file": "runs/memory-capacity-current-v2-20261116/shared-workload-reading/events.jsonl",
+      "bytes": 17769,
+      "sha256": "62747a8778c38adf0adbdba258e66822c174378237a2fff22ca75601c895040f"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/input.json",
+      "file": "runs/memory-capacity-current-v2-20261116/shared-workload-reading/input.json",
+      "bytes": 55822,
+      "sha256": "34278dc3b8b87ec204c8fe6bbdb76b194211e51097b65ff01e2bcc76a2c3466d"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/request-01.json",
+      "file": "runs/memory-capacity-current-v2-20261116/shared-workload-reading/request-01.json",
+      "bytes": 12493,
+      "sha256": "e268b35451f9d4b81bf2c543faaf3b0de0072da0e6c484cc4d563fc7f051f774"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/request-02.json",
+      "file": "runs/memory-capacity-current-v2-20261116/shared-workload-reading/request-02.json",
+      "bytes": 12808,
+      "sha256": "0979b1774f6ee9a286ba7fea76b027178c37b9e56a69f81c4bf9394b75e07e2d"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/request-03.json",
+      "file": "runs/memory-capacity-current-v2-20261116/shared-workload-reading/request-03.json",
+      "bytes": 12811,
+      "sha256": "e79413c7b0c9bb06e62ab300463cfb7f60855144dcd9c4655d95f4f29da79756"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/request-04.json",
+      "file": "runs/memory-capacity-current-v2-20261116/shared-workload-reading/request-04.json",
+      "bytes": 12810,
+      "sha256": "959f926f1cc5d1bfe1c701fee4615a74ec2d254c0b7e9f5e8afb0c6f432dfdbd"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/request-05.json",
+      "file": "runs/memory-capacity-current-v2-20261116/shared-workload-reading/request-05.json",
+      "bytes": 12813,
+      "sha256": "a1311e37e24de55795a7f4d24fc6287bdc171aa14f5926047fbee902f3606d55"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/request-06.json",
+      "file": "runs/memory-capacity-current-v2-20261116/shared-workload-reading/request-06.json",
+      "bytes": 12809,
+      "sha256": "494acad1f3f18f47018d87b00dc8a1cd70d23d4d44878fdf8792ea130e99be6b"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/request-07.json",
+      "file": "runs/memory-capacity-current-v2-20261116/shared-workload-reading/request-07.json",
+      "bytes": 7303,
+      "sha256": "29e3e3b890c26471aaa745df139e393b438eb629bd49b4f88ff6761148b33613"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/request-08.json",
+      "file": "runs/memory-capacity-current-v2-20261116/shared-workload-reading/request-08.json",
+      "bytes": 12598,
+      "sha256": "ce17eddecac0aeb77289ca42a958ad71352b463f4625ed9bd8456d31b4f178d1"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/request-09.json",
+      "file": "runs/memory-capacity-current-v2-20261116/shared-workload-reading/request-09.json",
+      "bytes": 12511,
+      "sha256": "5d33e93de387d21e12697fce468f8787dc04028a17566d944b1bffd052a1bcd1"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/request-10.json",
+      "file": "runs/memory-capacity-current-v2-20261116/shared-workload-reading/request-10.json",
+      "bytes": 8044,
+      "sha256": "8ccfaf7da2b573b176b8d7fe44b92fb2bad595c7e9f325e2a7ed5077621aafe5"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/request-11.json",
+      "file": "runs/memory-capacity-current-v2-20261116/shared-workload-reading/request-11.json",
+      "bytes": 12671,
+      "sha256": "be86b1706028faaef446af7c49043ba7935d00dd23e79759f6deae4ff76db97e"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/request-12.json",
+      "file": "runs/memory-capacity-current-v2-20261116/shared-workload-reading/request-12.json",
+      "bytes": 10508,
+      "sha256": "18776b618e0d96754a3666f39963dcff87971e3cf9c1b65ae48ddb9c97d01459"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/request-13.json",
+      "file": "runs/memory-capacity-current-v2-20261116/shared-workload-reading/request-13.json",
+      "bytes": 12184,
+      "sha256": "8f17a9684885045a54d2fabb7f52d3fcb0e0b447b73189c5675f0c886c0e7c6f"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/response-01.txt",
+      "file": "runs/memory-capacity-current-v2-20261116/shared-workload-reading/response-01.txt",
+      "bytes": 4904,
+      "sha256": "d8e243043d472b09aa36a432ff6ecbcb78e45036426792c03a8179279465a30f"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/response-02.txt",
+      "file": "runs/memory-capacity-current-v2-20261116/shared-workload-reading/response-02.txt",
+      "bytes": 3527,
+      "sha256": "829107e9d636f6294d55c5694aae8c5d6a1fbbc68769ac1658932ef355e67fa8"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/response-03.txt",
+      "file": "runs/memory-capacity-current-v2-20261116/shared-workload-reading/response-03.txt",
+      "bytes": 3599,
+      "sha256": "dc5aae79803fb0c1f00f1f02fa342766871f6021d77c4458d38539cd89f560eb"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/response-04.txt",
+      "file": "runs/memory-capacity-current-v2-20261116/shared-workload-reading/response-04.txt",
+      "bytes": 3183,
+      "sha256": "a69f81705767bc40de0a67ef3525e3c96899eaf16ad5eb1c01df9efebad74b05"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/response-05.txt",
+      "file": "runs/memory-capacity-current-v2-20261116/shared-workload-reading/response-05.txt",
+      "bytes": 3350,
+      "sha256": "7763be03e4298f64dc84f0254810970cf2badfdcb3c84cbc7e8d356fdce33e30"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/response-06.txt",
+      "file": "runs/memory-capacity-current-v2-20261116/shared-workload-reading/response-06.txt",
+      "bytes": 5034,
+      "sha256": "a6bdc9b2657584b485f66f583f1128038060923613ab456fe2792ff1e74b3476"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/response-07.txt",
+      "file": "runs/memory-capacity-current-v2-20261116/shared-workload-reading/response-07.txt",
+      "bytes": 1307,
+      "sha256": "693934ebde24d8d23f58c3cb9459873540fabfdf161f7c8e25908db5cf9e8567"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/response-08.txt",
+      "file": "runs/memory-capacity-current-v2-20261116/shared-workload-reading/response-08.txt",
+      "bytes": 5405,
+      "sha256": "f3d795df95d41788a194a47b2f6700cf87a9fefc8c23ffb25d34746239959a7f"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/response-09.txt",
+      "file": "runs/memory-capacity-current-v2-20261116/shared-workload-reading/response-09.txt",
+      "bytes": 5464,
+      "sha256": "091719fe4a58c6a50610cebf5b2f038cbb6fef5c90f56579f429ef359339896f"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/response-10.txt",
+      "file": "runs/memory-capacity-current-v2-20261116/shared-workload-reading/response-10.txt",
+      "bytes": 3132,
+      "sha256": "0bb5e58251fa182fc973aede9677d8c5951d1bb8f406543689ce25a11d6f1d88"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/response-11.txt",
+      "file": "runs/memory-capacity-current-v2-20261116/shared-workload-reading/response-11.txt",
+      "bytes": 8482,
+      "sha256": "ef69979125f30809a35abd457abd76ebe87045e6ffb589fe0189e2c880f34352"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/response-12.txt",
+      "file": "runs/memory-capacity-current-v2-20261116/shared-workload-reading/response-12.txt",
+      "bytes": 7187,
+      "sha256": "9ff3751e48eba3dc6939a4123e79726480a351be8f42c35e1f3e425ef889e759"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/response-13.txt",
+      "file": "runs/memory-capacity-current-v2-20261116/shared-workload-reading/response-13.txt",
+      "bytes": 8304,
+      "sha256": "1279d619bf963641901acfff2715d6ff12d9a62096c3d8d3bcef0ed28a6a031d"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/result.json",
+      "file": "runs/memory-capacity-current-v2-20261116/shared-workload-reading/result.json",
+      "bytes": 332,
+      "sha256": "5cd46f1012551f0235826e99e62d1934a0dfafc33a06a3703ca268a1dffd6736"
+    },
+    {
+      "source": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/snapshot.json",
+      "file": "runs/memory-capacity-current-v2-20261116/shared-workload-reading/snapshot.json",
+      "bytes": 15081,
+      "sha256": "10f6c3771e10d2ba23732022102c1c3bd81abcfe2e7f5292ec34ac9556611c00"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-frozen/baseline/baseline-entry.ts",
+      "file": "implementations/paired-capacity-frozen/baseline/baseline-entry.ts",
+      "bytes": 378,
+      "sha256": "c2075e1188063fbc80f01ba0c7410fdcf1ddf5549fee9480e8ed2781ffb23f42"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-frozen/baseline/baseline.mjs",
+      "file": "implementations/paired-capacity-frozen/baseline/baseline.mjs",
+      "bytes": 55154,
+      "sha256": "ef302a81ebdbd5ad8e1b402d57bf91dc6e87b9a46bba0211caf0e8ac65676b54"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-frozen/baseline/manifest.json",
+      "file": "implementations/paired-capacity-frozen/baseline/manifest.json",
+      "bytes": 1249,
+      "sha256": "6a0b5e661ef56f6a5bdd4d4b366c5b687433012baf9dd66a0ae7c438aec30809"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-frozen/baseline/prepare-baseline.mjs",
+      "file": "implementations/paired-capacity-frozen/baseline/prepare-baseline.mjs",
+      "bytes": 3083,
+      "sha256": "b2af19e5836904910b8c9c0b82b2e00bfc0304f69af8c65d0345d0ed055ee77c"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-frozen/baseline/source/electron/data/ai/insight-prompts.ts",
+      "file": "implementations/paired-capacity-frozen/baseline/source/electron/data/ai/insight-prompts.ts",
+      "bytes": 6555,
+      "sha256": "0769119009766be5991f6c77d2d384754c0d2e2b36df7863a7f2e9f3c2f4244d"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-frozen/baseline/source/electron/main/insight-checkpoint.ts",
+      "file": "implementations/paired-capacity-frozen/baseline/source/electron/main/insight-checkpoint.ts",
+      "bytes": 4657,
+      "sha256": "deb2757f015e05070973438b4277b909a76f43a023770a77980c91c3261205d8"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-frozen/baseline/source/electron/main/insight-generation.ts",
+      "file": "implementations/paired-capacity-frozen/baseline/source/electron/main/insight-generation.ts",
+      "bytes": 41060,
+      "sha256": "03797f6abda57ac0ea72ac79b94a38a579e8ed10d05f08c12929fdf5bdc6d957"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-frozen/baseline/source/electron/main/insight-packing.ts",
+      "file": "implementations/paired-capacity-frozen/baseline/source/electron/main/insight-packing.ts",
+      "bytes": 6407,
+      "sha256": "c8d87b5a314a2d582336045a0c3743000cf71fe756c631ee813f692050eb7469"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-frozen/baseline/source/src/shared/desktop-validation.ts",
+      "file": "implementations/paired-capacity-frozen/baseline/source/src/shared/desktop-validation.ts",
+      "bytes": 9082,
+      "sha256": "0607ef8227f291daa450fc3878928175cdc94c8235b38d623eeeccc1a6c3ec4f"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-frozen/baseline/source/src/shared/import-contract.ts",
+      "file": "implementations/paired-capacity-frozen/baseline/source/src/shared/import-contract.ts",
+      "bytes": 2346,
+      "sha256": "7c8196c983b0ac05ee7ff1c5e02b7bdafd94ab0c6a4dd82cc680ccc4b8796140"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-frozen/baseline/source/src/shared/memory.ts",
+      "file": "implementations/paired-capacity-frozen/baseline/source/src/shared/memory.ts",
+      "bytes": 2900,
+      "sha256": "2f08024576c4f1eece852f8453c71f4e66b9b42c67eb1846d4bd7af2e1fb96d6"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-frozen/baseline/source/src/shared/model-limits.ts",
+      "file": "implementations/paired-capacity-frozen/baseline/source/src/shared/model-limits.ts",
+      "bytes": 1243,
+      "sha256": "23fb2d29d8aa4ea16e3f2b6331b2a634ab1c090936578e13be014c62f192c980"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-frozen/baseline/source/src/shared/system-prompts.ts",
+      "file": "implementations/paired-capacity-frozen/baseline/source/src/shared/system-prompts.ts",
+      "bytes": 5838,
+      "sha256": "2808c4bb17471af07286d5714cdabef5be28da5b901bc7ef2432f013434040c2"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-frozen/current/implementation.patch",
+      "file": "implementations/paired-capacity-frozen/current/implementation.patch",
+      "bytes": 176234,
+      "sha256": "532b31c75e3a7d8cd6b7ad9d6bc50528c16b44524d0df11d67bc07d3d1a0af3d"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-frozen/current/source/electron/data/ai/insight-prompts.ts",
+      "file": "implementations/paired-capacity-frozen/current/source/electron/data/ai/insight-prompts.ts",
+      "bytes": 7953,
+      "sha256": "0643589ba6b30a765c9ef6bdd2b9279653ebfb709b354546b7b6a7b607963f37"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-frozen/current/source/electron/main/insight-checkpoint.ts",
+      "file": "implementations/paired-capacity-frozen/current/source/electron/main/insight-checkpoint.ts",
+      "bytes": 4808,
+      "sha256": "cb3bcbc658f58e19e20ad1a42fd660b418db1d77f88acf9a8db090250e55d65a"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-frozen/current/source/electron/main/insight-generation.ts",
+      "file": "implementations/paired-capacity-frozen/current/source/electron/main/insight-generation.ts",
+      "bytes": 49175,
+      "sha256": "c9370d157f14463ce11a0b97d76286221c6d0575d8a0ed52b92f4a22c9767907"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-frozen/current/source/electron/main/insight-packing.ts",
+      "file": "implementations/paired-capacity-frozen/current/source/electron/main/insight-packing.ts",
+      "bytes": 6407,
+      "sha256": "c8d87b5a314a2d582336045a0c3743000cf71fe756c631ee813f692050eb7469"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-frozen/current/source/scripts/insight-quality.mjs",
+      "file": "implementations/paired-capacity-frozen/current/source/scripts/insight-quality.mjs",
+      "bytes": 6245,
+      "sha256": "24b331bb457467f959460dc892112ecdb62116344538fc649f0ec7c1bc1d2f05"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-frozen/current/source/src/shared/desktop-validation.ts",
+      "file": "implementations/paired-capacity-frozen/current/source/src/shared/desktop-validation.ts",
+      "bytes": 9082,
+      "sha256": "0607ef8227f291daa450fc3878928175cdc94c8235b38d623eeeccc1a6c3ec4f"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-frozen/current/source/src/shared/import-contract.ts",
+      "file": "implementations/paired-capacity-frozen/current/source/src/shared/import-contract.ts",
+      "bytes": 2346,
+      "sha256": "7c8196c983b0ac05ee7ff1c5e02b7bdafd94ab0c6a4dd82cc680ccc4b8796140"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-frozen/current/source/src/shared/memory.ts",
+      "file": "implementations/paired-capacity-frozen/current/source/src/shared/memory.ts",
+      "bytes": 2947,
+      "sha256": "4963bdd3734a14c29b8b86734357abedbd743e8f8228b4b84192ad19aecb0cc3"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-frozen/current/source/src/shared/model-limits.ts",
+      "file": "implementations/paired-capacity-frozen/current/source/src/shared/model-limits.ts",
+      "bytes": 1261,
+      "sha256": "2d045222c56182095d2608d66cd1f7bc21b46d755cf9b86c2bc2281849616ffb"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-frozen/current/source/src/shared/system-prompts.ts",
+      "file": "implementations/paired-capacity-frozen/current/source/src/shared/system-prompts.ts",
+      "bytes": 5867,
+      "sha256": "e1cbe6e09b7ef7889b04248b2461442e6f466c7a308f885a46a7b53c80bcd608"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-frozen/current/source/tests/backend/fixtures/insight-compression-coverage.json",
+      "file": "implementations/paired-capacity-frozen/current/source/tests/backend/fixtures/insight-compression-coverage.json",
+      "bytes": 8579,
+      "sha256": "7dc05df843baa237af30e1f633fb1661ae66ac9bc7ab9242bd9b97eefa7bece8"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-frozen/current/source/tests/backend/fixtures/insight-compression-net-progress.json",
+      "file": "implementations/paired-capacity-frozen/current/source/tests/backend/fixtures/insight-compression-net-progress.json",
+      "bytes": 8205,
+      "sha256": "175d2e3ef63ab23baa28a6db84cb0de8f7bb9eea2f3ba3301b9f972665f61396"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-frozen/current/source/tests/backend/fixtures/insight-compression-target.json",
+      "file": "implementations/paired-capacity-frozen/current/source/tests/backend/fixtures/insight-compression-target.json",
+      "bytes": 9188,
+      "sha256": "bff44a9f34554aa031cee343f4599f516f6599b13f78bdeb713a908369cdf1ee"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-frozen/current/source/tests/backend/insight-generation.test.ts",
+      "file": "implementations/paired-capacity-frozen/current/source/tests/backend/insight-generation.test.ts",
+      "bytes": 95903,
+      "sha256": "5db6b084db6fbde4d9def25ef0cd127add4368fb3e164f75abac08782b00b2ae"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-frozen/current/source/tests/backend/insight-reading-memory.test.ts",
+      "file": "implementations/paired-capacity-frozen/current/source/tests/backend/insight-reading-memory.test.ts",
+      "bytes": 6898,
+      "sha256": "3c3702f5c37f0aeab9266eeda89dad7565664d03ff3f4adf8acf7e6c95bb632a"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-frozen/current/source/tests/quality/insight-comparison-compression-resume.ts",
+      "file": "implementations/paired-capacity-frozen/current/source/tests/quality/insight-comparison-compression-resume.ts",
+      "bytes": 5121,
+      "sha256": "e4bec4e1e57180a13946a772cccce515c98a7e54ad37cc375d22374f2010b429"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-frozen/current/source/tests/quality/insight-comparison-material.mjs",
+      "file": "implementations/paired-capacity-frozen/current/source/tests/quality/insight-comparison-material.mjs",
+      "bytes": 1831,
+      "sha256": "1ad02886f207f29cdd943e960d26655f7c2bf910d4438e3d12436663463a1049"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-frozen/current/source/tests/quality/insight-comparison-profile.mjs",
+      "file": "implementations/paired-capacity-frozen/current/source/tests/quality/insight-comparison-profile.mjs",
+      "bytes": 5449,
+      "sha256": "e7e16f782858f75389ddfd3e102210a817490e8895e857a8e1f675b42a8b3795"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-frozen/current/source/tests/quality/insight-comparison-resume.ts",
+      "file": "implementations/paired-capacity-frozen/current/source/tests/quality/insight-comparison-resume.ts",
+      "bytes": 14586,
+      "sha256": "3ec2879588c3615575d173fb24759b6d3d5a1147cc03994e01b6ddc15288e49c"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-frozen/current/source/tests/quality/insight-comparison-run.mjs",
+      "file": "implementations/paired-capacity-frozen/current/source/tests/quality/insight-comparison-run.mjs",
+      "bytes": 5228,
+      "sha256": "a795ab067b9782c024fa2606b2b534c9414a0c16a6322ad50248e8f9611f8e8c"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-frozen/current/source/tests/quality/insight-comparison.test.mjs",
+      "file": "implementations/paired-capacity-frozen/current/source/tests/quality/insight-comparison.test.mjs",
+      "bytes": 62120,
+      "sha256": "61236378f33d1b627779d3790303e6a3955f363b5d056beea7530f6e29a6a444"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-frozen/current/source/tests/quality/insight-comparison.ts",
+      "file": "implementations/paired-capacity-frozen/current/source/tests/quality/insight-comparison.ts",
+      "bytes": 9172,
+      "sha256": "1da7ba554c17313be4986094e81c1dca9183085027fb80b13f619b42522188b1"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-frozen/current/source/tests/quality/insight-long-comparison-material.mjs",
+      "file": "implementations/paired-capacity-frozen/current/source/tests/quality/insight-long-comparison-material.mjs",
+      "bytes": 55205,
+      "sha256": "450925083b1bfce661d1b81773a9a50e7800a526a3702c6bc6f732612fe1b2c7"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-frozen/current/source/tests/quality/insight-quality.ts",
+      "file": "implementations/paired-capacity-frozen/current/source/tests/quality/insight-quality.ts",
+      "bytes": 40406,
+      "sha256": "a96f2b218a84eeb2fff5cc58da671d60808cb79c8b875bf417d26cc003a87556"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-frozen/implementation.json",
+      "file": "implementations/paired-capacity-frozen/implementation.json",
+      "bytes": 5749,
+      "sha256": "b70ec825443cdb823a9a48375bdec2101a35d415883345b54e35d27a971655a4"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-frozen/preregistration.md",
+      "file": "implementations/paired-capacity-frozen/preregistration.md",
+      "bytes": 5933,
+      "sha256": "f43ad5b9b450d99f263f32c0f110f3e84958acd80b86803fe7f2ab002726d06d"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-v2-frozen/baseline/baseline-entry.ts",
+      "file": "implementations/paired-capacity-v2-frozen/baseline/baseline-entry.ts",
+      "bytes": 378,
+      "sha256": "c2075e1188063fbc80f01ba0c7410fdcf1ddf5549fee9480e8ed2781ffb23f42"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-v2-frozen/baseline/baseline.mjs",
+      "file": "implementations/paired-capacity-v2-frozen/baseline/baseline.mjs",
+      "bytes": 55154,
+      "sha256": "ef302a81ebdbd5ad8e1b402d57bf91dc6e87b9a46bba0211caf0e8ac65676b54"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-v2-frozen/baseline/manifest.json",
+      "file": "implementations/paired-capacity-v2-frozen/baseline/manifest.json",
+      "bytes": 1249,
+      "sha256": "6a0b5e661ef56f6a5bdd4d4b366c5b687433012baf9dd66a0ae7c438aec30809"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-v2-frozen/baseline/prepare-baseline.mjs",
+      "file": "implementations/paired-capacity-v2-frozen/baseline/prepare-baseline.mjs",
+      "bytes": 3083,
+      "sha256": "b2af19e5836904910b8c9c0b82b2e00bfc0304f69af8c65d0345d0ed055ee77c"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-v2-frozen/baseline/source/electron/data/ai/insight-prompts.ts",
+      "file": "implementations/paired-capacity-v2-frozen/baseline/source/electron/data/ai/insight-prompts.ts",
+      "bytes": 6555,
+      "sha256": "0769119009766be5991f6c77d2d384754c0d2e2b36df7863a7f2e9f3c2f4244d"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-v2-frozen/baseline/source/electron/main/insight-checkpoint.ts",
+      "file": "implementations/paired-capacity-v2-frozen/baseline/source/electron/main/insight-checkpoint.ts",
+      "bytes": 4657,
+      "sha256": "deb2757f015e05070973438b4277b909a76f43a023770a77980c91c3261205d8"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-v2-frozen/baseline/source/electron/main/insight-generation.ts",
+      "file": "implementations/paired-capacity-v2-frozen/baseline/source/electron/main/insight-generation.ts",
+      "bytes": 41060,
+      "sha256": "03797f6abda57ac0ea72ac79b94a38a579e8ed10d05f08c12929fdf5bdc6d957"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-v2-frozen/baseline/source/electron/main/insight-packing.ts",
+      "file": "implementations/paired-capacity-v2-frozen/baseline/source/electron/main/insight-packing.ts",
+      "bytes": 6407,
+      "sha256": "c8d87b5a314a2d582336045a0c3743000cf71fe756c631ee813f692050eb7469"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-v2-frozen/baseline/source/src/shared/desktop-validation.ts",
+      "file": "implementations/paired-capacity-v2-frozen/baseline/source/src/shared/desktop-validation.ts",
+      "bytes": 9082,
+      "sha256": "0607ef8227f291daa450fc3878928175cdc94c8235b38d623eeeccc1a6c3ec4f"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-v2-frozen/baseline/source/src/shared/import-contract.ts",
+      "file": "implementations/paired-capacity-v2-frozen/baseline/source/src/shared/import-contract.ts",
+      "bytes": 2346,
+      "sha256": "7c8196c983b0ac05ee7ff1c5e02b7bdafd94ab0c6a4dd82cc680ccc4b8796140"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-v2-frozen/baseline/source/src/shared/memory.ts",
+      "file": "implementations/paired-capacity-v2-frozen/baseline/source/src/shared/memory.ts",
+      "bytes": 2900,
+      "sha256": "2f08024576c4f1eece852f8453c71f4e66b9b42c67eb1846d4bd7af2e1fb96d6"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-v2-frozen/baseline/source/src/shared/model-limits.ts",
+      "file": "implementations/paired-capacity-v2-frozen/baseline/source/src/shared/model-limits.ts",
+      "bytes": 1243,
+      "sha256": "23fb2d29d8aa4ea16e3f2b6331b2a634ab1c090936578e13be014c62f192c980"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-v2-frozen/baseline/source/src/shared/system-prompts.ts",
+      "file": "implementations/paired-capacity-v2-frozen/baseline/source/src/shared/system-prompts.ts",
+      "bytes": 5838,
+      "sha256": "2808c4bb17471af07286d5714cdabef5be28da5b901bc7ef2432f013434040c2"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-v2-frozen/current/implementation.patch",
+      "file": "implementations/paired-capacity-v2-frozen/current/implementation.patch",
+      "bytes": 180492,
+      "sha256": "ccba47eebd35cce17a185116f7d0e58ce280f797ec679dfad6ce926952c3b047"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-v2-frozen/current/source/electron/data/ai/insight-prompts.ts",
+      "file": "implementations/paired-capacity-v2-frozen/current/source/electron/data/ai/insight-prompts.ts",
+      "bytes": 8038,
+      "sha256": "716d56216bccbde3364156b22bb9ee9fee4bb7a323f5df109c9799d87567d6a3"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-v2-frozen/current/source/electron/main/insight-checkpoint.ts",
+      "file": "implementations/paired-capacity-v2-frozen/current/source/electron/main/insight-checkpoint.ts",
+      "bytes": 4808,
+      "sha256": "cb3bcbc658f58e19e20ad1a42fd660b418db1d77f88acf9a8db090250e55d65a"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-v2-frozen/current/source/electron/main/insight-generation.ts",
+      "file": "implementations/paired-capacity-v2-frozen/current/source/electron/main/insight-generation.ts",
+      "bytes": 48744,
+      "sha256": "816e82fac393459f6b36dc1f6470ffcb454b23467bfb843fd2c3a8b667da81e9"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-v2-frozen/current/source/electron/main/insight-packing.ts",
+      "file": "implementations/paired-capacity-v2-frozen/current/source/electron/main/insight-packing.ts",
+      "bytes": 6407,
+      "sha256": "c8d87b5a314a2d582336045a0c3743000cf71fe756c631ee813f692050eb7469"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-v2-frozen/current/source/scripts/insight-quality.mjs",
+      "file": "implementations/paired-capacity-v2-frozen/current/source/scripts/insight-quality.mjs",
+      "bytes": 6245,
+      "sha256": "24b331bb457467f959460dc892112ecdb62116344538fc649f0ec7c1bc1d2f05"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-v2-frozen/current/source/src/shared/desktop-validation.ts",
+      "file": "implementations/paired-capacity-v2-frozen/current/source/src/shared/desktop-validation.ts",
+      "bytes": 9082,
+      "sha256": "0607ef8227f291daa450fc3878928175cdc94c8235b38d623eeeccc1a6c3ec4f"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-v2-frozen/current/source/src/shared/import-contract.ts",
+      "file": "implementations/paired-capacity-v2-frozen/current/source/src/shared/import-contract.ts",
+      "bytes": 2346,
+      "sha256": "7c8196c983b0ac05ee7ff1c5e02b7bdafd94ab0c6a4dd82cc680ccc4b8796140"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-v2-frozen/current/source/src/shared/memory.ts",
+      "file": "implementations/paired-capacity-v2-frozen/current/source/src/shared/memory.ts",
+      "bytes": 2947,
+      "sha256": "4963bdd3734a14c29b8b86734357abedbd743e8f8228b4b84192ad19aecb0cc3"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-v2-frozen/current/source/src/shared/model-limits.ts",
+      "file": "implementations/paired-capacity-v2-frozen/current/source/src/shared/model-limits.ts",
+      "bytes": 1261,
+      "sha256": "2d045222c56182095d2608d66cd1f7bc21b46d755cf9b86c2bc2281849616ffb"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-v2-frozen/current/source/src/shared/system-prompts.ts",
+      "file": "implementations/paired-capacity-v2-frozen/current/source/src/shared/system-prompts.ts",
+      "bytes": 5867,
+      "sha256": "e1cbe6e09b7ef7889b04248b2461442e6f466c7a308f885a46a7b53c80bcd608"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-v2-frozen/current/source/tests/backend/fixtures/insight-compression-coverage.json",
+      "file": "implementations/paired-capacity-v2-frozen/current/source/tests/backend/fixtures/insight-compression-coverage.json",
+      "bytes": 8579,
+      "sha256": "7dc05df843baa237af30e1f633fb1661ae66ac9bc7ab9242bd9b97eefa7bece8"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-v2-frozen/current/source/tests/backend/fixtures/insight-compression-mixed-kinds.json",
+      "file": "implementations/paired-capacity-v2-frozen/current/source/tests/backend/fixtures/insight-compression-mixed-kinds.json",
+      "bytes": 19881,
+      "sha256": "6334462177523cb44dd0b9b6dc76332df408d25f136221fe6e34e801ee25c3c2"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-v2-frozen/current/source/tests/backend/fixtures/insight-compression-net-progress.json",
+      "file": "implementations/paired-capacity-v2-frozen/current/source/tests/backend/fixtures/insight-compression-net-progress.json",
+      "bytes": 8205,
+      "sha256": "175d2e3ef63ab23baa28a6db84cb0de8f7bb9eea2f3ba3301b9f972665f61396"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-v2-frozen/current/source/tests/backend/fixtures/insight-compression-target.json",
+      "file": "implementations/paired-capacity-v2-frozen/current/source/tests/backend/fixtures/insight-compression-target.json",
+      "bytes": 9188,
+      "sha256": "bff44a9f34554aa031cee343f4599f516f6599b13f78bdeb713a908369cdf1ee"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-v2-frozen/current/source/tests/backend/insight-generation.test.ts",
+      "file": "implementations/paired-capacity-v2-frozen/current/source/tests/backend/insight-generation.test.ts",
+      "bytes": 100031,
+      "sha256": "2b478a677e9d8e84fa22cb819cf9e42aa2d5b723f865e81d601fead5df08a5cf"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-v2-frozen/current/source/tests/backend/insight-reading-memory.test.ts",
+      "file": "implementations/paired-capacity-v2-frozen/current/source/tests/backend/insight-reading-memory.test.ts",
+      "bytes": 6898,
+      "sha256": "3c3702f5c37f0aeab9266eeda89dad7565664d03ff3f4adf8acf7e6c95bb632a"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-v2-frozen/current/source/tests/quality/insight-comparison-compression-resume.ts",
+      "file": "implementations/paired-capacity-v2-frozen/current/source/tests/quality/insight-comparison-compression-resume.ts",
+      "bytes": 5121,
+      "sha256": "e4bec4e1e57180a13946a772cccce515c98a7e54ad37cc375d22374f2010b429"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-v2-frozen/current/source/tests/quality/insight-comparison-material.mjs",
+      "file": "implementations/paired-capacity-v2-frozen/current/source/tests/quality/insight-comparison-material.mjs",
+      "bytes": 1831,
+      "sha256": "1ad02886f207f29cdd943e960d26655f7c2bf910d4438e3d12436663463a1049"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-v2-frozen/current/source/tests/quality/insight-comparison-profile.mjs",
+      "file": "implementations/paired-capacity-v2-frozen/current/source/tests/quality/insight-comparison-profile.mjs",
+      "bytes": 5449,
+      "sha256": "e7e16f782858f75389ddfd3e102210a817490e8895e857a8e1f675b42a8b3795"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-v2-frozen/current/source/tests/quality/insight-comparison-resume.ts",
+      "file": "implementations/paired-capacity-v2-frozen/current/source/tests/quality/insight-comparison-resume.ts",
+      "bytes": 14586,
+      "sha256": "3ec2879588c3615575d173fb24759b6d3d5a1147cc03994e01b6ddc15288e49c"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-v2-frozen/current/source/tests/quality/insight-comparison-run.mjs",
+      "file": "implementations/paired-capacity-v2-frozen/current/source/tests/quality/insight-comparison-run.mjs",
+      "bytes": 5228,
+      "sha256": "a795ab067b9782c024fa2606b2b534c9414a0c16a6322ad50248e8f9611f8e8c"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-v2-frozen/current/source/tests/quality/insight-comparison.test.mjs",
+      "file": "implementations/paired-capacity-v2-frozen/current/source/tests/quality/insight-comparison.test.mjs",
+      "bytes": 62530,
+      "sha256": "01587c74c606213047421be537c915ed2b42b54192e11b3c9e2f20d1cfb4f9f5"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-v2-frozen/current/source/tests/quality/insight-comparison.ts",
+      "file": "implementations/paired-capacity-v2-frozen/current/source/tests/quality/insight-comparison.ts",
+      "bytes": 9172,
+      "sha256": "1da7ba554c17313be4986094e81c1dca9183085027fb80b13f619b42522188b1"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-v2-frozen/current/source/tests/quality/insight-long-comparison-material.mjs",
+      "file": "implementations/paired-capacity-v2-frozen/current/source/tests/quality/insight-long-comparison-material.mjs",
+      "bytes": 55205,
+      "sha256": "450925083b1bfce661d1b81773a9a50e7800a526a3702c6bc6f732612fe1b2c7"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-v2-frozen/current/source/tests/quality/insight-quality.ts",
+      "file": "implementations/paired-capacity-v2-frozen/current/source/tests/quality/insight-quality.ts",
+      "bytes": 40406,
+      "sha256": "a96f2b218a84eeb2fff5cc58da671d60808cb79c8b875bf417d26cc003a87556"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-v2-frozen/implementation.json",
+      "file": "implementations/paired-capacity-v2-frozen/implementation.json",
+      "bytes": 5962,
+      "sha256": "0ba68e013bd5fc00e05eed7567ddffa53b9960b8e067bd079d350bd6361c403a"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-v2-frozen/preregistration.md",
+      "file": "implementations/paired-capacity-v2-frozen/preregistration.md",
+      "bytes": 7644,
+      "sha256": "d0f8ac4f59d04eb7bbea068723aadaea812579fe785dabea389c251c3007e6dd"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-audit.mjs",
+      "file": "offline/paired-capacity-audit.mjs",
+      "bytes": 29800,
+      "sha256": "af0df4999cfc4cd8b80cf17ce34ad3d6c8ff034c93a5b0aa456968330a655d48"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-initial-audit.mjs",
+      "file": "offline/paired-capacity-initial-audit.mjs",
+      "bytes": 22340,
+      "sha256": "3eaeb8bb9c1b1ce461d1b53be27a478de0ea35c0d891975bce4d86eb25f1de5f"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-monitor.mjs",
+      "file": "offline/paired-capacity-monitor.mjs",
+      "bytes": 2801,
+      "sha256": "745d9cf9595aae967a94d70a4efd4c2edb76d481ddee6239095ceb6aeac9ddce"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-snapshot.mjs",
+      "file": "offline/paired-capacity-snapshot.mjs",
+      "bytes": 2656,
+      "sha256": "9b1e75e4b59f00fca41e1f14bba9399d5341a4181a25f1916edbe11f2cb7715b"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-v2-snapshot.mjs",
+      "file": "offline/paired-capacity-v2-snapshot.mjs",
+      "bytes": 2693,
+      "sha256": "60cc7b0df8aa7a4981460dfd9754427517bf9f38a6729150b6a48976ec2cfc90"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-blind.mjs",
+      "file": "offline/paired-capacity-blind.mjs",
+      "bytes": 2278,
+      "sha256": "35cd4577b7743d245bba131ad5ba86dba043b104f8735b0b141f2b0e6c15a133"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-archive.mjs",
+      "file": "offline/paired-capacity-archive.mjs",
+      "bytes": 10430,
+      "sha256": "61ec99b00b654afb2a775d3d32ec66603f81507eabbea95fb0498672285dcb68"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-audit-final.json",
+      "file": "audit.json",
+      "bytes": 72325,
+      "sha256": "eb652df0ba3270ad7f91ea9920bb10d0e003ff435547ed5c34061d6836ab8197"
+    },
+    {
+      "source": "release/conversation-insights-20261115/memory-retest/capacity-13000-preflight.json",
+      "file": "offline/capacity-13000-preflight.json",
+      "bytes": 16631,
+      "sha256": "2725f20e6cac5a69c5325ed8e51945975f312f567079285d950c9c7811e6c742"
+    },
+    {
+      "source": "release/conversation-insights-20261115/memory-retest/capacity-13000-preflight.mjs",
+      "file": "offline/capacity-13000-preflight.mjs",
+      "bytes": 6348,
+      "sha256": "2a930683efb482f9fb84f19d815f0667cb8f2f12e849ad387f91ef1863f3b512"
+    },
+    {
+      "source": "release/conversation-insights-20261115/memory-retest/mixed-kind-red.log",
+      "file": "offline/mixed-kind-red.log",
+      "bytes": 3571,
+      "sha256": "8b02c2a776b29891ba104b8680d08bd1a8c4f158d0d5c3bc18199b4e22ba2aa6"
+    },
+    {
+      "source": "release/conversation-insights-20261115/memory-retest/mixed-kind-coordination-red.log",
+      "file": "offline/mixed-kind-coordination-red.log",
+      "bytes": 2667,
+      "sha256": "0a75a5ba9ae46db47d8e35e5f7b184e870243727abd437f8b9825aea5503bcfa"
+    },
+    {
+      "source": "release/conversation-insights-20261115/memory-retest/mixed-kind-green.log",
+      "file": "offline/mixed-kind-green.log",
+      "bytes": 1432,
+      "sha256": "9eef2e2e088ea07d4d3140660b4ca1e9606e75173fb470299b0968abd61a7044"
+    },
+    {
+      "source": "release/conversation-insights-20261115/memory-retest/mixed-kind-green-final.log",
+      "file": "offline/mixed-kind-green-final.log",
+      "bytes": 198,
+      "sha256": "1d9e5ef8fe4deac3b34645f99f07e43dc6050f7ac07eaa52922656149c147f6e"
+    },
+    {
+      "source": "release/conversation-insights-20261115/memory-retest/mixed-kind-replay.json",
+      "file": "offline/mixed-kind-replay.json",
+      "bytes": 2359,
+      "sha256": "397e1396974c40022d702ef25f3b14851b914fda4fbb4137c389c2e9a5f9c388"
+    },
+    {
+      "source": "release/conversation-insights-20261115/memory-retest/mixed-kind-typecheck-final.log",
+      "file": "offline/mixed-kind-typecheck-final.log",
+      "bytes": 79,
+      "sha256": "769a0517181db6476a758a3c98d4c3772614d7aa820e989fb11cf46d6b6ac7a8"
+    },
+    {
+      "source": "release/conversation-insights-20261115/memory-retest/net-progress-red.log",
+      "file": "offline/net-progress-red.log",
+      "bytes": 2682,
+      "sha256": "41493ae91507a3667e15b3eed1362b6b060a613d462d260c8f28aa4beae269c6"
+    },
+    {
+      "source": "release/conversation-insights-20261115/memory-retest/net-progress-green-verified.log",
+      "file": "offline/net-progress-green-verified.log",
+      "bytes": 198,
+      "sha256": "018cc5e418f3a2d9178508f4c7e03ab89ddda8414e0f442aa160ca812857f97f"
+    },
+    {
+      "source": "release/conversation-insights-20261115/memory-retest/net-progress-green-final.log",
+      "file": "offline/net-progress-green-final.log",
+      "bytes": 1463,
+      "sha256": "524d9c1517f4581a664c60459f976c8840d48233abf2f28a23882e437c758265"
+    },
+    {
+      "source": "release/conversation-insights-20261115/memory-retest/net-progress-replay.json",
+      "file": "offline/net-progress-replay.json",
+      "bytes": 2403,
+      "sha256": "769835f208e6d0cdf46b102659da6ad54b34fe5f098646ab9d72f870de7d7448"
+    },
+    {
+      "source": "release/conversation-insights-20261115/memory-retest/net-progress-typecheck-final.log",
+      "file": "offline/net-progress-typecheck-final.log",
+      "bytes": 79,
+      "sha256": "769a0517181db6476a758a3c98d4c3772614d7aa820e989fb11cf46d6b6ac7a8"
+    },
+    {
+      "source": "release/conversation-insights-20261115/memory-retest/paired-capacity-current-failed-audit.json",
+      "file": "offline/paired-capacity-current-failed-audit.json",
+      "bytes": 27145,
+      "sha256": "1236717463948ce8a569aa33befb50ee58a2ccff8aba910015f57ee1031dd0e8"
+    },
+    {
+      "source": "release/conversation-insights-20261115/memory-retest/paired-capacity-current-failed-summary.json",
+      "file": "offline/paired-capacity-current-failed-summary.json",
+      "bytes": 9982,
+      "sha256": "b5c1c0fd2e250061b9b7885c39b8ad4539296233a33877d586055f599eb456f5"
+    },
+    {
+      "source": "release/conversation-insights-20261115/memory-retest/paired-capacity-current-failed-summary.md",
+      "file": "offline/paired-capacity-current-failed-summary.md",
+      "bytes": 1455,
+      "sha256": "aadce09884b00404152b821fcb967861c3c38d902325e2f2895f2d4f97c6648d"
+    },
+    {
+      "source": "release/conversation-insights-20261115/memory-retest/paired-capacity-baseline-conditional-failure.json",
+      "file": "offline/paired-capacity-baseline-conditional-failure.json",
+      "bytes": 7304,
+      "sha256": "4ac81809720c1d8e8429671010660d8f3e06480bf02897a35bf406e708a7bd6f"
+    },
+    {
+      "source": "release/conversation-insights-20261115/memory-retest/paired-capacity-baseline-conditional-failure.md",
+      "file": "offline/paired-capacity-baseline-conditional-failure.md",
+      "bytes": 1697,
+      "sha256": "025647f65903fefb6a5e4309c5b8cfa8dfa603d965e97517ede9d883cab30758"
+    },
+    {
+      "source": "release/conversation-insights-20261115/memory-retest/paired-capacity-workload-error-trace.json",
+      "file": "offline/paired-capacity-workload-error-trace.json",
+      "bytes": 107674,
+      "sha256": "7ab47bddc5ed8c5b0db47da8a7b8dc6344283bfca8d96fd361d0401b69ad4d82"
+    },
+    {
+      "source": "release/conversation-insights-20261115/memory-retest/paired-capacity-workload-error-trace.md",
+      "file": "offline/paired-capacity-workload-error-trace.md",
+      "bytes": 3760,
+      "sha256": "c973208207b3bb5a4867c22b829683ee19f6485cbc8808bab0e53b70096b294c"
+    },
+    {
+      "source": "release/conversation-insights-20261115/memory-retest/paired-capacity-workload-error-trace.mjs",
+      "file": "offline/paired-capacity-workload-error-trace.mjs",
+      "bytes": 14197,
+      "sha256": "300df5e289188750074f1eeb8d72f7616318cb327465fa19078df1d147798d84"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-v2-backend-final.log",
+      "file": "validation/paired-capacity-v2-backend-final.log",
+      "bytes": 3136,
+      "sha256": "291a324bd43af0426c216613781be3ecd565ef609a04ee28048953e89be81d46"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-v2-tool-tests-final.log",
+      "file": "validation/paired-capacity-v2-tool-tests-final.log",
+      "bytes": 3711,
+      "sha256": "232544ab551dd318e0ed4eddf263d3c167c2ab2e12e0cf12c07b8f68e084b765"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-v2-build-final.log",
+      "file": "validation/paired-capacity-v2-build-final.log",
+      "bytes": 3025,
+      "sha256": "f4a6a939f3538f31cda41c6866a394153c8270b4c0249eaa9a3bf5ebb1eb42a6"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-v2-desktop-final.log",
+      "file": "validation/paired-capacity-v2-desktop-final.log",
+      "bytes": 410,
+      "sha256": "dc0f97fecd744f6f5b2a45fbd7c4ba899e197588e453fe87c890209594c7cfc6"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-v2-port-ranges-final.log",
+      "file": "validation/paired-capacity-v2-port-ranges-final.log",
+      "bytes": 799,
+      "sha256": "e2affa07daf8dc7f30adbbd46d6b22a5fd7d3fef59bd1f1f4f3cb07e174e1f10"
+    },
+    {
+      "source": "release/conversation-insights-20261115/memory-frontend.log",
+      "file": "validation/memory-frontend.log",
+      "bytes": 563,
+      "sha256": "cd141b64b15d076ad303c50ca1fadae6da950769adbfae9d169a9f58bf318c84"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-blind-shared-workload-mapping.json",
+      "file": "reviews/shared-workload/mapping.json",
+      "bytes": 1528,
+      "sha256": "d0859fde4572276d672a626df726b9d99287f326e5da3dbfd8cb6ecd25ac836e"
+    },
+    {
+      "source": "release/conversation-insights-20261115/blind-source-order/paired-shared-workload/blind-review.md",
+      "file": "reviews/paired-shared-workload/blind-review.md",
+      "bytes": 24427,
+      "sha256": "3214a77563e301eb5452e4a1e15121b84f716ed5ee2e617e94858a711cff00d2"
+    },
+    {
+      "source": "release/conversation-insights-20261115/blind-source-order/paired-shared-workload/report-3da761ff.json",
+      "file": "reviews/paired-shared-workload/report-3da761ff.json",
+      "bytes": 7623,
+      "sha256": "1f8bfc51efb3beef7a6f41cba671e0b31eab570f936929316ac8d5cfc4fc9381"
+    },
+    {
+      "source": "release/conversation-insights-20261115/blind-source-order/paired-shared-workload/report-4ce609dc.json",
+      "file": "reviews/paired-shared-workload/report-4ce609dc.json",
+      "bytes": 13787,
+      "sha256": "899b971248ed975c1c89ad54075329edbea312e6cc5d08e9f6c59f33d5e6fa9a"
+    },
+    {
+      "source": "release/conversation-insights-20261115/blind-source-order/paired-shared-workload/report-72606602.json",
+      "file": "reviews/paired-shared-workload/report-72606602.json",
+      "bytes": 15303,
+      "sha256": "f531f88eb1983b62782d398d94355e5ddd0a1a3fb127056a9b0eb067b77e2f85"
+    },
+    {
+      "source": "release/conversation-insights-20261115/blind-source-order/paired-shared-workload/report-ed5f6233.json",
+      "file": "reviews/paired-shared-workload/report-ed5f6233.json",
+      "bytes": 6177,
+      "sha256": "439b75e8c1e8afba12305214ecec079a3fe2a457ad5980c250575a82945f52cb"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-blind-conditional-reschedule-mapping.json",
+      "file": "reviews/conditional-reschedule/mapping.json",
+      "bytes": 968,
+      "sha256": "d057da7ca2be748374efab2340b0e470a92abcbf1a69917a9bc14ec36a45cc21"
+    },
+    {
+      "source": "release/conversation-insights-20261115/blind-source-order/paired-conditional-reschedule/blind-review.md",
+      "file": "reviews/paired-conditional-reschedule/blind-review.md",
+      "bytes": 15639,
+      "sha256": "72a5379724529214fece57d7b8d8107a7eed06179c359d1da454d56f167bd445"
+    },
+    {
+      "source": "release/conversation-insights-20261115/blind-source-order/paired-conditional-reschedule/report-6bf52596.json",
+      "file": "reviews/paired-conditional-reschedule/report-6bf52596.json",
+      "bytes": 20109,
+      "sha256": "1b8b54202b6af619f46aef49e816c16610a838cc864f2a3d9d200eec5b6dc274"
+    },
+    {
+      "source": "release/conversation-insights-20261115/blind-source-order/paired-conditional-reschedule/report-89081a29.json",
+      "file": "reviews/paired-conditional-reschedule/report-89081a29.json",
+      "bytes": 20946,
+      "sha256": "e424dffc0f76ba3f34e3fbf0159e99115e6092717c447dabae5d16f6059b2829"
+    },
+    {
+      "source": "release/conversation-insights-20261115/blind-source-order/workload-sources.json",
+      "file": "reviews/workload-sources.json",
+      "bytes": 54678,
+      "sha256": "72cc51dd6d205f34bfa2b34af3d5a5a055ddd2e2c0399d0409d6cb228fc26934"
+    },
+    {
+      "source": "release/conversation-insights-20261115/blind-source-order/workload-ground-truth.md",
+      "file": "reviews/workload-ground-truth.md",
+      "bytes": 9362,
+      "sha256": "7a8393fb874795a58f94acb5b1a37715aaca1cdf13646032a8e6bb6a19e568de"
+    },
+    {
+      "source": "release/conversation-insights-20261115/blind-source-order/reschedule-sources.json",
+      "file": "reviews/reschedule-sources.json",
+      "bytes": 56048,
+      "sha256": "d2013df738dd4132eedf1d2ac7ac3e5b016dc905ae607041513e7bb8b312216a"
+    },
+    {
+      "source": "release/conversation-insights-20261115/blind-source-order/reschedule-ground-truth.md",
+      "file": "reviews/reschedule-ground-truth.md",
+      "bytes": 6743,
+      "sha256": "e5b0090362e140576af702379d8465263a2aa403b1aae71776182062ae1661da"
+    },
+    {
+      "source": "release/conversation-insights-20261115/post-trial-compatibility/evidence/post-trial-generation.diff",
+      "file": "post-trial-compatibility/evidence/post-trial-generation.diff",
+      "bytes": 4511,
+      "sha256": "fd9da9edd6dd8ed4a3a1237d91b1ec615daa8925f9d0705bb74300be3917b91b"
+    },
+    {
+      "source": "release/conversation-insights-20261115/post-trial-compatibility/evidence/quote-reuse-red-verified.log",
+      "file": "post-trial-compatibility/evidence/quote-reuse-red-verified.log",
+      "bytes": 7552,
+      "sha256": "9e7f4de69b17e198b9671109f2fcd87d8d0744d66f18e6ab995ae004545df71f"
+    },
+    {
+      "source": "release/conversation-insights-20261115/post-trial-compatibility/evidence/quote-reuse-replay.mjs",
+      "file": "post-trial-compatibility/evidence/quote-reuse-replay.mjs",
+      "bytes": 3546,
+      "sha256": "677b8489787b9ae4aa06895968c34f1e0eb1d9c30277232c3d713761780c2c22"
+    },
+    {
+      "source": "release/conversation-insights-20261115/post-trial-compatibility/evidence/quote-visible-scope-green.log",
+      "file": "post-trial-compatibility/evidence/quote-visible-scope-green.log",
+      "bytes": 200,
+      "sha256": "62aa369462aa9f4f7b03d00f838161e2e4db1400abb3663a97314d16343b7681"
+    },
+    {
+      "source": "release/conversation-insights-20261115/post-trial-compatibility/evidence/quote-visible-scope-red.log",
+      "file": "post-trial-compatibility/evidence/quote-visible-scope-red.log",
+      "bytes": 1631,
+      "sha256": "edb979c974a1368cfe6574bfdf56c7e4b5cf1fa9f31c6c493a2f95bb8c0f737e"
+    },
+    {
+      "source": "release/conversation-insights-20261115/post-trial-compatibility/evidence/quote-visible-scope-replay.json",
+      "file": "post-trial-compatibility/evidence/quote-visible-scope-replay.json",
+      "bytes": 2538,
+      "sha256": "d20873818c46215173a7caafbb01695415547319c2adf3248bba9999ba33e248"
+    },
+    {
+      "source": "release/conversation-insights-20261115/post-trial-compatibility/evidence/quote-visible-scope-typecheck.log",
+      "file": "post-trial-compatibility/evidence/quote-visible-scope-typecheck.log",
+      "bytes": 79,
+      "sha256": "769a0517181db6476a758a3c98d4c3772614d7aa820e989fb11cf46d6b6ac7a8"
+    },
+    {
+      "source": "release/conversation-insights-20261115/post-trial-compatibility/manifest.json",
+      "file": "post-trial-compatibility/manifest.json",
+      "bytes": 3340,
+      "sha256": "ff4390a1ff7fd1c9cf8eb15900e203ee657b4261dd9d06abf96c81c8225262cc"
+    },
+    {
+      "source": "release/conversation-insights-20261115/post-trial-compatibility/README.md",
+      "file": "post-trial-compatibility/README.md",
+      "bytes": 2504,
+      "sha256": "b4b68143fdab0b4dafe983ed24550f2c9597fffc8573ecd5b755336ff2c82674"
+    },
+    {
+      "source": "release/conversation-insights-20261115/post-trial-compatibility/source/electron/data/ai/insight-prompts.ts",
+      "file": "post-trial-compatibility/source/electron/data/ai/insight-prompts.ts",
+      "bytes": 8038,
+      "sha256": "716d56216bccbde3364156b22bb9ee9fee4bb7a323f5df109c9799d87567d6a3"
+    },
+    {
+      "source": "release/conversation-insights-20261115/post-trial-compatibility/source/electron/main/insight-generation.ts",
+      "file": "post-trial-compatibility/source/electron/main/insight-generation.ts",
+      "bytes": 49066,
+      "sha256": "294693d887a8a1c6128fd1328c522e5163f7e21fe0e6694c6cbcf295e4a0c51d"
+    },
+    {
+      "source": "release/conversation-insights-20261115/post-trial-compatibility/source/tests/backend/fixtures/insight-visible-excerpt-reuse.json",
+      "file": "post-trial-compatibility/source/tests/backend/fixtures/insight-visible-excerpt-reuse.json",
+      "bytes": 20889,
+      "sha256": "a2c7766f90fd00a60e6b63b0c99d2298ad736eb5e88645cc4086d661ea07749c"
+    },
+    {
+      "source": "release/conversation-insights-20261115/post-trial-compatibility/source/tests/backend/insight-quote-reuse.test.ts",
+      "file": "post-trial-compatibility/source/tests/backend/insight-quote-reuse.test.ts",
+      "bytes": 12308,
+      "sha256": "2782114aeae052a49d3c68e5dd097d5b7d50227a0bf782061500f56a48b9ab6f"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-archive-post.mjs",
+      "file": "offline/paired-capacity-archive-post.mjs",
+      "bytes": 4518,
+      "sha256": "45074effb6ce009c1e77386f7707f29922d81ede343137aafaed9564b3643d82"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-archive-verify.mjs",
+      "file": "offline/paired-capacity-archive-verify.mjs",
+      "bytes": 5358,
+      "sha256": "81f03e038b7adfce07f9d74205290718c914fa53e00c9c75d2063b89402e56f4"
+    },
+    {
+      "source": "release/conversation-insights-20261115/post-trial-backend-final.log",
+      "file": "validation/post-trial-backend-final.log",
+      "bytes": 4341,
+      "sha256": "67262166da003053f082b7f7f367c4d201150e1a2f79fd4567afcc858c9c2381"
+    },
+    {
+      "source": "release/conversation-insights-20261115/post-trial-build-final.log",
+      "file": "validation/post-trial-build-final.log",
+      "bytes": 3026,
+      "sha256": "4741398a137baee9d808be7e7d934b03e541e76298888944f27d81c5a4a5687b"
+    },
+    {
+      "source": "release/conversation-insights-20261115/post-trial-tool-tests-final.log",
+      "file": "validation/post-trial-tool-tests-final.log",
+      "bytes": 3757,
+      "sha256": "ad4e20bc2ea3f1d666d669f3c694b9283285c14f90c39d3091e556c6fd241af9"
+    },
+    {
+      "source": "release/conversation-insights-20261115/post-trial-port-ranges-final.log",
+      "file": "validation/post-trial-port-ranges-final.log",
+      "bytes": 799,
+      "sha256": "e2affa07daf8dc7f30adbbd46d6b22a5fd7d3fef59bd1f1f4f3cb07e174e1f10"
+    },
+    {
+      "source": "release/conversation-insights-20261115/post-trial-desktop-final.log",
+      "file": "validation/post-trial-desktop-final.log",
+      "bytes": 920,
+      "sha256": "56a42dbdf7445997e3634b0dfd6ea8873c06d2cbbfe6dccf52a3aeedf51de930"
+    },
+    {
+      "source": "release/conversation-insights-20261115/post-trial-desktop-timeout-context.md",
+      "file": "validation/post-trial-desktop-timeout-context.md",
+      "bytes": 479,
+      "sha256": "da09510f461a59bc886586a5674f001c86a0a8fff84c86a2be945e69730a1c86"
+    },
+    {
+      "source": "release/conversation-insights-20261115/post-trial-desktop-diagnostic.log",
+      "file": "validation/post-trial-desktop-diagnostic.log",
+      "bytes": 3859,
+      "sha256": "270fa671ca1d668a3c11d031c0e7b388e3953ee35bb0cf0e4909a90403115d15"
+    },
+    {
+      "source": "release/conversation-insights-20261115/memory-desktop-baseline-debug.log",
+      "file": "validation/memory-desktop-baseline-debug.log",
+      "bytes": 5697,
+      "sha256": "75c12fe989bc5c533c9dcde4f7b3bde3ddaf906481f3ebd71223fd04da1e2caa"
+    },
+    {
+      "source": "release/conversation-insights-20261115/paired-capacity-archive-finalize.mjs",
+      "file": "offline/paired-capacity-archive-finalize.mjs",
+      "bytes": 3459,
+      "sha256": "ee93b73969876c1ad3515d42bdf8398372402288eb66c660255c20d5212c1532"
+    }
+  ],
+  "postTrial": {
+    "manifest": "post-trial-compatibility/manifest.json",
+    "manifestSha256": "ff4390a1ff7fd1c9cf8eb15900e203ee657b4261dd9d06abf96c81c8225262cc",
+    "realModelCallsAdded": 0,
+    "trialsRecovered": 0,
+    "targetedTestsPassed": 104,
+    "copiedValidationLogs": [],
+    "finalValidationLogs": [
+      "validation/post-trial-backend-final.log",
+      "validation/post-trial-build-final.log",
+      "validation/post-trial-tool-tests-final.log",
+      "validation/post-trial-port-ranges-final.log",
+      "validation/post-trial-desktop-final.log",
+      "validation/post-trial-desktop-timeout-context.md",
+      "validation/post-trial-desktop-diagnostic.log",
+      "validation/memory-desktop-baseline-debug.log"
+    ]
+  }
+}

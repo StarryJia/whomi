@@ -3,7 +3,7 @@ import { aggregateRelationships, dimensionKeys, type MemoryDimensions } from '..
 import { personalityDimensions, predictionText } from '../personality-dimensions'
 import type { OverviewData } from './types'
 
-export type RelationshipObservation = { taskId: string; title: string; counterpartName?: string; dimensions: MemoryDimensions }
+export type RelationshipObservation = { taskId: string; title: string; counterpartName?: string; dimensions: MemoryDimensions; sourceReports?: { id: string; title: string }[] }
 
 function relationshipContext(relations: RelationshipObservation[]) {
   const contacts = [...new Set(relations.flatMap(item => item.counterpartName ? [item.counterpartName] : []))]
@@ -43,13 +43,17 @@ export function RelationshipObservations({ observations, onRead }: {
   return <section className="relationship-observations" aria-labelledby="relationship-heading">
     <h2 id="relationship-heading">你在不同关系中的表现</h2>
     {Object.values(aggregateRelationships(observations)).every(value => value === null) && <p>各维度暂难汇总，至少需要两段关系提供同一维度的观察。</p>}
-    {observations.map(item => <button className="overview-memory-link" type="button" key={item.taskId} onClick={() => onRead(item.taskId)}>
+    {observations.map(item => <div key={item.taskId}><button className="overview-memory-link" type="button" onClick={() => onRead(item.taskId)}>
       <span className="overview-memory-source"><strong>{relationshipContext([item])}</strong>
         {item.counterpartName && item.title !== item.counterpartName && item.title !== '我和' + item.counterpartName &&
           <small>{item.title}</small>}
       </span>
       <span className="overview-memory-type">你的倾向 <b>{predictionText(item.dimensions)}</b></span>
       <ChevronRight aria-hidden="true" />
-    </button>)}
+    </button>
+      {!!item.sourceReports?.length && <div className="overview-insight-sources" aria-label="来源报告">
+        {item.sourceReports.map(report => <button type="button" key={report.id} onClick={() => onRead(report.id)}>{report.title} #{report.id}</button>)}
+      </div>}
+    </div>)}
   </section>
 }

@@ -1,0 +1,59 @@
+
+> whomi@0.1.11 desktop:build
+> electron-vite build
+
+vite v8.3.5 building ssr environment for production...
+transforming...
+✓ 118 modules transformed.
+rendering chunks...
+out/main/chunks/model-limits-aWPJze7L.cjs      2.87 kB
+out/main/chunks/model-protocol-Ceas6rwF.cjs   11.31 kB
+out/main/agent/entry.cjs                      11.90 kB
+out/main/chunks/validation-lOiM_j3V.cjs       86.29 kB
+out/main/index.cjs                           222.32 kB
+out/main/data/entry.cjs                      355.78 kB
+
+✓ built in 122ms
+vite v8.3.5 building ssr environment for production...
+transforming...
+✓ 13 modules transformed.
+rendering chunks...
+out/preload/index.cjs  31.70 kB
+
+✓ built in 31ms
+vite v8.3.5 building client environment for production...
+transforming...
+✓ 2630 modules transformed.
+rendering chunks...
+out/renderer/index.html                                        0.54 kB
+out/renderer/assets/cerebras-WxP3Bpuh.svg                      4.32 kB
+out/renderer/assets/minimax-D-fszgqm.svg                       4.80 kB
+out/renderer/assets/iconfont-O2loTiuI.woff2                    5.14 kB
+out/renderer/assets/lmstudio-VEnHNTXI.svg                      5.68 kB
+out/renderer/assets/poe-xXZLK5cn.svg                           6.81 kB
+out/renderer/assets/ollama-V5mCt6DG.svg                        6.84 kB
+out/renderer/assets/moonshot-DI79GA5v.svg                      7.08 kB
+out/renderer/assets/huggingface-yPNg291Z.svg                   7.15 kB
+out/renderer/assets/mimo-AvfUS20C.svg                          8.33 kB
+out/renderer/assets/ph8-C9TK7L7p.svg                           8.65 kB
+out/renderer/assets/bailian-B_y2A1EH.svg                      10.58 kB
+out/renderer/assets/qwencloud-DEtHg1Zb.svg                    11.29 kB
+out/renderer/assets/vertexai-BMKdpBF0.svg                     11.67 kB
+out/renderer/assets/ai-only-DQUcCxfo.svg                      11.78 kB
+out/renderer/assets/zhipu-BfaGKTzh.svg                        12.53 kB
+out/renderer/assets/google-B1YESeLm.svg                       12.61 kB
+out/renderer/assets/lanyun-CmMgvcY2.svg                       14.52 kB
+out/renderer/assets/ocoolai-B2AE7rgy.svg                      15.51 kB
+out/renderer/assets/gpustack-WJ7hqBoh.svg                     15.67 kB
+out/renderer/assets/whomi-face-layer-Nwe2kGLm.png             61.40 kB
+out/renderer/assets/dmxapi-BSlRUsxX.svg                      143.80 kB
+out/renderer/assets/whomi-lens-layer-I_m6Bd2g.png            260.51 kB
+out/renderer/assets/whomi-symbol-q-8gXws2.png              1,387.64 kB
+out/renderer/assets/whomi-wordmark-C04CgNRs.png            1,428.75 kB
+out/renderer/assets/index-BGqMchdB.css                       209.48 kB
+out/renderer/assets/mermaid-GHXKKRXX-CrFLICEJ.js               0.05 kB
+out/renderer/assets/highlighted-body-OFNGDK62-C0Mn2j7U.js      0.89 kB
+out/renderer/assets/ComposerSurfaceRuntime-DhIVDT_c.js       658.32 kB
+out/renderer/assets/index-hJmPZHOA.js                      3,246.16 kB
+
+✓ built in 989ms

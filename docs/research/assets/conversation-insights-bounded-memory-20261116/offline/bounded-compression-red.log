@@ -1,0 +1,90 @@
+
+> whomi@0.1.11 test:backend
+> vitest run --config vitest.backend.config.ts tests/backend/insight-generation.test.ts -t compression sends only|nearly verbatim|shorter navigation
+
+
+ RUN  v5.0.5 D:/University/github/whomi
+
+ ❯ tests/backend/insight-generation.test.ts (62 tests | 3 failed | 59 skipped) 32ms
+   × compression sends only fact entry identities and text while inheriting sources locally for writing 17ms
+   × nearly verbatim compression like the real long run stops after one repair before replacing any original facts 11ms
+   × a shorter navigation cannot count as progress when the complete writing facts still exceed capacity 2ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/backend/insight-generation.test.ts > compression sends only fact entry identities and text while inheriting sources locally for writing
+AssertionError: expected { entryId: '0:0', kind: 'fact', …(2) } to not have property "sourceIds"
+
+- Expected:
+undefined
+
++ Received:
+[
+  "1",
+]
+
+ ❯ Object.deps.run tests/backend/insight-generation.test.ts:108:27
+    106|     if (payload.operation === 'compress-navigation') {
+    107|       for (const entry of payload.nodes.flatMap((node: { entries: obje…
+    108|         expect(entry).not.toHaveProperty('sourceIds')
+       |                           ^
+    109|       }
+    110|       expect(payload.maxFactTextLength).toBeGreaterThanOrEqual(160)
+ ❯ call electron/main/insight-generation.ts:537:27
+ ❯ generateInsight electron/main/insight-generation.ts:770:35
+ ❯ tests/backend/insight-generation.test.ts:116:3
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  tests/backend/insight-generation.test.ts > nearly verbatim compression like the real long run stops after one repair before replacing any original facts
+AssertionError: expected Error: 已达到洞察预算。请缩短日期范围后重新生成。 { …(2) } to match object { code: 'INVALID_INSIGHT_OUTPUT' }
+(1 matching property omitted from actual)
+
+- Expected
++ Received
+
+- {
+-   "code": "INVALID_INSIGHT_OUTPUT",
++ BoundaryError {
++   "code": "INSIGHT_BUDGET_EXHAUSTED",
+  }
+
+ ❯ tests/backend/insight-generation.test.ts:129:45
+    127|       .map((entry: { entryId: string; kind: string; text: string }) =>…
+    128|   }
+    129|   await expect(generateInsight(input, deps)).rejects.toMatchObject({ c…
+       |                                             ^
+    130|   expect(attempts).toBe(2)
+    131|   expect(state.checkpoint?.navigation?.cursor).toBe(0)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  tests/backend/insight-generation.test.ts > a shorter navigation cannot count as progress when the complete writing facts still exceed capacity
+AssertionError: expected Error: 请使用输入容量更大的模型重新生成洞察。 { …(2) } to match object { code: 'INVALID_INSIGHT_OUTPUT' }
+(1 matching property omitted from actual)
+
+- Expected
++ Received
+
+- {
+-   "code": "INVALID_INSIGHT_OUTPUT",
++ BoundaryError {
++   "code": "CONTEXT_TOO_LARGE",
+  }
+
+ ❯ tests/backend/insight-generation.test.ts:146:45
+    144|     return result(retainEntries(payload))
+    145|   }
+    146|   await expect(generateInsight(input, deps)).rejects.toMatchObject({ c…
+       |                                             ^
+    147|   expect(state.checkpoint?.navigation?.nodes).toHaveLength(1)
+    148|   expect(state.checkpoint?.navigation?.nextRoots).toEqual([])
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 59 skipped (62)
+   Start at  23:59:14
+   Duration  394ms (transform 51%, import 29%, tests 17%, worker 4%)
+

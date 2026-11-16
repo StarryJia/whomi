@@ -1,6 +1,6 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowRight, ArrowLeft, Pause, Play, Box, Check, ChevronDown, FileText, MessageCircle, PanelLeft, Square, SquarePen, X } from 'lucide-react'
+import { ArrowRight, ArrowLeft, Pause, Play, Box, Check, ChevronDown, FileText, MessageCircle, PanelLeft, RotateCw, Square, SquarePen, X } from 'lucide-react'
 import * as Select from '@radix-ui/react-select'
 import type { ReferenceRange } from './selection'
 import type { ConversationAiAdapter, ConversationRequest, RestoredConversationTurn } from './types'
@@ -11,17 +11,17 @@ import { useAnalysisTask } from './use-analysis-task'
 import { ConversationPopoverOwner, ModelSelector, ThinkingSelector, type ThinkingLevel } from './model-selector'
 import { usePaneDivider } from '../ui/pane-divider'
 import { ManagedRow } from '../ui/managed-row'
-import { MemoryArticle } from '../memory-library'
+import { MemoryArticle } from '../memory-article'
 import { isMemoryReport } from '../../shared/memory'
+import { isInsightReport, isInsightScope, type InsightScope, type InsightScopePreview } from '../../shared/conversation-insights'
+import { InsightScopeFields } from '../insights/insight-scope-fields'
+import { formatInsightNumber, insightElapsed, insightPercentage, insightRange, insightSpeed, InsightRing, InsightStatus, InsightTaskDetails, InsightTaskModel } from '../insights/insight-task'
 import { CherryComposer, clearComposerDraft, clearComposerInputHistory, moveComposerInputHistory, readComposerDraft, useComposerDraft, writeComposerDraft, type CherryComposerHandle } from './cherry/composer'
 import { CherryMessages, type CherryMessagesHandle, type CherryMessageTurn } from './cherry/messages'
 import { forgetScrollPosition } from '../../vendor/cherry-chat/messages/list/useScrollPositionMemory'
 import { ConversationAcceptancePendingError, ConversationTurnError, isConversationNotSubmitted, matchesConversationRequest } from '../../data/conversation-ai-client'
 import '../../vendor/cherry-chat/shared/theme.css'
 
-const number = (value: number) => new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 1 }).format(value)
-const valid = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && value >= 0
-function seconds(ms: number | undefined) { return valid(ms) ? `${number(ms / 1000)} 秒` : '未提供' }
 function errorText(error: unknown) { return error instanceof Error ? error.message : error && typeof error === 'object' && 'action' in error && typeof error.action === 'string' ? error.action : '操作失败，请重试。' }
 
 function Popover({ anchor, label, children, onClose, above = false, alignStart = false, onMouseEnter, onMouseLeave, id, focusOnOpen }: {
@@ -40,10 +40,12 @@ function Popover({ anchor, label, children, onClose, above = false, alignStart =
       const target = anchor.current?.getBoundingClientRect()
       const rect = body.current?.getBoundingClientRect()
       if (!target || !rect) return
-      const fitsAbove = target.top - rect.height - 8 >= 8
+      const titleBarHeight = body.current ? parseFloat(getComputedStyle(body.current).getPropertyValue('--desktop-titlebar-height')) : 0
+      const minimumTop = 8 + (Number.isFinite(titleBarHeight) ? titleBarHeight : 0)
+      const fitsAbove = target.top - rect.height - 8 >= minimumTop
       const top = (above && fitsAbove) || target.bottom + rect.height + 8 > window.innerHeight
         ? target.top - rect.height - 8 : target.bottom + 8
-      setPosition({ top: Math.max(8, Math.min(top, window.innerHeight - rect.height - 8)),
+      setPosition({ top: Math.max(minimumTop, Math.min(top, window.innerHeight - rect.height - 8)),
         left: Math.max(8, Math.min(alignStart ? target.left : target.right - rect.width, window.innerWidth - rect.width - 8)) })
     }
     place()
@@ -168,13 +170,15 @@ function retryAdvanced(turn: RestoredConversationTurn, pending: UnconfirmedSubmi
   return !!baseline && (turn.eventSequence ?? -1) > (baseline.eventSequence ?? -1) &&
     (baseline.attempt === undefined || (turn.attempt ?? -1) > baseline.attempt)
 }
-export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, openAnalysisOnEntry = false, identityRevision = 0, title, messageCount, references, onClearReferences, onRestoreReferences, onJumpReference, onEndReferenceView, onOpenAnalysisResult, onConfigureModels, adapter, children }: {
+export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, openAnalysisOnEntry = false, identityRevision = 0, title, messageCount, sourceStartTimeMs, sourceEndTimeMs, approveAnalysisEntry, references, onClearReferences, onRestoreReferences, onJumpReference, onEndReferenceView, onOpenAnalysisResult, onConfigureModels, adapter, children }: {
   conversationId: string; identityRevision?: number; title: string; messageCount?: number; references: readonly ReferenceRange[]
   onClearReferences: () => void; onJumpReference: (ids: readonly string[], targetId?: string, pending?: boolean) => void
   onRestoreReferences?: (references: readonly ReferenceRange[]) => void
   onEndReferenceView?: () => void
   onConfigureModels?: (onReturn: () => void) => void
   openAnalysisOnEntry?: boolean; initialAnalysisTaskId?: string
+  sourceStartTimeMs?: number | null; sourceEndTimeMs?: number | null
+  approveAnalysisEntry?: (trigger: HTMLButtonElement) => boolean
   onOpenAnalysisResult?: (taskId: string) => void
   adapter?: ConversationAiAdapter; children: (slots: Slots) => ReactNode
 }) {
@@ -225,6 +229,12 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
     error: analysisError, setError: setAnalysisError, progress, result: analysisResult } = analysis
   const [showReport, setShowReport] = useState(false)
   const [preparation, setPreparation] = useState<AnalysisPreparation>()
+  const [analysisScope, setAnalysisScope] = useState<InsightScope>({ kind: 'all' })
+  const [scopePreview, setScopePreview] = useState<{ scope: InsightScope; preview: InsightScopePreview }>()
+  const [scopeError, setScopeError] = useState('')
+  const [scopeAttempt, setScopeAttempt] = useState(0)
+  const validScope = isInsightScope(analysisScope)
+  const currentScope = scopePreview?.scope === analysisScope ? scopePreview.preview : undefined
   const [preparing, setPreparing] = useState(false)
   const [prepareAttempt, setPrepareAttempt] = useState(0)
   const [restoring, setRestoring] = useState(false)
@@ -420,7 +430,18 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
     return () => controller.abort('detach')
   }, [adapter, conversationId, threadId])
   useEffect(() => {
-    if (!analysisOpen || !analysisConfirming || !adapter?.prepareAnalysis || !selectedAnalysisModel) {
+    if (!analysisOpen || !analysisConfirming || !validScope || !adapter?.previewInsightScope) return
+    let current = true
+    setScopeError('')
+    setScopePreview(undefined)
+    void adapter.previewInsightScope({ conversationId, scope: analysisScope }).then(preview => {
+      if (current) setScopePreview({ scope: analysisScope, preview })
+    }, error => { if (current) setScopeError(errorText(error)) })
+    return () => { current = false }
+  }, [analysisOpen, analysisConfirming, validScope, adapter, conversationId, analysisScope, scopeAttempt])
+  useEffect(() => {
+    if (!analysisOpen || !analysisConfirming || !adapter?.prepareAnalysis || !selectedAnalysisModel || !validScope ||
+      (adapter.previewInsightScope && !currentScope?.analyzableMessages)) {
       setPreparing(false)
       setPreparation(undefined)
       return
@@ -429,11 +450,13 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
     setPreparing(true)
     setPreparation(undefined)
     setAnalysisError('')
-    void adapter.prepareAnalysis({ conversationId, modelId: analysisModelId, ...(effectiveAnalysisThinkingLevel ? { thinkingLevel: effectiveAnalysisThinkingLevel } : {}) }).then(value => {
+    void adapter.prepareAnalysis({ conversationId, modelId: analysisModelId, scope: analysisScope,
+      ...(effectiveAnalysisThinkingLevel ? { thinkingLevel: effectiveAnalysisThinkingLevel } : {}) }).then(value => {
       if (current) setPreparation(value)
     }, error => { if (current) setAnalysisError(errorText(error)) }).finally(() => { if (current) setPreparing(false) })
     return () => { current = false }
-  }, [analysisOpen, analysisConfirming, adapter, conversationId, identityRevision, analysisModelId, effectiveAnalysisThinkingLevel, selectedAnalysisModel, prepareAttempt])
+  }, [analysisOpen, analysisConfirming, adapter, conversationId, identityRevision, analysisModelId, effectiveAnalysisThinkingLevel,
+    selectedAnalysisModel, prepareAttempt, analysisScope, validScope, currentScope])
   useEffect(() => {
     const query = window.matchMedia('(max-width: 1000px)')
     const update = () => { setNarrow(query.matches); if (query.matches) setThreadListOpen(false) }
@@ -683,33 +706,34 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
     } catch (error) { if (stillPending()) setSendError(errorText(error)) }
     finally { if (alive.current && generation === threadGeneration.current) setConfirmingAcceptance(false) }
   }
+  const rangeCount = preparation?.analyzableMessages ?? currentScope?.analyzableMessages ??
+    (!adapter?.previewInsightScope && analysisScope.kind === 'all' ? messageCount : undefined)
+  const scopeLoading = !!adapter?.previewInsightScope && validScope && !currentScope && !scopeError
+  const canStart = !!selectedAnalysisModel && validScope && !scopeLoading && !scopeError && rangeCount !== 0 &&
+    !modelSaving.analysis && !preparing && (adapter?.prepareAnalysis ? !!preparation : analysisScope.kind === 'all' || rangeCount !== undefined)
+
   function analyze() {
-    if (!selectedAnalysisModel || modelSaving.analysis || preparing || (adapter?.prepareAnalysis && !preparation)) return
-    void analysis.run({ conversationId, modelId: analysisModelId, ...(effectiveAnalysisThinkingLevel ? { thinkingLevel: effectiveAnalysisThinkingLevel } : {}),
+    if (!canStart || !analysisAnchor.current || approveAnalysisEntry?.(analysisAnchor.current) === false) return
+    void analysis.run({ conversationId, modelId: analysisModelId,
+      ...(analysisScope.kind === 'dates' ? { scope: analysisScope } : {}),
+      ...(effectiveAnalysisThinkingLevel ? { thinkingLevel: effectiveAnalysisThinkingLevel } : {}),
       ...(preparation ? { preparationToken: preparation.token, requestId: crypto.randomUUID() } : {}) })
   }
-  const completed = valid(progress?.analyzedMessages) ? progress.analyzedMessages : 0
-  const total = valid(progress?.totalMessages) ? progress.totalMessages : messageCount
-  const percentage = valid(total) && total > 0 ? Math.min(100, completed / total * 100) : undefined
+  const completed = progress?.analyzedMessages
+  const total = progress?.totalMessages
+  const percentage = insightPercentage(completed, total)
   const percentText = percentage === undefined ? undefined : percentage > 0 && percentage < 1 ? '<1%'
     : percentage > 99 && percentage < 100 ? '>99%' : Math.round(percentage) + '%'
   const analysisUsage = analysisResult?.usage ?? progress?.usage
-  const analysisSpeed = analysisUsage?.outputTokensPerSecond ?? progress?.outputTokensPerSecond
-  const hasAnalysisUsage = analysisUsage && Object.values(analysisUsage).some(valid)
   const confirmAnalysis = () => { setPreparation(undefined); setAnalysisConfirming(true); setAnalysisError(''); setPrepareAttempt(value => value + 1) }
   const activeTask = progress?.task
   const pauseSupported = !!adapter?.continueAnalysis
   const waitingForStart = analysisState === 'running' && pauseSupported &&
     (!activeTask || !['queued', 'running', 'summarizing'].includes(activeTask.state))
   const report = analysisResult?.task?.report
-  const titles = {
-    idle: '整理成记忆', running: '正在整理', done: '记忆已生成', interrupted: '生成中断',
-    stopped: pauseSupported ? '生成已暂停' : '已停止', failed: '生成失败',
-  }
-  let statusTitle = titles[analysisState]
-  if (analysis.stopping) statusTitle = '正在暂停'
-  else if (waitingForStart) statusTitle = '正在准备生成'
-  else if (analysisState === 'running' && activeTask?.state === 'summarizing') statusTitle = '正在撰写记忆'
+  const titles = { idle: '生成中', running: '生成中', done: '已完成', interrupted: '生成失败',
+    stopped: pauseSupported ? '已暂停' : '已停止', failed: '生成失败' } as const
+  const statusTitle = analysis.stopping ? '正在暂停' : titles[analysisState]
   const closeAnalysis = () => {
     setAnalysisOpen(false); setShowReport(false)
     if (analysisState !== 'idle') setAnalysisConfirming(false)
@@ -724,72 +748,96 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
       else composer.current?.focus()
     })
   }
-  const coverageDescription = progress && valid(total) ? `${statusTitle}，已整理 ${number(completed)} / ${number(total)} 条` : statusTitle
+  const coverageDescription = completed !== undefined && total !== undefined
+    ? `${statusTitle}，已处理 ${formatInsightNumber(completed)} / ${formatInsightNumber(total)} 条`
+    : analysisState === 'idle' ? undefined : statusTitle
+  const runDuration = activeTask?.elapsedMs
+  const failure = analysisState === 'failed' || analysisState === 'interrupted'
+  const reportAvailable = analysisState === 'done' && analysisResult?.taskId && (onOpenAnalysisResult || report && !isInsightReport(report))
+  function openAnalysis() {
+    if (!analysisAnchor.current || (analysisConfirming && approveAnalysisEntry?.(analysisAnchor.current) === false)) return
+    setAnalysisOpen(true)
+  }
+  function again() {
+    if (!analysisAnchor.current) return
+    if (approveAnalysisEntry?.(analysisAnchor.current) === false) { closeAnalysis(); return }
+    setAnalysisScope({ kind: 'all' })
+    confirmAnalysis()
+  }
   const analysisControl = <>
     <button ref={analysisAnchor} type="button" className="conversation-analysis-trigger" aria-expanded={analysisOpen} aria-description={coverageDescription} title={coverageDescription}
-      onClick={() => analysisOpen ? closeAnalysis() : setAnalysisOpen(true)}>
-       {analysisState === 'done' ? <Check aria-hidden="true" /> : <svg className="memory-coverage-ring" viewBox="0 0 24 24" aria-hidden="true">
-        <circle className="memory-ring-track" cx="12" cy="12" r="9" />
-        <circle className="memory-ring-value" cx="12" cy="12" r="9" pathLength="100" strokeDasharray={`${percentage ?? 0} 100`} transform="rotate(-90 12 12)" />
-      </svg>}整理成记忆
+      onClick={() => analysisOpen ? closeAnalysis() : openAnalysis()}>
+      {analysisState === 'done' ? <Check aria-hidden="true" className="insight-complete-icon" /> : <InsightRing percentage={percentage} />}会话洞察
     </button>
-    {analysisOpen && <Popover anchor={analysisAnchor} focusOnOpen label="记忆生成状态" onClose={closeAnalysis}>
+    {analysisOpen && <Popover anchor={analysisAnchor} focusOnOpen label="会话洞察状态" onClose={closeAnalysis}>
       <section className="analysis-sheet">
-        {showReport && report ? <>
+        <header className="analysis-sheet-title"><h3>会话洞察</h3><button type="button" className="insight-close"
+          aria-label="关闭会话洞察" onClick={closeAnalysis}><X aria-hidden="true" /></button></header>
+        {showReport && report && !isInsightReport(report) ? <>
           <h3 tabIndex={-1} ref={element => { element?.focus({ preventScroll: true }) }}>{isMemoryReport(report) ? '我们的记忆' : '分析报告'}</h3>
           <MemoryArticle report={report} />
           <footer><button type="button" className="analysis-secondary" onClick={() => setShowReport(false)}><ArrowLeft aria-hidden="true" />返回进度</button></footer>
         </> : analysisConfirming ? <>
-          <h3>整理成记忆</h3>
-          <p className="analysis-description">{preparation?.title ?? title}{(preparation?.analyzableMessages ?? messageCount) !== undefined && ` · ${number(preparation?.analyzableMessages ?? messageCount!)} 条消息`}</p>
-          {!!adapter?.models.length && <div className="analysis-model-row">
+          <p className="analysis-conversation">当前会话：{preparation?.title ?? title}</p>
+          <InsightScopeFields value={analysisScope} onChange={scope => {
+            setAnalysisScope(scope); setPreparation(undefined); setScopeError(''); setAnalysisError('')
+          }} count={rangeCount} start={sourceStartTimeMs ?? (analysisScope.kind === 'all' ? currentScope?.sourceStartTimeMs : undefined)}
+            end={sourceEndTimeMs ?? (analysisScope.kind === 'all' ? currentScope?.sourceEndTimeMs : undefined)}
+            loading={scopeLoading} available={!!adapter} />
+          {scopeError && <p role="alert" className="conversation-error">{scopeError}{' '}
+            <button className="analysis-secondary" type="button" onClick={() => setScopeAttempt(value => value + 1)}>重试</button>
+          </p>}
+          <div className="analysis-model-row">
             <span>分析模型</span>
-            <ModelSelector label="分析模型" models={adapter.models} value={selectedAnalysisModel?.id ?? ''}
+            {adapter?.models.length ? <div className="analysis-model-options"><ModelSelector label="分析模型" models={adapter.models} value={selectedAnalysisModel?.id ?? ''}
               disabled={modelSaving.analysis} describedBy={modelErrors.analysis ? `${panelId}-analysis-model-error` : undefined}
               onSelect={id => { void chooseModel('analysis', id) }} />
-            <ThinkingSelector levels={selectedAnalysisModel?.thinkingLevels} value={analysisThinkingLevel} onSelect={setAnalysisThinkingLevel} disabled={modelSaving.analysis || !selectedAnalysisModel} />
-          </div>}
+            {selectedAnalysisModel?.thinkingLevels?.length ? <ThinkingSelector levels={selectedAnalysisModel.thinkingLevels} value={analysisThinkingLevel} onSelect={setAnalysisThinkingLevel} disabled={modelSaving.analysis} /> : null}</div>
+              : <div className="analysis-model-unavailable"><span>暂无可用模型</span>
+                {onConfigureModels && <button type="button" className="analysis-link" onClick={() => configureModels(true)}>去配置</button>}
+              </div>}
+          </div>
+          <p className="analysis-notice">所选内容将发送至所选模型服务。</p>
           {modelErrors.analysis && <p id={`${panelId}-analysis-model-error`} role="alert" className="conversation-error">{modelErrors.analysis}</p>}
-          {messageCount === 0 && !adapter?.prepareAnalysis ? <p className="analysis-notice">请先导入聊天记录。</p>
-            : !selectedAnalysisModel && <p className="analysis-notice">{adapter?.models.length ? '请选择分析模型。' : onConfigureModels ? '选择模型后即可整理这段聊天。' : '请在设置中添加模型。'}</p>}
           {analysisError && <p role="alert" className="conversation-error">{analysisError}</p>}
           <footer>
             <button type="button" className="analysis-secondary" onClick={closeAnalysis}>取消</button>
-            {!adapter?.models.length && onConfigureModels && <button type="button" className="analysis-primary" onClick={() => configureModels(true)}>配置模型</button>}
-            {selectedAnalysisModel && (adapter?.prepareAnalysis ? !!preparation : messageCount !== 0) &&
-              <button type="button" disabled={preparing || modelSaving.analysis} className="analysis-primary" onClick={analyze}>生成记忆<ArrowRight aria-hidden="true" /></button>}
-            {selectedAnalysisModel && adapter?.prepareAnalysis && !preparing && !preparation &&
-              <button type="button" className="analysis-primary" onClick={confirmAnalysis}>重新核对</button>}
+            {analysisError && selectedAnalysisModel && adapter?.prepareAnalysis && !preparing && !preparation &&
+              <button type="button" className="analysis-secondary" onClick={confirmAnalysis}>重新核对</button>}
+            <button type="button" disabled={!canStart} className="analysis-primary" onClick={analyze}>开始洞察</button>
           </footer>
         </> : <>
-          <h3><span role="status">{statusTitle}</span></h3>
+          <div className="analysis-progress-heading"><p className="analysis-conversation">当前会话：{title}</p><InsightStatus status={statusTitle} /></div>
           <div className="analysis-meter">
-            <div className="analysis-meter-values"><span>{progress ? `已整理 ${number(completed)} / ${number(progress.totalMessages)} 条` : valid(total) ? `当前会话 ${number(total)} 条消息` : '等待消息总数'}</span>
+            <strong>消息处理进度</strong>
+            <div className="analysis-meter-values"><span>{completed !== undefined && total !== undefined
+              ? `已处理 ${formatInsightNumber(completed)} / ${formatInsightNumber(total)} 条` : '—'}</span>
               {percentText && <strong>{percentText}</strong>}</div>
-            <div role="progressbar" aria-label="记忆生成进度" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percentage}
+            <div role="progressbar" aria-label="消息处理进度" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percentage}
               className="analysis-track"><span style={{ width: `${percentage ?? 0}%` }} /></div>
           </div>
-          {analysis.resumable && <p className="analysis-notice">{completed > 0 && completed === total ? '继续撰写文稿。'
-            : completed > 0 ? '从已保存的进度继续。' : '继续时从首批消息开始。'}</p>}
-          {hasAnalysisUsage ? <dl className="analysis-usage" role="group" aria-label="分析用量">
-            <div><dt>输入 token</dt><dd>{valid(analysisUsage.inputTokens) ? number(analysisUsage.inputTokens) : '未提供'}</dd></div>
-            <div><dt>输出 token</dt><dd>{valid(analysisUsage.outputTokens) ? number(analysisUsage.outputTokens) : '未提供'}</dd></div>
-            <div><dt>总耗时</dt><dd>{seconds(analysisUsage.durationMs)}</dd></div>
-          </dl> : analysisState === 'done' && <p className="analysis-notice">未提供用量统计。</p>}
-          {valid(analysisSpeed) && <p className="analysis-notice">生成速度 {number(analysisSpeed)} token/秒</p>}
+          <dl className="insight-task-runtime">
+            <div><dt>已运行时间</dt><dd>{insightElapsed(runDuration)}</dd></div>
+            <div><dt>平均分析速度</dt><dd>{insightSpeed(completed, runDuration)}</dd></div>
+          </dl>
+          <InsightTaskModel task={activeTask} model={selectedAnalysisModel?.label} />
+          <InsightTaskDetails usage={analysisUsage} range={activeTask ? insightRange(activeTask) : undefined} outputSpeed={progress?.outputTokensPerSecond} />
           {analysisError && <p role="alert" className="conversation-error">{analysisError}</p>}
           <footer>{analysisState === 'running'
             ? <button type="button" disabled={analysis.stopping || waitingForStart} className="analysis-secondary" onClick={() => { void analysis.stop() }}>
-                {pauseSupported ? <Pause aria-hidden="true" /> : <Square aria-hidden="true" />}{pauseSupported ? '暂停生成' : '停止生成'}</button>
-            : <button type="button" disabled={analysis.stopping} className="analysis-secondary" onClick={confirmAnalysis}>{analysisState === 'failed' && !activeTask ? '重试生成' : '重新生成'}</button>}
-            {analysis.resumable && <button className="analysis-primary" type="button" disabled={analysis.stopping} onClick={() => { void analysis.run() }}><Play aria-hidden="true" />继续生成</button>}
-            {analysisState === 'done' && analysisResult?.taskId && (report || onOpenAnalysisResult) &&
+                {pauseSupported ? <Pause aria-hidden="true" /> : <Square aria-hidden="true" />}{pauseSupported ? '暂停生成' : '停止生成'}</button> : null}
+            {analysisState !== 'running' && analysisState !== 'idle' &&
+              <button type="button" className="analysis-secondary" onClick={again}>{failure && !activeTask ? '重试生成' : '再次洞察'}</button>}
+            {analysis.resumable && <button className="analysis-primary" type="button" disabled={analysis.stopping} onClick={() => { void analysis.run() }}>
+              {failure ? <RotateCw aria-hidden="true" /> : <Play aria-hidden="true" />}{failure ? '重试' : '继续洞察'}</button>}
+            {reportAvailable &&
               <button type="button" className="analysis-primary" onClick={() => {
-                if (onOpenAnalysisResult) onOpenAnalysisResult(analysisResult.taskId!)
-                else setShowReport(true)
-              }}>查看记忆<ArrowRight aria-hidden="true" /></button>}
+                if (onOpenAnalysisResult) {
+                  closeAnalysis()
+                  onOpenAnalysisResult(analysisResult!.taskId!)
+                } else setShowReport(true)
+              }}>查看报告<ArrowRight aria-hidden="true" /></button>}
           </footer>
-          {analysisState === 'done' && onOpenAnalysisResult && !analysisResult?.taskId && <p className="analysis-notice">未找到成稿。</p>}
         </>}
       </section>
     </Popover>}

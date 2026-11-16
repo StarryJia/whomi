@@ -1,0 +1,167 @@
+{
+  "runId": "memory-capacity-baseline-20261116",
+  "caseName": "conditional-reschedule",
+  "closed": true,
+  "resumePermitted": false,
+  "result": {
+    "state": "failed",
+    "error": "INVALID_EVIDENCE",
+    "calls": 4,
+    "httpRequests": 4,
+    "elapsedMs": 108363,
+    "inputCharged": 15428,
+    "outputCharged": 7386,
+    "trialRequestsAfterPhase": 13,
+    "accounting": {
+      "incremental": {
+        "httpRequests": 4,
+        "elapsedMs": 108363,
+        "inputCharged": 15428,
+        "outputCharged": 7386
+      }
+    }
+  },
+  "originalSourceHash": "907c6b680d1acc0e4c021e7ae6c26393d1fd144c9c6f45d6ee4a47b316640b2d",
+  "completedReadingMessages": 72,
+  "failedBatchMessageIds": [
+    "73",
+    "74",
+    "75",
+    "76",
+    "77",
+    "78",
+    "79",
+    "80",
+    "81",
+    "82",
+    "83",
+    "84",
+    "85",
+    "86",
+    "87",
+    "88",
+    "89",
+    "90"
+  ],
+  "relatedOriginalIds": [
+    "1",
+    "2"
+  ],
+  "naturalCandidates": 1,
+  "acceptedCandidateUpdates": 0,
+  "candidateState": "pending",
+  "checkingRounds": 0,
+  "rejectedUpdate": {
+    "action": "resolve",
+    "overlappingIds": [
+      "62",
+      "63"
+    ],
+    "repeatedOldNotes": [
+      {
+        "sourceId": "62",
+        "visibleKnownExcerpt": true,
+        "exactOriginal": true
+      },
+      {
+        "sourceId": "63",
+        "visibleKnownExcerpt": true,
+        "exactOriginal": true
+      }
+    ],
+    "finding": {
+      "revisedObservation": "最初两项前提已可核实：林舟明确确认能来，以及旧餐厅300元订金能原路退回；原话将其用于从10月31日晚改至11月1日晚，并要求两件未确认前不动原位子，不宜仅概括成换餐厅的条件。后续逐字材料显示合成对方已接受退成余额，不能继续把原路退款当作未经调整的现行硬条件；接受余额也未自动取消旧预约，更不等于林舟确认或已经决定改期换店。",
+      "supportingIds": [
+        "1",
+        "2",
+        "62",
+        "63",
+        "85",
+        "87",
+        "89"
+      ],
+      "counterexampleIds": [
+        "62",
+        "63"
+      ],
+      "alternativeExplanations": [],
+      "limitations": [
+        "原文62、63仅以knownCandidates中的逐字摘录可见，未提供对应完整消息。",
+        "余额方案被接受后，双方是否重新完整表述过全部改期条件，当前材料未显示。",
+        "截至10月22日，林舟参加情况及最终日期、餐厅仍未确定。"
+      ]
+    }
+  },
+  "frozenBaselineReplay": [
+    {
+      "control": "original",
+      "networkCalls": 0,
+      "stubCalls": 1,
+      "resultCode": "INVALID_EVIDENCE",
+      "samePrompt": true,
+      "sameSystemPrompt": true,
+      "cursorAfter": 72,
+      "candidateState": "pending"
+    },
+    {
+      "control": "disjoint-only",
+      "networkCalls": 0,
+      "stubCalls": 1,
+      "resultCode": "INVALID_EVIDENCE",
+      "samePrompt": true,
+      "sameSystemPrompt": true,
+      "cursorAfter": 72,
+      "candidateState": "pending"
+    },
+    {
+      "control": "current-notes-only",
+      "networkCalls": 0,
+      "stubCalls": 1,
+      "resultCode": "INVALID_EVIDENCE",
+      "samePrompt": true,
+      "sameSystemPrompt": true,
+      "cursorAfter": 72,
+      "candidateState": "pending"
+    },
+    {
+      "control": "both",
+      "networkCalls": 0,
+      "stubCalls": 1,
+      "resultCode": "OFFLINE_ACCEPTED_BATCH",
+      "samePrompt": true,
+      "sameSystemPrompt": true,
+      "cursorAfter": 90,
+      "candidateState": "finished"
+    }
+  ],
+  "reportGenerated": false,
+  "baselineFirstCaseReportsPreserved": [
+    {
+      "phase": "shared-workload-adaptive",
+      "sha256": "f46b6fd3f0e13b9d9a355ad407c60e2f0cca1eb7c2e82c3dbcdf88a168545f6a"
+    },
+    {
+      "phase": "shared-workload-direct",
+      "sha256": "5e3cf5b672319759d093a533bbb055a17a95b95095720f8ba6270f930030208a"
+    }
+  ],
+  "originalFilesUnchanged": true,
+  "originalHashes": {
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/conditional-reschedule-reading/attempts.jsonl": "5e3bf09e1dfda4d2b6e5e1639a87d00eaf1412321b618d78c59a74beb34e3050",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/conditional-reschedule-reading/checkpoint.json": "f61efdafcb4836f7532d1d0665ddc3f2deb3a50ff44b9a8069af4e6fb8273ab3",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/conditional-reschedule-reading/events.jsonl": "fc6c157b56cd449bd5a8e2194534b6167c3b503e5700cc2b29dc9cc870f23a2c",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/conditional-reschedule-reading/input.json": "da38ce5f8750c8fa3bf5b401394762b9f1260898526b55c366832d8f07533491",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/conditional-reschedule-reading/request-01.json": "946aad720bf0309270b0aff94331ea54948b022c53dc925939df75c0e96d6b81",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/conditional-reschedule-reading/request-02.json": "e3e670d8be239c33d3718968a1c646c76e595891036769739c5dec73d8c863e7",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/conditional-reschedule-reading/request-03.json": "1c6829b1862e666151129a28bb2e8d574b7a0bdf44507fbb397daebe57593383",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/conditional-reschedule-reading/request-04.json": "8495afa07457fe5f80c56ce2ea30968eb1be41a7618adefd41d1ebc35e422475",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/conditional-reschedule-reading/response-01.txt": "0b97c480a527e7499fb1205648b38ff95405eac87b896e88bb86c2166c3c6f7d",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/conditional-reschedule-reading/response-02.txt": "512e37c008426d954e151ba40158603817230fe8f55faffa5812574b5197ebe2",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/conditional-reschedule-reading/response-03.txt": "d3474bdfa5e8e9448f380b7ed69cada61633c228e3b59be7a31f5f0cb42bd40a",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/conditional-reschedule-reading/response-04.txt": "49a75c0483c97688f51185f582885e1aa6c435967fa52a12c181d7a5120298e3",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/conditional-reschedule-reading/result.json": "94efc00e8ebbf127a8f5ecf4d2641cb83e9fa9f98fc042dba7b5e82caf590f5c",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/conditional-reschedule-reading/snapshot.json": "fe738a045df85dad5f53caa5554a3f3044cccf3ff91d691e19f39fbcabaffdc8",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/halt.json": "81be88d64e4f3cbb5c2211aa6d8ad946c5490d42a26179c1508f527735a535b4",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/run-profile.json": "68c6169bd20e2edc718a58b512e9ccbfcdb5fe11dea6d40d4d4818841f48e0cd"
+  }
+}

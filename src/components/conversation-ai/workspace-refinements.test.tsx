@@ -237,11 +237,12 @@ it('没有模型时从记忆确认进入设置，返回确认原会话且不自�
     onConfigureModels={configure} references={[]} onClearReferences={() => {}} onJumpReference={() => {}}>
     {({analysisControl})=>analysisControl}
   </ConversationWorkspace>)
-  await user.click(screen.getByRole('button',{name:'整理成记忆'}))
-  await user.click(screen.getByRole('button',{name:'配置模型'}))
+  await user.click(screen.getByRole('button',{name:'会话洞察'}))
+  await user.click(screen.getByRole('button',{name:'去配置'}))
   expect(configure).toHaveBeenCalledTimes(1)
-  expect(screen.queryByText('虚构会话 · 24 条消息')).not.toBeInTheDocument()
+  expect(screen.queryByText('当前会话：虚构会话')).not.toBeInTheDocument()
   act(()=>back())
-  expect(await screen.findByText('虚构会话 · 24 条消息')).toBeVisible()
+  expect(await screen.findByText('当前会话：虚构会话')).toBeVisible()
+  expect(screen.getByText('24 条消息')).toBeVisible()
   expect(adapter.analyze).not.toHaveBeenCalled()
 })

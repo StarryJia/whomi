@@ -1,0 +1,65 @@
+{
+  "createdAt": "2026-11-15T16:27:50.667Z",
+  "baseCommit": "fee2af45380cb379ab40009449f467d1c50c4a8b",
+  "precedingActualRequestsInThisRun": 24,
+  "priorFailedRunRequests": 22,
+  "taskCalls": 50,
+  "totalRequests": 104,
+  "nodeVersion": "v24.12.0",
+  "files": [
+    {
+      "file": "electron/data/ai/insight-prompts.ts",
+      "sha256": "13956f6caa46dd1bb2be23a60251df5af51c2533b5ed98eddb18d8d0cb49dcc1"
+    },
+    {
+      "file": "electron/main/insight-checkpoint.ts",
+      "sha256": "9929950b70637cfddee7dff7be1a12505962486256dc0e0621c0c2408ebb6568"
+    },
+    {
+      "file": "electron/main/insight-generation.ts",
+      "sha256": "c16a763e7eb377d64145bb3faba89efdc9a78b5b4b6d9924bffd501d2bee07cf"
+    },
+    {
+      "file": "scripts/insight-quality.mjs",
+      "sha256": "bab96cf245e8cc8957da872b84cbf55762b58e711914593210242d3473830d9c"
+    },
+    {
+      "file": "tests/backend/insight-generation.test.ts",
+      "sha256": "6d1374ed3f3c62a239f12fea76340ee17903c947e4f447190a155668526f4185"
+    },
+    {
+      "file": "tests/backend/insight-reading-memory.test.ts",
+      "sha256": "3c3702f5c37f0aeab9266eeda89dad7565664d03ff3f4adf8acf7e6c95bb632a"
+    },
+    {
+      "file": "tests/quality/insight-comparison-profile.mjs",
+      "sha256": "d3a120ffe87ad6ba55e28056fe2a703a1f283b217bf190796e1e8959b28a2c82"
+    },
+    {
+      "file": "tests/quality/insight-comparison-run.mjs",
+      "sha256": "0717301158d1e580debcd8adbc9ae648d39d03cedb01f6eacb97106e465ab4b2"
+    },
+    {
+      "file": "tests/quality/insight-comparison-resume.ts",
+      "sha256": "da98d8b4aadb8f4c27a6c1dc4ff25f56bb18dbb1e73d0091b9ae516ab657a397"
+    },
+    {
+      "file": "tests/quality/insight-comparison.test.mjs",
+      "sha256": "05060cdfd9f578147b0db4ae4c5033d60f9601a234211873cfc8485792f1d87d"
+    },
+    {
+      "file": "tests/quality/insight-comparison.ts",
+      "sha256": "1da7ba554c17313be4986094e81c1dca9183085027fb80b13f619b42522188b1"
+    },
+    {
+      "file": "tests/quality/insight-quality.ts",
+      "sha256": "cdfc3fa3d6de52b34c7e55fef06d58cde628a5506185d9b2e0b2e67d81dd1fef"
+    },
+    {
+      "file": "tests/quality/insight-long-comparison-material.mjs",
+      "sha256": "450925083b1bfce661d1b81773a9a50e7800a526a3702c6bc6f732612fe1b2c7"
+    }
+  ],
+  "patchSha256": "79a412aeb3b8608d621ae5ca300841c86035dbe3626a78d13541f18f7bea4362",
+  "predecessorHash": "510ae27b7c28dbca1b22b0258113909e6f0cb2fee5a1c7d572091a76fc57eff3"
+}

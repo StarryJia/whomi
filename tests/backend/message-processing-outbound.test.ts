@@ -6,7 +6,7 @@ import { openStore } from '../../electron/data/db/open'
 import { createAiRepository } from '../../electron/data/ai/repository'
 import { createSettingsRepository } from '../../electron/data/settings/repository'
 import { createAiService } from '../../electron/main/ai-service'
-import { temporaryStore } from './helpers'
+import { temporaryStore, useLegacyAnalysisFixture } from './helpers'
 import { memoryModelReply } from '../desktop/fixtures/memory-model.mjs'
 
 type ModelRequest = { messages: { role: string; content: string | { type: string; text?: string }[] }[] }
@@ -141,6 +141,7 @@ describe('processed messages in actual model requests', () => {
   }, 20000)
 
   test('memory source and final requests use processed materials without rewriting the original messages', async () => {
+    useLegacyAnalysisFixture(store)
     const originals = seedSources()
     answer = request => memoryModelReply(request.messages, { title: '合成事件', text: 'U5约U6明天见；示例甲 example@example.com 13800138000' })
     const prepared = await service.prepareAnalysis({ conversationId: '1', modelId: 'model' })

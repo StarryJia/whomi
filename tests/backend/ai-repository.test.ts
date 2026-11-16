@@ -3,7 +3,7 @@ import Database from 'better-sqlite3'
 import { openStore, type Store } from '../../electron/data/db/open'
 import { schema, selfOptOutSchema, importStateSchema } from '../../electron/data/db/schema'
 import { createAiRepository } from '../../electron/data/ai/repository'
-import { temporaryStore } from './helpers'
+import { temporaryStore, useLegacyAnalysisFixture } from './helpers'
 import { currentMemoryContributions, type MemoryReport } from '../../src/shared/memory'
 import { createDataService } from '../../electron/data/service'
 import { createDataDispatcher } from '../../electron/data/dispatch'
@@ -16,7 +16,7 @@ afterEach(() => { for (const operation of cleanup.splice(0).reverse()) operation
 async function setup(legacyReports = true) {
   const temp = temporaryStore(), store = openStore(temp.path)
   cleanup.push(() => { store.close(); temp.cleanup() })
-  if (legacyReports) store.writer.exec("CREATE TEMP TRIGGER historical_report AFTER INSERT ON ai_analysis_tasks BEGIN UPDATE ai_analysis_tasks SET prompt_version='conversation-memory-v3' WHERE id=NEW.id; END")
+  useLegacyAnalysisFixture(store, legacyReports ? 'conversation-memory-v3' : 'conversation-memory-v4')
   store.writer.exec(`INSERT INTO conversations(id,title,kind,created_at_ms) VALUES(1,'示例甲','direct',0),(2,'示例乙','direct',0);
     INSERT INTO source_conversations(id,conversation_id,platform,namespace) VALUES(1,1,'example','one'),(2,2,'example','two');
     INSERT INTO memberships(id,conversation_id,source_conversation_id,source_key,display_name) VALUES(1,1,1,'me','本人'),(2,1,1,'other','对方'),(3,2,2,'other','另一人');

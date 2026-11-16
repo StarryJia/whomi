@@ -1,0 +1,92 @@
+{
+  "format": "conversation-insights-v1",
+  "aboutYou": [
+    {
+      "content": [
+        {
+          "text": "你完成了这次聚会的订场地、买票和通知工作，并表达了疲惫。当时你把负担概括为大家总等你安排，但也明确表示只是想先休息，聚会仍照常进行。",
+          "citationId": "1"
+        },
+        {
+          "text": "在 ta 提醒此前的分工后，你确认上个月由 ta 张罗、本月轮到你是事先说好的，并主动纠正了先前的概括，将这次疲惫归因于几件事集中到一起。这使你的表达从对长期分工的抱怨，收窄为对当下负荷的说明。",
+          "citationId": "20"
+        }
+      ]
+    }
+  ],
+  "relationship": [
+    {
+      "content": [
+        {
+          "text": "这次交流中，ta 最初回应的是你当下的辛苦，认可几件事碰在一起很费精力；这并不等于 ta 确认聚会一直由你安排。",
+          "citationId": "3"
+        },
+        {
+          "text": "随后 ta 回到具体分工，指出上个月在你出差时由 ta 订场地、通知大家，本月则按约定轮到你。你认可了这段经历和约定。因此，材料支持的是双方至少有过轮流承担组织工作的安排，而非你单方面持续包办；这一次，你们也完成了对不准确表述的提醒与修正。",
+          "citationId": "20"
+        }
+      ]
+    }
+  ],
+  "citations": [
+    {
+      "id": "1",
+      "conversationId": "1",
+      "fragments": [
+        {
+          "sources": [
+            {
+              "messageId": "1",
+              "revision": "c9fbcd7ba20c9bfaf6a9058e6c167011555c4a67cc3163ce61b0d2c5f6534e2e"
+            },
+            {
+              "messageId": "2",
+              "revision": "756a70a0b9503e5edf9d3d8d57bf26abc6406102b4348066f4b08bdc6649d002"
+            },
+            {
+              "messageId": "4",
+              "revision": "8c4a429917005c13f461d40440bd9bd268b2c25d56850c52e8b5229a4ae4da55"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "3",
+      "conversationId": "1",
+      "fragments": [
+        {
+          "sources": [
+            {
+              "messageId": "3",
+              "revision": "36b8d12e68274b199cc22fe2ec69d82b1e70b1a908192b5d564355dc2cf3fbdc"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "20",
+      "conversationId": "1",
+      "fragments": [
+        {
+          "sources": [
+            {
+              "messageId": "19",
+              "revision": "959ab6a8662024c13c185dac3151468d6875e7da7f72dd7be7f51db01f24af51"
+            },
+            {
+              "messageId": "20",
+              "revision": "efd53131197a4ce2ad4d53c3930dbbec3eab19ac938077a97bf3f6e0ef3676a5"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "材料只明确了上个月与本月的安排，无法确认更长期的组织工作是否均衡，也无法确认买票等具体任务是否始终按同一方式分担。",
+    "未提供后续是否调整分工或实际减轻负担的信息，不能据此认定疲惫已经得到解决。"
+  ],
+  "judgments": []
+}

@@ -1,0 +1,3015 @@
+{
+  "kind": "paired-capacity-workload-error-trace",
+  "networkCalls": 0,
+  "productionCodeEdited": false,
+  "trialRecoveryPerformed": false,
+  "readingResult": {
+    "state": "completed",
+    "calls": 13,
+    "httpRequests": 13,
+    "elapsedMs": 369295,
+    "inputCharged": 43284,
+    "outputCharged": 21688,
+    "trialRequestsAfterPhase": 13,
+    "accounting": {
+      "incremental": {
+        "httpRequests": 13,
+        "elapsedMs": 369295,
+        "inputCharged": 43284,
+        "outputCharged": 21688
+      }
+    }
+  },
+  "adaptiveResult": {
+    "state": "completed",
+    "calls": 1,
+    "httpRequests": 1,
+    "elapsedMs": 35555,
+    "inputCharged": 2942,
+    "outputCharged": 1950,
+    "trialRequestsAfterPhase": 14,
+    "accounting": {
+      "incremental": {
+        "httpRequests": 1,
+        "elapsedMs": 35555,
+        "inputCharged": 2942,
+        "outputCharged": 1950
+      },
+      "sharedReading": {
+        "httpRequests": 13,
+        "inputCharged": 43284,
+        "outputCharged": 21688,
+        "elapsedMs": 369295
+      },
+      "hypotheticalArmTotal": {
+        "httpRequests": 14,
+        "inputCharged": 46226,
+        "outputCharged": 23638,
+        "elapsedMs": 404850
+      }
+    },
+    "sharedBaseHash": "5314c634b7c7d362a8456114b873259b7f533eebb76fcc6c159adc61855c261a",
+    "pairWarnings": [],
+    "adaptiveWriting": {
+      "repair": false,
+      "outputLimit": 3000
+    }
+  },
+  "errors": [
+    {
+      "id": "borrow-answer-became-promise",
+      "firstDefiniteErrorStage": "writing",
+      "firstDefiniteErrorArtifact": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-adaptive/response-01.txt",
+      "precursorStage": "compression",
+      "precursorArtifact": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/response-11.txt",
+      "interpretation": "Source 38 and reading response 02 say answering questions about borrowing. Compression 08 still says answering borrowing questions. Compression 11 first shortens this to 答借书, retained in 12/13 and the writer input. That is ambiguous and loses 问题; the first explicit unsupported commitment 答应借书 occurs in writer response 01, then report.json unchanged.",
+      "source38": {
+        "id": "38",
+        "revision": "6f7b4c114ab9a9805b6cb915c233c2d1850cc3f9e382c5247ac1d3861caa9e98",
+        "senderName": "合成对方",
+        "isSelf": false,
+        "text": "我收到了，版本旁边写了出版社就好找很多。昨天后面两个人聊起来以后，大家都不太想散，我看你收笔记的时候还在一边回答借书的事。",
+        "sentAtMs": 1791594660000,
+        "replyToMessageId": null
+      },
+      "fragment": {
+        "text": "九号散场时，你一边收笔记一边答应借书，回家继续查书名和版本。你感到从订场到书单都要自己接住，讨论一冷场就赶紧接话，同时还担心大家赶车；十号虽想休息，却已经通知十八号照常，午睡后仍不想回群。这份疲惫不仅来自现场，也来自会前会后不断延伸的收尾。",
+        "citationId": "41",
+        "section": "aboutYou",
+        "paragraph": 0,
+        "contentIndex": 1
+      },
+      "qualification": "Source 46 says the other party did not promise lending on the owner’s behalf for the later inquiry. It does not prove that no earlier lending promise occurred; source 38 simply does not support the report’s affirmative claim.",
+      "citation": {
+        "id": "41",
+        "conversationId": "1",
+        "fragments": [
+          {
+            "sources": [
+              {
+                "messageId": "37",
+                "revision": "d5177dedb1baafc81598e4da240dd351fccf5e643b6f083a0676d06b03f7adc6"
+              },
+              {
+                "messageId": "38",
+                "revision": "6f7b4c114ab9a9805b6cb915c233c2d1850cc3f9e382c5247ac1d3861caa9e98"
+              },
+              {
+                "messageId": "39",
+                "revision": "1f6619a19bb5df05f21f3ee9bba301ebeefe73d5abbdd2444246313387d7746e"
+              },
+              {
+                "messageId": "40",
+                "revision": "cc81d885a3855da6481f92df71a8a8f471eeb5c680740be1aa794e4d225f2c6a"
+              },
+              {
+                "messageId": "41",
+                "revision": "b3e1833cf4c5a7fc9aed270d40481c1db2641942298e9a4c99122dc27886c771"
+              },
+              {
+                "messageId": "42",
+                "revision": "cb6c740445895224f1ba0584febd9d9287815ae83e9d338c354adda6b19a8bcc"
+              },
+              {
+                "messageId": "43",
+                "revision": "a49f1c43d04bc1dd387e9c4562c0ff2fa286c9ca151d665e55ee31fd7cf4d579"
+              },
+              {
+                "messageId": "45",
+                "revision": "dd5ed4f9689942e4b438de2db1e994c8470137ca1b29b960155b526b2007a7ac"
+              },
+              {
+                "messageId": "46",
+                "revision": "216d9cca4d08a5b50ed2469165e0a67faf565f98945e222843724b923b33c54e"
+              }
+            ]
+          }
+        ]
+      },
+      "citedRawSources": [
+        {
+          "id": "37",
+          "revision": "d5177dedb1baafc81598e4da240dd351fccf5e643b6f083a0676d06b03f7adc6",
+          "senderName": "合成本人",
+          "isSelf": true,
+          "text": "昨天那场开到快九点，回家又整理了大家推荐的书单。有人当时只说了作者，没说书名，我对着几个版本搜了一遍才补全，今天上午才发出去。",
+          "sentAtMs": 1791594000000,
+          "replyToMessageId": null
+        },
+        {
+          "id": "38",
+          "revision": "6f7b4c114ab9a9805b6cb915c233c2d1850cc3f9e382c5247ac1d3861caa9e98",
+          "senderName": "合成对方",
+          "isSelf": false,
+          "text": "我收到了，版本旁边写了出版社就好找很多。昨天后面两个人聊起来以后，大家都不太想散，我看你收笔记的时候还在一边回答借书的事。",
+          "sentAtMs": 1791594660000,
+          "replyToMessageId": null
+        },
+        {
+          "id": "39",
+          "revision": "1f6619a19bb5df05f21f3ee9bba301ebeefe73d5abbdd2444246313387d7746e",
+          "senderName": "合成本人",
+          "isSelf": true,
+          "text": "从订地方到把书单发完，感觉每次都得我推着才走。昨天你说可以让别人提问，可真到了现场，没人开口时我还是会马上接上，不然那一段安静很难熬。",
+          "sentAtMs": 1791595320000,
+          "replyToMessageId": null
+        },
+        {
+          "id": "40",
+          "revision": "cc81d885a3855da6481f92df71a8a8f471eeb5c680740be1aa794e4d225f2c6a",
+          "senderName": "合成对方",
+          "isSelf": false,
+          "text": "那一小段安静可能是在想，不一定是等你补上。你昨天问到第二个问题时，我正想起一件以前的事，还没组织好话，你已经换到下一段内容了。",
+          "sentAtMs": 1791595980000,
+          "replyToMessageId": null
+        },
+        {
+          "id": "41",
+          "revision": "b3e1833cf4c5a7fc9aed270d40481c1db2641942298e9a4c99122dc27886c771",
+          "senderName": "合成本人",
+          "isSelf": true,
+          "text": "我确实怕时间拖太晚，九点以后还有人要赶车。我现在只想把手机放一边歇会儿，十八号那场照常，通知已经发了，不是要因为这次累就临时取消。",
+          "sentAtMs": 1791596640000,
+          "replyToMessageId": null
+        },
+        {
+          "id": "42",
+          "revision": "cb6c740445895224f1ba0584febd9d9287815ae83e9d338c354adda6b19a8bcc",
+          "senderName": "合成对方",
+          "isSelf": false,
+          "text": "好，你先休息。我等会儿去买菜，手机也不会一直拿着。上午市场里有人送来新鲜蘑菇，卖菜的说最好今天吃，不要装在塑料袋里闷到明天。",
+          "sentAtMs": 1791597300000,
+          "replyToMessageId": null
+        },
+        {
+          "id": "43",
+          "revision": "a49f1c43d04bc1dd387e9c4562c0ff2fa286c9ca151d665e55ee31fd7cf4d579",
+          "senderName": "合成本人",
+          "isSelf": true,
+          "text": "蘑菇可以做汤，冰箱里那块豆腐也快到期了。如果你打算炒，我上次把它们洗完直接倒进锅，水一直出，最后像煮了一盘，味道倒没有坏。",
+          "sentAtMs": 1791597960000,
+          "replyToMessageId": null
+        },
+        {
+          "id": "45",
+          "revision": "dd5ed4f9689942e4b438de2db1e994c8470137ca1b29b960155b526b2007a7ac",
+          "senderName": "合成本人",
+          "isSelf": true,
+          "text": "我家的也是这种老旋钮，之前清理了一下火孔才好些，不过你先让师傅看吧。刚刚睡了半小时，醒来觉得肩膀不那么紧了，还是不想马上回群里。",
+          "sentAtMs": 1791599280000,
+          "replyToMessageId": null
+        },
+        {
+          "id": "46",
+          "revision": "216d9cca4d08a5b50ed2469165e0a67faf565f98945e222843724b923b33c54e",
+          "senderName": "合成对方",
+          "isSelf": false,
+          "text": "今天群里主要是在交换照片，暂时没有新的报名问题。有人拍到你桌上的那本书，我只把书名回给他了，没有替你答应借出，借不借还得你自己说。",
+          "sentAtMs": 1791599940000,
+          "replyToMessageId": null
+        }
+      ]
+    },
+    {
+      "id": "silence-counterexample-cited-neighboring-sources",
+      "firstDefiniteErrorStage": "writing",
+      "firstDefiniteErrorArtifact": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-adaptive/response-01.txt",
+      "precursorStage": "compression",
+      "precursorArtifact": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/response-08.txt",
+      "interpretation": "The concrete second-question counterexample is source 40. Reading response 02 preserves it with sources 38/39/40. Compression 08 merges that note with adjacent material and inherits 38–43; subsequent notes and the final writer input still contain source 40. Writer response 01 attaches citation 43 with only 41/42/43, none of which states the counterexample; report.json retains those IDs.",
+      "source40": {
+        "id": "40",
+        "revision": "cc81d885a3855da6481f92df71a8a8f471eeb5c680740be1aa794e4d225f2c6a",
+        "senderName": "合成对方",
+        "isSelf": false,
+        "text": "那一小段安静可能是在想，不一定是等你补上。你昨天问到第二个问题时，我正想起一件以前的事，还没组织好话，你已经换到下一段内容了。",
+        "sentAtMs": 1791595980000,
+        "replyToMessageId": null
+      },
+      "fragment": {
+        "text": "ta也曾提醒，你在九号提出第二个问题后，有人还在回忆，你就转入下一段；这提供了一个具体反例，说明至少那次沉默不等于无人回应，而不是证明所有冷场都该等待。",
+        "citationId": "43",
+        "section": "relationship",
+        "paragraph": 1,
+        "contentIndex": 1
+      },
+      "selectedCitation": {
+        "id": "43",
+        "conversationId": "1",
+        "fragments": [
+          {
+            "sources": [
+              {
+                "messageId": "41",
+                "revision": "b3e1833cf4c5a7fc9aed270d40481c1db2641942298e9a4c99122dc27886c771"
+              },
+              {
+                "messageId": "42",
+                "revision": "cb6c740445895224f1ba0584febd9d9287815ae83e9d338c354adda6b19a8bcc"
+              },
+              {
+                "messageId": "43",
+                "revision": "a49f1c43d04bc1dd387e9c4562c0ff2fa286c9ca151d665e55ee31fd7cf4d579"
+              }
+            ]
+          }
+        ]
+      },
+      "qualification": "Broad inherited sources reduce citation precision but did not erase source 40. The first incorrect final source selection is the writer output, not a parser remapping.",
+      "citation": {
+        "id": "43",
+        "conversationId": "1",
+        "fragments": [
+          {
+            "sources": [
+              {
+                "messageId": "41",
+                "revision": "b3e1833cf4c5a7fc9aed270d40481c1db2641942298e9a4c99122dc27886c771"
+              },
+              {
+                "messageId": "42",
+                "revision": "cb6c740445895224f1ba0584febd9d9287815ae83e9d338c354adda6b19a8bcc"
+              },
+              {
+                "messageId": "43",
+                "revision": "a49f1c43d04bc1dd387e9c4562c0ff2fa286c9ca151d665e55ee31fd7cf4d579"
+              }
+            ]
+          }
+        ]
+      },
+      "citedRawSources": [
+        {
+          "id": "41",
+          "revision": "b3e1833cf4c5a7fc9aed270d40481c1db2641942298e9a4c99122dc27886c771",
+          "senderName": "合成本人",
+          "isSelf": true,
+          "text": "我确实怕时间拖太晚，九点以后还有人要赶车。我现在只想把手机放一边歇会儿，十八号那场照常，通知已经发了，不是要因为这次累就临时取消。",
+          "sentAtMs": 1791596640000,
+          "replyToMessageId": null
+        },
+        {
+          "id": "42",
+          "revision": "cb6c740445895224f1ba0584febd9d9287815ae83e9d338c354adda6b19a8bcc",
+          "senderName": "合成对方",
+          "isSelf": false,
+          "text": "好，你先休息。我等会儿去买菜，手机也不会一直拿着。上午市场里有人送来新鲜蘑菇，卖菜的说最好今天吃，不要装在塑料袋里闷到明天。",
+          "sentAtMs": 1791597300000,
+          "replyToMessageId": null
+        },
+        {
+          "id": "43",
+          "revision": "a49f1c43d04bc1dd387e9c4562c0ff2fa286c9ca151d665e55ee31fd7cf4d579",
+          "senderName": "合成本人",
+          "isSelf": true,
+          "text": "蘑菇可以做汤，冰箱里那块豆腐也快到期了。如果你打算炒，我上次把它们洗完直接倒进锅，水一直出，最后像煮了一盘，味道倒没有坏。",
+          "sentAtMs": 1791597960000,
+          "replyToMessageId": null
+        }
+      ]
+    }
+  ],
+  "rawSources": [
+    {
+      "id": "37",
+      "revision": "d5177dedb1baafc81598e4da240dd351fccf5e643b6f083a0676d06b03f7adc6",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "昨天那场开到快九点，回家又整理了大家推荐的书单。有人当时只说了作者，没说书名，我对着几个版本搜了一遍才补全，今天上午才发出去。",
+      "sentAtMs": 1791594000000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "38",
+      "revision": "6f7b4c114ab9a9805b6cb915c233c2d1850cc3f9e382c5247ac1d3861caa9e98",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "我收到了，版本旁边写了出版社就好找很多。昨天后面两个人聊起来以后，大家都不太想散，我看你收笔记的时候还在一边回答借书的事。",
+      "sentAtMs": 1791594660000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "39",
+      "revision": "1f6619a19bb5df05f21f3ee9bba301ebeefe73d5abbdd2444246313387d7746e",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "从订地方到把书单发完，感觉每次都得我推着才走。昨天你说可以让别人提问，可真到了现场，没人开口时我还是会马上接上，不然那一段安静很难熬。",
+      "sentAtMs": 1791595320000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "40",
+      "revision": "cc81d885a3855da6481f92df71a8a8f471eeb5c680740be1aa794e4d225f2c6a",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "那一小段安静可能是在想，不一定是等你补上。你昨天问到第二个问题时，我正想起一件以前的事，还没组织好话，你已经换到下一段内容了。",
+      "sentAtMs": 1791595980000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "41",
+      "revision": "b3e1833cf4c5a7fc9aed270d40481c1db2641942298e9a4c99122dc27886c771",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "我确实怕时间拖太晚，九点以后还有人要赶车。我现在只想把手机放一边歇会儿，十八号那场照常，通知已经发了，不是要因为这次累就临时取消。",
+      "sentAtMs": 1791596640000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "42",
+      "revision": "cb6c740445895224f1ba0584febd9d9287815ae83e9d338c354adda6b19a8bcc",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "好，你先休息。我等会儿去买菜，手机也不会一直拿着。上午市场里有人送来新鲜蘑菇，卖菜的说最好今天吃，不要装在塑料袋里闷到明天。",
+      "sentAtMs": 1791597300000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "43",
+      "revision": "a49f1c43d04bc1dd387e9c4562c0ff2fa286c9ca151d665e55ee31fd7cf4d579",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "蘑菇可以做汤，冰箱里那块豆腐也快到期了。如果你打算炒，我上次把它们洗完直接倒进锅，水一直出，最后像煮了一盘，味道倒没有坏。",
+      "sentAtMs": 1791597960000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "45",
+      "revision": "dd5ed4f9689942e4b438de2db1e994c8470137ca1b29b960155b526b2007a7ac",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "我家的也是这种老旋钮，之前清理了一下火孔才好些，不过你先让师傅看吧。刚刚睡了半小时，醒来觉得肩膀不那么紧了，还是不想马上回群里。",
+      "sentAtMs": 1791599280000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "46",
+      "revision": "216d9cca4d08a5b50ed2469165e0a67faf565f98945e222843724b923b33c54e",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "今天群里主要是在交换照片，暂时没有新的报名问题。有人拍到你桌上的那本书，我只把书名回给他了，没有替你答应借出，借不借还得你自己说。",
+      "sentAtMs": 1791599940000,
+      "replyToMessageId": null
+    }
+  ],
+  "stages": [
+    {
+      "stage": "reading",
+      "requestPath": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/request-02.json",
+      "responsePath": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/response-02.txt",
+      "notes": [
+        {
+          "text": "关于10-09现场，合成对方称后段两人聊起后大家不愿散，本人收笔记时仍回答借书问题。本人感到从订场地到发书单都要自己推动，并称遇冷场会立即接话；对方提供具体补充：第二个问题时自己尚在组织回忆，本人已转到下一段。该例不能证明所有沉默都在等待本人补话。",
+          "sourceIds": [
+            "38",
+            "39",
+            "40"
+          ],
+          "index": 7
+        }
+      ]
+    },
+    {
+      "stage": "reading",
+      "requestPath": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/request-03.json",
+      "responsePath": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/response-03.txt",
+      "notes": [
+        {
+          "text": "10-10，有人因照片询问合成本人桌上的书，合成对方只回复书名，没有代为答应借出。本人说明书是朋友借的，不能随手转借；对方保留了询问者的消息。书名和询问者身份在本批未明确。",
+          "sourceIds": [
+            "46",
+            "47",
+            "48"
+          ],
+          "index": 2
+        }
+      ]
+    },
+    {
+      "stage": "reading",
+      "requestPath": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/request-06.json",
+      "responsePath": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/response-06.txt",
+      "notes": [
+        {
+          "text": "10-28，合成对方报告带回的杯子已洗完，清点剩十一个，另一个被人带走装水、承诺下次归还；本人确认按借出而非遗失理解，对方表示不必为凑整立即补买。",
+          "sourceIds": [
+            "112",
+            "113"
+          ],
+          "index": 6
+        }
+      ]
+    },
+    {
+      "stage": "compression",
+      "requestPath": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/request-08.json",
+      "responsePath": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/response-08.txt",
+      "inputNodeIds": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35
+      ],
+      "outputNode": 90,
+      "notes": [
+        {
+          "kind": "fact",
+          "text": "九号后段两人聊起、众人不愿散，本人收笔记仍答借书问题。本人感到订场到发书单都靠自己推动，冷场即接话；对方举第二问自己尚在组织回忆、本人已转段为例，不能推及所有沉默。本人也担心21点后有人赶车。",
+          "entryIds": [
+            "29:0",
+            "30:0"
+          ],
+          "index": 18,
+          "sourceIds": [
+            "38",
+            "39",
+            "40",
+            "41",
+            "42",
+            "43"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "10-10有人据照片问本人桌上书，对方只答书名，未承诺借出且留有询问消息。本人称书借自朋友，不能转借；本批书名、询问者未明。",
+          "entryIds": [
+            "35:0"
+          ],
+          "index": 21,
+          "sourceIds": [
+            "46",
+            "47",
+            "48"
+          ]
+        }
+      ]
+    },
+    {
+      "stage": "compression",
+      "requestPath": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/request-09.json",
+      "responsePath": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/response-09.txt",
+      "inputNodeIds": [
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68
+      ],
+      "outputNode": 91,
+      "notes": [
+        {
+          "kind": "unknown",
+          "text": "本人拟告知询书者电子版购买渠道，先归还借书；回复、归还未报，书名、出借者及询问者不明。",
+          "entryIds": [
+            "36:0"
+          ],
+          "index": 0,
+          "sourceIds": [
+            "47",
+            "48"
+          ]
+        }
+      ]
+    },
+    {
+      "stage": "compression",
+      "requestPath": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/request-10.json",
+      "responsePath": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/response-10.txt",
+      "inputNodeIds": [
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        86,
+        87,
+        88,
+        89
+      ],
+      "outputNode": 92,
+      "notes": [
+        {
+          "kind": "unknown",
+          "text": "10-28对方洗完带回杯子，剩十一个；另一个被参加者带走装水，称下次还。本人确认属借出非遗失，对方说不必凑整补买；借者身份、归还未明。",
+          "entryIds": [
+            "78:0",
+            "79:0"
+          ],
+          "index": 6,
+          "sourceIds": [
+            "112",
+            "113"
+          ]
+        }
+      ]
+    },
+    {
+      "stage": "compression",
+      "requestPath": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/request-11.json",
+      "responsePath": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/response-11.txt",
+      "inputNodeIds": [
+        90,
+        91
+      ],
+      "outputNode": 93,
+      "notes": [
+        {
+          "kind": "fact",
+          "text": "九号近21点散，后段两人聊起众人不愿散，本人收笔记仍答借书；回家补查仅报作者的书名版本，10-10上午发书单，对方确认收到且标出版社。",
+          "entryIds": [
+            "90:17",
+            "90:18"
+          ],
+          "index": 17,
+          "sourceIds": [
+            "37",
+            "38",
+            "39",
+            "40",
+            "41",
+            "42",
+            "43"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "本人感到订场至书单均靠自己推动、冷场即接话，也忧21点后赶车；对方举第二问尚在组织回忆本人已转段，不能推广所有沉默。",
+          "entryIds": [
+            "90:18"
+          ],
+          "index": 18,
+          "sourceIds": [
+            "38",
+            "39",
+            "40",
+            "41",
+            "42",
+            "43"
+          ]
+        }
+      ]
+    },
+    {
+      "stage": "compression",
+      "requestPath": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/request-12.json",
+      "responsePath": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/response-12.txt",
+      "inputNodeIds": [
+        93
+      ],
+      "outputNode": 94,
+      "notes": [
+        {
+          "kind": "fact",
+          "text": "九号近21点散，后段两人聊开众人不愿散；本人收笔记仍答借书，回家补查仅报作者的书名版本，10-10发书单，对方确认并标出版社。",
+          "entryIds": [
+            "93:17"
+          ],
+          "index": 14,
+          "sourceIds": [
+            "37",
+            "38",
+            "39",
+            "40",
+            "41",
+            "42",
+            "43"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "本人感到订场至书单靠自己、冷场即接，也忧21点后赶车；对方举第二问尚在回忆本人已转段，不能推广所有沉默。",
+          "entryIds": [
+            "93:18"
+          ],
+          "index": 15,
+          "sourceIds": [
+            "38",
+            "39",
+            "40",
+            "41",
+            "42",
+            "43"
+          ]
+        }
+      ]
+    },
+    {
+      "stage": "compression",
+      "requestPath": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/request-13.json",
+      "responsePath": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/response-13.txt",
+      "inputNodeIds": [
+        94,
+        92
+      ],
+      "outputNode": 95,
+      "notes": [
+        {
+          "kind": "fact",
+          "text": "九号近21点散，后段两人聊开；本人收笔记仍答借书，回家补查书名版本，10-10发书单，对方标出版社。本人觉订场至书单靠自己、冷场即接且忧赶车；对方举第二问尚在回忆便转段，非所有沉默皆如此。",
+          "entryIds": [
+            "94:14",
+            "94:15"
+          ],
+          "index": 12,
+          "sourceIds": [
+            "37",
+            "38",
+            "39",
+            "40",
+            "41",
+            "42",
+            "43"
+          ]
+        }
+      ]
+    }
+  ],
+  "checkpointNodes": [
+    {
+      "text": "关于10-09现场，合成对方称后段两人聊起后大家不愿散，本人收笔记时仍回答借书问题。本人感到从订场地到发书单都要自己推动，并称遇冷场会立即接话；对方提供具体补充：第二个问题时自己尚在组织回忆，本人已转到下一段。该例不能证明所有沉默都在等待本人补话。",
+      "sourceIds": [
+        "38",
+        "39",
+        "40"
+      ],
+      "children": [],
+      "facts": [
+        {
+          "text": "关于10-09现场，合成对方称后段两人聊起后大家不愿散，本人收笔记时仍回答借书问题。本人感到从订场地到发书单都要自己推动，并称遇冷场会立即接话；对方提供具体补充：第二个问题时自己尚在组织回忆，本人已转到下一段。该例不能证明所有沉默都在等待本人补话。",
+          "sourceIds": [
+            "38",
+            "39",
+            "40"
+          ],
+          "kind": "fact"
+        }
+      ],
+      "index": 29
+    },
+    {
+      "text": "10-10，有人因照片询问合成本人桌上的书，合成对方只回复书名，没有代为答应借出。本人说明书是朋友借的，不能随手转借；对方保留了询问者的消息。书名和询问者身份在本批未明确。",
+      "sourceIds": [
+        "46",
+        "47",
+        "48"
+      ],
+      "children": [],
+      "facts": [
+        {
+          "text": "10-10，有人因照片询问合成本人桌上的书，合成对方只回复书名，没有代为答应借出。本人说明书是朋友借的，不能随手转借；对方保留了询问者的消息。书名和询问者身份在本批未明确。",
+          "sourceIds": [
+            "46",
+            "47",
+            "48"
+          ],
+          "kind": "fact"
+        }
+      ],
+      "index": 35
+    },
+    {
+      "text": "10-28，合成对方报告带回的杯子已洗完，清点剩十一个，另一个被人带走装水、承诺下次归还；本人确认按借出而非遗失理解，对方表示不必为凑整立即补买。",
+      "sourceIds": [
+        "112",
+        "113"
+      ],
+      "children": [],
+      "facts": [
+        {
+          "text": "10-28，合成对方报告带回的杯子已洗完，清点剩十一个，另一个被人带走装水、承诺下次归还；本人确认按借出而非遗失理解，对方表示不必为凑整立即补买。",
+          "sourceIds": [
+            "112",
+            "113"
+          ],
+          "kind": "fact"
+        }
+      ],
+      "index": 78
+    },
+    {
+      "text": "2026年10月1日至10日：读书活动筹备、结束与负担反馈，以及书物、家务和近况；按主题保留计划、明确回复及未决结果。下称本人、对方均为合成人物。",
+      "sourceIds": [
+        "1",
+        "9",
+        "13",
+        "10",
+        "11",
+        "2",
+        "3",
+        "4",
+        "5",
+        "15",
+        "6",
+        "7",
+        "8",
+        "12",
+        "14",
+        "16",
+        "17",
+        "18",
+        "19",
+        "20",
+        "21",
+        "22",
+        "23",
+        "24",
+        "25",
+        "26",
+        "27",
+        "37",
+        "38",
+        "28",
+        "29",
+        "30",
+        "31",
+        "33",
+        "34",
+        "35",
+        "36",
+        "39",
+        "40",
+        "41",
+        "42",
+        "43",
+        "45",
+        "46",
+        "44",
+        "48",
+        "47"
+      ],
+      "children": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35
+      ],
+      "facts": [
+        {
+          "kind": "unknown",
+          "text": "10-01本人问妥三号社区活动室，14点可入；人数变动，旧表不能直接用。新增一人后申请圆桌改两排桌，核表及管理员确认未明，不能由活动结束倒推；本人随后确认已吃午饭。",
+          "sourceIds": [
+            "1",
+            "9",
+            "13",
+            "10",
+            "11"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "10-01对方提醒修路易走错入口；本人确认位置、新入口照片已发，三位新人已入临时群。证件只登记预约联系人，本人携带即可。",
+          "sourceIds": [
+            "2",
+            "3",
+            "4",
+            "5"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "对方10-01称投影线前晚接电脑测试正常，承诺三号带；实际携带、使用未明。",
+          "sourceIds": [
+            "4",
+            "5"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "本人10-01称订场地、通知及杂讯耗半天，10-04称仍须记挂预约、报名确认和现场提醒，回家不想决定晚饭；到场时椅子、水已摆好，布置者未明。",
+          "sourceIds": [
+            "3",
+            "15"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "10-01本人确认去年海边车票已入蓝信封；交换书封面咖啡渍未净，正文页码不受影响，拟交换前说明。对方仅擦除特别乱的铅笔批注。是否交换及说明污渍未明。",
+          "sourceIds": [
+            "5",
+            "6",
+            "7",
+            "8"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "10-01对方拟下课后、傍晚前取修好台灯，答应按本人提醒测试原需长按才亮的开关；取回、修复结果未明。对方说明上课回复慢，活动室若仅确认收到无需等回复。",
+          "sourceIds": [
+            "10",
+            "11",
+            "12"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "10-04本人回顾三号顺利结束，实到11人、比报名少1，名单已注缺席者提前说明加班；对方也记得其开场前留言，不认为临时失约。",
+          "sourceIds": [
+            "13",
+            "14"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "10-04本人确认散场仍在门口帮多人查公交，后发现门后公交图，拟下次拍照发群；对方提醒施工后入口会变，发送前须重核，尚未实施。",
+          "sourceIds": [
+            "16",
+            "17",
+            "18"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "10-04对方已洗净晾放活动杯子，尚未报告装箱；移走闲置保温壶后架子够用，本人同意不带窄收纳篮。旧壶内胆裂过，不能装热水。",
+          "sourceIds": [
+            "18",
+            "19",
+            "20",
+            "21"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "10-04本人脚酸拟附近散步、避施工木栈道；对方称入口已围、公园平路可走。本人后称已回来，路线未明。",
+          "sourceIds": [
+            "21",
+            "22",
+            "23"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "本人提及对方拍过唱片封面，本批无照片，唱片及能否播放未明。",
+          "sourceIds": [
+            "22",
+            "23"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "10-04本人暂猜绿萝偏向一侧因先前只开同一扇窗；对方建议稍转方向、勿骤移正午日光下，举自己植株晒伤为例，非已证实原因。",
+          "sourceIds": [
+            "23",
+            "24"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "10-07本人已发九号篇目、报名表补电子链接，并向两名只见旧通知者私下解释；称消息总绕回自己，是其负担概括。",
+          "sourceIds": [
+            "25"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "10-07本人确认九号18:30，拟提前取钥匙，已列三问；对方学校会议到18点，可能迟到，承诺提前放纸杯、延长线。取钥匙、放物及迟到结果仍未明。",
+          "sourceIds": [
+            "26",
+            "27",
+            "37",
+            "38"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "对方建议不必独问所有问题，可留空让别人接话。双方记得旧房文章门把手；本人不记得是否写拆房，拟当晚重读。循蓝封面、白书脊贴纸找到笔记本下纸本；对方称折角已展平、未夹物。本人另翻见童年地图。重读、拆房、篇名作者未明。",
+          "sourceIds": [
+            "28",
+            "29",
+            "30",
+            "31"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "10-07本人已回外婆电话，围巾长度刚好；外婆让天冷再戴，别为拍照捂汗，是否拍照未明。",
+          "sourceIds": [
+            "33",
+            "34",
+            "35"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "10-07对方拟先读完会前资料再读文章，认为同时处理会都不认真；完成情况未报。",
+          "sourceIds": [
+            "36"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "10-10本人称九号近21点散，回家补查仅报作者条目的书名版本，上午已发书单；对方确认收到，版本旁标出版社。",
+          "sourceIds": [
+            "37",
+            "38"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "九号后段两人聊起、众人不愿散，本人收笔记仍答借书问题。本人感到订场到发书单都靠自己推动，冷场即接话；对方举第二问自己尚在组织回忆、本人已转段为例，不能推及所有沉默。本人也担心21点后有人赶车。",
+          "sourceIds": [
+            "38",
+            "39",
+            "40",
+            "41",
+            "42",
+            "43"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "10-10本人想放手机休息，但十八号照常、通知已发；对方支持休息，称去买菜、不常看手机，后聊蘑菇豆腐做法。本人睡半小时肩膀较松，仍不想回群；对方称群里主要换照片，暂无新报名问题。",
+          "sourceIds": [
+            "41",
+            "42",
+            "43",
+            "45",
+            "46"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "10-10对方灶小火难调、稍转快灭，拟忙完请师傅，预约检查修复未明。本人自家老旋钮灶清火孔后改善，仍建议先找师傅，不能认定同故障。对方后报蘑菇汤做好、豆腐未散、油烟不多。",
+          "sourceIds": [
+            "44",
+            "45",
+            "48"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "10-10有人据照片问本人桌上书，对方只答书名，未承诺借出且留有询问消息。本人称书借自朋友，不能转借；本批书名、询问者未明。",
+          "sourceIds": [
+            "46",
+            "47",
+            "48"
+          ]
+        }
+      ],
+      "index": 90
+    },
+    {
+      "text": "按活动筹备、分工修正与生活事项导航；保留10月18日活动结果、27日安排及未完成事项，区分承诺、已实施与未知。日期均为2026年。",
+      "sourceIds": [
+        "47",
+        "48",
+        "49",
+        "61",
+        "50",
+        "52",
+        "56",
+        "58",
+        "53",
+        "55",
+        "60",
+        "57",
+        "59",
+        "62",
+        "63",
+        "64",
+        "65",
+        "66",
+        "67",
+        "71",
+        "72",
+        "74",
+        "73",
+        "75",
+        "76",
+        "77",
+        "84",
+        "85",
+        "79",
+        "81",
+        "82",
+        "83",
+        "93",
+        "94",
+        "97",
+        "86",
+        "87",
+        "88",
+        "89",
+        "90",
+        "91",
+        "92",
+        "98",
+        "99",
+        "100",
+        "105",
+        "106",
+        "95",
+        "96",
+        "108"
+      ],
+      "children": [
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68
+      ],
+      "facts": [
+        {
+          "kind": "unknown",
+          "text": "本人拟告知询书者电子版购买渠道，先归还借书；回复、归还未报，书名、出借者及询问者不明。",
+          "sourceIds": [
+            "47",
+            "48"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "对方拟饭后拆洗厨房滤网，未报完成。",
+          "sourceIds": [
+            "48"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "10-13十八号活动八人报名，一人带孩子；管理员休息，本人拟次日问矮椅，未保证有。10-16报告找到一把，家长称够用；实际询问日不明。",
+          "sourceIds": [
+            "49",
+            "61"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "10-13对方预约办证，带充电线、水，材料分三袋、原件复印件分放；到厅前有十六号，后称比预期快办完，仅补问地址，是否补打印未述。",
+          "sourceIds": [
+            "50",
+            "52",
+            "56",
+            "58"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "本人拟整理证件袋，留可用卡、其余拍照丢弃；后找到旧旅行清单，未确认整理完成。对方办证后拟收材料，亦未报完成。",
+          "sourceIds": [
+            "53",
+            "55",
+            "60"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "10-13本人为十八号印十份文章并装袋，因往常剩纸未按报名上限多印；当晚想看电影、不边看边改表，未报观影。",
+          "sourceIds": [
+            "57",
+            "59"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "10-16本人重发入门路线、时间，仍被熟人私询而感负担；不能据此认定公交图已拍摄、核对或发送。",
+          "sourceIds": [
+            "61"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "10-16对方回学校拿东西，问储物柜；老师允月底前借、禁过夜存贵重物，未报借用或拟存物。",
+          "sourceIds": [
+            "62"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "10-16本人称连续几场处理预约通知，后续名单书单令人疲惫、感觉被默认兜底；对方理解为累而非取消，本人确认十八号照常、东西备好，工作和小组消息影响吃饭注意力。此为感受，非完整分工证明。",
+          "sourceIds": [
+            "63",
+            "64",
+            "65"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "对方建议暂放群、愿转告临时变动；本人已关提醒、楼下吃栗子，拟回家洗澡阅读、次日下班核表。当晚无人待确认位置，核表结果未报。",
+          "sourceIds": [
+            "66",
+            "67",
+            "71"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "对方10-16承诺十八号按时到、堵车提前告知；后文支持参加，抵达时间及堵车不明。10-19双方回述十八号活动：矮椅用上，讨论较前两次慢；本人未在沉默时立刻换题，有人继续讲完，对方转述其称此次不再总担心说慢。",
+          "sourceIds": [
+            "72",
+            "74",
+            "73"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "会后本人仍待整理名单费用，称未写清的事务落到自己手里、不愿每环节都做；不代表无人承担其他工作。",
+          "sourceIds": [
+            "75"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "对方说明茶杯含旧余物，承诺分日期拍收据，本人同意等收据、不按带入物全算新购。10-19称收据找齐、拟次日拍总额日期；10-22本人已对上：茶九号新购，杯一半来自更早活动，不全计十八号。照片发送过程、最终费用结果未明。",
+          "sourceIds": [
+            "76",
+            "77",
+            "84",
+            "85"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "10-19本人称家中潮气减轻，开窗后书页不再那么软；南瓜粥已分当晚、次早两份。",
+          "sourceIds": [
+            "79",
+            "81"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "有人建议月底换短文，本人先称商量中、邀对方阅读；对方建议两篇暂留，先明确讨论目标而非急投票。10-19场地仅问空闲未预约；10-22本人读完短文觉关系绕，双方偏另一篇仍未定；10-25已订27日活动室并换选定篇目。篇名、推荐者及对方是否阅读不明。",
+          "sourceIds": [
+            "81",
+            "82",
+            "83",
+            "93",
+            "94",
+            "97"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "10-22本人称前日群内重申月底未定，仍收到待整理报名表。",
+          "sourceIds": [
+            "85"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "10-22对方显式回复63，以九月自己找活动室、确认名单、通知反驳“每次兜底”；本人确认九月出差缺席、由对方联络，承认抹去该次分工。",
+          "sourceIds": [
+            "86",
+            "87"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "对方称三号搬椅、试投影、摆茶水，十八号布置清理；本人确认三号到场已布好，原误认管理员做，承认把群内可见工作当全部。十八号具体工作仅对方陈述。",
+          "sourceIds": [
+            "88",
+            "89",
+            "90"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "本人收回“每次都只有我安排”，改为本月预约、群确认、会后书单集中自己，工作消息多时尤其累，希望分出一项；对方认可，不以补充贡献否定其疲惫求助。",
+          "sourceIds": [
+            "88",
+            "90",
+            "91"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "10-22议分担报名回复，受对方晚课限制；10-25约19:30—21:00由对方直接答能答的报名路线，次晚有课不能接，21点后新问次日处理，最终名单仍本人核。本人拟发公告，后已看到路线回复且未再逐条解释、觉清静；对方漏一条带孩子问题，已补问年龄，未保证所有孩子适合。公告、核名单及孩子后续未报。",
+          "sourceIds": [
+            "92",
+            "93",
+            "97",
+            "98",
+            "99",
+            "100",
+            "105",
+            "106"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "10-22对方称街口面包店重开、有小份切片，已买两片；本人想不排队时试买，未报购买。",
+          "sourceIds": [
+            "94",
+            "95",
+            "96"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "27日采购承担者未定，本人暂不顺手接下。10-25对方要求缓购，称尚余茶杯、次日核库存并拍照；家用茶快尽不等于柜上层活动茶用尽。照片、完整库存、采购决定未报。",
+          "sourceIds": [
+            "99",
+            "100",
+            "108"
+          ]
+        }
+      ],
+      "index": 91
+    },
+    {
+      "text": "按照片、活动分工与复盘、物品及日常事项归并；保留明确进展、条件与未决结果，不将单次轻松体验泛化。",
+      "sourceIds": [
+        "101",
+        "102",
+        "103",
+        "104",
+        "105",
+        "119",
+        "120",
+        "106",
+        "107",
+        "113",
+        "114",
+        "109",
+        "110",
+        "111",
+        "112",
+        "115",
+        "116",
+        "117",
+        "118"
+      ],
+      "children": [
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        86,
+        87,
+        88,
+        89
+      ],
+      "facts": [
+        {
+          "kind": "unknown",
+          "text": "10-25本人陪家人取照片，师傅弄反两张相近底片；本人明确回复对方，留侧头笑照，因家人觉得更像日常。经提示在电视柜下扁盒找到小螺丝刀，照片或相框暂靠书架。后本人称合影已装好挂起、白天不反光；对方回应挂稳就好、可慢慢找位置。夜间开灯检查及刺眼则移至旁墙的结果未报。",
+          "sourceIds": [
+            "101",
+            "102",
+            "103",
+            "104",
+            "105",
+            "119",
+            "120"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "对方已补问带孩子者年龄；年龄、参加条件及最终回复未见。拟当晚九点后在群里宣布当天答疑结束，是否发出未报。",
+          "sourceIds": [
+            "106"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "10-25本人仅称这次安排轻松，不保证以后；下月工作安排未出，可承担多少仍须商量。10-28双方仍待工作时间及对方两次晚课日期明确，再议下月首次活动采购、现场负责人和分工，当天不发完整安排；对方承诺获通知后告知可参加时间。",
+          "sourceIds": [
+            "107",
+            "113",
+            "114"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "本人10-25拟次日下班核名单；10-28虽已将前日活动最终到场十人填表，仍未明确名单核对完成。",
+          "sourceIds": [
+            "107",
+            "109"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "10-28本人称前日讨论提前结束，对方前晚答过路线的两人未再私问，自己开场前能看文章；该“前晚”不能径同10-25答复。对方观察本人不再总守门口，暂归因消息减少；换书者自行找书主。本人确认本次未同时回群、找人、讲开场，仅支持此次较轻松。",
+          "sourceIds": [
+            "109",
+            "110",
+            "111"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "10-28会后书单未整；本人拟当晚先记确定名字，其余等本人回复、不猜补；结果及待确认人名、书名未知。",
+          "sourceIds": [
+            "111"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "10-28对方洗完带回杯子，剩十一个；另一个被参加者带走装水，称下次还。本人确认属借出非遗失，对方说不必凑整补买；借者身份、归还未明。",
+          "sourceIds": [
+            "112",
+            "113"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "10-28对方转述前日一位新朋友想带自制书签；双方尊重自愿数量，不承诺人手一份、不把礼物变任务。身份、数量及是否带来未明。",
+          "sourceIds": [
+            "114",
+            "115"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "10-28本人倒剩水、晾背包，将文件袋下树叶夹旧报纸，免潮书页；对方猜来自活动室外长椅，未确认。本人称散场后面太咸，夜醒想喝水。",
+          "sourceIds": [
+            "115",
+            "116",
+            "117"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "2026-10-28对方煮无糖小米南瓜粥，南瓜为昨日切好；咸菜另放按需取，对比外面整碗难调淡的汤面。",
+          "sourceIds": [
+            "118"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "本人拟淘米、趁煮粥整理书桌，未报完成。对方拟晾洗好的衣服、趁天亮翻床单，晚些看本人发的照片，并说不必立即补拍；均未报完成，照片是否指合影或悬挂效果照未明。",
+          "sourceIds": [
+            "119",
+            "120"
+          ]
+        }
+      ],
+      "index": 92
+    },
+    {
+      "text": "10-01至10-25：活动筹备、负担陈述及后续修正，报名回复开始分担；另记物品、办证与生活事项。未报结果及待解指代保留为未知。",
+      "sourceIds": [
+        "1",
+        "9",
+        "13",
+        "10",
+        "11",
+        "2",
+        "3",
+        "4",
+        "5",
+        "15",
+        "6",
+        "7",
+        "8",
+        "12",
+        "14",
+        "16",
+        "17",
+        "18",
+        "19",
+        "20",
+        "21",
+        "22",
+        "23",
+        "24",
+        "25",
+        "26",
+        "27",
+        "37",
+        "38",
+        "28",
+        "29",
+        "30",
+        "31",
+        "33",
+        "34",
+        "35",
+        "36",
+        "39",
+        "40",
+        "41",
+        "42",
+        "43",
+        "45",
+        "46",
+        "44",
+        "48",
+        "47",
+        "49",
+        "61",
+        "57",
+        "59",
+        "50",
+        "52",
+        "56",
+        "58",
+        "53",
+        "55",
+        "60",
+        "62",
+        "63",
+        "64",
+        "65",
+        "66",
+        "67",
+        "71",
+        "72",
+        "74",
+        "73",
+        "75",
+        "76",
+        "77",
+        "84",
+        "85",
+        "79",
+        "81",
+        "82",
+        "83",
+        "93",
+        "94",
+        "97",
+        "86",
+        "87",
+        "88",
+        "89",
+        "90",
+        "91",
+        "92",
+        "98",
+        "99",
+        "100",
+        "105",
+        "106",
+        "95",
+        "96",
+        "108"
+      ],
+      "children": [
+        90,
+        91
+      ],
+      "facts": [
+        {
+          "kind": "unknown",
+          "text": "10-01本人问妥三号活动室14点可入；人数变动旧表不可直用，新增一人申请圆桌改两排桌，核表及管理员确认未明；已吃午饭。",
+          "sourceIds": [
+            "1",
+            "9",
+            "13",
+            "10",
+            "11"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "10-01修路易错入口，本人确认位置并发新入口照，三新人入临时群；仅预约联系人登记证件，本人带即可。",
+          "sourceIds": [
+            "2",
+            "3",
+            "4",
+            "5"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "10-01对方称前晚测投影线正常、承诺三号带，实际携带使用未明。",
+          "sourceIds": [
+            "4",
+            "5"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "本人10-01称订场通知耗半天，10-04仍挂心预约报名提醒，回家不想决定晚饭；到场椅水已摆好，后文补明布置贡献。",
+          "sourceIds": [
+            "3",
+            "15"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "10-01去年海边车票已入蓝信封；交换书封面咖啡渍未净、不影响正文页码，本人拟说明，对方仅擦乱铅笔批注；交换及说明未报。",
+          "sourceIds": [
+            "5",
+            "6",
+            "7",
+            "8"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "10-01对方拟下课后傍晚前取修好台灯，并测原需长按的开关，结果未报；上课回复慢，活动室仅确认收到无需等回复。",
+          "sourceIds": [
+            "10",
+            "11",
+            "12"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "10-04回顾三号顺利，实到11人、少于报名1人；名单注明缺席者提前告知加班，对方记得开场前留言，不视为临时失约。",
+          "sourceIds": [
+            "13",
+            "14"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "三号散场本人帮查公交，后见门后公交图，拟下次拍群；对方提醒施工入口将变，发送前重核，未报实施。",
+          "sourceIds": [
+            "16",
+            "17",
+            "18"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "10-04对方洗净晾杯、未报装箱；移开闲置壶后架够用，本人同意不带窄篮；旧壶内胆裂过，禁装热水。",
+          "sourceIds": [
+            "18",
+            "19",
+            "20",
+            "21"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "10-04本人脚酸拟附近散步避施工木栈道；对方称入口围起、公园平路可走；本人后已返回，路线不明。",
+          "sourceIds": [
+            "21",
+            "22",
+            "23"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "本人提及对方拍过唱片封面，唱片及能否播放未明。",
+          "sourceIds": [
+            "22",
+            "23"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "10-04本人猜绿萝偏斜因先前只开同窗，未证实；对方建议稍转、勿骤移正午日光，举自家晒伤为例。",
+          "sourceIds": [
+            "23",
+            "24"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "10-07本人发九号篇目、表内补电子链接，私下向两名仅见旧通知者解释；“消息绕回自己”为负担概括。",
+          "sourceIds": [
+            "25"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "九号18:30，本人列三问拟早取钥匙；对方会议至18点或迟到，承诺先放纸杯延长线；执行及迟到未明。",
+          "sourceIds": [
+            "26",
+            "27",
+            "37",
+            "38"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "对方建议留空让别人接话。旧房文章双方记得门把手，本人拟重读确认是否拆房；循蓝封面白书脊贴纸找到笔记本下纸本，对方称折角展平未夹物；另见童年地图。重读、拆房、篇名作者未明。",
+          "sourceIds": [
+            "28",
+            "29",
+            "30",
+            "31"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "10-07本人已回外婆电话，围巾长度合适；外婆嘱天冷再戴勿为拍照捂汗，拍照未明。",
+          "sourceIds": [
+            "33",
+            "34",
+            "35"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "10-07对方拟先读会前资料再读文章，怕兼顾不认真，完成未报。",
+          "sourceIds": [
+            "36"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "九号近21点散，后段两人聊起众人不愿散，本人收笔记仍答借书；回家补查仅报作者的书名版本，10-10上午发书单，对方确认收到且标出版社。",
+          "sourceIds": [
+            "37",
+            "38",
+            "39",
+            "40",
+            "41",
+            "42",
+            "43"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "本人感到订场至书单均靠自己推动、冷场即接话，也忧21点后赶车；对方举第二问尚在组织回忆本人已转段，不能推广所有沉默。",
+          "sourceIds": [
+            "38",
+            "39",
+            "40",
+            "41",
+            "42",
+            "43"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "10-10本人想休息，十八号照常且已通知；午睡半小时肩松仍不想回群，对方称群主要换照片无新报名问题，自己买菜不常看手机，后聊蘑菇豆腐。",
+          "sourceIds": [
+            "41",
+            "42",
+            "43",
+            "45",
+            "46"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "对方灶小火易灭拟请师傅，检查修复未报；本人旧灶清火孔改善不证明同故障，仍劝找师傅。汤已好、豆腐未散、油烟少；饭后拟拆洗滤网未报完成。",
+          "sourceIds": [
+            "44",
+            "45",
+            "48"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "10-10有人据照片问书，对方只答书名未允借、留询问消息；本人称借自朋友不可转借，拟告电子购买渠道并先还书，执行未报，书名及相关人未明。",
+          "sourceIds": [
+            "46",
+            "47",
+            "48"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "10-13十八号报名8人含一人带孩子；管理员休息，本人拟次日问矮椅未保证，10-16找到一把家长称够，实际询问日不明；已印装十份文章，因往常剩纸未按上限增印，拟看电影不改表，观影未报。",
+          "sourceIds": [
+            "49",
+            "61",
+            "57",
+            "59"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "10-13对方预约办证，携线水、材料分三袋且原复分放，前有16号；后较预期快办完仅补问地址，补打印未述。双方拟收整理证件，本人找到旧旅行清单，整理完成未报。",
+          "sourceIds": [
+            "50",
+            "52",
+            "56",
+            "58",
+            "53",
+            "55",
+            "60"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "10-16本人重发路线时间仍遭熟人私询觉累，不证明公交图已核发；对方获老师允许月底前借柜、禁贵重物过夜，未报借用或存物。",
+          "sourceIds": [
+            "61",
+            "62"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "10-16本人称连续预约通知及名单书单累、被默认兜底，工作群消息妨碍吃饭注意力；确认十八号照常备妥，非完整分工证据。对方愿转告临时变动；本人关提醒下楼吃栗子，拟洗澡阅读、次日核表，核表未报；当晚无人等位置确认。",
+          "sourceIds": [
+            "63",
+            "64",
+            "65",
+            "66",
+            "67",
+            "71"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "对方承诺十八号按时到、堵车先报；后证实参加但抵达堵车不明。10-19回述矮椅用上、讨论较前两次慢，本人留沉默让人讲完；对方转述该人不再总怕说慢。",
+          "sourceIds": [
+            "72",
+            "74",
+            "73"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "会后本人待理名单费用，不愿每环节都做、称未写清事务落自己，不代表无人做其他工作。",
+          "sourceIds": [
+            "75"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "对方称杯含旧余物，答应分日期拍收据；本人同意等、不把带入全算新购。10-19收据齐拟次日拍，10-22本人对明茶九号新购、杯半数来自更早活动，不全计十八号；照片过程及最终费用未明。",
+          "sourceIds": [
+            "76",
+            "77",
+            "84",
+            "85"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "10-19本人家潮气减、开窗后书页不再那么软；南瓜粥分当晚及次早两份。",
+          "sourceIds": [
+            "79",
+            "81"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "有人提月底换短文，本人称商量中邀对方读；对方建议留两篇先明讨论目标勿急投票。10-19仅问场地空闲；10-22本人读完觉关系绕、双方偏另一篇未定；10-25已订27日并换选定篇目。篇名推荐者、对方是否读未明。",
+          "sourceIds": [
+            "81",
+            "82",
+            "83",
+            "93",
+            "94",
+            "97"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "10-22本人称前日已在群重申月底未定，仍收到待整理报名表。",
+          "sourceIds": [
+            "85"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "10-22对方显式回复63，举九月找场地核名单通知反驳“每次兜底”；本人确认当时出差由对方联络，承认抹去分工。",
+          "sourceIds": [
+            "86",
+            "87"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "对方补称三号搬椅试投影摆茶水、十八号布置清理；本人确认三号已布好、原误认管理员做，承认只看群工作；十八号细项仅对方陈述。",
+          "sourceIds": [
+            "88",
+            "89",
+            "90"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "本人收回“每次只有我安排”，改称本月预约群确认书单集中自己，工作消息多尤其累，求分一项；对方认可，不以自身贡献否定疲惫。",
+          "sourceIds": [
+            "88",
+            "90",
+            "91"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "10-22议分报名回复受晚课限制；25日约19:30—21点对方直答能答的报名路线，次晚有课不接，21点后次日办，最终名单本人核。公告拟发未报；本人已见路线回复且不再逐答觉清静。漏回带孩子问题已补问年龄，未保证均适合；孩子后续及核表未报。",
+          "sourceIds": [
+            "92",
+            "93",
+            "97",
+            "98",
+            "99",
+            "100",
+            "105",
+            "106"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "10-22对方称街口面包店重开有小份切片、已买两片；本人想不排队时试买，未报购买。",
+          "sourceIds": [
+            "94",
+            "95",
+            "96"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "27日采购人未定，本人暂不接；25日对方要求缓购，称尚余茶杯、拟次日核库存拍照；家茶快尽不等于柜上层活动茶尽。照片、完整库存及采购未报。",
+          "sourceIds": [
+            "99",
+            "100",
+            "108"
+          ]
+        }
+      ],
+      "index": 93
+    },
+    {
+      "text": "10月读书活动的场地、材料、报名与费用；保留分工争议后的修正、有限接手条件，以及采购、书目和生活事项的未决结果。",
+      "sourceIds": [
+        "1",
+        "9",
+        "13",
+        "10",
+        "11",
+        "2",
+        "3",
+        "4",
+        "5",
+        "15",
+        "6",
+        "7",
+        "8",
+        "12",
+        "14",
+        "16",
+        "17",
+        "18",
+        "61",
+        "62",
+        "19",
+        "20",
+        "21",
+        "22",
+        "23",
+        "24",
+        "25",
+        "26",
+        "27",
+        "37",
+        "38",
+        "28",
+        "29",
+        "30",
+        "31",
+        "36",
+        "33",
+        "34",
+        "35",
+        "39",
+        "40",
+        "41",
+        "42",
+        "43",
+        "45",
+        "46",
+        "44",
+        "48",
+        "47",
+        "49",
+        "57",
+        "59",
+        "50",
+        "52",
+        "56",
+        "58",
+        "53",
+        "55",
+        "60",
+        "63",
+        "64",
+        "65",
+        "66",
+        "67",
+        "71",
+        "72",
+        "74",
+        "73",
+        "75",
+        "76",
+        "77",
+        "84",
+        "85",
+        "79",
+        "81",
+        "82",
+        "83",
+        "93",
+        "94",
+        "97",
+        "86",
+        "87",
+        "88",
+        "89",
+        "90",
+        "91",
+        "92",
+        "98",
+        "99",
+        "100",
+        "105",
+        "106",
+        "95",
+        "96",
+        "108"
+      ],
+      "children": [
+        93
+      ],
+      "facts": [
+        {
+          "kind": "unknown",
+          "text": "10-01问妥三号14点入场；增人须核旧表、申请圆桌改两排，确认未明。修路入口已确认发照，三新人入临时群，仅预约联系人本人带证；已午饭。",
+          "sourceIds": [
+            "1",
+            "9",
+            "13",
+            "10",
+            "11",
+            "2",
+            "3",
+            "4",
+            "5"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "对方称前晚投影线测好、承诺三号带，携用未明。",
+          "sourceIds": [
+            "4",
+            "5"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "本人10-01订场通知耗半天，10-04仍挂心提醒、回家不想决定晚饭；到场椅水已好，后补布置归属。",
+          "sourceIds": [
+            "3",
+            "15"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "10-01去年海边票入蓝信封；交换书咖啡渍未净但正文页码无碍，本人拟说明，对方仅擦乱铅笔批注；交换说明未报。",
+          "sourceIds": [
+            "5",
+            "6",
+            "7",
+            "8"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "10-01对方拟下课后傍晚前取修好台灯、测原需长按开关，未报；上课回复慢，活动室消息仅需确认收到。",
+          "sourceIds": [
+            "10",
+            "11",
+            "12"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "10-04回顾三号顺利，实到11、比报名少1；缺席者提前告知加班，对方记得开场前留言，非临时失约。",
+          "sourceIds": [
+            "13",
+            "14"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "三号本人帮查公交，后见门后图拟拍群；对方提醒施工入口将变须重核，未报实施。10-16重发路线时间仍被熟人私询，不证公交图已核发。",
+          "sourceIds": [
+            "16",
+            "17",
+            "18",
+            "61",
+            "62"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "10-04对方杯已洗晾、装箱未报；移闲壶后架够，本人不带窄篮；旧壶内胆裂过禁热水。",
+          "sourceIds": [
+            "18",
+            "19",
+            "20",
+            "21"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "10-04本人脚酸拟近处散步避施工木栈道；对方称入口围起、公园平路可走；本人已返回，路线不明。",
+          "sourceIds": [
+            "21",
+            "22",
+            "23"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "本人提对方拍过唱片封面，唱片及能否播放未明。",
+          "sourceIds": [
+            "22",
+            "23"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "本人猜绿萝偏斜因曾只开同窗，未证实；对方建议稍转勿骤晒，举自家晒伤为例。",
+          "sourceIds": [
+            "23",
+            "24"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "10-07发九号篇目补电子链接，并向两位仅见旧通知者解释；本人概括消息绕回自己。九号18:30拟早取钥匙、列三问；对方会至18点或迟到，允先放杯及延长线，执行未明。",
+          "sourceIds": [
+            "25",
+            "26",
+            "27",
+            "37",
+            "38"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "对方建议留空接话。旧房文章双方记得门把手，本人循蓝封面白脊贴纸找到笔记本下纸本，拟重读核是否拆房；对方称展平折角未夹物，另见童年地图。重读、拆房、篇名作者未明；对方拟先读会前资料，阅读未报。",
+          "sourceIds": [
+            "28",
+            "29",
+            "30",
+            "31",
+            "36"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "10-07已回外婆电话，围巾合长；外婆嘱天冷再戴勿为拍照捂汗，拍照未明。",
+          "sourceIds": [
+            "33",
+            "34",
+            "35"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "九号近21点散，后段两人聊开众人不愿散；本人收笔记仍答借书，回家补查仅报作者的书名版本，10-10发书单，对方确认并标出版社。",
+          "sourceIds": [
+            "37",
+            "38",
+            "39",
+            "40",
+            "41",
+            "42",
+            "43"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "本人感到订场至书单靠自己、冷场即接，也忧21点后赶车；对方举第二问尚在回忆本人已转段，不能推广所有沉默。",
+          "sourceIds": [
+            "38",
+            "39",
+            "40",
+            "41",
+            "42",
+            "43"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "10-10本人想歇，十八号照常已通知；午睡半小时肩松仍不想回群。对方称群主要换照无新报名问题，买菜少看手机，后聊蘑菇豆腐。",
+          "sourceIds": [
+            "41",
+            "42",
+            "43",
+            "45",
+            "46"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "对方灶小火易灭拟请师傅，未报修；本人旧灶清火孔改善不证同因，仍劝找师傅。汤好豆腐未散油烟少，饭后拆洗滤网未报。",
+          "sourceIds": [
+            "44",
+            "45",
+            "48"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "10-10有人据照问书，对方仅答书名未允借、留消息；本人称朋友书不可转借，拟告电子购买渠道并先还，未报；书名人物未明。",
+          "sourceIds": [
+            "46",
+            "47",
+            "48"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "10-13十八号报8人含带孩子者；管理员休息，本人拟次日问矮椅未保证，16日找到一把家长称够，询问日不明。已印装十份，因往常余纸未按上限增印；拟观影不改表，观影未报。",
+          "sourceIds": [
+            "49",
+            "61",
+            "57",
+            "59"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "10-13对方预约办证，带线水、材料三袋原复分放，前有16号；后办完较快仅补问地址，补打印未述。双方拟整理证件，本人找到旧旅行清单，完成未报。",
+          "sourceIds": [
+            "50",
+            "52",
+            "56",
+            "58",
+            "53",
+            "55",
+            "60"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "10-16对方获准月底前借柜、禁贵重物过夜，借存未报。本人称连续事务累、工作消息扰吃饭；十八号备妥非完整分工证据。对方愿转临变；本人关提醒吃栗子，拟洗澡阅读次日核表，核表未报，当晚无人等位置确认。",
+          "sourceIds": [
+            "61",
+            "62",
+            "63",
+            "64",
+            "65",
+            "66",
+            "67",
+            "71"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "对方允十八号准时、堵车先报；后证参加，抵达堵车未明。10-19述矮椅用上、讨论较前两次慢，本人留沉默让人讲完；对方转述该人不再总怕慢。",
+          "sourceIds": [
+            "72",
+            "74",
+            "73"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "会后本人待理名单费用，不愿每环节都做、称未写清便落自己，不等于无人做其他工作。",
+          "sourceIds": [
+            "75"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "杯含旧余物，对方允按日期拍收据，本人同意等、不全算新购。10-19收据齐拟次日拍；22日对明茶九号购、杯半数更早，不全计十八号；拍照过程、终费未明。",
+          "sourceIds": [
+            "76",
+            "77",
+            "84",
+            "85"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "10-19家潮减，开窗书页不再那么软；南瓜粥分当晚次早。",
+          "sourceIds": [
+            "79",
+            "81"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "月底换短文先商量，对方建议留两篇明目标勿急投票；19日仅问场地，22日本人读完觉关系绕、双方偏另一篇未定，25日订27日并换定篇。篇名推荐者、对方是否读未明；22日本人称前日群已重申未定，仍收待整报名表。",
+          "sourceIds": [
+            "81",
+            "82",
+            "83",
+            "93",
+            "94",
+            "97",
+            "85"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "10-22对方显式回复63，以九月找场地核名单通知反驳“每次兜底”；本人确认出差时对方联络。对方补三号搬椅试投影摆茶水、十八号布置清理；本人确认三号已布好、原误认管理员，十八号细项仅对方述。本人收回“每次只有我”，改称本月预约群确认书单集中自己、工作消息多更累，求分一项；对方认可疲惫。",
+          "sourceIds": [
+            "86",
+            "87",
+            "88",
+            "89",
+            "90",
+            "91"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "报名接手受晚课限：25日约19:30—21点对方直答能答的报名路线，次晚有课不接，21点后次日办，最终名单本人核。公告未报；本人已见路线回复、不逐答觉清静。漏回带孩子问题已补问年龄，未保证均适合；孩子后续及核表未报。",
+          "sourceIds": [
+            "92",
+            "93",
+            "97",
+            "98",
+            "99",
+            "100",
+            "105",
+            "106"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "10-22对方称街口面包店重开有小份切片、买两片；本人想不排队时试，未报购买。",
+          "sourceIds": [
+            "94",
+            "95",
+            "96"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "27日采购人未定，本人暂不接；25日对方要求缓购，尚余茶杯、拟次日核库拍照；家茶快尽不等于柜上活动茶尽。照片、全库存及采购未报。",
+          "sourceIds": [
+            "99",
+            "100",
+            "108"
+          ]
+        }
+      ],
+      "index": 94
+    },
+    {
+      "text": "10月活动筹办、负担争议及分工试行；含到场回顾、报名路线、费用库存、借物与生活事项。月底一次较轻松，不代表后续分工已定。",
+      "sourceIds": [
+        "1",
+        "9",
+        "13",
+        "10",
+        "11",
+        "2",
+        "3",
+        "4",
+        "5",
+        "15",
+        "14",
+        "6",
+        "7",
+        "8",
+        "12",
+        "16",
+        "17",
+        "18",
+        "61",
+        "62",
+        "19",
+        "20",
+        "21",
+        "112",
+        "113",
+        "22",
+        "23",
+        "24",
+        "25",
+        "26",
+        "27",
+        "37",
+        "38",
+        "28",
+        "29",
+        "30",
+        "31",
+        "36",
+        "33",
+        "34",
+        "35",
+        "39",
+        "40",
+        "41",
+        "42",
+        "43",
+        "45",
+        "46",
+        "44",
+        "48",
+        "47",
+        "49",
+        "57",
+        "59",
+        "72",
+        "74",
+        "73",
+        "50",
+        "52",
+        "56",
+        "58",
+        "53",
+        "55",
+        "60",
+        "63",
+        "64",
+        "65",
+        "66",
+        "67",
+        "71",
+        "75",
+        "86",
+        "87",
+        "88",
+        "89",
+        "90",
+        "91",
+        "76",
+        "77",
+        "84",
+        "85",
+        "79",
+        "81",
+        "82",
+        "83",
+        "93",
+        "94",
+        "97",
+        "92",
+        "98",
+        "99",
+        "100",
+        "105",
+        "106",
+        "107",
+        "109",
+        "95",
+        "96",
+        "108",
+        "101",
+        "102",
+        "103",
+        "104",
+        "119",
+        "120",
+        "114",
+        "110",
+        "111",
+        "115",
+        "116",
+        "117",
+        "118"
+      ],
+      "children": [
+        94,
+        92
+      ],
+      "facts": [
+        {
+          "kind": "unknown",
+          "text": "10-01问妥三号14点入场；增人核旧表、圆桌改两排未确认。施工入口照已发，三新人入临时群，仅预约联系人带证；本人已午饭。投影线对方称已测、允带，携用未明。",
+          "sourceIds": [
+            "1",
+            "9",
+            "13",
+            "10",
+            "11",
+            "2",
+            "3",
+            "4",
+            "5"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "10-04回顾三号顺利：到11人，少1人提前报加班，非临时失约。本人订场通知耗半天，仍挂心提醒、回家不想决定晚饭；到场椅水已好，归属后澄清。",
+          "sourceIds": [
+            "3",
+            "15",
+            "13",
+            "14"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "10-01海边旧票入蓝信封；交换书咖啡渍未净但不碍正文页码，本人拟说明未报；对方只擦乱铅笔批注。",
+          "sourceIds": [
+            "5",
+            "6",
+            "7",
+            "8"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "10-01对方拟课后傍晚前取修好台灯并测原需长按的开关，未报；上课回复慢，活动室消息只需确认收到。",
+          "sourceIds": [
+            "10",
+            "11",
+            "12"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "三号本人帮查公交、拟拍门后图；对方提醒施工入口将变须重核。10-16重发路线仍被私询，不证图已核发。",
+          "sourceIds": [
+            "16",
+            "17",
+            "18",
+            "61",
+            "62"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "10-04杯洗晾、装箱未报；移闲壶后架够，本人不带窄篮，旧壶裂胆禁热水。10-28杯洗后余11个，另1个参加者借装水允下次还，非遗失、不必补买；归还未明。",
+          "sourceIds": [
+            "18",
+            "19",
+            "20",
+            "21",
+            "112",
+            "113"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "10-04本人脚酸拟近处走、避施工木栈道；对方称入口围起、公园平路可走。本人已返回，路线不明。",
+          "sourceIds": [
+            "21",
+            "22",
+            "23"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "本人提对方拍过唱片封面，唱片及能否播放未明。",
+          "sourceIds": [
+            "22",
+            "23"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "本人猜绿萝偏斜因只开同窗，未证；对方建议稍转勿骤晒，以自家晒伤为例。",
+          "sourceIds": [
+            "23",
+            "24"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "10-07九号篇目补链接、向两位旧通知接收者解释；本人称消息绕回自己。九号18:30拟早取钥匙列三问；对方会至18点或迟到，允先放杯线，未报执行。",
+          "sourceIds": [
+            "25",
+            "26",
+            "27",
+            "37",
+            "38"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "对方建议留空接话。旧房文章双方记得门把手；本人循蓝封面白脊贴找到笔记本下纸本，拟重读核拆房情节。对方称展平折角未夹物、另见童年地图；重读、篇名作者及对方会前阅读未明。",
+          "sourceIds": [
+            "28",
+            "29",
+            "30",
+            "31",
+            "36"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "10-07已回外婆电话、围巾合长；外婆嘱天冷再戴勿为拍照捂汗，拍照未报。",
+          "sourceIds": [
+            "33",
+            "34",
+            "35"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "九号近21点散，后段两人聊开；本人收笔记仍答借书，回家补查书名版本，10-10发书单，对方标出版社。本人觉订场至书单靠自己、冷场即接且忧赶车；对方举第二问尚在回忆便转段，非所有沉默皆如此。",
+          "sourceIds": [
+            "37",
+            "38",
+            "39",
+            "40",
+            "41",
+            "42",
+            "43"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "10-10本人想歇但已通知十八号照常；午睡肩松仍不想回群。对方称群仅换照无新报名，买菜少看手机，后聊蘑菇豆腐。",
+          "sourceIds": [
+            "41",
+            "42",
+            "43",
+            "45",
+            "46"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "对方灶小火易灭拟找师傅未报；本人旧灶清孔改善不证同因，仍劝检修。汤好豆腐未散、油烟少，滤网拆洗未报。",
+          "sourceIds": [
+            "44",
+            "45",
+            "48"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "10-10有人据照问书，对方只答书名未允借；本人称朋友书不可转借，拟告电子购买渠道并先还，未报，书及人未明。",
+          "sourceIds": [
+            "46",
+            "47",
+            "48"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "10-13十八号报8人含带孩子者；管理员休息，本人拟次日问矮椅未保证，16日找到一把家长称够，询问日不明。印装十份未按上限加印；拟观影不改表，未报观影。十八号对方参加，准时及堵车未明；矮椅用上，本人留沉默，讨论较前两次慢，对方转述一人不再怕慢。",
+          "sourceIds": [
+            "49",
+            "61",
+            "57",
+            "59",
+            "72",
+            "74",
+            "73"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "10-13对方预约办证，线水、原复材料三袋备妥，前有16号；后办完较快仅补问地址，补印未述。双方拟整证件，本人找到旧旅行清单，完成未报。",
+          "sourceIds": [
+            "50",
+            "52",
+            "56",
+            "58",
+            "53",
+            "55",
+            "60"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "10-16对方获准月底前借柜、禁贵重物过夜，借存未报。本人累于事务及工作消息；十八号备妥非完整分工证据。对方愿转临变；本人关提醒吃栗子，拟洗澡阅读、次日核表未报，当晚无人等位置确认。",
+          "sourceIds": [
+            "61",
+            "62",
+            "63",
+            "64",
+            "65",
+            "66",
+            "67",
+            "71"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "会后本人待理名单费用，称未写清便落自己。10-22对方显式回复63，举九月找场地核名单通知、三号搬椅试投影摆茶水、十八号布置清理；本人确认出差时对方联络及三号已布好、原误认管理员，十八号细项仅对方述。本人撤回“每次只有我”，改称本月预约群确认书单集中自己、工作叠加累，求分一项；对方认可。",
+          "sourceIds": [
+            "75",
+            "86",
+            "87",
+            "88",
+            "89",
+            "90",
+            "91"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "杯含旧余物，双方同意按日期收据、不全算新购；10-19收据齐拟次日拍，22日厘清茶九号购、杯半数更早，不全计十八号；照片及终费未明。",
+          "sourceIds": [
+            "76",
+            "77",
+            "84",
+            "85"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "10-19家潮减、开窗后书页不再那么软；南瓜粥分当晚次早。",
+          "sourceIds": [
+            "79",
+            "81"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "月底换短文先商量，对方建议留两篇明目标勿急投票；19日只问场地，22日本人读完觉关系绕、双方偏另一篇未定，称前日群已重申未定仍收报名表；25日订27日并定篇。篇名推荐者及对方阅读未明。",
+          "sourceIds": [
+            "81",
+            "82",
+            "83",
+            "93",
+            "94",
+            "97",
+            "85"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "25日约19:30—21点对方直答能答的报名路线，次晚有课不接、21点后次日办，最终名单本人核；本人见回复、不逐答觉清静。漏回孩子问题已补问年龄，未保证皆适合，年龄条件及终答未明；九点后结束答疑公告、本人次日核名单均未报，28日填最终到场十人不证核完。",
+          "sourceIds": [
+            "92",
+            "93",
+            "97",
+            "98",
+            "99",
+            "100",
+            "105",
+            "106",
+            "107",
+            "109"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "10-22对方买重开面包店两片小份切片；本人想不排队时试，未报购买。",
+          "sourceIds": [
+            "94",
+            "95",
+            "96"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "27日采购人未定，本人暂不接；25日对方要求缓购，称尚余茶杯拟次日核库拍照，未报。家茶快尽不等于活动茶尽。",
+          "sourceIds": [
+            "99",
+            "100",
+            "108"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "10-25陪家人取照片，师傅弄反相近底片；本人明确回复留侧头笑照，家人觉更日常。提示后在电视柜下扁盒找到螺丝刀，照片或框暂靠书架；后称合影装挂好、白天不反光。夜查及刺眼则移旁墙未报。",
+          "sourceIds": [
+            "101",
+            "102",
+            "103",
+            "104",
+            "105",
+            "119",
+            "120"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "25日本人仅称这次轻松、不保证以后；28日仍待本人工作安排及对方两次晚课日期，再议下月首次采购、现场负责人及分工，当天不发完整安排；对方允获通知后报可参加时间。",
+          "sourceIds": [
+            "107",
+            "113",
+            "114"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "10-28称前日讨论提前结束；对方前晚答路线的两人未再私问，此“前晚”不可径同25日。本人开场前能看文、不再同时回群找人开场；对方见其不总守门口，暂归因消息少；换书者自行找书主，仅支持本次轻松。",
+          "sourceIds": [
+            "109",
+            "110",
+            "111"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "28日书单未整，本人拟先记确定名字、其余等本人回复不猜补；结果、人名书名未明。",
+          "sourceIds": [
+            "111"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "28日对方转述新朋友想带自制书签；双方尊重自愿数量、不承诺人手一份、不变任务；身份数量及带来未明。",
+          "sourceIds": [
+            "114",
+            "115"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "28日本人倒水晾包、将文件袋下树叶夹旧报纸免潮书；对方猜来自活动室外长椅未证。本人称散场后面咸、夜醒口渴。",
+          "sourceIds": [
+            "115",
+            "116",
+            "117"
+          ]
+        },
+        {
+          "kind": "fact",
+          "text": "2026-10-28对方煮无糖小米南瓜粥，南瓜昨日切，咸菜另放按需取，对比外面汤面难调淡。",
+          "sourceIds": [
+            "118"
+          ]
+        },
+        {
+          "kind": "unknown",
+          "text": "本人拟淘米煮粥时整书桌；对方拟晾衣翻床单、晚些看本人照片且不必立即补拍，均未报完成；照片指合影还是悬挂效果未明。",
+          "sourceIds": [
+            "119",
+            "120"
+          ]
+        }
+      ],
+      "index": 95
+    }
+  ],
+  "writer": {
+    "requestPath": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-adaptive/request-01.json",
+    "baseSidecar": {
+      "call": 1,
+      "sharedBaseHash": "5314c634b7c7d362a8456114b873259b7f533eebb76fcc6c159adc61855c261a",
+      "readingCheckpointHash": "6f4513b0417ec6897e21999d7b49c1256d8ab633a2dc1a85f80cfcb87269fd75",
+      "repair": false,
+      "outputLimit": 3000
+    },
+    "baseHashMatches": true,
+    "notes": [
+      {
+        "text": "九号近21点散，后段两人聊开；本人收笔记仍答借书，回家补查书名版本，10-10发书单，对方标出版社。本人觉订场至书单靠自己、冷场即接且忧赶车；对方举第二问尚在回忆便转段，非所有沉默皆如此。",
+        "sourceIds": [
+          "37",
+          "38",
+          "39",
+          "40",
+          "41",
+          "42",
+          "43"
+        ],
+        "field": "observations",
+        "index": 4
+      }
+    ],
+    "rawCitation43": {
+      "id": "43",
+      "fragments": [
+        {
+          "messageIds": [
+            "41",
+            "42",
+            "43"
+          ]
+        }
+      ]
+    }
+  },
+  "baselineSecondCaseCurrentParser": {
+    "requestPath": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/conditional-reschedule-reading/request-04.json",
+    "responsePath": "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/conditional-reschedule-reading/response-04.txt",
+    "method": "Exact current parser loaded through Vite with an in-memory export of the existing private function; saved request fields supplied directly. Controls modify only in-memory response copies, never original artifacts or trial state.",
+    "currentGenerationSha256": "816e82fac393459f6b36dc1f6470ffcb454b23467bfb843fd2c3a8b667da81e9",
+    "repeatedOldNotes": [
+      {
+        "sourceId": "62",
+        "quote": "退成余额这件事就不用再来回问了，我以后去吃饭用得上；林舟能不能参加还是另一件，别把这两项合到一起记。",
+        "text": "已知候选所附逐字摘录显示余额方案获接受，参加情况须独立记录。",
+        "exactlyMatchesVisiblePriorQuote": true
+      },
+      {
+        "sourceId": "63",
+        "quote": "原来那张三十一号的位子他们暂时保留着，说最终改不改另发消息就行，退订金并没有自动取消预约。",
+        "text": "已知候选所附逐字摘录说明订金处理不等于取消预约或最终变更。",
+        "exactlyMatchesVisiblePriorQuote": true
+      }
+    ],
+    "cases": [
+      {
+        "control": "original",
+        "code": "INVALID_EVIDENCE",
+        "networkCalls": 0,
+        "checkpointApplied": false
+      },
+      {
+        "control": "disjoint-only",
+        "code": "INVALID_EVIDENCE",
+        "networkCalls": 0,
+        "checkpointApplied": false
+      },
+      {
+        "control": "current-notes-only",
+        "code": "INVALID_INSIGHT_OUTPUT",
+        "networkCalls": 0,
+        "checkpointApplied": false
+      },
+      {
+        "control": "both",
+        "code": "ACCEPTED_READING_RESPONSE",
+        "networkCalls": 0,
+        "checkpointApplied": false
+      }
+    ],
+    "conclusion": "The current parser still immediately rejects re-emitted prior notes 62/63 that are absent from current raw evidence, even though their exact quotes are visible in knownCandidates. Removing only those repeated notes leaves support/counterexample overlap, now a repairable INVALID_INSIGHT_OUTPUT in current code. Removing both conditions accepts the response in this parser-only control; it is not an accepted trial result."
+  },
+  "originalsUnchanged": true,
+  "originalHashes": {
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/input.json": "34278dc3b8b87ec204c8fe6bbdb76b194211e51097b65ff01e2bcc76a2c3466d",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/checkpoint.json": "438c615f96d4ae74463ba401a22719c2422880d018d70bbc810b65431526832a",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-adaptive/report.json": "cecfb2caa8c6e69272a48895f6509f538ce7a352dee98ee93d7aa3d402b2bc33",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-adaptive/request-01.json": "74b163f5bab532337520b19800086bcd359481d327201a6e663c746711bdf6e0",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-adaptive/response-01.txt": "e2e8382b34b4249ed938c73bf9a29e4e49e686c4ec48a4eb9d63b09a7e5ec0a5",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-adaptive/writing-base.json": "8b60a712de6cc271e35ccd1283822f3f9c58b5a0b2c8d31c56dd15f2f63cbb82",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/request-01.json": "e268b35451f9d4b81bf2c543faaf3b0de0072da0e6c484cc4d563fc7f051f774",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/response-01.txt": "d8e243043d472b09aa36a432ff6ecbcb78e45036426792c03a8179279465a30f",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/request-02.json": "0979b1774f6ee9a286ba7fea76b027178c37b9e56a69f81c4bf9394b75e07e2d",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/response-02.txt": "829107e9d636f6294d55c5694aae8c5d6a1fbbc68769ac1658932ef355e67fa8",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/request-03.json": "e79413c7b0c9bb06e62ab300463cfb7f60855144dcd9c4655d95f4f29da79756",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/response-03.txt": "dc5aae79803fb0c1f00f1f02fa342766871f6021d77c4458d38539cd89f560eb",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/request-04.json": "959f926f1cc5d1bfe1c701fee4615a74ec2d254c0b7e9f5e8afb0c6f432dfdbd",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/response-04.txt": "a69f81705767bc40de0a67ef3525e3c96899eaf16ad5eb1c01df9efebad74b05",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/request-05.json": "a1311e37e24de55795a7f4d24fc6287bdc171aa14f5926047fbee902f3606d55",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/response-05.txt": "7763be03e4298f64dc84f0254810970cf2badfdcb3c84cbc7e8d356fdce33e30",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/request-06.json": "494acad1f3f18f47018d87b00dc8a1cd70d23d4d44878fdf8792ea130e99be6b",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/response-06.txt": "a6bdc9b2657584b485f66f583f1128038060923613ab456fe2792ff1e74b3476",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/request-07.json": "29e3e3b890c26471aaa745df139e393b438eb629bd49b4f88ff6761148b33613",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/response-07.txt": "693934ebde24d8d23f58c3cb9459873540fabfdf161f7c8e25908db5cf9e8567",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/request-08.json": "ce17eddecac0aeb77289ca42a958ad71352b463f4625ed9bd8456d31b4f178d1",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/response-08.txt": "f3d795df95d41788a194a47b2f6700cf87a9fefc8c23ffb25d34746239959a7f",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/request-09.json": "5d33e93de387d21e12697fce468f8787dc04028a17566d944b1bffd052a1bcd1",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/response-09.txt": "091719fe4a58c6a50610cebf5b2f038cbb6fef5c90f56579f429ef359339896f",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/request-10.json": "8ccfaf7da2b573b176b8d7fe44b92fb2bad595c7e9f325e2a7ed5077621aafe5",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/response-10.txt": "0bb5e58251fa182fc973aede9677d8c5951d1bb8f406543689ce25a11d6f1d88",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/request-11.json": "be86b1706028faaef446af7c49043ba7935d00dd23e79759f6deae4ff76db97e",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/response-11.txt": "ef69979125f30809a35abd457abd76ebe87045e6ffb589fe0189e2c880f34352",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/request-12.json": "18776b618e0d96754a3666f39963dcff87971e3cf9c1b65ae48ddb9c97d01459",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/response-12.txt": "9ff3751e48eba3dc6939a4123e79726480a351be8f42c35e1f3e425ef889e759",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/request-13.json": "8f17a9684885045a54d2fabb7f52d3fcb0e0b447b73189c5675f0c886c0e7c6f",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/response-13.txt": "1279d619bf963641901acfff2715d6ff12d9a62096c3d8d3bcef0ed28a6a031d",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/conditional-reschedule-reading/request-04.json": "8495afa07457fe5f80c56ce2ea30968eb1be41a7618adefd41d1ebc35e422475",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-baseline-20261116/conditional-reschedule-reading/response-04.txt": "49a75c0483c97688f51185f582885e1aa6c435967fa52a12c181d7a5120298e3",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-reading/result.json": "5cd46f1012551f0235826e99e62d1934a0dfafc33a06a3703ca268a1dffd6736",
+    "release/conversation-insights-20261115/long-comparison-runs/memory-capacity-current-v2-20261116/shared-workload-adaptive/result.json": "cc2d95bf24b90e10611c1a0b7ad251318bc98a4cd43bb4f35e79a5fc50850d81"
+  }
+}

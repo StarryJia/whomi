@@ -1,0 +1,27 @@
+
+Running 4 tests using 1 worker
+
+(node:28580) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  x  1 tests\desktop\conversation-insights.spec.mjs:14:1 › isolated Electron resumes a scoped insight, retries writing, and preserves exact citations through rename and deletion (1.0m)
+Worker teardown timeout of 30000ms exceeded.
+
+Failed worker ran 1 test:
+tests\desktop\conversation-insights.spec.mjs:14:1 › isolated Electron resumes a scoped insight, retries writing, and preserves exact citations through rename and deletion
+(node:22532) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 2 tests\desktop\insight-ui.spec.mjs:108:1 › real Electron insight UI validates scope, pauses and retries, reads exact sources, renames and deletes (16.0s)
+  ok 3 tests\desktop\insight-ui.spec.mjs:288:1 › real Electron requires self selection and a model before creating an insight (7.5s)
+  ok 4 tests\desktop\insight-ui.spec.mjs:313:1 › real Electron report list shows loading and retryable first-read failure (11.0s)
+
+
+  1) tests\desktop\conversation-insights.spec.mjs:14:1 › isolated Electron resumes a scoped insight, retries writing, and preserves exact citations through rename and deletion
+
+    Test timeout of 60000ms exceeded.
+
+    Error Context: test-results\tests-desktop-conversation-2fe33-through-rename-and-deletion\error-context.md
+
+  1 failed
+    tests\desktop\conversation-insights.spec.mjs:14:1 › isolated Electron resumes a scoped insight, retries writing, and preserves exact citations through rename and deletion
+  3 passed (2.1m)
+  1 error was not a part of any test, see above for details

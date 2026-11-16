@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "experiment": "long-candidate-comparison",
+  "runId": "memory-capacity-current-20261116",
+  "perTaskLimits": {
+    "maxChecks": 8,
+    "maxRoundsPerCheck": 4,
+    "maxCalls": 50,
+    "maxInputTokens": 400000,
+    "maxOutputTokens": 40000,
+    "maxElapsedMs": 1200000
+  },
+  "totalRequestLimit": 104,
+  "syntheticPackingInputEstimateLimit": 13000,
+  "perRequestOutputLimit": 3000,
+  "phases": [
+    "reading",
+    "adaptive",
+    "direct",
+    "direct-rich"
+  ],
+  "taskIdStart": 201,
+  "materialHashes": {
+    "shared-workload": "ae2155bf3a4c6cac89eff74fe835c808ffa6787cc7ff83a0476826cf2eac72c0",
+    "conditional-reschedule": "b64cffae1171a3f4df2724d0cdd1ad8f7cb06be0b643dd4ee1b56cc54dfaa011"
+  }
+}

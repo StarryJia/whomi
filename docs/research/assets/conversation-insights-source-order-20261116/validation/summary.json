@@ -1,0 +1,42 @@
+{
+  "focusedBackend": {
+    "passed": 84,
+    "failed": 0,
+    "log": "offline/coverage-repair-green.log"
+  },
+  "trialTools": {
+    "passed": 29,
+    "failed": 0,
+    "log": "offline/source-order-coverage-resume-green.log"
+  },
+  "typecheck": {
+    "passed": true,
+    "logs": [
+      "offline/coverage-repair-typecheck.log",
+      "offline/source-order-coverage-resume-typecheck.log"
+    ]
+  },
+  "backend": {
+    "passed": 667,
+    "failed": 1,
+    "unhandledErrors": 1,
+    "failedTest": "Grok uses its registered callback and fixed local catalog, sends the selected model to its own proxy",
+    "fixedCallbackPort": 56121,
+    "previouslyVerifiedWindowsExcludedRange": [
+      56028,
+      56127
+    ],
+    "log": "validation/source-order-backend-coverage-final.log",
+    "portEvidence": "validation/memory-port-ranges-final.log"
+  },
+  "build": {
+    "passed": true,
+    "log": "validation/source-order-build-coverage-final.log"
+  },
+  "targetedDesktop": {
+    "passed": 1,
+    "failed": 0,
+    "totalSeconds": 10.6,
+    "log": "validation/source-order-desktop-coverage-final.log"
+  }
+}

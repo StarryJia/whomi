@@ -1,0 +1,17 @@
+{
+  "createdAt": "2026-11-15T16:41:22.282Z",
+  "classification": "development-diagnostic protocol revision, not fixed-implementation confirmatory evaluation",
+  "cause": "hard 60 percent text threshold rejected full coverage with 25.16 percent serialized reduction",
+  "fix": "text target remains 60 percent; require at least 20 percent actual writing fact volume reduction unless whole reconciled writing input fits",
+  "recovery": "retain 27 attempts, navigation cursor and one previous repair; use existing second recovery only",
+  "haltSha256": "f395ca47500f714378228d698420cf0e26b1cf1c5f2e663ac8f79741b535db70",
+  "checkpointSha256": "e6d4377e1312160bfa64b2ab65cdb0e1276b283d7f5715c4c4d259ec5fcbc839",
+  "originalResponseSha256": "caeaea314c494229507979d5fe8fc86bb580ddea4cea4ecc659729479ac00701",
+  "precedingRequests": 27,
+  "taskLimit": 50,
+  "totalLimit": 104,
+  "repairsBefore": 1,
+  "offlineResponseReplayPassed": true,
+  "productRegressionTests": 75,
+  "toolTests": 25
+}

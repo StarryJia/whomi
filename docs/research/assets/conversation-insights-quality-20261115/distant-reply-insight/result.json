@@ -1,0 +1,9 @@
+{
+  "state": "failed",
+  "error": "INVALID_INSIGHT_OUTPUT",
+  "calls": 5,
+  "httpRequests": 5,
+  "elapsedMs": 71739,
+  "inputCharged": 7905,
+  "outputCharged": 4444
+}

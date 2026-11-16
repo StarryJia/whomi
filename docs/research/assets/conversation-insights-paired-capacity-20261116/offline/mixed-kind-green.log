@@ -1,0 +1,30 @@
+
+ RUN  v5.0.5 D:/University/github/whomi
+
+ ❯ tests/backend/insight-generation.test.ts (85 tests | 1 failed) 343ms
+   × same-source facts and unknowns share a small compression window and remain reconciled after writing resumes 22ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/backend/insight-generation.test.ts > same-source facts and unknowns share a small compression window and remain reconciled after writing resumes
+AssertionError: expected [Function] to throw error including 'fixture paused during writing after s…' but got 'expected [ \'fact\', \'fact\' ] to de…'
+
+Expected: "fixture paused during writing after source-ordered compaction"
+Received: "expected [ 'fact', 'fact' ] to deeply equal [ 'fact', 'unknown' ]"
+
+ ❯ tests/backend/insight-generation.test.ts:577:45
+    575|     return result(noConclusion)
+    576|   }
+    577|   await expect(generateInsight(input, deps)).rejects.toThrow('fixture …
+       |                                             ^
+    578|   expect(state.checkpoint?.callsReserved).toBe(3)
+    579|   const compactedNavigation = structuredClone(state.checkpoint?.naviga…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  1 failed | 88 passed (89)
+   Start at  01:55:20
+   Duration  751ms (tests 56%, transform 22%, import 20%, worker 2%)
+

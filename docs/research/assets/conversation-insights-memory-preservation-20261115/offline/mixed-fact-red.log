@@ -1,0 +1,35 @@
+
+> whomi@0.1.11 test:backend
+> vitest run --config vitest.backend.config.ts tests/backend/insight-generation.test.ts -t separate an unknown
+
+
+ RUN  v5.0.5 D:/University/github/whomi
+
+ ❯ tests/backend/insight-generation.test.ts (59 tests | 1 failed | 58 skipped) 18ms
+   × compaction can separate an unknown from a mixed fact while retaining its known part and source 16ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/backend/insight-generation.test.ts > compaction can separate an unknown from a mixed fact while retaining its known part and source
+Error: 洞察引用的原文无法验证，请重新生成。
+ ❯ invalidEvidence electron/main/insight-generation.ts:114:9
+    112|
+    113| function invalidEvidence(): never {
+    114|   throw new BoundaryError('INVALID_EVIDENCE', '洞察引用的原文无法验证，请重新生成。')
+       |         ^
+    115| }
+    116|
+ ❯ electron/main/insight-generation.ts:94:92
+ ❯ array electron/main/insight-generation.ts:140:16
+ ❯ compressedFacts electron/main/insight-generation.ts:88:17
+ ❯ generateInsight electron/main/insight-generation.ts:772:23
+ ❯ tests/backend/insight-generation.test.ts:95:3
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 58 skipped (59)
+   Start at  23:49:09
+   Duration  353ms (transform 53%, import 32%, tests 11%, worker 4%)
+

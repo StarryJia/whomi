@@ -10,7 +10,7 @@ import { openStore } from '../../electron/data/db/open'
 import { createAiRepository } from '../../electron/data/ai/repository'
 import { createSettingsRepository } from '../../electron/data/settings/repository'
 import { createAiService } from '../../electron/main/ai-service'
-import { temporaryStore } from './helpers'
+import { temporaryStore, useLegacyAnalysisFixture } from './helpers'
 import { sourceMessages } from '../desktop/fixtures/moving-chat.mjs'
 import { memoryModelReply } from '../desktop/fixtures/memory-model.mjs'
 import { explainedSourcePrompt, scoredSourcePrompt } from '../../electron/data/ai/memory-scoring'
@@ -229,6 +229,7 @@ test('a ChatGPT-authenticated memory pauses at 8/24, rotates the protected crede
     return { db, ai: createAiRepository(db,write), settings: createSettingsRepository(db,write) }
   }
   const data = database()
+  useLegacyAnalysisFixture(data.db)
   await data.settings.initialize()
   await data.settings.setAccountConnection('openai-codex',account,true)
   const model = await data.settings.saveModel({providerId:'cherry:openai-codex',label:'虚构套餐模型',model:'sample',enabled:true,

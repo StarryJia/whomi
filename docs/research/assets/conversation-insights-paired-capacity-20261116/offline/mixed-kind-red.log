@@ -1,0 +1,80 @@
+
+ RUN  v5.0.5 D:/University/github/whomi
+
+ ❯ tests/backend/insight-generation.test.ts (85 tests | 4 failed | 80 skipped) 36ms
+   × known plans can remain with their unresolved results in unknown notes without duplicating the known text 19ms
+   × real response 10 retains a confirmed deferral and its unresolved details in one unknown note 6ms
+   × real response 11 retains a confirmed deferral and its unresolved details in one unknown note 5ms
+   × reclassifying separate mixed-memory groups as unknown still requires a joint reconciliation 2ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/backend/insight-generation.test.ts > known plans can remain with their unresolved results in unknown notes without duplicating the known text
+AssertionError: expected true to be undefined
+
+- Expected:
+undefined
+
++ Received:
+true
+
+ ❯ Object.run tests/backend/insight-generation.test.ts:419:30
+    417|     if (payload.operation === 'compress-navigation') {
+    418|       compressions++
+    419|       expect(payload.repair).toBeUndefined()
+       |                              ^
+    420|       expect(state.checkpoint?.navigation?.nextRoots).toEqual([])
+    421|       return result(response)
+ ❯ call electron/main/insight-generation.ts:567:27
+ ❯ compactMemory electron/main/insight-generation.ts:799:37
+ ❯ generateInsight electron/main/insight-generation.ts:826:3
+ ❯ tests/backend/insight-generation.test.ts:433:3
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  tests/backend/insight-generation.test.ts > real response 10 retains a confirmed deferral and its unresolved details in one unknown note
+ FAIL  tests/backend/insight-generation.test.ts > real response 11 retains a confirmed deferral and its unresolved details in one unknown note
+AssertionError: expected true to be undefined
+
+- Expected:
+undefined
+
++ Received:
+true
+
+ ❯ Object.run tests/backend/insight-generation.test.ts:448:30
+    446|     if (payload.operation === 'compress-navigation') {
+    447|       compressions++
+    448|       expect(payload.repair).toBeUndefined()
+       |                              ^
+    449|       return result(response)
+    450|     }
+ ❯ call electron/main/insight-generation.ts:567:27
+ ❯ compactMemory electron/main/insight-generation.ts:799:37
+ ❯ generateInsight electron/main/insight-generation.ts:826:3
+ ❯ tests/backend/insight-generation.test.ts:467:3
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  tests/backend/insight-generation.test.ts > reclassifying separate mixed-memory groups as unknown still requires a joint reconciliation
+Error: 洞察结果格式错误，请继续生成。
+ ❯ invalidOutput electron/main/insight-generation.ts:139:9
+    137|
+    138| function invalidOutput(): never {
+    139|   throw new BoundaryError('INVALID_INSIGHT_OUTPUT', '洞察结果格式错误，请继续生成。')
+       |         ^
+    140| }
+    141|
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 1 passed | 80 skipped (85)
+   Start at  01:54:28
+   Duration  467ms (transform 54%, import 29%, tests 14%, worker 3%)
+
+ ❯ parseInsightCompressedFacts electron/main/insight-generation.ts:131:78
+ ❯ compactMemory electron/main/insight-generation.ts:800:25
+ ❯ generateInsight electron/main/insight-generation.ts:826:3
+ ❯ tests/backend/insight-generation.test.ts:498:3
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+

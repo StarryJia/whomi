@@ -1,0 +1,33 @@
+{
+  "diagnostics": [
+    {
+      "localCall": 13,
+      "globalCall": 33,
+      "parserAcceptedFacts": true,
+      "topTextLength": 49,
+      "topTextWithin720": true,
+      "inputFactBytes": 2694,
+      "outputFactBytes": 2210,
+      "netReductionBytes": 484,
+      "netReductionFraction": 0.17965850037119524,
+      "strictTwentyPercentPassed": false,
+      "repair": false
+    },
+    {
+      "localCall": 14,
+      "globalCall": 34,
+      "parserAcceptedFacts": true,
+      "topTextLength": 44,
+      "topTextWithin720": true,
+      "inputFactBytes": 2694,
+      "outputFactBytes": 2192,
+      "netReductionBytes": 502,
+      "netReductionFraction": 0.18634001484780993,
+      "strictTwentyPercentPassed": false,
+      "repair": true
+    }
+  ],
+  "originalFilesChecked": 48,
+  "changed": [],
+  "candidateUnchanged": true
+}

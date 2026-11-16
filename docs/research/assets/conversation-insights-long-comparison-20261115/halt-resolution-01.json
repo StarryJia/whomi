@@ -1,0 +1,21 @@
+{
+  "at": "2026-11-15T13:53:48.244Z",
+  "reason": "修复关闭实际显示的旧事项被误拒绝为原文引用；不开放新事实引用，保留未显示的同源事项。",
+  "priorActualRequests": 2,
+  "totalActualRequestLimit": 64,
+  "materialsUnchanged": true,
+  "productPromptsUnchanged": true,
+  "generationTests": 39,
+  "toolTests": 10,
+  "backend": {
+    "passed": 622,
+    "failed": 1,
+    "reason": "既有Grok固定56121回调被Windows端口保留范围阻止"
+  },
+  "typecheck": "passed",
+  "desktopBridge": "passed",
+  "review": "independent source and recovery review passed",
+  "resume": "shared-workload reading --resume-reading",
+  "originalHalt": "shared-workload-reading/halt-before-resume.json",
+  "originalArtifactsPreserved": true
+}

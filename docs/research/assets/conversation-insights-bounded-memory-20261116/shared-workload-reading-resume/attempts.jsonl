@@ -1,0 +1,15 @@
+{"kind":"reserved","call":1,"stage":"compress-navigation","inputEstimate":6626,"outputLimit":3000,"at":1794760090525}
+{"kind":"dispatched","call":1,"wireOutputLimit":3000,"at":1794760092361}
+{"kind":"http-status","call":1,"status":200,"at":1794760100906}
+{"kind":"returned","call":1,"stopReason":"stop"}
+{"kind":"settled","call":1,"usage":{"cacheReadTokens":0,"cacheWriteTokens":1783,"inputTokens":3,"totalInputTokens":1786,"outputTokens":1143,"outputTokensPerSecond":59.34755571458186,"durationMs":19259.428399999997,"firstTokenMs":8833.8649,"startedAt":1794760092150,"completedAt":1794760111409,"incomplete":false},"charged":{"input":1786,"output":1143},"at":1794760111411}
+{"kind":"reserved","call":2,"stage":"compress-navigation","inputEstimate":6408,"outputLimit":3000,"at":1794760111420}
+{"kind":"dispatched","call":2,"wireOutputLimit":3000,"at":1794760111442}
+{"kind":"http-status","call":2,"status":200,"at":1794760118939}
+{"kind":"returned","call":2,"stopReason":"stop"}
+{"kind":"settled","call":2,"usage":{"cacheReadTokens":0,"cacheWriteTokens":1689,"inputTokens":3,"totalInputTokens":1692,"outputTokens":1104,"outputTokensPerSecond":67.17789041270737,"durationMs":16433.9784,"firstTokenMs":7505.4552,"startedAt":1794760111435,"completedAt":1794760127869,"incomplete":false},"charged":{"input":3478,"output":2247},"at":1794760127870}
+{"kind":"reserved","call":3,"stage":"compress-navigation","inputEstimate":6424,"outputLimit":3000,"at":1794760127878}
+{"kind":"dispatched","call":3,"wireOutputLimit":3000,"at":1794760127892}
+{"kind":"http-status","call":3,"status":200,"at":1794760134349}
+{"kind":"returned","call":3,"stopReason":"stop"}
+{"kind":"settled","call":3,"usage":{"cacheReadTokens":0,"cacheWriteTokens":1693,"inputTokens":3,"totalInputTokens":1696,"outputTokens":1020,"outputTokensPerSecond":66.9389665072456,"durationMs":15237.761400000003,"firstTokenMs":6463.355900000002,"startedAt":1794760127887,"completedAt":1794760143125,"incomplete":false},"charged":{"input":5174,"output":3267},"at":1794760143126}

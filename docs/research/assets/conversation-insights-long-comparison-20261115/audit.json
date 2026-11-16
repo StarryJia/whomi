@@ -1,0 +1,870 @@
+{
+  "total": {
+    "httpRequests": 41,
+    "inputCharged": 76750,
+    "outputCharged": 35981
+  },
+  "pairs": [
+    {
+      "caseName": "shared-workload",
+      "materialHash": "6f63b461c034eacaebc473ea5637bef13119aae59e286fa1d449347d9c6af756",
+      "identicalFinalRequests": true,
+      "payloadHash": "34d8aa24e3a66d57fcb401bd0962a03d1a06defeb9c06b36769513cf54bbc74d",
+      "checks": 0
+    },
+    {
+      "caseName": "conditional-reschedule",
+      "materialHash": "907c6b680d1acc0e4c021e7ae6c26393d1fd144c9c6f45d6ee4a47b316640b2d",
+      "identicalFinalRequests": true,
+      "payloadHash": "edf3c41ef1d4422510094d0411e2e37cdb7828869b6a09dba95417b8f4faea56",
+      "checks": 0
+    }
+  ],
+  "sourceIntegrity": "passed",
+  "referenceIdsAndRevisions": "passed",
+  "note": "来源编号和版本有效不等于引用内容被支持；语义评审另列。",
+  "rows": [
+    {
+      "phase": "shared-workload-adaptive",
+      "state": "completed",
+      "calls": 1,
+      "httpRequests": 1,
+      "elapsedMs": 25439,
+      "inputCharged": 1713,
+      "outputCharged": 1109,
+      "trialRequestsAfterPhase": 20,
+      "accounting": {
+        "incremental": {
+          "httpRequests": 1,
+          "elapsedMs": 25439,
+          "inputCharged": 1713,
+          "outputCharged": 1109
+        },
+        "sharedReading": {
+          "httpRequests": 19,
+          "inputCharged": 35514,
+          "outputCharged": 16429,
+          "elapsedMs": 317513
+        },
+        "hypotheticalArmTotal": {
+          "httpRequests": 20,
+          "inputCharged": 37227,
+          "outputCharged": 17538,
+          "elapsedMs": 342952
+        }
+      },
+      "sharedBaseHash": "8e89572257590f0d3b562f099ff37fdb966a4531e908d65b4e47d78f064474ea",
+      "pairWarnings": [],
+      "adaptiveWriting": {
+        "repair": false,
+        "outputLimit": 3000
+      },
+      "timeline": [
+        {
+          "request": "request-01.json",
+          "stage": "writing",
+          "inputEstimate": 6639
+        }
+      ]
+    },
+    {
+      "phase": "shared-workload-direct",
+      "state": "completed",
+      "calls": 1,
+      "httpRequests": 1,
+      "elapsedMs": 25740,
+      "inputCharged": 1712,
+      "outputCharged": 1068,
+      "trialRequestsAfterPhase": 21,
+      "accounting": {
+        "incremental": {
+          "httpRequests": 1,
+          "elapsedMs": 25740,
+          "inputCharged": 1712,
+          "outputCharged": 1068
+        },
+        "sharedReading": {
+          "httpRequests": 19,
+          "inputCharged": 35514,
+          "outputCharged": 16429,
+          "elapsedMs": 317513
+        },
+        "hypotheticalArmTotal": {
+          "httpRequests": 20,
+          "inputCharged": 37226,
+          "outputCharged": 17497,
+          "elapsedMs": 343253
+        }
+      },
+      "sharedBaseHash": "8e89572257590f0d3b562f099ff37fdb966a4531e908d65b4e47d78f064474ea",
+      "pairWarnings": [],
+      "adaptiveWriting": {
+        "repair": false,
+        "outputLimit": 3000
+      },
+      "directOutputLimit": 3000,
+      "writingCapacity": {
+        "inputEstimate": 6639,
+        "inputBudget": 6744
+      },
+      "timeline": [
+        {
+          "request": "request-01.json",
+          "stage": "writing",
+          "inputEstimate": 6639
+        }
+      ]
+    },
+    {
+      "phase": "shared-workload-reading",
+      "state": "failed",
+      "error": "INVALID_EVIDENCE",
+      "calls": 2,
+      "httpRequests": 2,
+      "elapsedMs": 36638,
+      "inputCharged": 3891,
+      "outputCharged": 2018,
+      "trialRequestsAfterPhase": 2,
+      "accounting": {
+        "incremental": {
+          "httpRequests": 2,
+          "elapsedMs": 36638,
+          "inputCharged": 3891,
+          "outputCharged": 2018
+        }
+      },
+      "timeline": [
+        {
+          "request": "request-01.json",
+          "stage": "reading",
+          "sourceIds": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10"
+          ],
+          "relatedSourceIds": [],
+          "knownCandidates": 0,
+          "candidates": 0,
+          "candidateUpdates": 0,
+          "inputEstimate": 6398
+        },
+        {
+          "request": "request-02.json",
+          "stage": "reading",
+          "sourceIds": [
+            "11",
+            "12",
+            "13",
+            "14",
+            "15",
+            "16",
+            "17",
+            "18",
+            "19",
+            "20"
+          ],
+          "relatedSourceIds": [],
+          "knownCandidates": 0,
+          "candidates": 0,
+          "candidateUpdates": 0,
+          "inputEstimate": 6730
+        }
+      ]
+    },
+    {
+      "phase": "shared-workload-reading-resume",
+      "state": "completed",
+      "calls": 17,
+      "httpRequests": 17,
+      "elapsedMs": 280875,
+      "inputCharged": 31623,
+      "outputCharged": 14411,
+      "trialRequestsAfterPhase": 19,
+      "accounting": {
+        "incremental": {
+          "httpRequests": 17,
+          "elapsedMs": 280875,
+          "inputCharged": 31623,
+          "outputCharged": 14411
+        },
+        "priorReading": {
+          "httpRequests": 2,
+          "inputCharged": 3891,
+          "outputCharged": 2018,
+          "elapsedMs": 36638
+        },
+        "combinedReading": {
+          "httpRequests": 19,
+          "inputCharged": 35514,
+          "outputCharged": 16429,
+          "elapsedMs": 317513
+        }
+      },
+      "resumedFrom": "shared-workload-reading",
+      "resumeCheckpointHash": "65ac9634a5fa5c37b40b31e64bd8121c6fd34d922a55fb94298c36459254ac27",
+      "timeline": [
+        {
+          "request": "request-01.json",
+          "stage": "reading",
+          "sourceIds": [
+            "11",
+            "12",
+            "13",
+            "14",
+            "15",
+            "16",
+            "17",
+            "18",
+            "19",
+            "20"
+          ],
+          "relatedSourceIds": [],
+          "knownCandidates": 0,
+          "candidates": 0,
+          "candidateUpdates": 0,
+          "inputEstimate": 6730
+        },
+        {
+          "request": "request-02.json",
+          "stage": "reading",
+          "sourceIds": [
+            "21",
+            "22",
+            "23",
+            "24",
+            "25",
+            "26",
+            "27",
+            "28",
+            "29",
+            "30"
+          ],
+          "relatedSourceIds": [],
+          "knownCandidates": 0,
+          "candidates": 0,
+          "candidateUpdates": 0,
+          "inputEstimate": 6709
+        },
+        {
+          "request": "request-03.json",
+          "stage": "reading",
+          "sourceIds": [
+            "31",
+            "32",
+            "33",
+            "34",
+            "35",
+            "36",
+            "37",
+            "38",
+            "39",
+            "40"
+          ],
+          "relatedSourceIds": [],
+          "knownCandidates": 0,
+          "candidates": 0,
+          "candidateUpdates": 0,
+          "inputEstimate": 6717
+        },
+        {
+          "request": "request-04.json",
+          "stage": "reading",
+          "sourceIds": [
+            "41",
+            "42",
+            "43",
+            "44",
+            "45",
+            "46",
+            "47",
+            "48",
+            "49",
+            "50"
+          ],
+          "relatedSourceIds": [],
+          "knownCandidates": 0,
+          "candidates": 0,
+          "candidateUpdates": 0,
+          "inputEstimate": 6710
+        },
+        {
+          "request": "request-05.json",
+          "stage": "reading",
+          "sourceIds": [
+            "51",
+            "52",
+            "53",
+            "54",
+            "55",
+            "56",
+            "57",
+            "58",
+            "59",
+            "60"
+          ],
+          "relatedSourceIds": [],
+          "knownCandidates": 0,
+          "candidates": 0,
+          "candidateUpdates": 0,
+          "inputEstimate": 6661
+        },
+        {
+          "request": "request-06.json",
+          "stage": "reading",
+          "sourceIds": [
+            "61",
+            "62",
+            "63",
+            "64",
+            "65",
+            "66",
+            "67",
+            "68",
+            "69",
+            "70"
+          ],
+          "relatedSourceIds": [],
+          "knownCandidates": 0,
+          "candidates": 0,
+          "candidateUpdates": 0,
+          "inputEstimate": 6738
+        },
+        {
+          "request": "request-07.json",
+          "stage": "reading",
+          "sourceIds": [
+            "71",
+            "72",
+            "73",
+            "74",
+            "75",
+            "76",
+            "77",
+            "78",
+            "79",
+            "80"
+          ],
+          "relatedSourceIds": [],
+          "knownCandidates": 0,
+          "candidates": 0,
+          "candidateUpdates": 0,
+          "inputEstimate": 6740
+        },
+        {
+          "request": "request-08.json",
+          "stage": "reading",
+          "sourceIds": [
+            "81",
+            "82",
+            "83",
+            "84",
+            "85",
+            "86",
+            "87",
+            "88",
+            "89",
+            "90"
+          ],
+          "relatedSourceIds": [],
+          "knownCandidates": 0,
+          "candidates": 0,
+          "candidateUpdates": 0,
+          "inputEstimate": 6742
+        },
+        {
+          "request": "request-09.json",
+          "stage": "reading",
+          "sourceIds": [
+            "91",
+            "92",
+            "93",
+            "94",
+            "95",
+            "96",
+            "97",
+            "98",
+            "99",
+            "100"
+          ],
+          "relatedSourceIds": [],
+          "knownCandidates": 0,
+          "candidates": 0,
+          "candidateUpdates": 0,
+          "inputEstimate": 6743
+        },
+        {
+          "request": "request-10.json",
+          "stage": "reading",
+          "sourceIds": [
+            "101",
+            "102",
+            "103",
+            "104",
+            "105",
+            "106",
+            "107",
+            "108",
+            "109",
+            "110"
+          ],
+          "relatedSourceIds": [],
+          "knownCandidates": 0,
+          "candidates": 0,
+          "candidateUpdates": 0,
+          "inputEstimate": 6740
+        },
+        {
+          "request": "request-11.json",
+          "stage": "reading",
+          "sourceIds": [
+            "111",
+            "112",
+            "113",
+            "114",
+            "115",
+            "116",
+            "117",
+            "118",
+            "119",
+            "120"
+          ],
+          "relatedSourceIds": [],
+          "knownCandidates": 0,
+          "candidates": 0,
+          "candidateUpdates": 0,
+          "inputEstimate": 6741
+        },
+        {
+          "request": "request-12.json",
+          "stage": "compress-navigation",
+          "inputEstimate": 6652
+        },
+        {
+          "request": "request-13.json",
+          "stage": "compress-navigation",
+          "inputEstimate": 6482
+        },
+        {
+          "request": "request-14.json",
+          "stage": "compress-navigation",
+          "inputEstimate": 6737
+        },
+        {
+          "request": "request-15.json",
+          "stage": "compress-navigation",
+          "inputEstimate": 6722
+        },
+        {
+          "request": "request-16.json",
+          "stage": "compress-navigation",
+          "inputEstimate": 4994
+        },
+        {
+          "request": "request-17.json",
+          "stage": "compress-navigation",
+          "inputEstimate": 4450
+        }
+      ]
+    },
+    {
+      "phase": "conditional-reschedule-adaptive",
+      "state": "completed",
+      "calls": 1,
+      "httpRequests": 1,
+      "elapsedMs": 24336,
+      "inputCharged": 1739,
+      "outputCharged": 1055,
+      "trialRequestsAfterPhase": 40,
+      "accounting": {
+        "incremental": {
+          "httpRequests": 1,
+          "elapsedMs": 24336,
+          "inputCharged": 1739,
+          "outputCharged": 1055
+        },
+        "sharedReading": {
+          "httpRequests": 18,
+          "inputCharged": 34334,
+          "outputCharged": 15374,
+          "elapsedMs": 325427
+        },
+        "hypotheticalArmTotal": {
+          "httpRequests": 19,
+          "inputCharged": 36073,
+          "outputCharged": 16429,
+          "elapsedMs": 349763
+        }
+      },
+      "sharedBaseHash": "47ce8d67a3f0b62f8b613b097783370584c6c1f994dc9e3a4fc7433c2a8c3285",
+      "pairWarnings": [],
+      "adaptiveWriting": {
+        "repair": false,
+        "outputLimit": 3000
+      },
+      "timeline": [
+        {
+          "request": "request-01.json",
+          "stage": "writing",
+          "inputEstimate": 6616
+        }
+      ]
+    },
+    {
+      "phase": "conditional-reschedule-direct",
+      "state": "completed",
+      "calls": 1,
+      "httpRequests": 1,
+      "elapsedMs": 23303,
+      "inputCharged": 1738,
+      "outputCharged": 946,
+      "trialRequestsAfterPhase": 41,
+      "accounting": {
+        "incremental": {
+          "httpRequests": 1,
+          "elapsedMs": 23303,
+          "inputCharged": 1738,
+          "outputCharged": 946
+        },
+        "sharedReading": {
+          "httpRequests": 18,
+          "inputCharged": 34334,
+          "outputCharged": 15374,
+          "elapsedMs": 325427
+        },
+        "hypotheticalArmTotal": {
+          "httpRequests": 19,
+          "inputCharged": 36072,
+          "outputCharged": 16320,
+          "elapsedMs": 348730
+        }
+      },
+      "sharedBaseHash": "47ce8d67a3f0b62f8b613b097783370584c6c1f994dc9e3a4fc7433c2a8c3285",
+      "pairWarnings": [],
+      "adaptiveWriting": {
+        "repair": false,
+        "outputLimit": 3000
+      },
+      "directOutputLimit": 3000,
+      "writingCapacity": {
+        "inputEstimate": 6616,
+        "inputBudget": 6744
+      },
+      "timeline": [
+        {
+          "request": "request-01.json",
+          "stage": "writing",
+          "inputEstimate": 6616
+        }
+      ]
+    },
+    {
+      "phase": "conditional-reschedule-reading",
+      "state": "completed",
+      "calls": 18,
+      "httpRequests": 18,
+      "elapsedMs": 325427,
+      "inputCharged": 34334,
+      "outputCharged": 15374,
+      "trialRequestsAfterPhase": 39,
+      "accounting": {
+        "incremental": {
+          "httpRequests": 18,
+          "elapsedMs": 325427,
+          "inputCharged": 34334,
+          "outputCharged": 15374
+        }
+      },
+      "timeline": [
+        {
+          "request": "request-01.json",
+          "stage": "reading",
+          "sourceIds": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10"
+          ],
+          "relatedSourceIds": [],
+          "knownCandidates": 0,
+          "candidates": 0,
+          "candidateUpdates": 0,
+          "inputEstimate": 6561
+        },
+        {
+          "request": "request-02.json",
+          "stage": "reading",
+          "sourceIds": [
+            "11",
+            "12",
+            "13",
+            "14",
+            "15",
+            "16",
+            "17",
+            "18",
+            "19",
+            "20"
+          ],
+          "relatedSourceIds": [],
+          "knownCandidates": 0,
+          "candidates": 0,
+          "candidateUpdates": 0,
+          "inputEstimate": 6683
+        },
+        {
+          "request": "request-03.json",
+          "stage": "reading",
+          "sourceIds": [
+            "21",
+            "22",
+            "23",
+            "24",
+            "25",
+            "26",
+            "27",
+            "28",
+            "29",
+            "30"
+          ],
+          "relatedSourceIds": [],
+          "knownCandidates": 0,
+          "candidates": 0,
+          "candidateUpdates": 0,
+          "inputEstimate": 6684
+        },
+        {
+          "request": "request-04.json",
+          "stage": "reading",
+          "sourceIds": [
+            "31",
+            "32",
+            "33",
+            "34",
+            "35",
+            "36",
+            "37",
+            "38",
+            "39",
+            "40"
+          ],
+          "relatedSourceIds": [],
+          "knownCandidates": 0,
+          "candidates": 0,
+          "candidateUpdates": 0,
+          "inputEstimate": 6740
+        },
+        {
+          "request": "request-05.json",
+          "stage": "reading",
+          "sourceIds": [
+            "41",
+            "42",
+            "43",
+            "44",
+            "45",
+            "46",
+            "47",
+            "48",
+            "49",
+            "50"
+          ],
+          "relatedSourceIds": [],
+          "knownCandidates": 0,
+          "candidates": 0,
+          "candidateUpdates": 0,
+          "inputEstimate": 6742
+        },
+        {
+          "request": "request-06.json",
+          "stage": "reading",
+          "sourceIds": [
+            "51",
+            "52",
+            "53",
+            "54",
+            "55",
+            "56",
+            "57",
+            "58",
+            "59",
+            "60"
+          ],
+          "relatedSourceIds": [],
+          "knownCandidates": 0,
+          "candidates": 0,
+          "candidateUpdates": 0,
+          "inputEstimate": 6744
+        },
+        {
+          "request": "request-07.json",
+          "stage": "reading",
+          "sourceIds": [
+            "61",
+            "62",
+            "63",
+            "64",
+            "65",
+            "66",
+            "67",
+            "68",
+            "69",
+            "70"
+          ],
+          "relatedSourceIds": [],
+          "knownCandidates": 0,
+          "candidates": 0,
+          "candidateUpdates": 0,
+          "inputEstimate": 6740
+        },
+        {
+          "request": "request-08.json",
+          "stage": "reading",
+          "sourceIds": [
+            "71",
+            "72",
+            "73",
+            "74",
+            "75",
+            "76",
+            "77",
+            "78",
+            "79",
+            "80"
+          ],
+          "relatedSourceIds": [],
+          "knownCandidates": 0,
+          "candidates": 0,
+          "candidateUpdates": 0,
+          "inputEstimate": 6738
+        },
+        {
+          "request": "request-09.json",
+          "stage": "reading",
+          "sourceIds": [
+            "81",
+            "82",
+            "83",
+            "84",
+            "85",
+            "86",
+            "87",
+            "88",
+            "89",
+            "90"
+          ],
+          "relatedSourceIds": [],
+          "knownCandidates": 0,
+          "candidates": 0,
+          "candidateUpdates": 0,
+          "inputEstimate": 6744
+        },
+        {
+          "request": "request-10.json",
+          "stage": "reading",
+          "sourceIds": [
+            "91",
+            "92",
+            "93",
+            "94",
+            "95",
+            "96",
+            "97",
+            "98",
+            "99",
+            "100"
+          ],
+          "relatedSourceIds": [],
+          "knownCandidates": 0,
+          "candidates": 0,
+          "candidateUpdates": 0,
+          "inputEstimate": 6743
+        },
+        {
+          "request": "request-11.json",
+          "stage": "reading",
+          "sourceIds": [
+            "101",
+            "102",
+            "103",
+            "104",
+            "105",
+            "106",
+            "107",
+            "108",
+            "109",
+            "110"
+          ],
+          "relatedSourceIds": [],
+          "knownCandidates": 0,
+          "candidates": 0,
+          "candidateUpdates": 0,
+          "inputEstimate": 6744
+        },
+        {
+          "request": "request-12.json",
+          "stage": "reading",
+          "sourceIds": [
+            "111",
+            "112",
+            "113",
+            "114",
+            "115",
+            "116",
+            "117",
+            "118",
+            "119",
+            "120"
+          ],
+          "relatedSourceIds": [],
+          "knownCandidates": 0,
+          "candidates": 0,
+          "candidateUpdates": 0,
+          "inputEstimate": 6741
+        },
+        {
+          "request": "request-13.json",
+          "stage": "compress-navigation",
+          "inputEstimate": 6633
+        },
+        {
+          "request": "request-14.json",
+          "stage": "compress-navigation",
+          "inputEstimate": 6556
+        },
+        {
+          "request": "request-15.json",
+          "stage": "compress-navigation",
+          "inputEstimate": 6643
+        },
+        {
+          "request": "request-16.json",
+          "stage": "compress-navigation",
+          "inputEstimate": 6532
+        },
+        {
+          "request": "request-17.json",
+          "stage": "compress-navigation",
+          "inputEstimate": 6524
+        },
+        {
+          "request": "request-18.json",
+          "stage": "compress-navigation",
+          "inputEstimate": 4581
+        }
+      ]
+    }
+  ]
+}

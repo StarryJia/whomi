@@ -1,0 +1,8 @@
+{"kind":"checkpoint","stage":"reading","callsReserved":0,"coveredMessageIds":[],"cursor":{"messageIndex":0,"textOffset":0},"pendingRead":null,"checks":[]}
+{"kind":"source-read","stage":"reading","ids":["1","2","3","4"]}
+{"kind":"checkpoint","stage":"reading","callsReserved":0,"coveredMessageIds":[],"cursor":{"messageIndex":0,"textOffset":0},"pendingRead":{"from":{"messageIndex":0,"textOffset":0},"to":{"messageIndex":4,"textOffset":0},"depth":0,"repairs":0},"checks":[]}
+{"kind":"checkpoint","stage":"reading","callsReserved":1,"coveredMessageIds":[],"cursor":{"messageIndex":0,"textOffset":0},"pendingRead":{"from":{"messageIndex":0,"textOffset":0},"to":{"messageIndex":4,"textOffset":0},"depth":0,"repairs":0},"checks":[]}
+{"kind":"checkpoint","stage":"reading","callsReserved":1,"coveredMessageIds":["1","2","3","4"],"cursor":{"messageIndex":4,"textOffset":0},"pendingRead":null,"checks":[]}
+{"kind":"checkpoint","stage":"checking","callsReserved":1,"coveredMessageIds":["1","2","3","4"],"cursor":{"messageIndex":4,"textOffset":0},"pendingRead":null,"checks":[]}
+{"kind":"checkpoint","stage":"writing","callsReserved":1,"coveredMessageIds":["1","2","3","4"],"cursor":{"messageIndex":4,"textOffset":0},"pendingRead":null,"checks":[]}
+{"kind":"checkpoint","stage":"writing","callsReserved":2,"coveredMessageIds":["1","2","3","4"],"cursor":{"messageIndex":4,"textOffset":0},"pendingRead":null,"checks":[]}

@@ -2,25 +2,28 @@ import { readPromptValues } from './system-prompts'
 import { defaultPrompts, type PromptValues } from '../../../src/shared/system-prompts'
 import { isThinkingLevel, type ThinkingLevel } from '../../../src/shared/thinking'
 import { arrangeList, threadOrder } from '../db/list-order'
-import { purgeThread } from '../db/purge'
+import { purgeAnalysis, purgeThread } from '../db/purge'
+import { createQueries } from '../db/queries'
 import type { ListArrangement } from '../../../src/shared/desktop-api'
 import { isDeepStrictEqual } from 'node:util'
 import { createHash, randomUUID } from 'node:crypto'
 import type { Store } from '../db/open'
 import type { WriterQueue } from '../import/runner'
 import { confirmedSelfSql } from '../db/self'
-import { ANALYSIS_PROMPT_VERSION, LEGACY_ANALYSIS_VERSION, LEGACY_MEMORY_VERSION, LEGACY_SCORED_MEMORY_VERSION } from './prompt-version'
+import { ANALYSIS_PROMPT_VERSION, INSIGHT_PROMPT_VERSION, LEGACY_ANALYSIS_VERSION, LEGACY_MEMORY_VERSION, LEGACY_SCORED_MEMORY_VERSION } from './prompt-version'
 import { dimensionKeys, isMemoryReport, scoreDimensions, type SavedReport } from '../../../src/shared/memory'
-import { validateAiResult } from '../../../src/shared/ai-validation'
+import { validateAiCall, validateAiResult } from '../../../src/shared/ai-validation'
+import { defaultInsightTitle, insightTitle, isInsightReport, isInsightScope, type InsightCitationInput, type InsightCitationWindow, type InsightReport, type InsightScope, type InsightScopeInput, type InsightSnapshot, type InsightSourceRef } from '../../../src/shared/conversation-insights'
 import { readNotes, type MemoryNotes } from './memory-notes'
 import { defaultModelProtocol, isModelProtocol } from '../../../src/shared/model-protocol'
 import { BoundaryError, localId } from '../../../src/shared/desktop-validation'
-import type { AiModel, AiReport, AiSkill, AiState, AiThread, AiThreadSummary, AiTurn, AiUsage, AnalysisPreparation, AnalysisTask } from '../../../src/shared/ai-contract'
+import type { AiModel, AiReport, AiSkill, AiState, AiThread, AiThreadSummary, AiTurn, AiUsage, AnalysisPreparation, AnalysisTask, PrepareAnalysisInput } from '../../../src/shared/ai-contract'
 import { threadTitle } from './thread-title'
+import { captureInsightSources, previewInsightScope, readCurrentInsightSources, readInsightCitationIds, readInsightSources, type StoredInsightSnapshot, type StoredInsightSourceRef } from './insight-sources'
 
 export type AiSourceMessage = { id: string; senderName: string; text: string; isSelf: boolean; kind: string; sentAtMs: number | null; memberId: string | null }
 export type AnalysisBatch = { index: number; messageIds: string[]; report: AiReport | MemoryNotes; usage: AiUsage }
-export type AnalysisContext = { systemPrompts?: PromptValues; task: AnalysisTask; promptVersion: string; model: AiModel; selfFingerprint: string; messages: AiSourceMessage[]; batches: AnalysisBatch[]; checkpoint: string | null }
+export type AnalysisContext = { systemPrompts?: PromptValues; task: AnalysisTask; promptVersion: string; model: AiModel; selfFingerprint: string; messages: AiSourceMessage[]; batches: AnalysisBatch[]; checkpoint: string | null; snapshot?: InsightSnapshot }
 export type RegisteredSkill = AiSkill & { content: string; enabled?: boolean }
 export type TurnContext = { systemPrompt?: string; turn: AiTurn; threadId: string; conversationId: string; model: AiModel; selfFingerprint: string; references: AiSourceMessage[]; history: { role: 'user' | 'assistant'; text: string; references?: AiSourceMessage[] }[]; profile: SavedReport | null; skill: RegisteredSkill | null; checkpoint: string | null }
 export type AnalysisPatch = { state?: AiState; error?: string; usage?: AiUsage; checkpoint?: string | null }
@@ -28,7 +31,9 @@ export type TurnPatch = AnalysisPatch & { text?: string }
 export type NewTurn = { thinkingLevel?: ThinkingLevel; threadId: string; requestId: string; prompt: string; referenceIds: string[]; modelId: string; skillId?: string }
 export type ModelInput = Omit<AiModel, 'version' | 'hasCredential'>
 export type UsageRecord = { ownerKind: 'analysis' | 'turn'; ownerId: string; requestId: string; usage: AiUsage }
-type AnalysisRow = { prompt_snapshot: string | null; thinking_level: ThinkingLevel | null; id: bigint; conversation_id: bigint; model_id: string; model_version: bigint; created_at_ms: bigint | null; completed_at_ms: bigint | null; pinned: bigint; prompt_version: string; self_fingerprint: string; snapshot_max_id: bigint; state: AiState; total_messages: bigint; skipped_messages: bigint; event_sequence: bigint; error: string | null; checkpoint: string | null }
+type AnalysisRow = { title: string | null; elapsed_ms: bigint; prompt_snapshot: string | null; thinking_level: ThinkingLevel | null; id: bigint; conversation_id: bigint; model_id: string; model_version: bigint; created_at_ms: bigint | null; completed_at_ms: bigint | null; pinned: bigint; prompt_version: string; self_fingerprint: string; snapshot_max_id: bigint; state: AiState; total_messages: bigint; skipped_messages: bigint; event_sequence: bigint; error: string | null; checkpoint: string | null }
+type InsightSnapshotRow = { scope: string; timezone: string; source_start_time_ms: bigint | null; source_end_time_ms: bigint | null; created_at_ms: bigint; sources: string }
+type ReportRow = { data: string; content_revision: string | null }
 type TurnRow = { system_prompt: string | null; thinking_level: ThinkingLevel | null; id: bigint; thread_id: bigint; request_id: string; prompt: string; reference_ids: string; model_id: string; model_version: bigint; skill: string | null; self_fingerprint: string; text: string; state: AiState; attempt: bigint; event_sequence: bigint; error: string | null; checkpoint: string | null }
 type ThreadRow = { pinned: bigint; id: bigint; conversation_id: bigint; title: string; created_at_ms: bigint; updated_at_ms: bigint }
 function threadView(row: ThreadRow): AiThreadSummary { return { pinned: !!row.pinned, id: String(row.id), conversationId: String(row.conversation_id), title: row.title, createdAtMs: Number(row.created_at_ms), updatedAtMs: Number(row.updated_at_ms) } }
@@ -43,6 +48,7 @@ function key(value: unknown): value is string { return text(value, 256) }
 function object(value: unknown): value is Record<string, unknown> { return !!value && typeof value === 'object' && !Array.isArray(value) }
 function fields(value: unknown, allowed: string[]): asserts value is Record<string, unknown> { if (!object(value) || Object.keys(value).some(field => !allowed.includes(field))) fail('INVALID_ARGUMENT') }
 function parse<T>(value: string): T { return JSON.parse(value) as T }
+function optionalNumber(value: bigint | null): number | null { return value === null ? null : Number(value) }
 function usage(value: AiUsage): AiUsage {
   fields(value, [...usageFields, 'incomplete'])
   for (const field of usageFields) if (value[field] !== undefined && (typeof value[field] !== 'number' || !Number.isFinite(value[field]) || value[field]! < 0)) fail('INVALID_USAGE')
@@ -70,6 +76,7 @@ export function saveAiModelVersion(db: Store['writer'], input: ModelInput, encry
 
 export function createAiRepository(store: Store, write: WriterQueue) {
   const db = store.writer, reader = store.reader
+  const queries = createQueries(store)
   function conversation(conversationId: string) {
     const row = reader.prepare('SELECT title,kind FROM conversations WHERE id=?').get(id(conversationId)) as { title: string; kind: string } | undefined
     if (!row) fail('INVALID_ID', '请刷新会话列表后重试。')
@@ -103,6 +110,41 @@ export function createAiRepository(store: Store, write: WriterQueue) {
     const row = reader.prepare('SELECT * FROM ai_analysis_tasks WHERE id=?').get(id(taskId)) as AnalysisRow | undefined
     if (!row) fail('INVALID_TASK', '请刷新分析任务后重试。')
     return row
+  }
+  function insightSnapshot(row: AnalysisRow): StoredInsightSnapshot {
+    const saved = reader.prepare('SELECT * FROM ai_insight_snapshots WHERE task_id=?').get(row.id) as InsightSnapshotRow | undefined
+    if (!saved || row.prompt_version !== INSIGHT_PROMPT_VERSION) fail('INSIGHT_SNAPSHOT_UNAVAILABLE', '请重新准备分析。')
+    return {
+      taskId: String(row.id), scope: parse<InsightScope>(saved.scope), timezone: saved.timezone, createdAtMs: Number(saved.created_at_ms),
+      sourceStartTimeMs: optionalNumber(saved.source_start_time_ms), sourceEndTimeMs: optionalNumber(saved.source_end_time_ms),
+      sources: parse<StoredInsightSourceRef[]>(saved.sources),
+    }
+  }
+  function checkedInsightSources(row: AnalysisRow, snapshot: InsightSnapshot, messageIds: readonly string[]) {
+    return readInsightSources(snapshot, messageIds, readCurrentInsightSources(reader, row.conversation_id, messageIds))
+  }
+  function validateInsightReport(row: AnalysisRow, report: InsightReport, current: ReturnType<typeof checkedInsightSources>) {
+    const sources = new Map(current.map(message => [message.id, message]))
+    const validRef = (source: InsightSourceRef) => sources.get(source.messageId)?.revision === source.revision
+    const citationIds = new Set<string>()
+    for (const citation of report.citations) {
+      if (citationIds.has(citation.id) || citation.conversationId !== String(row.conversation_id) ||
+        citation.fragments.some(fragment => fragment.sources.some(source => !validRef(source)))) {
+        fail('INVALID_INSIGHT_CITATION', '请重新生成这份报告。')
+      }
+      citationIds.add(citation.id)
+    }
+    for (const paragraph of [...report.aboutYou, ...report.relationship]) {
+      if (paragraph.content.some(part => part.citationId && !citationIds.has(part.citationId))) {
+        fail('INVALID_INSIGHT_CITATION', '请重新生成这份报告。')
+      }
+    }
+    for (const judgment of report.judgments ?? []) {
+      if (!judgment.supportingSources.some(source => sources.get(source.messageId)?.isSelf) ||
+        [...judgment.supportingSources, ...judgment.counterexampleSources].some(source => !validRef(source))) {
+        fail('INVALID_INSIGHT_JUDGMENT', '请重新生成这份报告。')
+      }
+    }
   }
   function turnRow(turnId: string): TurnRow {
     const row = reader.prepare('SELECT * FROM ai_turns WHERE id=?').get(id(turnId)) as TurnRow | undefined
@@ -156,12 +198,13 @@ export function createAiRepository(store: Store, write: WriterQueue) {
   }
   function taskView(row: AnalysisRow): AnalysisTask {
     const coverage = reader.prepare('SELECT count(*) AS n FROM ai_analysis_coverage WHERE task_id=?').get(row.id) as { n: bigint }
-    const report = reader.prepare('SELECT data FROM ai_reports WHERE task_id=?').get(row.id) as { data: string } | undefined
+    const report = reader.prepare('SELECT data,content_revision FROM ai_reports WHERE task_id=?').get(row.id) as ReportRow | undefined
     const current = identity(String(row.conversation_id))
     const valid = row.self_fingerprint === current.fingerprint
     const counterpartName = row.state === 'completed' && valid && current.kind === 'direct' && current.selfName !== null
       ? readCounterpartName(row.conversation_id) : undefined
-    const range = reader.prepare('SELECT min(sent_at_ms) AS start,max(sent_at_ms) AS end FROM messages WHERE conversation_id=? AND id<=?').get(row.conversation_id, row.snapshot_max_id) as { start: bigint | null; end: bigint | null }
+    const insight = reader.prepare('SELECT scope,source_start_time_ms AS start,source_end_time_ms AS end FROM ai_insight_snapshots WHERE task_id=?').get(row.id) as { scope: string; start: bigint | null; end: bigint | null } | undefined
+    const range = insight ?? reader.prepare('SELECT min(sent_at_ms) AS start,max(sent_at_ms) AS end FROM messages WHERE conversation_id=? AND id<=?').get(row.conversation_id, row.snapshot_max_id) as { start: bigint | null; end: bigint | null }
     const snapshot = reader.prepare('SELECT data FROM ai_model_versions WHERE model_id=? AND version=?').get(row.model_id, row.model_version) as { data: string } | undefined
     let modelIdentity: AnalysisTask['modelIdentity']
     if (snapshot) {
@@ -170,7 +213,19 @@ export function createAiRepository(store: Store, write: WriterQueue) {
         if (typeof model.label === 'string' && model.label.trim() && typeof model.model === 'string' && model.model.trim()) modelIdentity = { id: row.model_id, version: Number(row.model_version), label: model.label, model: model.model }
       } catch { /* 旧模型资料缺失时仍保留文稿。 */ }
     }
-    return { ...(row.thinking_level ? { thinkingLevel: row.thinking_level } : {}), id: String(row.id), conversationId: String(row.conversation_id), conversationTitle: current.title, ...(counterpartName && { counterpartName }), modelId: row.model_id, ...(modelIdentity ? { modelIdentity } : {}), createdAtMs: row.created_at_ms === null ? null : Number(row.created_at_ms), completedAtMs: row.completed_at_ms === null ? null : Number(row.completed_at_ms), sourceStartTimeMs: range.start === null ? null : Number(range.start), sourceEndTimeMs: range.end === null ? null : Number(range.end), pinned: !!row.pinned, state: row.state, analyzedMessages: Number(coverage.n), totalMessages: Number(row.total_messages), skippedMessages: Number(row.skipped_messages), usage: aggregate('analysis', String(row.id)), valid, eventSequence: Number(row.event_sequence), ...(row.error ? { error: row.error } : {}), ...(report ? { report: parse<SavedReport>(report.data) } : {}) }
+    return {
+      ...(row.thinking_level ? { thinkingLevel: row.thinking_level } : {}),
+      id: String(row.id), conversationId: String(row.conversation_id), conversationTitle: current.title, ...(counterpartName && { counterpartName }),
+      ...(row.title === null ? {} : { title: row.title }),
+      ...(insight ? { scope: parse<InsightScope>(insight.scope), insightSelfFingerprint: row.self_fingerprint, elapsedMs: Number(row.elapsed_ms) } : {}),
+      ...(report?.content_revision ? { insightContentRevision: report.content_revision } : {}),
+      modelId: row.model_id, ...(modelIdentity ? { modelIdentity } : {}),
+      createdAtMs: optionalNumber(row.created_at_ms), completedAtMs: optionalNumber(row.completed_at_ms),
+      sourceStartTimeMs: optionalNumber(range.start), sourceEndTimeMs: optionalNumber(range.end),
+      pinned: !!row.pinned, state: row.state, analyzedMessages: Number(coverage.n), totalMessages: Number(row.total_messages),
+      skippedMessages: Number(row.skipped_messages), usage: aggregate('analysis', String(row.id)), valid, eventSequence: Number(row.event_sequence),
+      ...(row.error ? { error: row.error } : {}), ...(report ? { report: parse<SavedReport>(report.data) } : {}),
+    }
   }
   function turnView(row: TurnRow): AiTurn {
     const skill = row.skill ? parse<RegisteredSkill>(row.skill) : null
@@ -187,7 +242,7 @@ export function createAiRepository(store: Store, write: WriterQueue) {
     return { ...(row.thinking_level ? { thinkingLevel: row.thinking_level } : {}), id: String(row.id), threadId: String(row.thread_id), requestId: row.request_id, prompt: row.prompt, referenceIds: parse<string[]>(row.reference_ids), modelId: row.model_id, ...(modelIdentity ? { modelIdentity } : {}), ...(skill ? { skillId: skill.id } : {}), text: row.text, state: row.state, attempt: Number(row.attempt), usage: aggregate('turn', String(row.id)), eventSequence: Number(row.event_sequence), ...(row.error ? { error: row.error } : {}) }
   }
   function assertCurrent(row: AnalysisRow) {
-    if (![LEGACY_ANALYSIS_VERSION, LEGACY_MEMORY_VERSION, LEGACY_SCORED_MEMORY_VERSION, ANALYSIS_PROMPT_VERSION].includes(row.prompt_version)) fail('PROMPT_CHANGED', '请重新准备分析。')
+    if (![LEGACY_ANALYSIS_VERSION, LEGACY_MEMORY_VERSION, LEGACY_SCORED_MEMORY_VERSION, ANALYSIS_PROMPT_VERSION, INSIGHT_PROMPT_VERSION].includes(row.prompt_version)) fail('PROMPT_CHANGED', '请重新准备分析。')
     if (row.self_fingerprint !== identity(String(row.conversation_id)).fingerprint) fail('IDENTITY_CHANGED', '本人身份已更新，请重新准备分析。')
   }
   function insertUsage(record: UsageRecord) {
@@ -227,18 +282,30 @@ export function createAiRepository(store: Store, write: WriterQueue) {
       if (!key(skill.id) || !text(skill.label, 256) || !key(skill.version) || !text(skill.content) || (skill.enabled !== undefined && typeof skill.enabled !== 'boolean')) fail('INVALID_SKILL')
       return write(() => { db.prepare('INSERT INTO ai_skills(id,data) VALUES(?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data').run(skill.id, JSON.stringify(skill)); return { id: skill.id, label: skill.label, version: skill.version } })
     },
-    async prepareAnalysis(input: { conversationId: string; modelId: string; thinkingLevel?: ThinkingLevel }, now = Date.now()): Promise<AnalysisPreparation> {
-      fields(input, ['conversationId', 'modelId', 'thinkingLevel']); if (input.thinkingLevel !== undefined && !isThinkingLevel(input.thinkingLevel)) fail('INVALID_ARGUMENT')
+    previewInsightScope(input: InsightScopeInput) {
+      validateAiCall('previewInsightScope', [input])
+      conversation(input.conversationId)
+      return previewInsightScope(reader, id(input.conversationId), input.scope ?? { kind: 'all' })
+    },
+    async prepareAnalysis(input: PrepareAnalysisInput, now = Date.now()): Promise<AnalysisPreparation> {
+      fields(input, ['conversationId', 'modelId', 'thinkingLevel', 'scope'])
+      if (input.thinkingLevel !== undefined && !isThinkingLevel(input.thinkingLevel)) fail('INVALID_ARGUMENT')
+      if (input.scope !== undefined && !isInsightScope(input.scope)) fail('INVALID_ARGUMENT', '请选择有效的日期范围。')
       return write(() => {
         const { title } = conversation(input.conversationId), self = identity(input.conversationId)
         if (!self.selfName) fail('SELF_REQUIRED', '请先确认当前会话中的本人身份。')
-        const model = enabledModel(input.modelId), all = messages(input.conversationId)
-        if (!all.length) fail('EMPTY_CONVERSATION', '巧妇难为无米之炊，先导入一些聊天记录吧。')
-        const usable = all.filter(analyzable)
-        if (!usable.length) fail('NO_ANALYZABLE_MESSAGES', '请导入包含文字的聊天记录。')
-        const snapshotMaxId = all.reduce((max, message) => BigInt(message.id) > max ? BigInt(message.id) : max, 0n).toString()
-        const preparation: AnalysisPreparation = { ...(input.thinkingLevel ? { thinkingLevel: input.thinkingLevel } : {}), token: randomUUID(), conversationId: input.conversationId, title, selfName: self.selfName, totalMessages: all.length, analyzableMessages: usable.length, snapshotMaxId, expiresAt: now + 5 * 60 * 1000, model }
-        db.prepare('INSERT INTO ai_preparations(token,conversation_id,data,self_fingerprint,model_version,prompt_version,expires_at_ms) VALUES(?,?,?,?,?,?,?)').run(preparation.token, id(input.conversationId), JSON.stringify(preparation), self.fingerprint, model.version, ANALYSIS_PROMPT_VERSION, preparation.expiresAt)
+        const model = enabledModel(input.modelId)
+        const { totalMessages, analyzableMessages, conversationMessages, snapshotMaxId, ...snapshot } = captureInsightSources(reader, id(input.conversationId), input.scope ?? { kind: 'all' })
+        if (!conversationMessages) fail('EMPTY_CONVERSATION', '请先导入聊天记录。')
+        if (snapshot.scope.kind === 'dates' && !analyzableMessages) fail('EMPTY_INSIGHT_SCOPE', '请选择有聊天文字的日期范围。')
+        if (!analyzableMessages) fail('NO_ANALYZABLE_MESSAGES', '请导入包含文字的聊天记录。')
+        const preparation: AnalysisPreparation = {
+          ...(input.thinkingLevel ? { thinkingLevel: input.thinkingLevel } : {}), token: randomUUID(), conversationId: input.conversationId,
+          title, selfName: self.selfName, scope: snapshot.scope, timezone: snapshot.timezone, totalMessages,
+          analyzableMessages, snapshotMaxId, expiresAt: now + 5 * 60 * 1000, model,
+        }
+        db.prepare('INSERT INTO ai_preparations(token,conversation_id,data,self_fingerprint,model_version,prompt_version,expires_at_ms,insight_snapshot) VALUES(?,?,?,?,?,?,?,?)')
+          .run(preparation.token, id(input.conversationId), JSON.stringify(preparation), self.fingerprint, model.version, INSIGHT_PROMPT_VERSION, preparation.expiresAt, JSON.stringify({ ...snapshot, createdAtMs: now }))
         return preparation
       })
     },
@@ -248,13 +315,24 @@ export function createAiRepository(store: Store, write: WriterQueue) {
         const existing = db.prepare('SELECT id,preparation_token FROM ai_analysis_tasks WHERE request_id=?').get(input.requestId) as { id: bigint; preparation_token: string } | undefined
         if (existing) { if (existing.preparation_token !== input.token) fail('REQUEST_CONFLICT'); return String(existing.id) }
         if (db.prepare('SELECT 1 FROM ai_analysis_tasks WHERE preparation_token=?').get(input.token)) fail('CONFIRMATION_USED', '请重新准备分析。')
-        const row = db.prepare('SELECT data,self_fingerprint,prompt_version,expires_at_ms FROM ai_preparations WHERE token=?').get(input.token) as { data: string; self_fingerprint: string; prompt_version: string; expires_at_ms: bigint } | undefined
+        const row = db.prepare('SELECT data,self_fingerprint,prompt_version,expires_at_ms,insight_snapshot FROM ai_preparations WHERE token=?').get(input.token) as { data: string; self_fingerprint: string; prompt_version: string; expires_at_ms: bigint; insight_snapshot: string | null } | undefined
         if (!row || Number(row.expires_at_ms) <= now) fail('CONFIRMATION_EXPIRED', '请重新准备分析。')
-        if (row.prompt_version !== ANALYSIS_PROMPT_VERSION) fail('PROMPT_CHANGED', '请重新准备分析。')
+        if (row.prompt_version !== INSIGHT_PROMPT_VERSION && row.prompt_version !== ANALYSIS_PROMPT_VERSION) fail('PROMPT_CHANGED', '请重新准备分析。')
         const preparation = parse<AnalysisPreparation>(row.data), self = identity(preparation.conversationId), model = enabledModel(preparation.model.id)
         if (self.fingerprint !== row.self_fingerprint || model.version !== preparation.model.version) fail('CONFIRMATION_CHANGED', '配置或本人身份已更新，请重新准备分析。')
         if (db.prepare("SELECT 1 FROM ai_analysis_tasks WHERE conversation_id=? AND state IN ('queued','running','summarizing')").get(id(preparation.conversationId))) fail('ANALYSIS_BUSY', '请先完成或停止当前分析。')
-        return String(db.prepare("INSERT INTO ai_analysis_tasks(conversation_id,request_id,preparation_token,model_id,model_version,prompt_version,self_fingerprint,snapshot_max_id,state,total_messages,skipped_messages,created_at_ms,thinking_level,prompt_snapshot) VALUES(?,?,?,?,?,?,?,?,'queued',?,?,?,?,?)").run(id(preparation.conversationId), input.requestId, input.token, model.id, model.version, ANALYSIS_PROMPT_VERSION, self.fingerprint, BigInt(preparation.snapshotMaxId), preparation.analyzableMessages, preparation.totalMessages - preparation.analyzableMessages, now, preparation.thinkingLevel ?? null, JSON.stringify(readPromptValues(db))).lastInsertRowid)
+        const snapshot = row.prompt_version === INSIGHT_PROMPT_VERSION && row.insight_snapshot ? parse<Omit<StoredInsightSnapshot, 'taskId'>>(row.insight_snapshot) : null
+        if (row.prompt_version === INSIGHT_PROMPT_VERSION && !snapshot) fail('INSIGHT_SNAPSHOT_UNAVAILABLE', '请重新准备分析。')
+        const taskId = db.prepare(`INSERT INTO ai_analysis_tasks(conversation_id,request_id,preparation_token,model_id,model_version,prompt_version,self_fingerprint,snapshot_max_id,state,total_messages,skipped_messages,created_at_ms,thinking_level,prompt_snapshot,title)
+          VALUES(?,?,?,?,?,?,?,?,'queued',?,?,?,?,?,?)`).run(id(preparation.conversationId), input.requestId, input.token, model.id, model.version, row.prompt_version, self.fingerprint,
+          BigInt(preparation.snapshotMaxId), preparation.analyzableMessages, preparation.totalMessages - preparation.analyzableMessages,
+          now, preparation.thinkingLevel ?? null, JSON.stringify(readPromptValues(db)), snapshot ? defaultInsightTitle : null).lastInsertRowid
+        if (snapshot) {
+          db.prepare('INSERT INTO ai_insight_snapshots(task_id,scope,timezone,created_at_ms,source_start_time_ms,source_end_time_ms,sources) VALUES(?,?,?,?,?,?,?)')
+            .run(taskId, JSON.stringify(snapshot.scope), snapshot.timezone, snapshot.createdAtMs, snapshot.sourceStartTimeMs, snapshot.sourceEndTimeMs, JSON.stringify(snapshot.sources))
+        }
+        db.prepare('UPDATE ai_preparations SET insight_snapshot=NULL WHERE token=?').run(input.token)
+        return String(taskId)
       })())
       return repository.getAnalysis(taskId)
     },
@@ -278,24 +356,62 @@ export function createAiRepository(store: Store, write: WriterQueue) {
         rows.forEach((item, index) => update.run(index + 1, item.id))
       })())
     },
+    async renameAnalysis(input: { taskId: string; title: string }): Promise<AnalysisTask> {
+      validateAiCall('renameAnalysis', [input])
+      const title = insightTitle(input.title)!
+      await write(() => {
+        const row = analysisRow(input.taskId)
+        if (row.title !== title) db.prepare('UPDATE ai_analysis_tasks SET title=?,event_sequence=event_sequence+1 WHERE id=?').run(title, row.id)
+      })
+      return repository.getAnalysis(input.taskId)
+    },
     async deleteAnalysis(taskId: string): Promise<void> {
       await write(() => db.transaction(() => {
         const row = analysisRow(taskId)
         if (activeStates.has(row.state)) fail('ANALYSIS_BUSY', '请暂停生成后重试。')
-        const preparation = db.prepare('SELECT preparation_token FROM ai_analysis_tasks WHERE id=?').get(row.id) as { preparation_token: string }
-        db.prepare('DELETE FROM ai_analysis_batches WHERE task_id=?').run(row.id)
-        db.prepare('DELETE FROM ai_analysis_coverage WHERE task_id=?').run(row.id)
-        db.prepare('DELETE FROM ai_reports WHERE task_id=?').run(row.id)
-        db.prepare("DELETE FROM ai_request_usage WHERE owner_kind='analysis' AND owner_id=?").run(row.id)
-        db.prepare('DELETE FROM ai_analysis_tasks WHERE id=?').run(row.id)
-        db.prepare('DELETE FROM ai_preparations WHERE token=?').run(preparation.preparation_token)
+        purgeAnalysis(db, row.id)
       })())
     },
     getReport(taskId: string): SavedReport { const task = repository.getAnalysis(taskId); if (task.state !== 'completed' || !task.report) fail('REPORT_UNAVAILABLE', '生成完成后再查看文稿。'); return task.report },
+    readInsightSources(input: { taskId: string; messageIds: readonly string[] }) {
+      fields(input, ['taskId', 'messageIds'])
+      if (!Array.isArray(input.messageIds) || input.messageIds.some(messageId => !localId(messageId))) fail('INVALID_ARGUMENT')
+      const row = analysisRow(input.taskId)
+      assertCurrent(row)
+      return checkedInsightSources(row, insightSnapshot(row), input.messageIds)
+    },
+    async readInsightCitation(input: InsightCitationInput): Promise<InsightCitationWindow> {
+      validateAiCall('readInsightCitation', [input])
+      const row = reader.prepare("SELECT * FROM ai_analysis_tasks WHERE id=? AND state='completed'").get(id(input.taskId)) as AnalysisRow | undefined
+      if (!row || row.prompt_version !== INSIGHT_PROMPT_VERSION) return { status: 'unavailable' }
+      const saved = reader.prepare('SELECT data,content_revision FROM ai_reports WHERE task_id=?').get(row.id) as ReportRow | undefined
+      if (!saved) return { status: 'unavailable' }
+      if (saved.content_revision !== createHash('sha256').update(saved.data).digest('hex')) return { status: 'expired' }
+      const report = parse<SavedReport>(saved.data)
+      const citation = isInsightReport(report) ? report.citations.find(item => item.id === input.citationId) : undefined
+      const fragment = citation?.fragments[input.fragmentIndex]
+      if (!citation || !fragment) return { status: 'unavailable' }
+      if (citation.conversationId !== String(row.conversation_id)) return { status: 'expired' }
+      let highlightIds: string[] | null
+      try {
+        highlightIds = readInsightCitationIds(reader, row.conversation_id, insightSnapshot(row), fragment.sources)
+      } catch (error) {
+        if (error instanceof BoundaryError && error.code === 'INSIGHT_SNAPSHOT_UNAVAILABLE') return { status: 'expired' }
+        throw error
+      }
+      if (!highlightIds) return { status: 'expired' }
+      const window = await queries.locateSource({ conversationId: citation.conversationId, messageId: highlightIds[0], endMessageId: highlightIds.at(-1)! })
+      return window.status === 'available' ? { ...window, highlightIds } : { status: 'expired' }
+    },
     analysisContext(taskId: string): AnalysisContext {
       const row = analysisRow(taskId); assertCurrent(row)
       const model = modelSecret(row.model_id, Number(row.model_version)).model
-      return { systemPrompts: row.prompt_snapshot ? parse<PromptValues>(row.prompt_snapshot) : undefined, task: taskView(row), model, promptVersion: row.prompt_version, selfFingerprint: row.self_fingerprint, messages: messages(String(row.conversation_id), row.snapshot_max_id).filter(analyzable), batches: (reader.prepare('SELECT data FROM ai_analysis_batches WHERE task_id=? ORDER BY batch_index').all(row.id) as { data: string }[]).map(batch => parse<AnalysisBatch>(batch.data)), checkpoint: row.checkpoint }
+      const context = { systemPrompts: row.prompt_snapshot ? parse<PromptValues>(row.prompt_snapshot) : undefined, task: taskView(row), model, promptVersion: row.prompt_version, selfFingerprint: row.self_fingerprint, checkpoint: row.checkpoint }
+      if (row.prompt_version === INSIGHT_PROMPT_VERSION) {
+        const { sources, ...snapshot } = insightSnapshot(row)
+        return { ...context, messages: [], batches: [], snapshot: { ...snapshot, sources: sources.map(({ messageId, revision }) => ({ messageId, revision })) } }
+      }
+      return { ...context, messages: messages(String(row.conversation_id), row.snapshot_max_id).filter(analyzable), batches: (reader.prepare('SELECT data FROM ai_analysis_batches WHERE task_id=? ORDER BY batch_index').all(row.id) as { data: string }[]).map(batch => parse<AnalysisBatch>(batch.data)) }
     },
     async saveAnalysis(taskId: string, patch: AnalysisPatch): Promise<AnalysisTask> {
       patchState(patch)
@@ -308,12 +424,37 @@ export function createAiRepository(store: Store, write: WriterQueue) {
       })
       return repository.getAnalysis(taskId)
     },
+    async saveInsightCheckpoint(taskId: string, checkpoint: string, completedMessageIds: readonly string[], elapsedMs?: number): Promise<AnalysisTask> {
+      if (!text(checkpoint, 16 * 1024 * 1024) || !Array.isArray(completedMessageIds) || completedMessageIds.some(messageId => !localId(messageId)) ||
+        (elapsedMs !== undefined && (!Number.isSafeInteger(elapsedMs) || elapsedMs < 0))) fail('INVALID_INSIGHT_CHECKPOINT', '请继续分析。')
+      const coverage = new Set(completedMessageIds)
+      if (coverage.size !== completedMessageIds.length) fail('INVALID_INSIGHT_CHECKPOINT', '请继续分析。')
+      await write(() => db.transaction(() => {
+        const row = analysisRow(taskId)
+        if (!activeStates.has(row.state)) return
+        assertCurrent(row)
+        const snapshot = insightSnapshot(row)
+        const previous = new Set((db.prepare('SELECT message_id FROM ai_analysis_coverage WHERE task_id=?').all(row.id) as { message_id: bigint }[]).map(source => String(source.message_id)))
+        if ([...previous].some(messageId => !coverage.has(messageId)) || (elapsedMs !== undefined && BigInt(elapsedMs) < row.elapsed_ms)) {
+          fail('INVALID_INSIGHT_CHECKPOINT', '请继续分析。')
+        }
+        const added = completedMessageIds.filter(messageId => !previous.has(messageId))
+        if (added.length) checkedInsightSources(row, snapshot, added)
+        const elapsed = elapsedMs ?? row.elapsed_ms
+        if (!added.length && checkpoint === row.checkpoint && BigInt(elapsed) === row.elapsed_ms) return
+        const cover = db.prepare('INSERT INTO ai_analysis_coverage(task_id,message_id) VALUES(?,?)')
+        for (const messageId of added) cover.run(row.id, id(messageId))
+        db.prepare('UPDATE ai_analysis_tasks SET checkpoint=?,elapsed_ms=?,event_sequence=event_sequence+1 WHERE id=?').run(checkpoint, elapsed, row.id)
+      })())
+      return repository.getAnalysis(taskId)
+    },
     async commitBatch(taskId: string, batch: AnalysisBatch & { requestId?: string }): Promise<AnalysisTask> {
       fields(batch, ['index', 'messageIds', 'report', 'usage', 'requestId'])
       if (!Number.isSafeInteger(batch.index) || batch.index < 0 || !Array.isArray(batch.messageIds) || new Set(batch.messageIds).size !== batch.messageIds.length) fail('INVALID_BATCH')
       usage(batch.usage)
       await write(() => db.transaction(() => {
         const row = analysisRow(taskId); if (!activeStates.has(row.state)) return; assertCurrent(row)
+        if (row.prompt_version === INSIGHT_PROMPT_VERSION) fail('INVALID_BATCH', '请继续分析。')
         const source = messages(String(row.conversation_id), row.snapshot_max_id).filter(analyzable)
         const allowed = new Set(source.map(message => message.id))
         if (batch.messageIds.some(message => !allowed.has(message))) fail('INVALID_REFERENCE')
@@ -333,7 +474,14 @@ export function createAiRepository(store: Store, write: WriterQueue) {
     async completeAnalysis(taskId: string, report: SavedReport): Promise<AnalysisTask> {
       await write(() => db.transaction(() => {
         const row = analysisRow(taskId); if (!activeStates.has(row.state)) return; assertCurrent(row)
-        if (row.prompt_version === LEGACY_ANALYSIS_VERSION) validateReport(report as AiReport, new Set(messages(String(row.conversation_id), row.snapshot_max_id).filter(analyzable).map(message => message.id)))
+        if (row.prompt_version === INSIGHT_PROMPT_VERSION) {
+          if (!isInsightReport(report)) fail('INVALID_REPORT', '请重新生成这份报告。')
+          validateAiResult('getReport', report)
+          const snapshot = insightSnapshot(row)
+          const current = checkedInsightSources(row, snapshot, snapshot.sources.map(source => source.messageId))
+          validateInsightReport(row, report, current)
+        }
+        else if (row.prompt_version === LEGACY_ANALYSIS_VERSION) validateReport(report as AiReport, new Set(messages(String(row.conversation_id), row.snapshot_max_id).filter(analyzable).map(message => message.id)))
         else {
           if (!isMemoryReport(report)) fail('INVALID_MEMORY', '文稿格式有误，请重试生成。')
           validateAiResult('getReport', report)
@@ -355,7 +503,9 @@ export function createAiRepository(store: Store, write: WriterQueue) {
         }
         const covered = db.prepare('SELECT count(*) AS n FROM ai_analysis_coverage WHERE task_id=?').get(row.id) as { n: bigint }
         if (covered.n !== row.total_messages) fail('ANALYSIS_INCOMPLETE', '请继续分析剩余消息。')
-        db.prepare('INSERT INTO ai_reports(task_id,data) VALUES(?,?)').run(row.id, JSON.stringify(report))
+        const data = JSON.stringify(report)
+        const revision = isInsightReport(report) ? createHash('sha256').update(data).digest('hex') : null
+        db.prepare('INSERT INTO ai_reports(task_id,data,content_revision) VALUES(?,?,?)').run(row.id, data, revision)
         db.prepare("UPDATE ai_analysis_tasks SET state='completed',completed_at_ms=?,error=NULL,event_sequence=event_sequence+1 WHERE id=?").run(Date.now(), row.id)
       })())
       return repository.getAnalysis(taskId)
@@ -364,6 +514,7 @@ export function createAiRepository(store: Store, write: WriterQueue) {
       await write(() => {
         const row = analysisRow(taskId); assertCurrent(row)
         if (!['stopped', 'failed', 'interrupted'].includes(row.state)) fail('INVALID_STATE')
+        if (row.prompt_version === INSIGHT_PROMPT_VERSION) insightSnapshot(row)
         if (!sameModelConfiguration(row.model_id, Number(row.model_version))) fail('MODEL_CHANGED', '模型配置已更新，请重新准备分析。')
         if (db.prepare("SELECT 1 FROM ai_analysis_tasks WHERE conversation_id=? AND state IN ('queued','running','summarizing')").get(row.conversation_id)) fail('ANALYSIS_BUSY')
         db.prepare("UPDATE ai_analysis_tasks SET state='queued',error=NULL,event_sequence=event_sequence+1 WHERE id=?").run(row.id)

@@ -1,0 +1,67 @@
+diff --git a/release/conversation-insights-20261115/paired-capacity-v2-frozen/current/source/electron/main/insight-generation.ts b/electron/main/insight-generation.ts
+index 120d81e..cea386d 100644
+--- a/release/conversation-insights-20261115/paired-capacity-v2-frozen/current/source/electron/main/insight-generation.ts
++++ b/electron/main/insight-generation.ts
+@@ -182,12 +182,15 @@ function explanations(value: unknown): string[] {
+   return array(value, 24, item => string(item, 3000))
+ }
+ 
+-function parseEvidenceNotes(value: unknown, evidence: readonly InsightSourcePart[]): InsightEvidenceNote[] {
++function parseEvidenceNotes(
++  value: unknown, evidence: readonly InsightSourcePart[], verified: readonly InsightEvidenceNote[] = [],
++): InsightEvidenceNote[] {
+   return array(value, maximumEvidenceNotes, item => {
+     const note = object(item)
+     const sourceId = string(note.sourceId, 256)
+     const quote = string(note.quote, 240)
+-    if (!evidence.some(part => part.id === sourceId && part.text.includes(quote))) return invalidEvidence()
++    if (!evidence.some(part => part.id === sourceId && part.text.includes(quote))
++      && !verified.some(prior => prior.sourceId === sourceId && prior.quote.includes(quote))) return invalidEvidence()
+     return { sourceId, quote, text: string(note.text, 480) }
+   })
+ }
+@@ -214,7 +217,8 @@ function parseReading(
+   // 关闭已显示的旧事项不要求重复提供原文，也不授予新增事实的引用资格。
+   const resolvableThreadIds = new Set([...rawIds, ...openThreads.flatMap(note => note.sourceIds)])
+   const candidateIds = new Set(knownCandidates.map(candidate => candidate.id))
+-  const updateEvidence = new Set([...rawIds, ...knownCandidates.flatMap(candidate => candidate.evidenceNotes.map(note => note.sourceId))])
++  const visibleNotes = knownCandidates.flatMap(candidate => candidate.evidenceNotes)
++  const updateEvidence = new Set([...rawIds, ...visibleNotes.map(note => note.sourceId)])
+   const parseNote = (value: unknown) => {
+     const note = object(value)
+     return { text: string(note.text, 1200), sourceIds: sourceIds(note.sourceIds, rawIds, true) }
+@@ -231,7 +235,7 @@ function parseReading(
+     const id = string(update.id, 128)
+     if (!candidateIds.has(id)) return invalidEvidence()
+     candidateIds.delete(id)
+-    const notes = parseEvidenceNotes(update.evidenceNotes ?? [], originalEvidence)
++    const notes = parseEvidenceNotes(update.evidenceNotes ?? [], originalEvidence, visibleNotes)
+     if (update.action === 'resolve') {
+       return { id, action: 'resolve', finding: parseFinding(object(update.finding), updateEvidence), evidenceNotes: notes }
+     }
+@@ -266,12 +270,14 @@ function parseReading(
+ function parseChecking(
+   response: RuntimeResult, checkId: string, covered: ReadonlySet<string>, evidence: ReadonlySet<string>, hasMoreEvidence: boolean,
+   currentEvidence: readonly InsightSourcePart[], visibleNavigation: readonly VisibleNavigation[], navigationPage: NavigationPage | null,
++  verifiedNotes: readonly InsightEvidenceNote[],
+ ): CheckResult {
+   const body = outputObject(response)
+   if (body.checkId !== checkId) return invalidOutput()
+   if (body.action === 'read' || body.action === 'navigate') {
+-    const evidenceNotes = parseEvidenceNotes(body.evidenceNotes ?? [], currentEvidence)
+-    if (currentEvidence.some(part => part.fragment && !evidenceNotes.some(note => note.sourceId === part.id))) return invalidOutput()
++    const evidenceNotes = parseEvidenceNotes(body.evidenceNotes ?? [], currentEvidence, verifiedNotes)
++    if (currentEvidence.some(part => part.fragment
++      && !evidenceNotes.some(note => note.sourceId === part.id && part.text.includes(note.quote)))) return invalidOutput()
+     if (body.action === 'read') {
+       return { action: 'read', messageIds: sourceIds(body.messageIds, covered, !hasMoreEvidence), purpose: string(body.purpose, 1200), evidenceNotes }
+     }
+@@ -875,7 +881,7 @@ export async function generateInsight(input: InsightGenerationInput, deps: Insig
+       try {
+         action = parseChecking(
+           await call('checking', payload, check), check.id, covered, supported, stillUnread, payload.evidence,
+-          [...payload.observations, ...payload.navigationPage?.nodes ?? []], payload.navigationPage,
++          [...payload.observations, ...payload.navigationPage?.nodes ?? []], payload.navigationPage, payload.evidenceNotes,
+         )
+       } catch (error) {
+         if (codeOf(error) === 'MODEL_CONTEXT_LIMIT') {

@@ -1,0 +1,159 @@
+
+Running 6 tests using 1 worker
+
+(node:29932) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  x  1 tests\desktop\analysis-resume.spec.mjs:9:1 › resume a paused analysis after restart, retaining committed work and reporting against the same task (38.2s)
+(node:33184) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  x  2 tests\desktop\conversation-entry.spec.mjs:8:3 › 首条 AI 对话与缺模型时的设置往返 · 1440 (36.6s)
+(node:2672) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  x  3 tests\desktop\conversation-entry.spec.mjs:8:3 › 首条 AI 对话与缺模型时的设置往返 · 360 (37.0s)
+(node:16888) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  x  4 tests\desktop\memory-scoring.spec.mjs:7:1 › local manuscripts vote once per relationship and retract on identity correction (32.7s)
+(node:29724) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  x  5 tests\desktop\primary-empty-pages.spec.mjs:8:34 › 首次整理在 1280 像素窗口从总览、问一问、仓库到真实文稿 (35.8s)
+(node:25484) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  x  6 tests\desktop\primary-empty-pages.spec.mjs:8:34 › 首次整理在 360 像素窗口从总览、问一问、仓库到真实文稿 (35.6s)
+
+
+  1) tests\desktop\analysis-resume.spec.mjs:9:1 › resume a paused analysis after restart, retaining committed work and reporting against the same task 
+
+    TimeoutError: locator.click: Timeout 30000ms exceeded.
+    Call log:
+      - waiting for getByRole('button', { name: '整理成记忆', exact: true })
+
+
+      69 |     await page.getByRole('button', { name: '展开会话列表' }).click()
+      70 |     await page.getByRole('navigation').getByRole('button', { name: title, exact: true }).click()
+    > 71 |     await page.getByRole('button', { name: '整理成记忆', exact: true }).click()
+         |                                                                    ^
+      72 |   }
+      73 |   const screenshot = name => page.screenshot({ path: join(evidence, name + '.png'), animations: 'disabled' })
+      74 |   const tasks = () => app.evaluate(() => globalThis.__whomiRuntimeProbe.request('probe.tasks', null))
+        at openConversation (D:\University\github\whomi\release\conversation-insights-20261115\desktop-baseline\tests\desktop\analysis-resume.spec.mjs:71:68)
+        at D:\University\github\whomi\release\conversation-insights-20261115\desktop-baseline\tests\desktop\analysis-resume.spec.mjs:106:5
+
+    Error Context: test-results\tests-desktop-analysis-res-09551-rting-against-the-same-task\error-context.md
+
+  2) tests\desktop\conversation-entry.spec.mjs:8:3 › 首条 AI 对话与缺模型时的设置往返 · 1440 ─────────────────────
+
+    TimeoutError: locator.click: Timeout 30000ms exceeded.
+    Call log:
+      - waiting for getByRole('button', { name: '整理成记忆', exact: true })
+
+
+      48 |       expect(await page.evaluate(async () => (await window.whomi.ai.listThreads('1')).length)).toBe(1)
+      49 |       await page.keyboard.press('Escape')
+    > 50 |       await button('整理成记忆').click()
+         |                             ^
+      51 |       await screenshot('确认去设置')
+      52 |       await button('配置模型').click()
+      53 |       await expect(page.getByLabel('搜索服务商', {exact:true})).toBeVisible()
+        at D:\University\github\whomi\release\conversation-insights-20261115\desktop-baseline\tests\desktop\conversation-entry.spec.mjs:50:29
+
+    Error Context: test-results\tests-desktop-conversation-entry-首条-AI-对话与缺模型时的设置往返-·-1440\error-context.md
+
+  3) tests\desktop\conversation-entry.spec.mjs:8:3 › 首条 AI 对话与缺模型时的设置往返 · 360 ──────────────────────
+
+    TimeoutError: locator.click: Timeout 30000ms exceeded.
+    Call log:
+      - waiting for getByRole('button', { name: '整理成记忆', exact: true })
+
+
+      48 |       expect(await page.evaluate(async () => (await window.whomi.ai.listThreads('1')).length)).toBe(1)
+      49 |       await page.keyboard.press('Escape')
+    > 50 |       await button('整理成记忆').click()
+         |                             ^
+      51 |       await screenshot('确认去设置')
+      52 |       await button('配置模型').click()
+      53 |       await expect(page.getByLabel('搜索服务商', {exact:true})).toBeVisible()
+        at D:\University\github\whomi\release\conversation-insights-20261115\desktop-baseline\tests\desktop\conversation-entry.spec.mjs:50:29
+
+    Error Context: test-results\tests-desktop-conversation-entry-首条-AI-对话与缺模型时的设置往返-·-360\error-context.md
+
+  4) tests\desktop\memory-scoring.spec.mjs:7:1 › local manuscripts vote once per relationship and retract on identity correction 
+
+    Error: expect(received).toMatchObject(expected)
+
+    - Expected  - 13
+    + Received  +  1
+
+      Object {
+    -   "report": Object {
+    -     "dimensions": Object {
+    -       "JP": "J",
+    -     },
+    -     "eventVotes": Object {
+    -       "JP": Array [
+    -         3,
+    -         0,
+    -       ],
+    -     },
+    -     "format": "memory-v4",
+    -   },
+    -   "state": "completed",
+    +   "state": "failed",
+      }
+
+    Call Log:
+    - Timeout 30000ms exceeded while waiting on the predicate
+
+      64 |         return (await window.whomi.ai.confirmAnalysis({ token: prepared.token, requestId: crypto.randomUUID() })).id
+      65 |       }, { conversationId, modelId })
+    > 66 |       await expect.poll(() => page.evaluate(id => window.whomi.ai.getAnalysis(id), id), { timeout: 30000 }).toMatchObject({
+         |                                                                                                             ^
+      67 |         state: 'completed', report: { format: 'memory-v4', dimensions: { JP: conversationId === '1' ? 'J' : 'P' }, eventVotes: { JP: conversationId === '1' ? [3,0] : [0,5] } },
+      68 |       })
+      69 |     }
+        at D:\University\github\whomi\release\conversation-insights-20261115\desktop-baseline\tests\desktop\memory-scoring.spec.mjs:66:109
+
+    Error Context: test-results\tests-desktop-memory-scori-33bc3-ract-on-identity-correction\error-context.md
+
+  5) tests\desktop\primary-empty-pages.spec.mjs:8:34 › 首次整理在 1280 像素窗口从总览、问一问、仓库到真实文稿 ──────────────
+
+    TimeoutError: locator.click: Timeout 30000ms exceeded.
+    Call log:
+      - waiting for getByRole('button', { name: '记忆仓库', exact: true })
+
+
+      64 |     await expect(page.getByRole('heading',{name:/Spark/})).toBeVisible()
+      65 |     await snap('overview-empty')
+    > 66 |     await button('记忆仓库').click()
+         |                          ^
+      67 |     await expect(page.getByText('文稿预览',{exact:true})).toBeVisible()
+      68 |     await snap('library-empty')
+      69 |     await button('问一问').click()
+        at D:\University\github\whomi\release\conversation-insights-20261115\desktop-baseline\tests\desktop\primary-empty-pages.spec.mjs:66:26
+
+    Error Context: test-results\tests-desktop-primary-empt-e5c82-理在-1280-像素窗口从总览、问一问、仓库到真实文稿\error-context.md
+
+  6) tests\desktop\primary-empty-pages.spec.mjs:8:34 › 首次整理在 360 像素窗口从总览、问一问、仓库到真实文稿 ───────────────
+
+    TimeoutError: locator.click: Timeout 30000ms exceeded.
+    Call log:
+      - waiting for getByRole('button', { name: '记忆仓库', exact: true })
+
+
+      64 |     await expect(page.getByRole('heading',{name:/Spark/})).toBeVisible()
+      65 |     await snap('overview-empty')
+    > 66 |     await button('记忆仓库').click()
+         |                          ^
+      67 |     await expect(page.getByText('文稿预览',{exact:true})).toBeVisible()
+      68 |     await snap('library-empty')
+      69 |     await button('问一问').click()
+        at D:\University\github\whomi\release\conversation-insights-20261115\desktop-baseline\tests\desktop\primary-empty-pages.spec.mjs:66:26
+
+    Error Context: test-results\tests-desktop-primary-empt-f1891-整理在-360-像素窗口从总览、问一问、仓库到真实文稿\error-context.md
+
+  6 failed
+    tests\desktop\analysis-resume.spec.mjs:9:1 › resume a paused analysis after restart, retaining committed work and reporting against the same task 
+    tests\desktop\conversation-entry.spec.mjs:8:3 › 首条 AI 对话与缺模型时的设置往返 · 1440 ──────────────────────
+    tests\desktop\conversation-entry.spec.mjs:8:3 › 首条 AI 对话与缺模型时的设置往返 · 360 ───────────────────────
+    tests\desktop\memory-scoring.spec.mjs:7:1 › local manuscripts vote once per relationship and retract on identity correction 
+    tests\desktop\primary-empty-pages.spec.mjs:8:34 › 首次整理在 1280 像素窗口从总览、问一问、仓库到真实文稿 ───────────────
+    tests\desktop\primary-empty-pages.spec.mjs:8:34 › 首次整理在 360 像素窗口从总览、问一问、仓库到真实文稿 ────────────────

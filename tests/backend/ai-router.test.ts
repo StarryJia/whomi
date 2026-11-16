@@ -17,3 +17,21 @@ test('confirmation credentials and thread mutations stay in their originating wi
   router.publish({ kind: 'analysis', snapshot: task } as any)
   expect(received).toEqual([])
 })
+
+test('洞察改名和原文引用只从持有对应报告的窗口调用', async () => {
+  const task = { id: '1', conversationId: '1', modelId: 'm', state: 'completed', analyzedMessages: 1, totalMessages: 1, skippedMessages: 0, usage: {}, valid: true, eventSequence: 1 }
+  const router = createAiRouter({
+    getAnalysis: async () => task,
+    renameAnalysis: async (input: { title: string }) => ({ ...task, title: input.title }),
+    readInsightCitation: async () => ({ status: 'unavailable' }),
+  } as any)
+  await router.invoke(1, 'getAnalysis', ['1'])
+  for (const [method, input] of [
+    ['renameAnalysis', { taskId: '1', title: '那次合作' }],
+    ['readInsightCitation', { taskId: '1', citationId: 'time', fragmentIndex: 0 }],
+  ] as const) {
+    await expect(router.invoke(2, method, [input])).rejects.toHaveProperty('code', 'INVALID_OWNER')
+  }
+  await expect(router.invoke(1, 'renameAnalysis', [{ taskId: '1', title: '那次合作' }])).resolves.toMatchObject({ title: '那次合作' })
+  await expect(router.invoke(1, 'readInsightCitation', [{ taskId: '1', citationId: 'time', fragmentIndex: 0 }])).resolves.toEqual({ status: 'unavailable' })
+})

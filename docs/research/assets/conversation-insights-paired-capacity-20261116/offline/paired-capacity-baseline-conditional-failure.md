@@ -1,0 +1,11 @@
+# 旧版改期材料停止审计
+
+memory-capacity-baseline-20261116第二组第4次通读请求后以INVALID_EVIDENCE停止，baseline轮已关闭，不恢复或重抽；第一组两份报告保留。第二组4次请求、15428输入词元、7386输出词元、108363毫秒；前三批已接受72条，失败批次73–90未被接受。
+
+第3批自然提出候选1，第4批尝试resolve但未接受；候选仍pending，接受更新0次，核查轮数0，无报告。第4批通读还带入relatedMessages原文1、2，这是通读中的相关原文补充，不是主动核查请求。
+
+存在两个独立拒绝条件。首先，响应在新增evidenceNotes中重复输出62/63逐字摘录；它们确实匹配原文，也已通过knownCandidates.evidenceNotes提供给模型，但不在本批messages/relatedMessages内，旧parseEvidenceNotes先拒绝。其次，finding把62/63同时列入supportingIds和counterexampleIds，互斥检查也会拒绝。
+
+直接复用冻结fee2af4模块，分别对原响应、只去除列表重叠、只去除新增字段中重复的旧摘录、同时去除两项做零网络回放。前三者均INVALID_EVIDENCE；最后一个内存控制副本才能接受该批并将候选置finished，随后立即停止。四次请求正文和系统提示均与实际request04一致，各仅调用本地桩一次。未调用模型、未写回控制响应、未修改原检查点。控制结果不能作为原试验的已接受更新。
+
+16份原件摘要不变。第一组仍有完整新旧配对；第二组没有旧版报告，不能比较新旧准确率。current-v2第二组若成稿，只能做独立原文准确性评审。完整控制结果与摘要见同名JSON。

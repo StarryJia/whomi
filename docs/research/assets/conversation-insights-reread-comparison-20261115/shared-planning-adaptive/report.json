@@ -1,0 +1,87 @@
+{
+  "format": "conversation-insights-v1",
+  "aboutYou": [
+    {
+      "content": [
+        {
+          "text": "10月8日，你已完成周末聚会的订场地、买票和通知工作，并在事情集中到一起时抱怨安排总落在自己身上。随后你表示要先休息，但聚会仍照常，没有因此取消计划。",
+          "citationId": "1"
+        },
+        {
+          "text": "10月10日，ta提醒上个月由ta张罗、这个月原本约定轮到你后，你确认了这一安排，并撤回此前过于笼统的说法，将不满改述为事情赶在了一起。这次修正保留了你当时的负担感，也承认这并不足以说明一直只有你在承担。",
+          "citationId": "19"
+        }
+      ]
+    }
+  ],
+  "relationship": [
+    {
+      "content": [
+        {
+          "text": "这次互动中，ta起初将你的抱怨回应为事情碰在了一起，你则选择先休息、维持聚会安排；当时没有进一步商议重新分工。",
+          "citationId": "1"
+        },
+        {
+          "text": "之后，ta补充了上月由ta负责、本月轮到你的具体背景，你接受并修正了表述。因此，这段材料呈现的是一次围绕既有轮流安排的澄清，而非足以确认长期分工失衡的证据；同时，澄清责任归属也不等于你当时事情集中的压力已经得到解决。",
+          "citationId": "19"
+        }
+      ]
+    }
+  ],
+  "citations": [
+    {
+      "id": "1",
+      "conversationId": "1",
+      "fragments": [
+        {
+          "sources": [
+            {
+              "messageId": "1",
+              "revision": "c9fbcd7ba20c9bfaf6a9058e6c167011555c4a67cc3163ce61b0d2c5f6534e2e"
+            },
+            {
+              "messageId": "2",
+              "revision": "756a70a0b9503e5edf9d3d8d57bf26abc6406102b4348066f4b08bdc6649d002"
+            },
+            {
+              "messageId": "3",
+              "revision": "36b8d12e68274b199cc22fe2ec69d82b1e70b1a908192b5d564355dc2cf3fbdc"
+            },
+            {
+              "messageId": "4",
+              "revision": "8c4a429917005c13f461d40440bd9bd268b2c25d56850c52e8b5229a4ae4da55"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "19",
+      "conversationId": "1",
+      "fragments": [
+        {
+          "sources": [
+            {
+              "messageId": "2",
+              "revision": "756a70a0b9503e5edf9d3d8d57bf26abc6406102b4348066f4b08bdc6649d002"
+            },
+            {
+              "messageId": "19",
+              "revision": "959ab6a8662024c13c185dac3151468d6875e7da7f72dd7be7f51db01f24af51"
+            },
+            {
+              "messageId": "20",
+              "revision": "efd53131197a4ce2ad4d53c3930dbbec3eab19ac938077a97bf3f6e0ef3676a5"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "材料没有聚会实际举行的后续，也无法确认双方后来是否调整了任务或提供了额外支持。",
+    "现有记录只说明这两个月的轮流安排，不能据此判断更长期的实际分工是否均衡。",
+    "消息20中的时间措辞与10月8日的抱怨存在日期间隔，具体指向仍无法确认，不宜把两者写成紧接发生的对话。"
+  ],
+  "judgments": []
+}

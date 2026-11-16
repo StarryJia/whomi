@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { expect, it, vi } from 'vitest'
 import type { AnalysisPreparation } from '../../shared/ai-contract'
@@ -17,17 +17,17 @@ it('核对期间不展示内部准备提示，取消并停用模型后不残留�
     title="虚构会话" messageCount={7} references={[]} onClearReferences={() => {}} onJumpReference={() => {}}
     adapter={current}>{({ analysisControl }) => analysisControl}</ConversationWorkspace>
   const view = render(workspace(adapter))
-  await user.click(screen.getByRole('button', { name: '整理成记忆' }))
+  await user.click(screen.getByRole('button', { name: '会话洞察' }))
   expect(adapter.prepareAnalysis).toHaveBeenCalledTimes(1)
   expect(screen.queryByText('正在核对分析范围…')).not.toBeInTheDocument()
-  expect(screen.queryByRole('button', { name: '生成记忆' })).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: '开始洞察' })).toBeDisabled()
   await user.click(screen.getByRole('button', { name: '取消' }))
   view.rerender(workspace({ ...adapter, models: [] }))
   await act(async () => { rejectPreparation(new Error('旧核对请求失败')) })
-  await user.click(screen.getByRole('button', { name: '整理成记忆' }))
+  await user.click(screen.getByRole('button', { name: '会话洞察' }))
 
-  expect(screen.getByText('请在设置中添加模型。')).toBeVisible()
+  expect(within(screen.getByRole('region', { name: '会话洞察状态' })).getByText('暂无可用模型')).toBeVisible()
   expect(screen.queryByText('正在核对分析范围…')).not.toBeInTheDocument()
   expect(screen.queryByText('旧核对请求失败')).not.toBeInTheDocument()
-  expect(screen.queryByRole('button', { name: '生成记忆' })).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: '开始洞察' })).toBeDisabled()
 })

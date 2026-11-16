@@ -1,0 +1,112 @@
+.home.insights-home { height: 100svh; min-height: 0; overflow-y: auto; background: var(--surface); }
+.desktop-shell .home.insights-home { padding-top: calc(var(--desktop-titlebar-height) + var(--space-6)); }
+.app-conversation-frame { height: 100%; min-height: 0; }
+.insights-list, .insight-reader { width: min(100%, 1180px); min-width: 0; margin-inline: auto; color: var(--text); overflow-wrap: anywhere; }
+.insights-list h1 { margin: 0 0 22px; font-size: 30px; font-weight: 660; }
+.insight-group + .insight-group { margin-top: 24px; }
+.insight-group h2 { margin: 0; border-bottom: 1px solid var(--line); }
+.insight-group-toggle {
+  display: flex; align-items: center; gap: 12px; min-height: 42px; max-width: 100%;
+  padding: 0 6px; border: 0; border-radius: 6px; background: transparent; font: inherit; font-size: 17px; text-align: left; cursor: pointer;
+}
+.insight-group-toggle:hover, .insight-task-link:hover { background: var(--hover); }
+.insight-group-toggle svg { width: 18px; flex-shrink: 0; }
+.insight-group-toggle[aria-expanded="false"] svg { transform: rotate(-90deg); }
+.insight-group ul { padding: 0; margin: 10px 0 0; list-style: none; }
+.insight-group li + li { margin-top: 6px; }
+.insight-report-row {
+  display: grid; grid-template-columns: 20px minmax(0, 1fr) minmax(0, 1.55fr) minmax(0, .85fr) max-content;
+  align-items: center; gap: 12px; width: 100%; min-height: 58px; padding: 9px 15px; border: 0; border-radius: 8px;
+  background: var(--canvas); color: var(--text); font: inherit; text-align: left; overflow-wrap: anywhere;
+}
+button.insight-report-row { cursor: pointer; }
+button.insight-report-row:hover { background: var(--hover); }
+button.insight-report-row:active { background: var(--pressed); }
+.insight-report-row > svg { width: 18px; height: 18px; }
+.insight-report-row > .list-item-pin { grid-column: 5; justify-self: end; }
+.insight-row-model, .insight-row-range { display: flex; flex-direction: column; color: var(--text-muted); font-size: 13px; line-height: 1.5; }
+.insight-row-number { font-size: 13px; font-variant-numeric: tabular-nums; text-align: end; }
+.insight-report-row-editing { grid-template-columns: 20px minmax(0, 2fr) minmax(0, 1.2fr) minmax(0, .7fr) max-content; }
+.insight-rename { min-width: 0; }
+.insight-rename > label { display: block; margin-bottom: 4px; color: var(--text-muted); font-size: 13px; }
+.insight-rename-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.insight-rename-controls input {
+  flex: 1 1 140px; width: 0; min-width: 0; min-height: 36px; padding: 6px 10px;
+  border: 1px solid var(--line); border-radius: 6px; color: var(--text); background: var(--surface); font: inherit;
+}
+.insight-rename-controls input:focus { border-color: var(--focus); outline: 2px solid var(--focus); outline-offset: 0; }
+.insight-rename-controls input[aria-invalid="true"] { border-color: #a62328; }
+.insight-rename-controls :is(.analysis-primary, .analysis-secondary) { min-height: 36px; }
+.insight-error { margin: 6px 0 0; color: #a62328; font-size: 13px; }
+.insight-task-row { padding: 12px 15px; border-radius: 8px; background: var(--canvas); }
+.insight-task-row-main { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.insight-task-link {
+  display: flex; align-items: center; gap: 12px; flex: 1 1 135px; min-width: 0; min-height: 44px; padding: 4px;
+  border: 0; border-radius: 6px; background: transparent; font: inherit; text-align: left; cursor: pointer;
+}
+.insight-task-link > svg { width: 18px; height: 18px; flex-shrink: 0; }
+.insight-task-link > span { display: grid; }
+.insight-task-link > span > span, .insight-task-row-status small { color: var(--text-muted); font-size: 13px; }
+.insight-task-row-status { display: flex; align-items: center; gap: 10px; flex: 2 1 220px; font-size: 14px; font-variant-numeric: tabular-nums; }
+.insight-task-row-status > .memory-coverage-ring { width: 34px; height: 34px; flex-shrink: 0; }
+.insight-task-row-status .memory-coverage-ring circle { fill: none; stroke-width: 2; }
+.insight-task-row-status .memory-ring-track { stroke: var(--line); }
+.insight-task-row-status .memory-ring-value { stroke: var(--focus); stroke-linecap: round; }
+.insight-task-row-status small { display: block; }
+.insight-task-row-actions { display: flex; gap: 8px; margin-inline-start: auto; }
+.insight-task-row-actions button { min-height: 34px; }
+.insight-task-row-details { margin-top: 8px; }
+.insight-task-row-details .insight-task-model { display: inline-flex; flex-wrap: wrap; gap: 8px 16px; margin: 0 12px 4px 0; }
+.insight-task-row-details .insight-task-details { display: contents; }
+.insight-task-row-details .insight-details-toggle { display: inline-flex; width: auto; border: 0; padding-inline: 6px; }
+.insight-list-loading p { display: flex; gap: 10px; align-items: center; }
+.insight-list-loading svg { width: 18px; animation: insight-loading 900ms linear infinite; }
+.insight-skeleton { display: grid; gap: 8px; margin-top: 10px; padding: 13px 18px; border-radius: 8px; background: var(--canvas); }
+.insight-skeleton span { width: min(170px, 50%); height: 9px; border-radius: 6px; background: var(--line); }
+.insight-skeleton span:last-child { width: min(260px, 70%); opacity: .65; }
+.insight-list-empty {
+  display: grid; justify-items: center; align-content: center; min-height: min(380px, 60vh); gap: 8px;
+  border-top: 1px solid var(--line); color: var(--text-muted); text-align: center;
+}
+.insight-list-empty h2 { margin: 0; color: var(--text); font-size: 19px; }
+.insight-list-empty p { margin: 0; font-size: 14px; }
+.insight-list-empty svg { width: 38px; height: 38px; margin-bottom: 6px; stroke-width: 1.4; }
+.insight-list-empty button { margin-top: 8px; }
+.insight-list-error { color: #a62328; font-size: 14px; }
+.insight-reader .overview-return { margin: 0 0 18px; }
+.insight-reader-content { width: min(100%, 790px); margin: 0 auto; }
+.insight-reader-header { margin: 0 0 36px; }
+.insight-reader-title { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; }
+.insight-reader-title h1 { margin: 0; font-size: 37px; font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
+.insight-reader-meta { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 14px 0 0; color: var(--text-muted); font-size: 13px; }
+.insight-reader-meta div { display: flex; flex-wrap: wrap; gap: 4px; }
+.insight-reader-meta dt::after { content: '：'; }
+.insight-reader-meta dd { margin: 0; }
+.insight-prose { max-width: 72ch; font-size: 17px; line-height: 1.8; white-space: pre-wrap; overflow-wrap: anywhere; }
+.insight-prose section + section { margin-top: 32px; }
+.insight-prose h2 { margin: 0 0 14px; font-size: 24px; line-height: 1.45; }
+.insight-prose p { margin: 0 0 14px; }
+.insight-limitations { margin-top: 28px; padding-top: 14px; border-top: 1px solid var(--line); color: var(--text-muted); }
+.insight-prose footer { margin-top: 40px; color: var(--text-muted); font-size: 13px; text-align: center; }
+.insight-citation {
+  display: inline; margin: 0; padding: 0; border: 0; color: var(--focus); background: transparent; font: inherit;
+  text-align: inherit; text-decoration: underline; text-underline-offset: .16em; cursor: pointer;
+}
+.insight-citation:hover { text-decoration-thickness: 2px; }
+.insight-history-card { width: min(720px, calc(100% - 32px)); max-height: min(82svh, 840px); overflow-y: auto; }
+.insight-history-card > header { display: flex; gap: 12px; align-items: start; justify-content: space-between; }
+.insight-history-card > header h2 { margin: 0; }
+.insight-delete-details > p { line-height: 1.65; }
+@keyframes insight-loading { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .insight-list-loading svg { animation: none; } }
+@media (max-width: 1060px) {
+  .insight-report-row, .insight-report-row-editing { grid-template-columns: 20px minmax(0, 1fr) minmax(0, 1fr) max-content; }
+  .insight-row-model { grid-column: 3; }
+  .insight-row-number { grid-column: 4; grid-row: 1; }
+  .insight-report-row > .list-item-pin { grid-column: 4; }
+}
+@media (max-width: 590px) {
+  .insight-report-row, .insight-report-row-editing { grid-template-columns: 18px minmax(0, 1fr) max-content; }
+  .insight-row-model, .insight-row-range { grid-column: 2; }
+  .insight-row-number, .insight-report-row > .list-item-pin { grid-column: 3; }
+}

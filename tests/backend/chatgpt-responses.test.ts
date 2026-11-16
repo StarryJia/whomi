@@ -80,3 +80,22 @@ test('explicit output exhaustion remains distinguishable from other incomplete r
   ]))
   await expect(runner.run(input, { signal: new AbortController().signal, onText() {} })).resolves.toMatchObject({ stopReason: 'length', usage: { totalInputTokens: 500, inputTokens: 3, outputTokens: 512 } })
 })
+
+test('the reserved insight output is sent to Responses and missing input usage remains missing', async () => {
+  let body: Record<string, unknown> | undefined
+  const runner = createChatgptRunner(async () => 'synthetic', async (_url, init) => {
+    body = JSON.parse(String(init?.body))
+    return stream([
+      { type: 'response.output_text.delta', delta: '{"observations":[]}' },
+      { type: 'response.completed', response: { status: 'completed', usage: { output_tokens: 14 } } },
+    ])
+  })
+  const result = await runner.run({ ...input, history: [], outputTokenLimit: 256 }, {
+    signal: new AbortController().signal, onText() {},
+  })
+  expect(body?.max_output_tokens).toBe(256)
+  expect(JSON.parse(result.text)).toEqual({ observations: [] })
+  expect(result.usage).toMatchObject({ outputTokens: 14, incomplete: true })
+  expect(result.usage.totalInputTokens).toBeUndefined()
+  expect(result.usage.inputTokens).toBeUndefined()
+})

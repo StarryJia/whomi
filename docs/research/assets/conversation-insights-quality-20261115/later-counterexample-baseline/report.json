@@ -1,0 +1,161 @@
+{
+  "format": "conversation-insights-v1",
+  "aboutYou": [
+    {
+      "content": [
+        {
+          "text": "你曾在 ta 讲到一半时直接给出三个解决办法，帮助的节奏先于 ta 当时的需要；但 ta 说“今天先不要建议”后，你回应“好，我先听”，随后 ta 感谢你让其讲完，并表示舒服多了。这说明至少在这次互动中，你能根据明确反馈调整，而不是始终坚持解决问题。最初给建议也可能是想提供帮助，不能仅凭这一回认定你不愿倾听。",
+          "citationId": "1"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "text": "后来 ta 明确要两个选择，你便答应先说两个方案，并让 ta 判断哪个符合当天的需要；ta 随后选了第二个。这是一个重要反例：给建议本身并非问题，是否合时、是否受邀更关键。你可以尝试在不确定时先问：“今天想让我听你说完，还是一起想两个办法？”而在 ta 已明确提出需要时，直接回应即可，不必反复确认。",
+          "citationId": "2"
+        }
+      ]
+    }
+  ],
+  "relationship": [
+    {
+      "content": [
+        {
+          "text": "你们这两次交流里，ta 都把当下需要说得比较具体：先是“今天先不要建议”，后来是“这一次不一样”，主动请求两个选择。你也分别转向倾听和提供方案。前后并不矛盾，更像是支持需求随情境变化；因此，不宜把第一次的边界理解为 ta 一直不想听你的意见，也不宜把后一次邀请当作今后随时给建议的许可。",
+          "citationId": "3"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "text": "你们已有一次从节奏不匹配到调整后获得正面反馈的经历，也有一次按明确请求合作选择方案的经历。可以保留这种“说清当下需要—回应—确认是否合适”的做法。不过，你当时问“要从最难开口的那段说起吗”，虽然之后得到正面反馈，也仍是在提议叙述方向；若想给 ta 更多自主空间，可以换成“你想从哪里说起都可以，我先听”。现有反馈支持这些做法在这两次交流中有用，但不足以保证它们适用于每个话题。",
+          "citationId": "4"
+        }
+      ]
+    }
+  ],
+  "citations": [
+    {
+      "id": "1",
+      "conversationId": "1",
+      "fragments": [
+        {
+          "sources": [
+            {
+              "messageId": "1",
+              "revision": "52fea378442e194cb048a9ff97b072567be8a0a1773d6e356d17b747515058f7"
+            },
+            {
+              "messageId": "2",
+              "revision": "53dc384c3224443fea6f81c8a0ec1c5f2b3334ff87e2e67ed9e42c57f53c4d7d"
+            },
+            {
+              "messageId": "3",
+              "revision": "6bedaacbf5241c1a7d79064c8d09dd9f0c7b51fddb24534045e763493e7c6ede"
+            },
+            {
+              "messageId": "4",
+              "revision": "57be6f91528a8a18344b48ee3ac0d74da59e49149731dc422a37f7a4082e46be"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "2",
+      "conversationId": "1",
+      "fragments": [
+        {
+          "sources": [
+            {
+              "messageId": "5",
+              "revision": "9cf3e201850ba6b2560e1d5598618a13d486a220d1035da46a4520cdbfb22330"
+            },
+            {
+              "messageId": "6",
+              "revision": "00b335af5d364e9496159efae53c079c82a7d87a0b359deb82465409c607e427"
+            },
+            {
+              "messageId": "7",
+              "revision": "bf1eb640bb45632fd2c6ffb22918701ce2a17aabadbcc49cada571d500609546"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "3",
+      "conversationId": "1",
+      "fragments": [
+        {
+          "sources": [
+            {
+              "messageId": "2",
+              "revision": "53dc384c3224443fea6f81c8a0ec1c5f2b3334ff87e2e67ed9e42c57f53c4d7d"
+            },
+            {
+              "messageId": "3",
+              "revision": "6bedaacbf5241c1a7d79064c8d09dd9f0c7b51fddb24534045e763493e7c6ede"
+            },
+            {
+              "messageId": "5",
+              "revision": "9cf3e201850ba6b2560e1d5598618a13d486a220d1035da46a4520cdbfb22330"
+            },
+            {
+              "messageId": "6",
+              "revision": "00b335af5d364e9496159efae53c079c82a7d87a0b359deb82465409c607e427"
+            },
+            {
+              "messageId": "7",
+              "revision": "bf1eb640bb45632fd2c6ffb22918701ce2a17aabadbcc49cada571d500609546"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "4",
+      "conversationId": "1",
+      "fragments": [
+        {
+          "sources": [
+            {
+              "messageId": "1",
+              "revision": "52fea378442e194cb048a9ff97b072567be8a0a1773d6e356d17b747515058f7"
+            },
+            {
+              "messageId": "2",
+              "revision": "53dc384c3224443fea6f81c8a0ec1c5f2b3334ff87e2e67ed9e42c57f53c4d7d"
+            },
+            {
+              "messageId": "3",
+              "revision": "6bedaacbf5241c1a7d79064c8d09dd9f0c7b51fddb24534045e763493e7c6ede"
+            },
+            {
+              "messageId": "4",
+              "revision": "57be6f91528a8a18344b48ee3ac0d74da59e49149731dc422a37f7a4082e46be"
+            },
+            {
+              "messageId": "5",
+              "revision": "9cf3e201850ba6b2560e1d5598618a13d486a220d1035da46a4520cdbfb22330"
+            },
+            {
+              "messageId": "6",
+              "revision": "00b335af5d364e9496159efae53c079c82a7d87a0b359deb82465409c607e427"
+            },
+            {
+              "messageId": "7",
+              "revision": "bf1eb640bb45632fd2c6ffb22918701ce2a17aabadbcc49cada571d500609546"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "材料只包含两次简短交流，未呈现具体困扰、方案内容或后续结果，不能据此判断长期互动模式或方案实际效果。",
+    "ta 的反馈能说明这两次互动中的即时感受与偏好，不能据此推断 ta 的完整人格或你们整体关系的质量。"
+  ]
+}

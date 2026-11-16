@@ -1,0 +1,63 @@
+{
+  "scope": "Verification recorded for the implementation used by the final paid request; later offline changes are separate.",
+  "focusedBackend": {
+    "passed": 75,
+    "failed": 0,
+    "log": "offline/volume-progress-green.log"
+  },
+  "trialTools": {
+    "passed": 25,
+    "failed": 0,
+    "log": "offline/compression-format-resume-green.log"
+  },
+  "typecheck": {
+    "passed": true,
+    "logs": [
+      "offline/volume-progress-typecheck.log",
+      "offline/compression-format-resume-typecheck.log"
+    ]
+  },
+  "backend": {
+    "passed": 658,
+    "failed": 1,
+    "unhandledErrors": 1,
+    "failedTest": "Grok uses its registered callback and fixed local catalog, sends the selected model to its own proxy",
+    "fixedCallbackPort": 56121,
+    "currentWindowsExcludedRange": [
+      56028,
+      56127
+    ],
+    "log": "validation/memory-backend-volume-final.log",
+    "portEvidence": "validation/memory-port-ranges-final.log"
+  },
+  "frontend": {
+    "passed": 592,
+    "failed": 0,
+    "reusedBecauseFrontendUnchanged": true,
+    "log": "validation/memory-frontend.log"
+  },
+  "targetedDesktop": {
+    "passed": 1,
+    "failed": 0,
+    "totalSeconds": 10.7,
+    "log": "validation/memory-desktop-delivery.log"
+  },
+  "broadDesktop": {
+    "passed": 43,
+    "failed": 11,
+    "skipped": 2,
+    "log": "validation/memory-desktop-bounded.log",
+    "baselineCommit": "fee2af45380cb379ab40009449f467d1c50c4a8b",
+    "failuresReproducedOnBaseline": 7,
+    "baselineLogs": [
+      "validation/memory-desktop-baseline-unsandboxed.log",
+      "validation/baseline-remaining.log"
+    ],
+    "unassignedFailures": [
+      "settings.spec.mjs",
+      "settings-shared-shell.spec.mjs",
+      "subscription-cards.spec.mjs",
+      "window-shell.spec.mjs"
+    ]
+  }
+}

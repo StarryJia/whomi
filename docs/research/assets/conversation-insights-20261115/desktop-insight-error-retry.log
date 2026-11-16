@@ -1,0 +1,9 @@
+
+Running 2 tests using 1 worker
+
+(node:28956) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 1 tests\desktop\insight-ui.spec.mjs:112:1 › real Electron insight UI validates scope, pauses and retries, reads exact sources, renames and deletes (13.7s)
+  ok 2 tests\desktop\insight-ui.spec.mjs:354:1 › real Electron preserves long report reading position and fits an 80-character title at 960 by 640 (9.9s)
+
+  2 passed (24.8s)

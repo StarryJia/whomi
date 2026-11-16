@@ -1,0 +1,65 @@
+
+Running 1 test using 1 worker
+
+(node:25844) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  pw:api => electron.launch started +0ms
+  pw:browser <launching> "D:\University\github\whomi\node_modules\electron\dist\electron.exe" "-r" "D:\University\github\whomi\node_modules\playwright-core\lib\server\electron\loader.js" "--inspect=0" "--remote-debugging-port=0" "D:\University\github\whomi\release\conversation-insights-20261115\desktop-baseline\out\main\index.cjs" "--whomi-runtime-test"  +0ms
+  pw:browser <launched> pid=32996 +11ms
+  pw:browser [pid=32996][out]  +41ms
+  pw:browser [pid=32996][err] Debugger listening on ws://127.0.0.1:39088/68d38262-7b0e-45ba-aa7e-8ce5b16022f7 +378ms
+  pw:browser [pid=32996][err] For help, see: https://nodejs.org/learn/getting-started/debugging +0ms
+  pw:browser <ws connecting> ws://127.0.0.1:39088/68d38262-7b0e-45ba-aa7e-8ce5b16022f7 +0ms
+  pw:browser <ws connected> ws://127.0.0.1:39088/68d38262-7b0e-45ba-aa7e-8ce5b16022f7 +9ms
+  pw:browser [pid=32996][err] Debugger attached. +0ms
+  pw:browser [pid=32996][err] (node:28032) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set. +8ms
+  pw:browser [pid=32996][err] (Use `electron --trace-warnings ...` to show where the warning was created) +0ms
+  pw:browser [pid=32996][err] [28032:1116/001432.729:ERROR:components\os_crypt\sync\os_crypt_win.cc:77] Failed to encrypt: 系统找不到指定的文件。 (0x2) +337ms
+  pw:browser [pid=32996][err] [28032:1116/001432.760:FATAL:electron\shell\browser\win\install_dir_access.cc:52] Sandboxed processes cannot read D:\University\github\whomi\node_modules\electron\dist: its ACL has an entry for an AppContainer package SID but none for ALL APPLICATION PACKAGES, so Windows denies the sandbox token access. Grant it with: icacls "D:\University\github\whomi\node_modules\electron\dist" /grant *S-1-15-2-1:(OI)(CI)(RX) +31ms
+  pw:browser <ws disconnected> ws://127.0.0.1:39088/68d38262-7b0e-45ba-aa7e-8ce5b16022f7 code=1006 reason= +9s
+  pw:browser [pid=32996] <kill> +14ms
+  pw:browser [pid=32996] <will force kill> +0ms
+  pw:browser [pid=32996] <process did exit: exitCode=2147483651, signal=null> +79ms
+  pw:browser [pid=32996] starting temporary directories cleanup +0ms
+  pw:browser [pid=32996] finished temporary directories cleanup +1ms
+  pw:api <= electron.launch failed +10s
+  x  1 tests\desktop\ai.spec.mjs:9:1 › real Pi process persists analysis reports and dialogue through the isolated desktop bridge (10.2s)
+
+
+  1) tests\desktop\ai.spec.mjs:9:1 › real Pi process persists analysis reports and dialogue through the isolated desktop bridge 
+
+    Error: electron.launch: Process failed to launch!
+    Call log:
+      - <launching> "D:\University\github\whomi\node_modules\electron\dist\electron.exe" "-r" "D:\University\github\whomi\node_modules\playwright-core\lib\server\electron\loader.js" "--inspect=0" "--remote-debugging-port=0" "D:\University\github\whomi\release\conversation-insights-20261115\desktop-baseline\out\main\index.cjs" "--whomi-runtime-test"
+      - <launched> pid=32996
+      - [pid=32996][out]
+      - [pid=32996][err] Debugger listening on ws://127.0.0.1:39088/68d38262-7b0e-45ba-aa7e-8ce5b16022f7
+      - [pid=32996][err] For help, see: https://nodejs.org/learn/getting-started/debugging
+      - <ws connecting> ws://127.0.0.1:39088/68d38262-7b0e-45ba-aa7e-8ce5b16022f7
+      - <ws connected> ws://127.0.0.1:39088/68d38262-7b0e-45ba-aa7e-8ce5b16022f7
+      - [pid=32996][err] Debugger attached.
+      - [pid=32996][err] (node:28032) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+      - [pid=32996][err] (Use `electron --trace-warnings ...` to show where the warning was created)
+      - [pid=32996][err] [28032:1116/001432.729:ERROR:components\os_crypt\sync\os_crypt_win.cc:77] Failed to encrypt: 系统找不到指定的文件。 (0x2)
+      - [pid=32996][err] [28032:1116/001432.760:FATAL:electron\shell\browser\win\install_dir_access.cc:52] Sandboxed processes cannot read D:\University\github\whomi\node_modules\electron\dist: its ACL has an entry for an AppContainer package SID but none for ALL APPLICATION PACKAGES, so Windows denies the sandbox token access. Grant it with: icacls "D:\University\github\whomi\node_modules\electron\dist" /grant *S-1-15-2-1:(OI)(CI)(RX)
+      - <ws disconnected> ws://127.0.0.1:39088/68d38262-7b0e-45ba-aa7e-8ce5b16022f7 code=1006 reason=
+      - [pid=32996] <kill>
+      - [pid=32996] <will force kill>
+      - [pid=32996] <process did exit: exitCode=2147483651, signal=null>
+      - [pid=32996] starting temporary directories cleanup
+      - [pid=32996] finished temporary directories cleanup
+
+
+      35 |       return true;
+      36 |     }`)
+    > 37 |     application = await electron.launch({ args: [resolve('out/main/index.cjs'), '--whomi-runtime-test'], env: { ...process.env, WHOMI_RUNTIME_TEST: directory } })
+         |                   ^
+      38 |     let page = await application.firstWindow()
+      39 |     await application.evaluate(async () => globalThis.__whomiRuntimeProbe.request('probe.aiSeed', null))
+      40 |     const port = server.address().port
+        at D:\University\github\whomi\release\conversation-insights-20261115\desktop-baseline\tests\desktop\ai.spec.mjs:37:19
+
+    Error Context: test-results\tests-desktop-ai-real-Pi-p-04d48-the-isolated-desktop-bridge\error-context.md
+
+  1 failed
+    tests\desktop\ai.spec.mjs:9:1 › real Pi process persists analysis reports and dialogue through the isolated desktop bridge 

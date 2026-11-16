@@ -1,0 +1,34 @@
+
+> whomi@0.1.11 test
+> vitest run src/clarification-navigation.test.tsx src/overview-navigation.test.tsx src/components/conversation-ai/lifecycle-boundaries.test.tsx src/components/conversation-ai/reader-selection.test.tsx src/components/settings/cherry-settings.test.tsx src/components/settings/settings-page.test.tsx --maxWorkers=2 --reporter=dot
+
+
+ RUN  v5.0.5 D:/University/github/whomi
+
+·········································································x···········
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/components/conversation-ai/lifecycle-boundaries.test.tsx > AI 对话结束与切换边界 > 首次发送等待创建对话时关闭面板，创建完成继续发送但不重新打开面板
+Error: expect(element).toBeVisible()
+
+Received element is not visible:
+  <p />
+ ❯ src/components/conversation-ai/lifecycle-boundaries.test.tsx:289:44
+    287|     expect(screen.queryByRole('complementary', { name: 'AI 对话' })).not…
+    288|     await user.click(screen.getByRole('button', { name: 'AI 对话' }))
+    289|     expect(await screen.findByText('新回答')).toBeVisible()
+       |                                            ^
+    290|   })
+    291| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 5 passed (6)
+      Tests  1 failed | 84 passed (85)
+   Start at  18:57:12
+   Duration  61.77s (tests 77%, environment 13%, import 7%, setup 2%, transform 1%)
+
+    Isolate  6 workers spawned · ~2.72s startup each (spawn + environment, per file)
+             at least ~5.43s faster with isolate: false — reuses workers across files instead of one per file

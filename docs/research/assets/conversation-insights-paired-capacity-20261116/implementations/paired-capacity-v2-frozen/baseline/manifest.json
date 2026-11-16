@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "baseCommit": "fee2af45380cb379ab40009449f467d1c50c4a8b",
+  "bundlePath": "release/conversation-insights-20261115/paired-capacity-baseline-fee2af4/baseline.mjs",
+  "bundleSha256": "ef302a81ebdbd5ad8e1b402d57bf91dc6e87b9a46bba0211caf0e8ac65676b54",
+  "sourceHashes": {
+    "electron/data/ai/insight-prompts.ts": "0769119009766be5991f6c77d2d384754c0d2e2b36df7863a7f2e9f3c2f4244d",
+    "electron/main/insight-checkpoint.ts": "deb2757f015e05070973438b4277b909a76f43a023770a77980c91c3261205d8",
+    "electron/main/insight-generation.ts": "03797f6abda57ac0ea72ac79b94a38a579e8ed10d05f08c12929fdf5bdc6d957",
+    "electron/main/insight-packing.ts": "c8d87b5a314a2d582336045a0c3743000cf71fe756c631ee813f692050eb7469",
+    "src/shared/desktop-validation.ts": "0607ef8227f291daa450fc3878928175cdc94c8235b38d623eeeccc1a6c3ec4f",
+    "src/shared/import-contract.ts": "7c8196c983b0ac05ee7ff1c5e02b7bdafd94ab0c6a4dd82cc680ccc4b8796140",
+    "src/shared/memory.ts": "2f08024576c4f1eece852f8453c71f4e66b9b42c67eb1846d4bd7af2e1fb96d6",
+    "src/shared/model-limits.ts": "23fb2d29d8aa4ea16e3f2b6331b2a634ab1c090936578e13be014c62f192c980",
+    "src/shared/system-prompts.ts": "2808c4bb17471af07286d5714cdabef5be28da5b901bc7ef2432f013434040c2"
+  }
+}

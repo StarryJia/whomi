@@ -1,0 +1,2846 @@
+{
+  "mode": "final",
+  "status": "passed-available-artifacts",
+  "totals": {
+    "dispatched": 28,
+    "settled": 28,
+    "inputTokens": 52001,
+    "outputTokens": 26063,
+    "readingRequests": 17,
+    "compressionRequests": 11,
+    "checkingRequests": 0,
+    "writingRequests": 0
+  },
+  "comparisons": [
+    {
+      "caseName": "shared-workload",
+      "sourceHash": "6f63b461c034eacaebc473ea5637bef13119aae59e286fa1d449347d9c6af756",
+      "completePair": false,
+      "naturalCandidates": 0,
+      "naturalAcceptedUpdates": 0,
+      "checkingRequestsWithOriginals": 0,
+      "modelReadRequests": 0,
+      "modelNavigationRequests": 0
+    },
+    {
+      "caseName": "conditional-reschedule",
+      "sourceHash": "907c6b680d1acc0e4c021e7ae6c26393d1fd144c9c6f45d6ee4a47b316640b2d",
+      "completePair": false,
+      "naturalCandidates": null,
+      "naturalAcceptedUpdates": 0,
+      "checkingRequestsWithOriginals": 0,
+      "modelReadRequests": 0,
+      "modelNavigationRequests": 0
+    }
+  ],
+  "pending": [],
+  "issues": [],
+  "reportCitationAudit": "not-applicable-no-report",
+  "limitations": [
+    "Partial artifacts are not scored as final results.",
+    "Coverage and inherited source IDs do not establish semantic preservation or citation relevance."
+  ],
+  "phases": [
+    {
+      "phase": "shared-workload-reading",
+      "variant": "reading",
+      "state": "failed",
+      "error": "INVALID_EVIDENCE",
+      "actualRequests": 24,
+      "settledCalls": 24,
+      "inputTokens": 45118,
+      "outputTokens": 21378,
+      "elapsedMs": 435726,
+      "reportPresent": false,
+      "citationReferencesChecked": 0,
+      "checkpoint": {
+        "callsReserved": 24,
+        "coveredCount": 120,
+        "readingBatches": 17,
+        "facts": 95,
+        "unknowns": 44,
+        "checks": [],
+        "navigationRootIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31,
+          32,
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39,
+          40,
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85,
+          86,
+          87,
+          88,
+          89,
+          90,
+          91,
+          92,
+          93,
+          94,
+          95,
+          96,
+          97,
+          98,
+          99,
+          100,
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          124,
+          125,
+          126,
+          127,
+          128,
+          129,
+          130,
+          131,
+          132,
+          133,
+          134,
+          135,
+          136,
+          137,
+          138
+        ],
+        "navigationNodeCount": 145
+      },
+      "timeline": [
+        {
+          "file": "request-01.json",
+          "call": 1,
+          "stage": "reading",
+          "dispatched": true,
+          "repair": false,
+          "messageIds": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9"
+          ],
+          "relatedIds": [],
+          "knownCandidates": [],
+          "proposedCandidates": [],
+          "candidateUpdates": [],
+          "readingAccepted": true,
+          "resolvedThreadSourceIds": [
+            "2",
+            "4",
+            "6"
+          ],
+          "responsePresent": true
+        },
+        {
+          "file": "request-02.json",
+          "call": 2,
+          "stage": "reading",
+          "dispatched": true,
+          "repair": false,
+          "messageIds": [
+            "10",
+            "11",
+            "12",
+            "13",
+            "14",
+            "15",
+            "16"
+          ],
+          "relatedIds": [],
+          "knownCandidates": [],
+          "proposedCandidates": [],
+          "candidateUpdates": [],
+          "readingAccepted": true,
+          "resolvedThreadSourceIds": [
+            "1"
+          ],
+          "responsePresent": true
+        },
+        {
+          "file": "request-03.json",
+          "call": 3,
+          "stage": "reading",
+          "dispatched": true,
+          "repair": false,
+          "messageIds": [
+            "17",
+            "18",
+            "19",
+            "20",
+            "21",
+            "22",
+            "23"
+          ],
+          "relatedIds": [],
+          "knownCandidates": [],
+          "proposedCandidates": [],
+          "candidateUpdates": [],
+          "readingAccepted": true,
+          "resolvedThreadSourceIds": [
+            "19",
+            "21"
+          ],
+          "responsePresent": true
+        },
+        {
+          "file": "request-04.json",
+          "call": 4,
+          "stage": "reading",
+          "dispatched": true,
+          "repair": false,
+          "messageIds": [
+            "24",
+            "25",
+            "26",
+            "27",
+            "28",
+            "29",
+            "30"
+          ],
+          "relatedIds": [],
+          "knownCandidates": [],
+          "proposedCandidates": [],
+          "candidateUpdates": [],
+          "readingAccepted": true,
+          "resolvedThreadSourceIds": [],
+          "responsePresent": true
+        },
+        {
+          "file": "request-05.json",
+          "call": 5,
+          "stage": "reading",
+          "dispatched": true,
+          "repair": false,
+          "messageIds": [
+            "31",
+            "32",
+            "33",
+            "34",
+            "35",
+            "36",
+            "37"
+          ],
+          "relatedIds": [],
+          "knownCandidates": [],
+          "proposedCandidates": [],
+          "candidateUpdates": [],
+          "readingAccepted": true,
+          "resolvedThreadSourceIds": [
+            "33"
+          ],
+          "responsePresent": true
+        },
+        {
+          "file": "request-06.json",
+          "call": 6,
+          "stage": "reading",
+          "dispatched": true,
+          "repair": false,
+          "messageIds": [
+            "38",
+            "39",
+            "40",
+            "41",
+            "42",
+            "43",
+            "44"
+          ],
+          "relatedIds": [],
+          "knownCandidates": [],
+          "proposedCandidates": [],
+          "candidateUpdates": [],
+          "readingAccepted": true,
+          "resolvedThreadSourceIds": [],
+          "responsePresent": true
+        },
+        {
+          "file": "request-07.json",
+          "call": 7,
+          "stage": "reading",
+          "dispatched": true,
+          "repair": false,
+          "messageIds": [
+            "45",
+            "46",
+            "47",
+            "48",
+            "49",
+            "50",
+            "51"
+          ],
+          "relatedIds": [],
+          "knownCandidates": [],
+          "proposedCandidates": [],
+          "candidateUpdates": [],
+          "readingAccepted": true,
+          "resolvedThreadSourceIds": [],
+          "responsePresent": true
+        },
+        {
+          "file": "request-08.json",
+          "call": 8,
+          "stage": "reading",
+          "dispatched": true,
+          "repair": false,
+          "messageIds": [
+            "52",
+            "53",
+            "54",
+            "55",
+            "56",
+            "57",
+            "58"
+          ],
+          "relatedIds": [],
+          "knownCandidates": [],
+          "proposedCandidates": [],
+          "candidateUpdates": [],
+          "readingAccepted": true,
+          "resolvedThreadSourceIds": [],
+          "responsePresent": true
+        },
+        {
+          "file": "request-09.json",
+          "call": 9,
+          "stage": "reading",
+          "dispatched": true,
+          "repair": false,
+          "messageIds": [
+            "59",
+            "60",
+            "61",
+            "62",
+            "63",
+            "64",
+            "65"
+          ],
+          "relatedIds": [],
+          "knownCandidates": [],
+          "proposedCandidates": [],
+          "candidateUpdates": [],
+          "readingAccepted": true,
+          "resolvedThreadSourceIds": [],
+          "responsePresent": true
+        },
+        {
+          "file": "request-10.json",
+          "call": 10,
+          "stage": "reading",
+          "dispatched": true,
+          "repair": false,
+          "messageIds": [
+            "66",
+            "67",
+            "68",
+            "69",
+            "70",
+            "71",
+            "72"
+          ],
+          "relatedIds": [],
+          "knownCandidates": [],
+          "proposedCandidates": [],
+          "candidateUpdates": [],
+          "readingAccepted": true,
+          "resolvedThreadSourceIds": [],
+          "responsePresent": true
+        },
+        {
+          "file": "request-11.json",
+          "call": 11,
+          "stage": "reading",
+          "dispatched": true,
+          "repair": false,
+          "messageIds": [
+            "73",
+            "74",
+            "75",
+            "76",
+            "77",
+            "78",
+            "79"
+          ],
+          "relatedIds": [],
+          "knownCandidates": [],
+          "proposedCandidates": [],
+          "candidateUpdates": [],
+          "readingAccepted": true,
+          "resolvedThreadSourceIds": [],
+          "responsePresent": true
+        },
+        {
+          "file": "request-12.json",
+          "call": 12,
+          "stage": "reading",
+          "dispatched": true,
+          "repair": false,
+          "messageIds": [
+            "80",
+            "81",
+            "82",
+            "83",
+            "84",
+            "85",
+            "86"
+          ],
+          "relatedIds": [],
+          "knownCandidates": [],
+          "proposedCandidates": [],
+          "candidateUpdates": [],
+          "readingAccepted": true,
+          "resolvedThreadSourceIds": [],
+          "responsePresent": true
+        },
+        {
+          "file": "request-13.json",
+          "call": 13,
+          "stage": "reading",
+          "dispatched": true,
+          "repair": false,
+          "messageIds": [
+            "87",
+            "88",
+            "89",
+            "90",
+            "91",
+            "92",
+            "93"
+          ],
+          "relatedIds": [],
+          "knownCandidates": [],
+          "proposedCandidates": [],
+          "candidateUpdates": [],
+          "readingAccepted": true,
+          "resolvedThreadSourceIds": [],
+          "responsePresent": true
+        },
+        {
+          "file": "request-14.json",
+          "call": 14,
+          "stage": "reading",
+          "dispatched": true,
+          "repair": false,
+          "messageIds": [
+            "94",
+            "95",
+            "96",
+            "97",
+            "98",
+            "99",
+            "100"
+          ],
+          "relatedIds": [],
+          "knownCandidates": [],
+          "proposedCandidates": [],
+          "candidateUpdates": [],
+          "readingAccepted": true,
+          "resolvedThreadSourceIds": [],
+          "responsePresent": true
+        },
+        {
+          "file": "request-15.json",
+          "call": 15,
+          "stage": "reading",
+          "dispatched": true,
+          "repair": false,
+          "messageIds": [
+            "101",
+            "102",
+            "103",
+            "104",
+            "105",
+            "106",
+            "107"
+          ],
+          "relatedIds": [],
+          "knownCandidates": [],
+          "proposedCandidates": [],
+          "candidateUpdates": [],
+          "readingAccepted": true,
+          "resolvedThreadSourceIds": [],
+          "responsePresent": true
+        },
+        {
+          "file": "request-16.json",
+          "call": 16,
+          "stage": "reading",
+          "dispatched": true,
+          "repair": false,
+          "messageIds": [
+            "108",
+            "109",
+            "110",
+            "111",
+            "112",
+            "113",
+            "114"
+          ],
+          "relatedIds": [],
+          "knownCandidates": [],
+          "proposedCandidates": [],
+          "candidateUpdates": [],
+          "readingAccepted": true,
+          "resolvedThreadSourceIds": [],
+          "responsePresent": true
+        },
+        {
+          "file": "request-17.json",
+          "call": 17,
+          "stage": "reading",
+          "dispatched": true,
+          "repair": false,
+          "messageIds": [
+            "115",
+            "116",
+            "117",
+            "118",
+            "119",
+            "120"
+          ],
+          "relatedIds": [],
+          "knownCandidates": [],
+          "proposedCandidates": [],
+          "candidateUpdates": [],
+          "readingAccepted": true,
+          "resolvedThreadSourceIds": [],
+          "responsePresent": true
+        },
+        {
+          "file": "request-18.json",
+          "call": 18,
+          "stage": "compress-navigation",
+          "dispatched": true,
+          "repair": false,
+          "candidateUpdates": [],
+          "readingAccepted": false,
+          "compression": {
+            "inputEntries": 15,
+            "outputEntries": 16,
+            "maxFactTextLength": 703,
+            "textPolicy": "hard-character-limit",
+            "responseState": "returned",
+            "outputTextLength": 641,
+            "foreignIds": [],
+            "omittedIds": [],
+            "omittedKnownIds": [],
+            "sourceMappingAvailable": true,
+            "acceptedNode": 139,
+            "inputFactBytes": 3904,
+            "outputFactBytes": 2407,
+            "inheritedFacts": [
+              {
+                "kind": "fact",
+                "text": "2026-10-01，本人为三号读书小组联系社区活动室，管理员称14点可进场；报名改过，旧表不能直接用。",
+                "sourceIds": [
+                  "1"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "对方上午有课，课后看群；提醒修路易误入旧入口。本人已发位置、新入口照片，拉三位新人入临时群。",
+                "sourceIds": [
+                  "2",
+                  "3"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "本人称订场、通知及零碎消息耗去半天，未吃午饭且不想开火。",
+                "sourceIds": [
+                  "3",
+                  "9"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "对方称前晚投影线接电脑测试正常，计划三号带去。",
+                "sourceIds": [
+                  "4"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "本人明确答身份证问题：管理员只登记预约联系人，本人带证即可，非全员登记。",
+                "sourceIds": [
+                  "4",
+                  "5"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "本人在两本交换书之一发现去年海边车票，确认已收蓝信封；此前翻纸袋未找到演出票根仅为对方转述。",
+                "sourceIds": [
+                  "5",
+                  "6",
+                  "7"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "本人书封咖啡渍擦后仍在，字及页码无碍，拟交换前说明；对方书中乱批注已擦，其余留作交流。",
+                "sourceIds": [
+                  "7",
+                  "8"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "报名又增一人，本人告管理员改两排桌、不用圆桌，待回复；“他”应指管理员，未点名。",
+                "sourceIds": [
+                  "9"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "10-01 10:39对方建议先吃面，人数稍后补；10:50本人已吃到，汤另装未洒；管理员回复、桌子落实仍未知。",
+                "sourceIds": [
+                  "10",
+                  "11"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "10-01对方拟课后取修好台灯，店主要傍晚前取；本人提醒旧开关需久按，对方答应试且已记下。",
+                "sourceIds": [
+                  "10",
+                  "11",
+                  "12"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "11:01对方上课可能慢回；仅若活动室确认收到，本人不必等其回复，非已确认。",
+                "sourceIds": [
+                  "12"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "10-04本人称昨日活动顺利，实到11人少于报名1人；缺席者预告加班并已备注，对方记得其开场前消息；表复核未明。",
+                "sourceIds": [
+                  "13",
+                  "14"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "对方称窗边座舒适、车声不吵；本人到时椅水已摆，布置者不明，不能证实两排桌落实。",
+                "sourceIds": [
+                  "14",
+                  "15"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "本人称预约、报名、计时费心，回家不想定晚饭；对方说其散场查公交，多人折返问路。",
+                "sourceIds": [
+                  "15",
+                  "16"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "10-04本人事后见门后公交图，拟下次拍群；对方提醒施工后入口再变，发前复查。",
+                "sourceIds": [
+                  "17",
+                  "18"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "“是”承接及具体场所本批未见。",
+                "sourceIds": [
+                  "17",
+                  "18"
+                ]
+              }
+            ],
+            "serializedReduction": 0.383452868852459
+          },
+          "responsePresent": true
+        },
+        {
+          "file": "request-19.json",
+          "call": 19,
+          "stage": "compress-navigation",
+          "dispatched": true,
+          "repair": false,
+          "candidateUpdates": [],
+          "readingAccepted": false,
+          "compression": {
+            "inputEntries": 16,
+            "outputEntries": 9,
+            "maxFactTextLength": 667,
+            "textPolicy": "hard-character-limit",
+            "responseState": "returned",
+            "outputTextLength": 596,
+            "foreignIds": [],
+            "omittedIds": [],
+            "omittedKnownIds": [],
+            "sourceMappingAvailable": true,
+            "acceptedNode": 140,
+            "inputFactBytes": 3735,
+            "outputFactBytes": 2135,
+            "inheritedFacts": [
+              {
+                "kind": "fact",
+                "text": "2026-10-04，对方已洗净3日带回的杯子，晾在厨房架上未装箱。本人问空间并拟看窄篮；对方让先别买，称移闲置保温壶入柜即可；本人确认不带篮，壶是否移动未明。壶内胆曾裂，不能装热水，对方不愿混入常用品。",
+                "sourceIds": [
+                  "18",
+                  "19",
+                  "20",
+                  "21"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "10月4日本人脚酸，拟附近走、不爬坡，避开3日见人搬木板的河边栈道；对方上午去过，称入口已围、公园平路可走。",
+                "sourceIds": [
+                  "21",
+                  "22"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "对方在树下唱片摊只看封套，未带播放器，不知能否播放；本人说其拍的封面像老电影海报，本批无照片。",
+                "sourceIds": [
+                  "22",
+                  "23"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "本人随后已走回，路线未明；见绿萝偏叶，猜因常开同侧窗，未证实。对方建议稍转、勿骤晒正午阳光，具体所指盆栽未明；其盆栽曾晒伤叶尖干、数周恢复，现置窗边散光处。",
+                "sourceIds": [
+                  "23",
+                  "24"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "10月7日本人已群发九号篇目、报名表补电子链接，私下解释给两位只见旧通知者，自述通知最终总回到自己；确认仍六点半。对方学校会议六点结束，可能迟到。",
+                "sourceIds": [
+                  "25",
+                  "26",
+                  "27"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "本人列三条开场问题，怕再独自问到底、嗓干；对方建议留空给别人，未见采纳。",
+                "sourceIds": [
+                  "27",
+                  "28"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "双方注意旧房文章门把手；本人跳读、不记得是否拆房，篇名作者未明。对方称纸本在上次书摞底，蓝封白脊贴，已平折角未夹物。本人后称“找到了”，在笔记本下，所指未明。",
+                "sourceIds": [
+                  "28",
+                  "29",
+                  "30",
+                  "31"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "本人翻到童年直路地图，实际绕路，忆去外婆家远；对方忆路口糖水店换老板才知读错店名。",
+                "sourceIds": [
+                  "31",
+                  "32"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "10月7日本人拆围巾压纸箱，忙通知忘拍照给外婆，拟晚回电；对方劝先联系，仅若太长勿急剪。后已通话，长度刚好无需改；外婆让天冷戴勿为拍照捂汗，称茉莉开两朵；照片是否发送未明。",
+                "sourceIds": [
+                  "33",
+                  "34",
+                  "35"
+                ]
+              }
+            ],
+            "serializedReduction": 0.428380187416332
+          },
+          "responsePresent": true
+        },
+        {
+          "file": "request-20.json",
+          "call": 20,
+          "stage": "compress-navigation",
+          "dispatched": true,
+          "repair": false,
+          "candidateUpdates": [],
+          "readingAccepted": false,
+          "compression": {
+            "inputEntries": 16,
+            "outputEntries": 8,
+            "maxFactTextLength": 719,
+            "textPolicy": "hard-character-limit",
+            "responseState": "returned",
+            "outputTextLength": 611,
+            "foreignIds": [],
+            "omittedIds": [],
+            "omittedKnownIds": [],
+            "sourceMappingAvailable": true,
+            "acceptedNode": 141,
+            "inputFactBytes": 3954,
+            "outputFactBytes": 2136,
+            "inheritedFacts": [
+              {
+                "kind": "fact",
+                "text": "2026-10-10本人称“昨天那场”近九点结束，回家补全部分缺书名条目，上午发书单；未确认是否前述九号活动或准备已落实。对方称“收到了”、出版社标注便于查找，所收材料未明；回述9日后段大家不想散，本人收笔记仍答借书问题。",
+                "sourceIds": [
+                  "37",
+                  "38"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "本人感到订场至发书单都需自己推动，自述难熬冷场会接话，不等于他人未参与。对方称9日第二问时自己正回想，本人已转段；本人补充怕拖晚，九点后有人赶车。",
+                "sourceIds": [
+                  "39",
+                  "40",
+                  "41"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "10日本人想放手机休息，但18日活动照常、通知已发，不因疲累取消；对方让其休息，自己稍后买菜。本人睡半小时后肩松些，仍不想回群。",
+                "sourceIds": [
+                  "41",
+                  "42",
+                  "45"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "对方转述卖菜者建议蘑菇当天吃、勿塑料袋闷过夜；本人建议煮汤、提醒豆腐将到期，称上次洗后直下锅出水多。对方拟擦干蘑菇、豆腐另放汤里；10日后报汤成、豆腐未散、油烟不多。",
+                "sourceIds": [
+                  "42",
+                  "43",
+                  "44",
+                  "48"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "对方称燃气灶小火稍转快灭，不能总盯锅；10日本人称自家老旋钮清火孔后改善，建议请师傅查看，未见检修结果。",
+                "sourceIds": [
+                  "44",
+                  "45"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "10日对方称群里主要换照片、暂无新报名问题；有人问本人桌上书，对方只答书名未允借，保留消息待本人回复。本人认可：书属朋友，不能随手转借；询问者未明。",
+                "sourceIds": [
+                  "46",
+                  "47",
+                  "48"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "13日本人称18日八人报名、一人带孩子；管理员休息，矮椅未确认，暂不保证。对方建议家长带孩子喜欢的书，未见转告。",
+                "sourceIds": [
+                  "49",
+                  "50"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "13日对方预约赴城另一头办证，带线、水，材料三袋、原复件分放；本人提醒吃饭，去年漏号经历属本人。对方到厅前有16号，后称已办完、仅补问地址，比预计快；事项及是否另打印未明，出门遇雨可在超市门口避。",
+                "sourceIds": [
+                  "50",
+                  "51",
+                  "52",
+                  "56",
+                  "58"
+                ]
+              }
+            ],
+            "serializedReduction": 0.45978755690440065
+          },
+          "responsePresent": true
+        },
+        {
+          "file": "request-21.json",
+          "call": 21,
+          "stage": "compress-navigation",
+          "dispatched": true,
+          "repair": false,
+          "candidateUpdates": [],
+          "readingAccepted": false,
+          "compression": {
+            "inputEntries": 16,
+            "outputEntries": 16,
+            "maxFactTextLength": 698,
+            "textPolicy": "hard-character-limit",
+            "responseState": "returned",
+            "outputTextLength": 631,
+            "foreignIds": [],
+            "omittedIds": [],
+            "omittedKnownIds": [],
+            "sourceMappingAvailable": true,
+            "acceptedNode": 142,
+            "inputFactBytes": 3949,
+            "outputFactBytes": 2394,
+            "inheritedFacts": [
+              {
+                "kind": "fact",
+                "text": "2026-10-13，本人印好18日文章十份，因往次剩纸未按报名上限印；对方说少两份可合看，非确认缺份。",
+                "sourceIds": [
+                  "57",
+                  "58"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "10月13日，对方将停业影院余几元的卡与票根收存；本人说可纪念，并忆旧旅行清单漏列充电器，确实忘带。",
+                "sourceIds": [
+                  "54",
+                  "55"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "10月13日，本人已装袋打印纸，晚间想看拖延的电影，不再同时改报名表。",
+                "sourceIds": [
+                  "59"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "对方也要收材料，建议长片分看；自述上周硬撑看完，忘了中段对白。",
+                "sourceIds": [
+                  "60"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "10月16日，管理员仅找到一把矮椅，家长说够；本人重发18日路线、时间，仍有熟人私询。",
+                "sourceIds": [
+                  "61"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "10月16日，对方问得储物柜月底前可借，但贵重物品不能过夜；本人道谢，未确认借用。",
+                "sourceIds": [
+                  "62",
+                  "63"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "本人称连续处理预约通知，厌倦后续名单书单，感觉无人主动接手；非确认他人无贡献。",
+                "sourceIds": [
+                  "63"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "对方理解为疲累，承认月底分工未清、在路上暂不能列；本人明确18日照常且备好，困扰是工作、小组消息并行，吃饭也惦记回复。",
+                "sourceIds": [
+                  "64",
+                  "65"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "10月16日，对方建议暂放群并愿转告临时变动；本人已关提醒。",
+                "sourceIds": [
+                  "66",
+                  "67"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "本人下班吃热栗子不想赶事；回应避风提醒称坐内排，无风。",
+                "sourceIds": [
+                  "67",
+                  "68",
+                  "69"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "本人见家长耐心陪孩子学骑车；对方忆怕被松手，独练、能停后不急证明骑远。",
+                "sourceIds": [
+                  "69",
+                  "70"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "本人吃完拟回家洗澡看两页书，今天无人等确认位置；对方到家，箱子明拆。",
+                "sourceIds": [
+                  "71",
+                  "72"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "10月19日本人回顾昨日：椅子用上，孩子后半站看窗外；讨论慢于前两次，未急换题后有人续讲。",
+                "sourceIds": [
+                  "73"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "对方说该参与者停顿后讲到重点，自称不再一直担心讲慢；身份未明，非全员体验。",
+                "sourceIds": [
+                  "74"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "本人觉得省嗓，但仍须理名单费用，不愿包办；称未写明的事又落己手，环节及原分工未明。",
+                "sourceIds": [
+                  "75"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "对方称茶、纸杯中两样为上次剩余，不能全算新购；本人接受，等收据。",
+                "sourceIds": [
+                  "76",
+                  "77"
+                ]
+              }
+            ],
+            "serializedReduction": 0.39377057482907063
+          },
+          "responsePresent": true
+        },
+        {
+          "file": "request-22.json",
+          "call": 22,
+          "stage": "compress-navigation",
+          "dispatched": true,
+          "repair": false,
+          "candidateUpdates": [],
+          "readingAccepted": false,
+          "compression": {
+            "inputEntries": 14,
+            "outputEntries": 12,
+            "maxFactTextLength": 709,
+            "textPolicy": "hard-character-limit",
+            "responseState": "returned",
+            "outputTextLength": 650,
+            "foreignIds": [],
+            "omittedIds": [],
+            "omittedKnownIds": [],
+            "sourceMappingAvailable": true,
+            "acceptedNode": 143,
+            "inputFactBytes": 3896,
+            "outputFactBytes": 2365,
+            "inheritedFacts": [
+              {
+                "kind": "fact",
+                "text": "2026-10-19，本人洗外套前取出昨日提问纸；对方已晾床单。本人称家中潮气减轻，开窗半小时后书页不再那么软。",
+                "sourceIds": [
+                  "77",
+                  "78",
+                  "79"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "10月19日，对方建议粥冷却后冷藏，自述已由热锅直放冰箱改为浅碗分装；本人确认南瓜粥分作今晚、次早两碗。",
+                "sourceIds": [
+                  "80",
+                  "81"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "10月19日，有人提议月底换短文，本人仅称商量中；对方只读开头，建议暂留两篇、先定主题，当天不投票。22日本人读完后可换另一篇、不急当晚决定；对方也偏向另一篇，因背景较易交代。25日本人称已订27日活动室，篇目已换为后来选定的一篇。",
+                "sourceIds": [
+                  "81",
+                  "82",
+                  "93",
+                  "94",
+                  "97"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "推荐者、篇名及两处替代篇目是否相同未明。",
+                "sourceIds": [
+                  "81",
+                  "82",
+                  "93",
+                  "94",
+                  "97"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "19日本人仅问场地空否，未预约；22日称21日已在群里重申月底未定，仍收到待整理报名表，不等于承诺整理。",
+                "sourceIds": [
+                  "83",
+                  "85"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "19日对方找齐收据，拟次日拍照兼呈总额、日期，最小张字淡；22日本人核对：茶为9日新购，纸杯半数为旧场剩余，不能全记18日。拍发过程、金额未展示。",
+                "sourceIds": [
+                  "84",
+                  "85"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "22日对方显式回复63，劝勿急着替所有人收齐，反驳默认本人兜底；本人确认九月出差那场联络全由对方负责，自己仅看群照，此前误计。",
+                "sourceIds": [
+                  "86",
+                  "87"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "对方认可本人本月筹备多，称10月3日搬椅、试投影、摆茶水；本人确认已布置，曾误认管理员所做。对方另称18日布置清理，未先列清单，补记贡献不否定本人疲累、求助。",
+                "sourceIds": [
+                  "88",
+                  "89",
+                  "90"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "矮椅借用结果未明。",
+                "sourceIds": [
+                  "90"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "本人收回“每次都只有我安排”，改称本月预约、群确认、会后书单集中自己，工作消息多时累，盼分出一项。对方愿接部分报名回复，但两晚有课；双方同意先明示回复时段。",
+                "sourceIds": [
+                  "91",
+                  "92",
+                  "93"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "“那两天”日期未明。",
+                "sourceIds": [
+                  "92",
+                  "93"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "22日对方称面包店重开、灯更亮，已买两片小份；本人想免排队买，曾冷冻核桃面包后忘记。",
+                "sourceIds": [
+                  "94",
+                  "95",
+                  "96"
+                ]
+              }
+            ],
+            "serializedReduction": 0.39296714579055436
+          },
+          "responsePresent": true
+        },
+        {
+          "file": "request-23.json",
+          "call": 23,
+          "stage": "compress-navigation",
+          "dispatched": true,
+          "repair": false,
+          "candidateUpdates": [],
+          "readingAccepted": false,
+          "compression": {
+            "inputEntries": 15,
+            "outputEntries": 13,
+            "maxFactTextLength": 673,
+            "textPolicy": "hard-character-limit",
+            "responseState": "returned",
+            "outputTextLength": 588,
+            "foreignIds": [],
+            "omittedIds": [],
+            "omittedKnownIds": [],
+            "sourceMappingAvailable": true,
+            "acceptedNode": 144,
+            "inputFactBytes": 3785,
+            "outputFactBytes": 2222,
+            "inheritedFacts": [
+              {
+                "kind": "fact",
+                "text": "10月25日本人因工作消息多、吃饭被打断，重问协助承诺；对方答应19:30—21:00直接答群内报名、路线，次晚有课不接。本人拟公告回复人，21点后问题次日处理，仍核最终名单，不接未定采购。",
+                "sourceIds": [
+                  "97",
+                  "98",
+                  "99",
+                  "100"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "对方称余茶和纸杯，建议暂缓采购、次日查库存；家用茶袋将尽，活动茶在柜上层，不混算，提议拍库存防重购。",
+                "sourceIds": [
+                  "100",
+                  "108"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "10月25日本人陪家人取照片，验片发现师傅弄反相近底片；留侧头笑照，因家人觉得像平时。",
+                "sourceIds": [
+                  "101",
+                  "102",
+                  "103"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "本人不以钥匙撬紧背板，按对方提示找到螺丝刀；相框靠书架、吃饭可见，未明是否装好。",
+                "sourceIds": [
+                  "103",
+                  "104",
+                  "105"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "本人见对方已答路线，未重复，称脑子清静；对方漏一条带孩子问题，已问年龄，未断言皆适合。",
+                "sourceIds": [
+                  "105",
+                  "106"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "本人同意先照本次约定，稍松快但不保证以后无问题；下月工作未定，承接量再议。本批未列完整约定。",
+                "sourceIds": [
+                  "107"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "10月28日本人报昨日到场10人、讨论提前结束，已改表；两位获路线回复者未再私问，开场前能看文章。",
+                "sourceIds": [
+                  "109"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "对方观察本人不像前几次站门口，猜消息少较轻松；本人确认轻松，未同时回群、找人、开场，原因是否唯一未明。",
+                "sourceIds": [
+                  "110",
+                  "111"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "对方称临时换书者自行找书主，未让本人传话。",
+                "sourceIds": [
+                  "110"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "对方洗杯余11个，称另一杯借出装水、借者允下次还；本人接受非丢失。",
+                "sourceIds": [
+                  "112",
+                  "113"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "10月28日双方未定11月首次采购及现场负责人；本人提等工作时间再列，当日不发完整安排。",
+                "sourceIds": [
+                  "113"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "本人建议“他”自愿定小礼物数量、不成任务；身份和物品未明。",
+                "sourceIds": [
+                  "115"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "本人倒剩水晾包，发现树叶；对方猜昨日长椅落叶带入，未证实。本人夹旧报纸，怕未干暂不入书。",
+                "sourceIds": [
+                  "115",
+                  "116",
+                  "117"
+                ]
+              }
+            ],
+            "serializedReduction": 0.41294583883751657
+          },
+          "responsePresent": true
+        },
+        {
+          "file": "request-24.json",
+          "call": 24,
+          "stage": "compress-navigation",
+          "dispatched": true,
+          "repair": false,
+          "candidateUpdates": [],
+          "readingAccepted": false,
+          "compression": {
+            "inputEntries": 19,
+            "outputEntries": 22,
+            "maxFactTextLength": 605,
+            "textPolicy": "hard-character-limit",
+            "responseState": "returned",
+            "outputTextLength": 592,
+            "foreignIds": [],
+            "omittedIds": [],
+            "omittedKnownIds": [],
+            "sourceMappingAvailable": true,
+            "acceptedNode": null,
+            "inputFactBytes": 3560,
+            "outputFactBytes": 2431,
+            "inheritedFacts": [
+              {
+                "kind": "fact",
+                "text": "本人昨晚散场后吃面太咸、夜醒想喝水，午饭想清淡；对方煮无糖南瓜小米粥，本人拟淘米煮粥兼整理书桌。",
+                "sourceIds": [
+                  "117",
+                  "118",
+                  "119"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "昨晚活动所指未明。",
+                "sourceIds": [
+                  "117",
+                  "118",
+                  "119"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "本人已挂合影，白天不反光；对方称可慢找位置、晚些看照片，不必补拍。",
+                "sourceIds": [
+                  "119",
+                  "120"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "对方拟趁未雨天亮晾衣、翻床单。",
+                "sourceIds": [
+                  "120"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "晾晒未见完成。",
+                "sourceIds": [
+                  "120"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "对方拟10月1日下课后傍晚前取台灯，检查长按才亮问题；取回测试未明。",
+                "sourceIds": [
+                  "10",
+                  "11",
+                  "12"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "九号前对方拟放纸杯、延长线以免等其到场；本人拟领钥匙，均待落实。",
+                "sourceIds": [
+                  "26",
+                  "27"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "下次对方拟分担报名回复，范围时段及告知安排未定；“那两天晚上”未明。",
+                "sourceIds": [
+                  "92",
+                  "93"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "月底是否换文未定，本人今晚不急定；原篇替篇未明。",
+                "sourceIds": [
+                  "93"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "对方拟忙后请修燃气灶小火难调易熄，时间结果未明。",
+                "sourceIds": [
+                  "44"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "本人拟2026-10-17下班核报名表，结果未明。",
+                "sourceIds": [
+                  "71"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "对方承诺十八号依约到、堵车提前报；时刻及履约未明。",
+                "sourceIds": [
+                  "72"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "2026-10-07对方拟先读完会前资料再读文章；完成及所指未明。",
+                "sourceIds": [
+                  "36"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "投影线已测正常。",
+                "sourceIds": [
+                  "4"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "对方三号是否带线未明。",
+                "sourceIds": [
+                  "4"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "2026-10-25约对方19:30—21:00群答报名路线；本人拟公告后停看群，名单仍本人核；21点后次日答，执行未明。",
+                "sourceIds": [
+                  "97",
+                  "98",
+                  "99",
+                  "100"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "二十七号采购负责人未定；对方建议2026-10-26查茶杯库存再定，结果未明。",
+                "sourceIds": [
+                  "99",
+                  "100"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "二十七号已订室换文。",
+                "sourceIds": [
+                  "94",
+                  "97"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "篇名及两处篇目指代未明。",
+                "sourceIds": [
+                  "94",
+                  "97"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "2026-10-22本人拟免排队买小份面包；对方两片拟晚饭后、次晨热食，实行未明。",
+                "sourceIds": [
+                  "95",
+                  "96"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "2026-10-13本人拟理证件袋，留可用卡，其余拍照丢弃，未见完成。",
+                "sourceIds": [
+                  "53"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "本人拟10月7日晚重读纸本；找到及重读未确认，旧房是否终拆未答。",
+                "sourceIds": [
+                  "29",
+                  "30"
+                ]
+              }
+            ],
+            "serializedReduction": 0.3171348314606741
+          },
+          "responsePresent": true
+        }
+      ]
+    },
+    {
+      "phase": "shared-workload-reading-resume",
+      "variant": "reading",
+      "state": "failed",
+      "error": "INVALID_INSIGHT_OUTPUT",
+      "actualRequests": 3,
+      "settledCalls": 3,
+      "inputTokens": 5174,
+      "outputTokens": 3267,
+      "elapsedMs": 52620,
+      "reportPresent": false,
+      "citationReferencesChecked": 0,
+      "checkpoint": {
+        "callsReserved": 27,
+        "coveredCount": 120,
+        "readingBatches": 17,
+        "facts": 95,
+        "unknowns": 44,
+        "checks": [],
+        "navigationRootIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31,
+          32,
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39,
+          40,
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85,
+          86,
+          87,
+          88,
+          89,
+          90,
+          91,
+          92,
+          93,
+          94,
+          95,
+          96,
+          97,
+          98,
+          99,
+          100,
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          124,
+          125,
+          126,
+          127,
+          128,
+          129,
+          130,
+          131,
+          132,
+          133,
+          134,
+          135,
+          136,
+          137,
+          138
+        ],
+        "navigationNodeCount": 146
+      },
+      "timeline": [
+        {
+          "file": "request-01.json",
+          "call": 1,
+          "stage": "compress-navigation",
+          "dispatched": true,
+          "repair": false,
+          "candidateUpdates": [],
+          "readingAccepted": false,
+          "compression": {
+            "inputEntries": 19,
+            "outputEntries": 22,
+            "maxFactTextLength": 605,
+            "textPolicy": "hard-character-limit",
+            "responseState": "returned",
+            "outputTextLength": 601,
+            "foreignIds": [],
+            "omittedIds": [],
+            "omittedKnownIds": [],
+            "sourceMappingAvailable": true,
+            "acceptedNode": 145,
+            "inputFactBytes": 3560,
+            "outputFactBytes": 2458,
+            "inheritedFacts": [
+              {
+                "kind": "fact",
+                "text": "本人昨晚散场吃面太咸、夜醒想喝水，午饭想清淡；对方煮无糖南瓜小米粥，本人拟淘米煮粥兼收拾书桌。",
+                "sourceIds": [
+                  "117",
+                  "118",
+                  "119"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "昨晚活动对应未明。",
+                "sourceIds": [
+                  "117",
+                  "118",
+                  "119"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "本人已挂合影，白天不反光；对方称可慢找位置、晚看照片，不急补拍。",
+                "sourceIds": [
+                  "119",
+                  "120"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "对方拟趁未雨天亮晾衣、翻床单。",
+                "sourceIds": [
+                  "120"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "晾晒完成未见。",
+                "sourceIds": [
+                  "120"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "对方拟10月1日课后、最好傍晚前取台灯并查长按才亮问题；取回测试未见。",
+                "sourceIds": [
+                  "10",
+                  "11",
+                  "12"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "对方拟九号前放纸杯、延长线以免等其到场，未见落实。",
+                "sourceIds": [
+                  "26"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "下次对方分担报名回复，范围、时段、告知未定；“那两天晚上”未明。",
+                "sourceIds": [
+                  "92",
+                  "93"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "月底是否换文未定，今晚不急定；原文及替代未明。",
+                "sourceIds": [
+                  "93"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "对方拟忙后修灶小火难调易熄，时间结果未知。",
+                "sourceIds": [
+                  "44"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "本人拟九号前拿钥匙，未确认。",
+                "sourceIds": [
+                  "27"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "本人拟2026-10-17下班核报名表，结果未知。",
+                "sourceIds": [
+                  "71"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "对方承诺十八号按约到，堵车先报；时刻、履约未知。",
+                "sourceIds": [
+                  "72"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "2026-10-07对方拟先读余下会前资料再读文章；完成及所指未知。",
+                "sourceIds": [
+                  "36"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "对方拟三号带已测正常投影线，带到未确认。",
+                "sourceIds": [
+                  "4"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "2026-10-25约对方19:30—21:00群答能答的报名路线，本人公告分工暂关群；执行未知。后续问题次日答，名单仍本人核。",
+                "sourceIds": [
+                  "97",
+                  "98",
+                  "99",
+                  "100"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "二十七号采购人未定；对方建议2026-10-26查茶、纸杯库存再定，结果未知。",
+                "sourceIds": [
+                  "99",
+                  "100"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "二十七号已订室换文。",
+                "sourceIds": [
+                  "94",
+                  "97"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "篇名、“另一篇”与后来所选对应未明。",
+                "sourceIds": [
+                  "94",
+                  "97"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "2026-10-22本人拟免排队买小份面包；对方两片拟晚饭后、次晨热食，落实未知。",
+                "sourceIds": [
+                  "95",
+                  "96"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "2026-10-13本人拟整理证件袋，留可用卡，其余拍照丢，未确认。",
+                "sourceIds": [
+                  "53"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "本人拟10月7日晚重读纸本；找到书、重读及文中旧房是否拆除未解。",
+                "sourceIds": [
+                  "29",
+                  "30"
+                ]
+              }
+            ],
+            "serializedReduction": 0.30955056179775275
+          },
+          "responsePresent": true
+        },
+        {
+          "file": "request-02.json",
+          "call": 2,
+          "stage": "compress-navigation",
+          "dispatched": true,
+          "repair": false,
+          "candidateUpdates": [],
+          "readingAccepted": false,
+          "compression": {
+            "inputEntries": 20,
+            "outputEntries": 25,
+            "maxFactTextLength": 522,
+            "textPolicy": "hard-character-limit",
+            "responseState": "returned",
+            "outputTextLength": 556,
+            "foreignIds": [],
+            "omittedIds": [],
+            "omittedKnownIds": [],
+            "sourceMappingAvailable": true,
+            "acceptedNode": null,
+            "inputFactBytes": 3192,
+            "outputFactBytes": 2407,
+            "inheritedFacts": [
+              {
+                "kind": "unknown",
+                "text": "本人交换前拟说明书封咖啡渍；说明、交换未确认。",
+                "sourceIds": [
+                  "7"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "本人等管理员回复两排桌、停用圆桌，拟再下楼买食物；均待确认。",
+                "sourceIds": [
+                  "9"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "对方承诺按日期拍收据；本人待整理费用，须分旧余用品与新购。",
+                "sourceIds": [
+                  "76",
+                  "77"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "对方拟饭后拆洗厨房滤网，未确认。",
+                "sourceIds": [
+                  "48"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "对方已追问带孩子路线的年龄。",
+                "sourceIds": [
+                  "106"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "年龄及路线适合否待答。",
+                "sourceIds": [
+                  "106"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "对方拟当晚九点后群告收工、新事明日处理，免误认持续值守；未确认发布。",
+                "sourceIds": [
+                  "106"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "本人拟2026-10-26下班核名单；所指、结果未明。",
+                "sourceIds": [
+                  "107"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "本人2026年11月工作未定，接事量待重议。",
+                "sourceIds": [
+                  "107"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "本人称分工未明致任务回落自己。",
+                "sourceIds": [
+                  "75"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "会后名单、任务归属及分工待定。",
+                "sourceIds": [
+                  "75"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "2026-10-19对方拟收床单前擦柜；本人拟晚用昨日剩南瓜煮粥，称切开不耐放；均未确认。",
+                "sourceIds": [
+                  "78",
+                  "79"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "对方洗净杯仍晾厨房架。",
+                "sourceIds": [
+                  "18"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "未确认入箱。",
+                "sourceIds": [
+                  "18"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "本人拟告电子书购买途径、先还借书；均未确认，书及相关人未明。",
+                "sourceIds": [
+                  "47",
+                  "48"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "本人确认10月18日活动照常、已通知。",
+                "sourceIds": [
+                  "41"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "举行待确认。",
+                "sourceIds": [
+                  "41"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "对方拟回家收饭桌材料，未确认。",
+                "sourceIds": [
+                  "60"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "对方10月25日承诺次日拍库存，照片、清单未见。",
+                "sourceIds": [
+                  "108"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "10月27日会后书单待整；本人拟28日晚记确定名字，疑者等本人答不猜；书名或人名未明。",
+                "sourceIds": [
+                  "111"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "借杯待下次还；借者、日期未明。",
+                "sourceIds": [
+                  "112"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "11月首次活动采购分工待双方工时；对方两晚课日期待通知后报可参加时间。",
+                "sourceIds": [
+                  "113",
+                  "114"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "10月27日新朋友想带自制书签，数量未定；对方提暂不承诺人手一份。",
+                "sourceIds": [
+                  "114"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "数量、范围待本人确认。",
+                "sourceIds": [
+                  "114"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "本人拟10月13日晚看电影、不同时改报名表；落实未明。",
+                "sourceIds": [
+                  "59"
+                ]
+              }
+            ],
+            "serializedReduction": 0.24592731829573933
+          },
+          "responsePresent": true
+        },
+        {
+          "file": "request-03.json",
+          "call": 3,
+          "stage": "compress-navigation",
+          "dispatched": true,
+          "repair": true,
+          "candidateUpdates": [],
+          "readingAccepted": false,
+          "compression": {
+            "inputEntries": 20,
+            "outputEntries": 25,
+            "maxFactTextLength": 522,
+            "textPolicy": "hard-character-limit",
+            "responseState": "returned",
+            "outputTextLength": 546,
+            "foreignIds": [],
+            "omittedIds": [],
+            "omittedKnownIds": [],
+            "sourceMappingAvailable": true,
+            "acceptedNode": null,
+            "inputFactBytes": 3192,
+            "outputFactBytes": 2389,
+            "inheritedFacts": [
+              {
+                "kind": "unknown",
+                "text": "本人拟交换前说明书封咖啡渍；说明、交换未确认。",
+                "sourceIds": [
+                  "7"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "本人等管理员答复两排桌、停圆桌安排，再下楼买食物；均待确认。",
+                "sourceIds": [
+                  "9"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "对方承诺按日期拍收据；本人待收据理费用，须分上次余用品与新购。",
+                "sourceIds": [
+                  "76",
+                  "77"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "对方拟饭后拆洗厨房滤网，未确认。",
+                "sourceIds": [
+                  "48"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "对方已追问带孩子路线中的年龄。",
+                "sourceIds": [
+                  "106"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "年龄及路线适宜性未明。",
+                "sourceIds": [
+                  "106"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "对方拟当晚九点后群告知收工、新事明天处理，免误认持续值守；未确认发布。",
+                "sourceIds": [
+                  "106"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "本人拟2026-10-26下班核名单；所指、结果未明。",
+                "sourceIds": [
+                  "107"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "本人2026年11月工作未定，待议承接量。",
+                "sourceIds": [
+                  "107"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "本人称分工未明使事情回落自己。",
+                "sourceIds": [
+                  "75"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "会后名单、任务归属及分工待定。",
+                "sourceIds": [
+                  "75"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "10月19日对方拟收床单前擦柜；本人拟晚煮昨日余南瓜，称切开难久放；均未确认。",
+                "sourceIds": [
+                  "78",
+                  "79"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "对方洗净杯子仍晾厨房架。",
+                "sourceIds": [
+                  "18"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "收箱未确认。",
+                "sourceIds": [
+                  "18"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "本人拟告电子书购买途径、先还借书；结果、书名及双方身份未明。",
+                "sourceIds": [
+                  "47",
+                  "48"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "本人确认10月18日活动照常、已通知。",
+                "sourceIds": [
+                  "41"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "举行待确认。",
+                "sourceIds": [
+                  "41"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "对方拟回家收饭桌材料，未确认。",
+                "sourceIds": [
+                  "60"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "对方10月25日诺次日拍库存，未见照片清单。",
+                "sourceIds": [
+                  "108"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "10月27日会后书单待整；本人拟28日晚记确定名字，余等本人答复不猜补；名字指代、完成未明。",
+                "sourceIds": [
+                  "111"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "一杯待参与者下次归还；人、日期未明。",
+                "sourceIds": [
+                  "112"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "11月首次活动采购分工待工作时间；对方两次晚课待通知，再告可参加时间。",
+                "sourceIds": [
+                  "113",
+                  "114"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "10月27日新朋友想带书签；对方不代诺每人一份。",
+                "sourceIds": [
+                  "114"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "数量范围待其确认。",
+                "sourceIds": [
+                  "114"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "本人拟10月13日晚看电影、不同时改报名表，未确认。",
+                "sourceIds": [
+                  "59"
+                ]
+              }
+            ],
+            "serializedReduction": 0.2515664160401002
+          },
+          "responsePresent": true
+        }
+      ]
+    },
+    {
+      "phase": "shared-workload-reading-resume-2",
+      "variant": "reading",
+      "state": "failed",
+      "error": "INVALID_INSIGHT_OUTPUT",
+      "actualRequests": 1,
+      "settledCalls": 1,
+      "inputTokens": 1709,
+      "outputTokens": 1418,
+      "elapsedMs": 21818,
+      "reportPresent": false,
+      "citationReferencesChecked": 0,
+      "checkpoint": {
+        "callsReserved": 28,
+        "coveredCount": 120,
+        "readingBatches": 17,
+        "facts": 95,
+        "unknowns": 44,
+        "checks": [],
+        "navigationRootIds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31,
+          32,
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39,
+          40,
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85,
+          86,
+          87,
+          88,
+          89,
+          90,
+          91,
+          92,
+          93,
+          94,
+          95,
+          96,
+          97,
+          98,
+          99,
+          100,
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          124,
+          125,
+          126,
+          127,
+          128,
+          129,
+          130,
+          131,
+          132,
+          133,
+          134,
+          135,
+          136,
+          137,
+          138
+        ],
+        "navigationNodeCount": 146
+      },
+      "timeline": [
+        {
+          "file": "request-01.json",
+          "call": 1,
+          "stage": "compress-navigation",
+          "dispatched": true,
+          "repair": true,
+          "candidateUpdates": [],
+          "readingAccepted": false,
+          "compression": {
+            "inputEntries": 20,
+            "outputEntries": 40,
+            "targetFactTextLength": 522,
+            "textPolicy": "character-guidance-with-serialized-progress",
+            "responseState": "returned",
+            "outputTextLength": 729,
+            "foreignIds": [],
+            "omittedIds": [],
+            "omittedKnownIds": [],
+            "sourceMappingAvailable": true,
+            "acceptedNode": null,
+            "inputFactBytes": 3192,
+            "outputFactBytes": 3417,
+            "inheritedFacts": [
+              {
+                "kind": "fact",
+                "text": "本人拟交换前说明说明书封面咖啡渍。",
+                "sourceIds": [
+                  "7"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "说明、交换是否完成未见。",
+                "sourceIds": [
+                  "7"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "本人等管理员回复两排桌子、停用圆桌安排，拟获回复后下楼买食物。",
+                "sourceIds": [
+                  "9"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "回复及后续落实未见。",
+                "sourceIds": [
+                  "9"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "对方承诺按日期分收据后拍给本人；费用须区分上次剩余用品与本次新购。",
+                "sourceIds": [
+                  "76",
+                  "77"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "本人仍等收据，费用未理完。",
+                "sourceIds": [
+                  "76",
+                  "77"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "对方拟吃完后拆洗厨房滤网。",
+                "sourceIds": [
+                  "48"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "拆洗完成未见。",
+                "sourceIds": [
+                  "48"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "对方已就群内带孩子路线补问年龄。",
+                "sourceIds": [
+                  "106"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "年龄答复及路线适合与否未见。",
+                "sourceIds": [
+                  "106"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "对方拟当晚九点后告知群内当天结束、新情况明天处理，避免被当作持续值守。",
+                "sourceIds": [
+                  "106"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "实际发布未见。",
+                "sourceIds": [
+                  "106"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "本人拟2026-10-26下班后核完名单。",
+                "sourceIds": [
+                  "107"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "名单所指、核对结果未明。",
+                "sourceIds": [
+                  "107"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "本人称2026年11月工作未定，届时再议承接量。",
+                "sourceIds": [
+                  "107"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "工作安排及重议结果未见。",
+                "sourceIds": [
+                  "107"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "本人称分工未写明使事情回落自己。",
+                "sourceIds": [
+                  "75"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "会后名单待理，任务归属及分工方案未见。",
+                "sourceIds": [
+                  "75"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "2026-10-19对方拟下午收床单前擦柜；本人拟晚用昨日剩南瓜煮粥，称切开不能久放。",
+                "sourceIds": [
+                  "78",
+                  "79"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "两项完成未见。",
+                "sourceIds": [
+                  "78",
+                  "79"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "对方洗净的几个杯子仍晾厨房架上。",
+                "sourceIds": [
+                  "18"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "收箱未见。",
+                "sourceIds": [
+                  "18"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "本人拟晚些告知询问者电子书购买途径，先还借书。",
+                "sourceIds": [
+                  "47",
+                  "48"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "回复、归还未见；书名、询问者、出借朋友未明。",
+                "sourceIds": [
+                  "47",
+                  "48"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "本人确认10月18日活动照常，通知已发。",
+                "sourceIds": [
+                  "41"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "活动待举行。",
+                "sourceIds": [
+                  "41"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "对方拟回家收饭桌材料。",
+                "sourceIds": [
+                  "60"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "收起未见。",
+                "sourceIds": [
+                  "60"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "对方10月25日承诺次日拍库存。",
+                "sourceIds": [
+                  "108"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "照片或清单未见。",
+                "sourceIds": [
+                  "108"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "本人拟10月28日晚整理27日活动书单，先记确定名字，不明者等本人回复，不猜补。",
+                "sourceIds": [
+                  "111"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "书单未理完；“名字”指书名或人名未明。",
+                "sourceIds": [
+                  "111"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "借出一杯，待参与者下次归还。",
+                "sourceIds": [
+                  "112"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "借用者及下次日期未明，归还待确认。",
+                "sourceIds": [
+                  "112"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "11月首次活动采购、现场分工待双方工时确定再列；对方承诺获两次晚课日期后告知可参加时间。",
+                "sourceIds": [
+                  "113",
+                  "114"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "晚课日期、可参加时间及分工待定。",
+                "sourceIds": [
+                  "113",
+                  "114"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "10月27日新朋友想带自制书签；对方提出暂不替其承诺每人一份。",
+                "sourceIds": [
+                  "114"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "数量未定，未见本人确认数量或供给范围。",
+                "sourceIds": [
+                  "114"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "本人想10月13日晚看电影，不再同时改报名表。",
+                "sourceIds": [
+                  "59"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "看电影及该安排落实未见。",
+                "sourceIds": [
+                  "59"
+                ]
+              }
+            ],
+            "serializedReduction": -0.07048872180451138,
+            "meetsTwentyPercentReduction": false
+          },
+          "responsePresent": true
+        }
+      ]
+    }
+  ]
+}

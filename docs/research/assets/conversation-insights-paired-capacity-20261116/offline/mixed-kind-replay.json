@@ -1,0 +1,60 @@
+{
+  "kind": "offline-known-facts-with-unresolved-results",
+  "networkCalls": 0,
+  "trialRecoveryPerformed": false,
+  "checkpointCallsUnchanged": 11,
+  "cases": [
+    {
+      "response": "10",
+      "accepted": true,
+      "inputEntries": 26,
+      "outputEntries": 22,
+      "inputBytes": 5723,
+      "outputBytes": 3702,
+      "textAndKindsUnchanged": true,
+      "eachOutputSourcesMatchInheritedEntries": true,
+      "confirmedDeferral": {
+        "kind": "unknown",
+        "text": "双方暂不发下月首次活动完整安排，采购、现场负责人及承担事项待工作时间明确再议；对方两次晚课日期、可参加时间待通知。",
+        "sourceIds": [
+          "107",
+          "113",
+          "114"
+        ]
+      }
+    },
+    {
+      "response": "11",
+      "accepted": true,
+      "inputEntries": 26,
+      "outputEntries": 20,
+      "inputBytes": 5723,
+      "outputBytes": 3468,
+      "textAndKindsUnchanged": true,
+      "eachOutputSourcesMatchInheritedEntries": true,
+      "confirmedDeferral": {
+        "kind": "unknown",
+        "text": "下月首次活动完整安排暂不发布，采购、现场负责人及双方承担事项待工作安排；对方两次晚课日期及可参加时间待通知。",
+        "sourceIds": [
+          "107",
+          "113",
+          "114"
+        ]
+      }
+    }
+  ],
+  "originalHashes": {
+    "checkpoint.json": "9342327c4d9301d5b099e9b047f042dbaafdf9e0393f885507c319f9ccdfec18",
+    "request-10.json": "3a5eef5c6bc57bae318302540b501aa27331e25e9a8b24fc953130e5212e21e0",
+    "response-10.txt": "c4f9d39e5c2c41f4a1d1eb76c48d465e1ce7b2209550938ef39c2db2283f4488",
+    "request-11.json": "9df314ecdfd62739b36f7118a4748025e41b8376c62ba9c5c3f8048d90f802c6",
+    "response-11.txt": "917fa709a7d11ef770d0036880a1226916258688e8b21a14d713bd2934ef1e35"
+  },
+  "originalsUnchanged": true,
+  "productHashes": {
+    "electron/main/insight-generation.ts": "816e82fac393459f6b36dc1f6470ffcb454b23467bfb843fd2c3a8b667da81e9",
+    "electron/data/ai/insight-prompts.ts": "716d56216bccbde3364156b22bb9ee9fee4bb7a323f5df109c9799d87567d6a3",
+    "tests/backend/insight-generation.test.ts": "2b478a677e9d8e84fa22cb819cf9e42aa2d5b723f865e81d601fead5df08a5cf",
+    "tests/backend/fixtures/insight-compression-mixed-kinds.json": "6334462177523cb44dd0b9b6dc76332df408d25f136221fe6e34e801ee25c3c2"
+  }
+}

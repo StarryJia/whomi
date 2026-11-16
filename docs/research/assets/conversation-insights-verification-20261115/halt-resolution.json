@@ -1,0 +1,1 @@
+{"resolvedError":"INVALID_EVIDENCE","cause":"Visible leaf navigation was rejected despite valid frozen sources 2,19,20","fix":"Visible leaf at offset zero uses bounded source reread; unknown nodes and invalid offsets still reject","verification":"21 insight-generation tests and typecheck passed; regression failed before fix","requestCountPreserved":4}

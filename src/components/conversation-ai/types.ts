@@ -1,6 +1,7 @@
 import type { ThinkingLevel } from '../../shared/thinking'
 import type { ReferenceRange } from './selection'
-import type { AnalysisPreparation, AnalysisTask, AiState, AiUsage, AiThread, AiThreadSummary, AiModelIdentity } from '../../shared/ai-contract'
+import type { AnalysisPreparation, AnalysisTask, AiState, AiUsage, AiThread, AiThreadSummary, AiModelIdentity, AiMethods, PrepareAnalysisInput } from '../../shared/ai-contract'
+import type { InsightScope } from '../../shared/conversation-insights'
 import type { ModelOption } from './model-selector'
 
 export type GenerationUsage = AiUsage
@@ -35,7 +36,8 @@ export type ConversationAiAdapter = {
   selectModel?: (feature: 'analysis' | 'conversation', id: string | null) => Promise<void>
   models: readonly ModelOption[]
   skills: readonly { id: string; label: string }[]
-  prepareAnalysis?: (request: { conversationId: string; modelId: string; thinkingLevel?: ThinkingLevel }) => Promise<AnalysisPreparation>
+  prepareAnalysis?: (request: PrepareAnalysisInput) => Promise<AnalysisPreparation>
+  previewInsightScope?: AiMethods['previewInsightScope']
   arrangeThread?: import('../../shared/ai-contract').AiMethods['arrangeThread']
   deleteThread?: import('../../shared/ai-contract').AiMethods['deleteThread']
   listThreads?: (conversationId: string) => Promise<AiThreadSummary[]>
@@ -52,7 +54,7 @@ export type ConversationAiAdapter = {
     onSnapshot?: (turn: RestoredConversationTurn) => void
     onText: (text: string) => void
   }): Promise<{ text: string; usage?: GenerationUsage; modelIdentity?: AiModelIdentity; turn?: RestoredConversationTurn }>
-  analyze(request: { conversationId: string; modelId: string; thinkingLevel?: ThinkingLevel; preparationToken?: string; requestId?: string }, options: {
+  analyze(request: { conversationId: string; modelId: string; thinkingLevel?: ThinkingLevel; scope?: InsightScope; preparationToken?: string; requestId?: string }, options: {
     signal: AbortSignal
     onProgress: (progress: AnalysisProgress) => void
   }): Promise<AnalysisResult | void>

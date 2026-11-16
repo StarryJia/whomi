@@ -1,0 +1,17 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
+const base='release/conversation-insights-20261115/long-comparison-runs/memory-source-order-20261116';
+const root=path.join(base,'after-coverage-repair');
+fs.mkdirSync(root,{recursive:true});
+const original=JSON.parse(fs.readFileSync(path.join(base,'implementation.json'),'utf8'));
+const files=[...original.files.map(item=>item.file),'tests/quality/insight-comparison-compression-resume.ts','tests/backend/fixtures/insight-compression-target.json','tests/backend/fixtures/insight-compression-coverage.json'];
+const hash=b=>createHash('sha256').update(b).digest('hex');
+if(files.some(file=>!fs.existsSync(file))) throw new Error('Missing source file');
+const items=files.map(file=>{const bytes=fs.readFileSync(file);const destination=path.join(root,'source',file);fs.mkdirSync(path.dirname(destination),{recursive:true});fs.writeFileSync(destination,bytes,{flag:'wx'});return{file,sha256:hash(bytes)};});
+const patch=execFileSync('git',['diff','--',...files]);
+fs.writeFileSync(path.join(root,'implementation.patch'),patch,{flag:'wx'});
+fs.writeFileSync(path.join(root,'implementation.json'),JSON.stringify({createdAt:new Date().toISOString(),baseCommit:original.baseCommit,precedingActualRequestsInThisRun:20,priorClosedRuns:original.priorClosedRuns,taskCalls:50,totalRequests:104,navigationFactsVersion:2,reason:'Classify compression coverage errors as one bounded format repair; migrate the prior rejected attempt into its repair allowance.',nodeVersion:process.version,files:items,patchSha256:hash(patch)},null,2)+'\n',{flag:'wx'});
+fs.writeFileSync(path.join(root,'preregistration.md'),fs.readFileSync('docs/research/conversation-insights-source-order-20261116.md'),{flag:'wx'});
+console.log(JSON.stringify({root,files:items.length,precedingRequests:20,modelCalls:0}));

@@ -1,0 +1,80 @@
+
+ RUN  v5.0.5 D:/University/github/whomi
+
+ ❯ tests/backend/insight-generation.test.ts (80 tests | 4 failed | 71 skipped) 47ms
+   × compaction rejects a response that omits a fact 23ms
+   × compaction rejects a response that downgrades known facts to unknown 3ms
+   × real mixed known notes mislabeled unknown receive one repair without accepting the first response (repair succeeds: true) 5ms
+   × real mixed known notes mislabeled unknown receive one repair without accepting the first response (repair succeeds: false) 3ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/backend/insight-generation.test.ts > compaction rejects a response that omits a fact
+ FAIL  tests/backend/insight-generation.test.ts > compaction rejects a response that downgrades known facts to unknown
+AssertionError: expected Error: 洞察引用的原文无法验证，请重新生成。 { …(2) } to match object { code: 'INVALID_INSIGHT_OUTPUT' }
+(1 matching property omitted from actual)
+
+- Expected
++ Received
+
+- {
+-   "code": "INVALID_INSIGHT_OUTPUT",
++ BoundaryError {
++   "code": "INVALID_EVIDENCE",
+  }
+
+ ❯ tests/backend/insight-generation.test.ts:337:45
+    335| ])('compaction rejects a response that $name', async ({ facts, code, c…
+    336|   const { input, deps, state } = memoryFixture({ ...preservedMemory, f…
+    337|   await expect(generateInsight(input, deps)).rejects.toMatchObject({ c…
+       |                                             ^
+    338|   expect(state.checkpoint?.callsReserved).toBe(calls)
+    339|   expect(state.checkpoint?.navigation?.nextRoots).toEqual([])
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  tests/backend/insight-generation.test.ts > real mixed known notes mislabeled unknown receive one repair without accepting the first response (repair succeeds: true)
+Error: 洞察引用的原文无法验证，请重新生成。
+ ❯ invalidEvidence electron/main/insight-generation.ts:143:9
+    141|
+    142| function invalidEvidence(): never {
+    143|   throw new BoundaryError('INVALID_EVIDENCE', '洞察引用的原文无法验证，请重新生成。')
+       |         ^
+    144| }
+    145|
+ ❯ compressedFacts electron/main/insight-generation.ts:130:78
+ ❯ compactMemory electron/main/insight-generation.ts:800:25
+ ❯ generateInsight electron/main/insight-generation.ts:826:3
+ ❯ tests/backend/insight-generation.test.ts:373:17
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  tests/backend/insight-generation.test.ts > real mixed known notes mislabeled unknown receive one repair without accepting the first response (repair succeeds: false)
+AssertionError: expected Error: 洞察引用的原文无法验证，请重新生成。 { …(2) } to match object { code: 'INVALID_INSIGHT_OUTPUT' }
+(1 matching property omitted from actual)
+
+- Expected
++ Received
+
+- {
+-   "code": "INVALID_INSIGHT_OUTPUT",
++ BoundaryError {
++   "code": "INVALID_EVIDENCE",
+  }
+
+ ❯ tests/backend/insight-generation.test.ts:375:66
+    373|   if (succeeds) await generateInsight({ ...input, checkpoint }, deps)
+    374|   else {
+    375|     await expect(generateInsight({ ...input, checkpoint }, deps)).reje…
+       |                                                                  ^
+    376|     expect(state.checkpoint?.navigation?.nextRoots).toEqual([])
+    377|     expect(state.checkpoint?.callsReserved).toBe(2)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 5 passed | 71 skipped (80)
+   Start at  01:13:34
+   Duration  565ms (transform 52%, import 29%, tests 16%, worker 3%)
+

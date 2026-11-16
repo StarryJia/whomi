@@ -1,0 +1,1009 @@
+{
+  "totals": {
+    "requests": 22,
+    "inputTokens": 41525,
+    "outputTokens": 22607
+  },
+  "comparisons": [
+    {
+      "caseName": "shared-workload",
+      "materialDigest": "6f63b461c034eacaebc473ea5637bef13119aae59e286fa1d449347d9c6af756",
+      "completePair": false
+    },
+    {
+      "caseName": "conditional-reschedule",
+      "materialDigest": "907c6b680d1acc0e4c021e7ae6c26393d1fd144c9c6f45d6ee4a47b316640b2d",
+      "completePair": false
+    }
+  ],
+  "sourceIntegrity": "passed",
+  "referenceIdsAndRevisions": "passed",
+  "limitation": "条目与来源完整不代表文字忠实或引用相关；语义逐项复核另列。",
+  "phases": [
+    {
+      "phase": "shared-workload-reading",
+      "state": "failed",
+      "error": "INVALID_EVIDENCE",
+      "calls": 3,
+      "httpRequests": 3,
+      "elapsedMs": 64754,
+      "inputCharged": 5842,
+      "outputCharged": 3461,
+      "trialRequestsAfterPhase": 3,
+      "accounting": {
+        "incremental": {
+          "httpRequests": 3,
+          "elapsedMs": 64754,
+          "inputCharged": 5842,
+          "outputCharged": 3461
+        }
+      },
+      "timeline": [
+        {
+          "file": "request-01.json",
+          "stage": "reading",
+          "inputEstimate": 6589,
+          "messageIds": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10"
+          ],
+          "relatedIds": [],
+          "knownCandidates": [],
+          "candidates": [],
+          "candidateUpdates": [],
+          "resolvedThreadSourceIds": [
+            "2",
+            "4",
+            "6"
+          ]
+        },
+        {
+          "file": "request-02.json",
+          "stage": "reading",
+          "inputEstimate": 6731,
+          "messageIds": [
+            "11",
+            "12",
+            "13",
+            "14",
+            "15",
+            "16",
+            "17",
+            "18"
+          ],
+          "relatedIds": [],
+          "knownCandidates": [],
+          "candidates": [],
+          "candidateUpdates": [],
+          "resolvedThreadSourceIds": [
+            "1",
+            "9",
+            "10"
+          ]
+        },
+        {
+          "file": "request-03.json",
+          "stage": "reading",
+          "inputEstimate": 6740,
+          "messageIds": [
+            "19",
+            "20",
+            "21",
+            "22",
+            "23",
+            "24",
+            "25",
+            "26"
+          ],
+          "relatedIds": [],
+          "knownCandidates": [],
+          "candidates": [],
+          "candidateUpdates": [],
+          "resolvedThreadSourceIds": []
+        }
+      ]
+    },
+    {
+      "phase": "shared-workload-reading-resume",
+      "state": "failed",
+      "error": "INVALID_EVIDENCE",
+      "calls": 10,
+      "httpRequests": 10,
+      "elapsedMs": 214912,
+      "inputCharged": 19275,
+      "outputCharged": 10370,
+      "trialRequestsAfterPhase": 13,
+      "accounting": {
+        "incremental": {
+          "httpRequests": 10,
+          "elapsedMs": 214912,
+          "inputCharged": 19275,
+          "outputCharged": 10370
+        },
+        "priorReading": {
+          "httpRequests": 3,
+          "inputCharged": 5842,
+          "outputCharged": 3461,
+          "elapsedMs": 64754
+        },
+        "combinedReading": {
+          "httpRequests": 13,
+          "inputCharged": 25117,
+          "outputCharged": 13831,
+          "elapsedMs": 279666
+        }
+      },
+      "resumedFrom": "shared-workload-reading",
+      "resumeCheckpointHash": "60eb8dd2065775310c0aecf53ae2f6fe1ffcdc74277dccd03b16257b9592eb36",
+      "timeline": [
+        {
+          "file": "request-01.json",
+          "stage": "reading",
+          "inputEstimate": 6744,
+          "messageIds": [
+            "19",
+            "20",
+            "21",
+            "22",
+            "23",
+            "24",
+            "25",
+            "26"
+          ],
+          "relatedIds": [],
+          "knownCandidates": [],
+          "candidates": [],
+          "candidateUpdates": [],
+          "resolvedThreadSourceIds": []
+        },
+        {
+          "file": "request-02.json",
+          "stage": "reading",
+          "inputEstimate": 6683,
+          "messageIds": [
+            "27",
+            "28",
+            "29",
+            "30",
+            "31",
+            "32",
+            "33",
+            "34"
+          ],
+          "relatedIds": [],
+          "knownCandidates": [],
+          "candidates": [],
+          "candidateUpdates": [],
+          "resolvedThreadSourceIds": [
+            "30"
+          ]
+        },
+        {
+          "file": "request-03.json",
+          "stage": "reading",
+          "inputEstimate": 6739,
+          "messageIds": [
+            "35",
+            "36",
+            "37",
+            "38",
+            "39",
+            "40",
+            "41",
+            "42"
+          ],
+          "relatedIds": [],
+          "knownCandidates": [],
+          "candidates": [],
+          "candidateUpdates": [],
+          "resolvedThreadSourceIds": []
+        },
+        {
+          "file": "request-04.json",
+          "stage": "reading",
+          "inputEstimate": 6738,
+          "messageIds": [
+            "43",
+            "44",
+            "45",
+            "46",
+            "47",
+            "48",
+            "49",
+            "50"
+          ],
+          "relatedIds": [],
+          "knownCandidates": [],
+          "candidates": [],
+          "candidateUpdates": [],
+          "resolvedThreadSourceIds": []
+        },
+        {
+          "file": "request-05.json",
+          "stage": "reading",
+          "inputEstimate": 6741,
+          "messageIds": [
+            "51",
+            "52",
+            "53",
+            "54",
+            "55",
+            "56",
+            "57",
+            "58"
+          ],
+          "relatedIds": [],
+          "knownCandidates": [],
+          "candidates": [],
+          "candidateUpdates": [],
+          "resolvedThreadSourceIds": []
+        },
+        {
+          "file": "request-06.json",
+          "stage": "reading",
+          "inputEstimate": 6744,
+          "messageIds": [
+            "59",
+            "60",
+            "61",
+            "62",
+            "63",
+            "64",
+            "65"
+          ],
+          "relatedIds": [],
+          "knownCandidates": [],
+          "candidates": [],
+          "candidateUpdates": [],
+          "resolvedThreadSourceIds": []
+        },
+        {
+          "file": "request-07.json",
+          "stage": "reading",
+          "inputEstimate": 6741,
+          "messageIds": [
+            "66",
+            "67",
+            "68",
+            "69",
+            "70",
+            "71",
+            "72"
+          ],
+          "relatedIds": [],
+          "knownCandidates": [],
+          "candidates": [],
+          "candidateUpdates": [],
+          "resolvedThreadSourceIds": []
+        },
+        {
+          "file": "request-08.json",
+          "stage": "reading",
+          "inputEstimate": 6740,
+          "messageIds": [
+            "73",
+            "74",
+            "75",
+            "76",
+            "77",
+            "78",
+            "79"
+          ],
+          "relatedIds": [],
+          "knownCandidates": [],
+          "candidates": [],
+          "candidateUpdates": [],
+          "resolvedThreadSourceIds": [
+            "41"
+          ]
+        },
+        {
+          "file": "request-09.json",
+          "stage": "reading",
+          "inputEstimate": 6742,
+          "messageIds": [
+            "80",
+            "81",
+            "82",
+            "83",
+            "84",
+            "85",
+            "86"
+          ],
+          "relatedIds": [],
+          "knownCandidates": [],
+          "candidates": [
+            {
+              "observation": "需核对63的原话及语境，判断86提到的九月分工是否构成对合成本人原有说法的实际修正，还是双方所指范围不同。",
+              "supportingIds": [
+                "86"
+              ],
+              "reason": "本批只有合成对方对63的转述，不能据此认定合成本人曾主张所有活动均由自己兜底；还需核对63中“每次”的具体范围，以及九月任务分工是否有其他原文印证。",
+              "evidenceNotes": [
+                {
+                  "sourceId": "86",
+                  "quote": "我想接着你前几天说每次都默认你兜住那句话说一点：九月那场你出差，是我找活动室、确认名单和发通知的，你还记得那次吗？",
+                  "text": "合成对方显式回复63，以九月由自己承担三项工作的回忆回应此前的兜底话题；尚无对方确认。"
+                }
+              ]
+            }
+          ],
+          "candidateUpdates": [],
+          "resolvedThreadSourceIds": []
+        },
+        {
+          "file": "request-10.json",
+          "stage": "reading",
+          "inputEstimate": 6530,
+          "messageIds": [
+            "87",
+            "88",
+            "89",
+            "90",
+            "91"
+          ],
+          "relatedIds": [],
+          "knownCandidates": [
+            {
+              "id": "1",
+              "state": "pending"
+            }
+          ],
+          "candidates": [],
+          "candidateUpdates": [
+            {
+              "id": "1",
+              "action": "resolve",
+              "finding": {
+                "revisedObservation": "后续已足以确认这是合成本人对自身概括的实际修正，而不只是双方范围不同：本人确认九月缺席、联络由对方承担，并明确撤回“每次都只有我在安排”。修正后仍保留本月预约、群内确认及书单工作较集中、希望分担的具体诉求。",
+                "supportingIds": [
+                  "87",
+                  "88",
+                  "89",
+                  "91"
+                ],
+                "counterexampleIds": [
+                  "87",
+                  "88",
+                  "90"
+                ],
+                "alternativeExplanations": [
+                  "合成本人自述，先前概括受到本月连续活动的印象影响，并将群内可见工作当成全部筹备；三号现场布置曾被其误归于管理员。"
+                ],
+                "limitations": [
+                  "本批仍未提供63原文，不能复原其完整措辞及当时范围。",
+                  "十八号现场分工目前只有合成对方的陈述；不能据此量化双方全部工作量。"
+                ]
+              },
+              "evidenceNotes": [
+                {
+                  "sourceId": "87",
+                  "quote": "九月我只在群里看了照片，人根本没回来，那次确实都是你联络的。",
+                  "text": "合成本人直接确认九月缺席及对方承担联络，补足此前仅有对方回忆的证据。"
+                },
+                {
+                  "sourceId": "88",
+                  "quote": "这个月你预约、回群和整理书单做得多，这点我不是要否认。三号那场我提前去搬了椅子、试投影、摆茶水",
+                  "text": "对方认可本人本月的具体贡献，同时提供自己承担现场工作的反例。"
+                },
+                {
+                  "sourceId": "89",
+                  "quote": "我把在群里露面、能看见的那些事当成了全部筹备，这样数确实不完整。",
+                  "text": "本人承认先前统计口径遗漏了不可见的筹备工作。"
+                },
+                {
+                  "sourceId": "90",
+                  "quote": "十八号我也做了现场布置和清理，不过提前没有跟你列清单。",
+                  "text": "对方补充十八号的现场贡献，并说明此前未列清单。"
+                },
+                {
+                  "sourceId": "91",
+                  "quote": "我想收回每次都只有我在安排那种说法。现在更准确的是，这个月预约、群里确认和会后书单这几项集中在我这里",
+                  "text": "本人明确撤回全称概括，并保留范围更具体的工作集中问题。"
+                }
+              ]
+            }
+          ],
+          "resolvedThreadSourceIds": [
+            "61",
+            "64",
+            "65"
+          ]
+        }
+      ]
+    },
+    {
+      "phase": "shared-workload-reading-resume-2",
+      "state": "failed",
+      "error": "INVALID_EVIDENCE",
+      "calls": 9,
+      "httpRequests": 9,
+      "elapsedMs": 156904,
+      "inputCharged": 16408,
+      "outputCharged": 8776,
+      "trialRequestsAfterPhase": 22,
+      "accounting": {
+        "incremental": {
+          "httpRequests": 9,
+          "elapsedMs": 156904,
+          "inputCharged": 16408,
+          "outputCharged": 8776
+        },
+        "priorReading": {
+          "httpRequests": 13,
+          "inputCharged": 25117,
+          "outputCharged": 13831,
+          "elapsedMs": 279666
+        },
+        "combinedReading": {
+          "httpRequests": 22,
+          "inputCharged": 41525,
+          "outputCharged": 22607,
+          "elapsedMs": 436570
+        }
+      },
+      "resumedFrom": "shared-workload-reading-resume",
+      "resumeCheckpointHash": "16b51a313fe1fc75455ae672d124a3af616046c038a16fd428ad2ac20a27953e",
+      "timeline": [
+        {
+          "file": "request-01.json",
+          "stage": "reading",
+          "inputEstimate": 6667,
+          "messageIds": [
+            "87",
+            "88",
+            "89",
+            "90",
+            "91"
+          ],
+          "relatedIds": [],
+          "knownCandidates": [
+            {
+              "id": "1",
+              "state": "pending"
+            }
+          ],
+          "candidates": [],
+          "candidateUpdates": [
+            {
+              "id": "1",
+              "action": "resolve",
+              "finding": {
+                "revisedObservation": "后续已出现合成本人的明确确认和自我修正：九月自己未回来、联络由对方承担；此前“每次都由我安排”的表述遗漏了该次分工。其随后明确收回“每次都只有我在安排”，将诉求限定为本月预约、群里确认、会后书单较集中，需要具体分担。因此，这不再只是合成对方提出的范围异议。",
+                "supportingIds": [
+                  "87",
+                  "91"
+                ],
+                "counterexampleIds": [],
+                "alternativeExplanations": [
+                  "合成本人将此前概括归因于近期连续参与本月几场活动的印象；纠正贡献归属并不意味着其本月负担或求助需求不存在。"
+                ],
+                "limitations": [
+                  "本批未提供63原文，不能逐字确认63中“每次”的原始语境和范围。",
+                  "87确认九月联络归属，但未逐项复述找活动室、确认名单、发通知三项工作。"
+                ]
+              },
+              "evidenceNotes": [
+                {
+                  "sourceId": "87",
+                  "quote": "记得，九月我只在群里看了照片，人根本没回来，那次确实都是你联络的。我最近脑子里一直是这个月几场接着跑，刚才说每次都由我安排，把那次也抹掉了。",
+                  "text": "合成本人确认九月分工，并亲自说明此前概括遗漏了该次活动。"
+                },
+                {
+                  "sourceId": "91",
+                  "quote": "是，我想收回每次都只有我在安排那种说法。现在更准确的是，这个月预约、群里确认和会后书单这几项集中在我这里",
+                  "text": "明确撤回全称说法，将仍成立的负担描述限定为本月的具体任务。"
+                }
+              ]
+            }
+          ],
+          "resolvedThreadSourceIds": [
+            "61",
+            "64",
+            "65"
+          ]
+        },
+        {
+          "file": "request-02.json",
+          "stage": "reading",
+          "inputEstimate": 6590,
+          "messageIds": [
+            "92",
+            "93",
+            "94",
+            "95",
+            "96"
+          ],
+          "relatedIds": [],
+          "knownCandidates": [
+            {
+              "id": "1",
+              "state": "finished"
+            }
+          ],
+          "candidates": [],
+          "candidateUpdates": [],
+          "resolvedThreadSourceIds": []
+        },
+        {
+          "file": "request-03.json",
+          "stage": "reading",
+          "inputEstimate": 6626,
+          "messageIds": [
+            "97",
+            "98",
+            "99",
+            "100",
+            "101"
+          ],
+          "relatedIds": [],
+          "knownCandidates": [
+            {
+              "id": "1",
+              "state": "finished"
+            }
+          ],
+          "candidates": [],
+          "candidateUpdates": [],
+          "resolvedThreadSourceIds": []
+        },
+        {
+          "file": "request-04.json",
+          "stage": "reading",
+          "inputEstimate": 6605,
+          "messageIds": [
+            "102",
+            "103",
+            "104",
+            "105",
+            "106"
+          ],
+          "relatedIds": [],
+          "knownCandidates": [
+            {
+              "id": "1",
+              "state": "finished"
+            }
+          ],
+          "candidates": [],
+          "candidateUpdates": [],
+          "resolvedThreadSourceIds": []
+        },
+        {
+          "file": "request-05.json",
+          "stage": "reading",
+          "inputEstimate": 6616,
+          "messageIds": [
+            "107",
+            "108",
+            "109",
+            "110",
+            "111"
+          ],
+          "relatedIds": [],
+          "knownCandidates": [
+            {
+              "id": "1",
+              "state": "finished"
+            }
+          ],
+          "candidates": [],
+          "candidateUpdates": [],
+          "resolvedThreadSourceIds": []
+        },
+        {
+          "file": "request-06.json",
+          "stage": "reading",
+          "inputEstimate": 6605,
+          "messageIds": [
+            "112",
+            "113",
+            "114",
+            "115",
+            "116"
+          ],
+          "relatedIds": [],
+          "knownCandidates": [
+            {
+              "id": "1",
+              "state": "finished"
+            }
+          ],
+          "candidates": [],
+          "candidateUpdates": [],
+          "resolvedThreadSourceIds": []
+        },
+        {
+          "file": "request-07.json",
+          "stage": "reading",
+          "inputEstimate": 6142,
+          "messageIds": [
+            "117",
+            "118",
+            "119",
+            "120"
+          ],
+          "relatedIds": [],
+          "knownCandidates": [
+            {
+              "id": "1",
+              "state": "finished"
+            }
+          ],
+          "candidates": [],
+          "candidateUpdates": [],
+          "resolvedThreadSourceIds": []
+        },
+        {
+          "file": "request-08.json",
+          "stage": "compress-navigation",
+          "inputEstimate": 6714,
+          "compression": {
+            "inputEntries": 16,
+            "outputFacts": 11,
+            "omittedIds": [],
+            "unknownIds": [],
+            "facts": [
+              {
+                "kind": "fact",
+                "text": "2026-10-01，合成本人为三号（按当日语境为10月3日）的读书小组联系社区活动室，据其转述，管理员允许下午两点进入。合成对方提醒门口修路、新来者可能误走旧入口；本人随后确认已发送位置和新入口照片，并将三位新朋友加入临时群。本人还问明只登记预约联系人，由本人带证件即可。合成对方称前一晚已用电脑测试投影线，能正常显示，计划三号带去。",
+                "entryIds": [
+                  "0:0",
+                  "1:0",
+                  "3:0"
+                ],
+                "inheritedSourceIds": [
+                  "1",
+                  "2",
+                  "3",
+                  "4",
+                  "5"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "报名又增加一位后，合成本人称已将桌子改为两排，并告诉管理员不用原来的圆桌，但其后仍在等管理员回复，不能确认场地方已落实调整。合成对方表示先去上课、手机放包里可能回复较慢；若活动室方面只是确认收到，本人不必一直等其回复。此话不是管理员已确认安排的证据。",
+                "entryIds": [
+                  "6:0",
+                  "10:0"
+                ],
+                "inheritedSourceIds": [
+                  "9",
+                  "12"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "10月1日，合成本人自述持续处理订场地、通知等零碎事务，感觉半天都花在活动准备上，稍后称尚未吃午饭；这些仅描述当天情形。10:50，本人确认已吃到饭，老板将汤单独包装，未洒在袋中；未说明是否等到管理员回复后才去买饭。",
+                "entryIds": [
+                  "2:0",
+                  "8:0"
+                ],
+                "inheritedSourceIds": [
+                  "3",
+                  "9",
+                  "11"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "合成本人在准备交换的两本书之一中发现去年车票，经合成对方询问，确认是去海边的那张，并已收进蓝色信封。对方提到此前找演出票根未找到，所给材料未交代该票根后续。",
+                "entryIds": [
+                  "4:0"
+                ],
+                "inheritedSourceIds": [
+                  "5",
+                  "6",
+                  "7"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "合成本人称书封面的咖啡渍擦后仍有印子，正文和页码不受影响，打算交换前说明。合成对方准备带的书有铅笔批注，已擦去特别乱的部分，其余保留。",
+                "entryIds": [
+                  "5:0"
+                ],
+                "inheritedSourceIds": [
+                  "7",
+                  "8"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "10月1日，合成对方先称上午有课、结束后才能认真看群消息，后称下课后要领取修好的台灯，店老板希望傍晚前到。合成本人提醒取灯时测试开关：此前需长按才亮，不能只检查灯泡是否发光；对方明确答应会试，并称已记下开关问题。有关上课及取灯计划的前段材料未标注显式回复关系；未交代最终取灯及测试结果。",
+                "entryIds": [
+                  "7:0",
+                  "9:0"
+                ],
+                "inheritedSourceIds": [
+                  "2",
+                  "10",
+                  "11",
+                  "12"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "10月4日，合成本人称前一天活动顺利结束，实到十一位，比报名少一位；已给缺席者加备注，此人此前说过要加班。合成对方也记得此人在活动开始前发过消息，认为不算临时失约。最终报名人数据此为十二位，但未明确说明旧报名表如何核对。",
+                "entryIds": [
+                  "11:0"
+                ],
+                "inheritedSourceIds": [
+                  "13",
+                  "14"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "关于10月3日活动，合成本人称到场时椅子和水已摆好，未说明由谁布置，也未提桌子是否按两排摆放。合成对方评价靠窗座位舒服，后半段外面车辆经过也没有特别吵。",
+                "entryIds": [
+                  "12:0"
+                ],
+                "inheritedSourceIds": [
+                  "14",
+                  "15"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "合成本人称预约、报名确认和现场提醒时间仍需一直记着，回家后连晚饭吃什么都不太想决定。合成对方补充，散场时看见本人站在门口用手机替多人查公交，回答不同方向的路线问题。",
+                "entryIds": [
+                  "13:0"
+                ],
+                "inheritedSourceIds": [
+                  "15",
+                  "16"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "合成本人后来发现门后有公交图，提出下次拍到群里，以减少逐人查站台。合成对方提醒施工结束后入口还会调整，发送前应再检查；未交代该计划是否执行。",
+                "entryIds": [
+                  "14:0"
+                ],
+                "inheritedSourceIds": [
+                  "17",
+                  "18"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "10月4日，合成对方称已洗好前一天带回的几个杯子，晾在厨房架子上，尚未收进箱子。",
+                "entryIds": [
+                  "15:0"
+                ],
+                "inheritedSourceIds": [
+                  "18"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "file": "request-09.json",
+          "stage": "compress-navigation",
+          "inputEstimate": 6729,
+          "compression": {
+            "inputEntries": 14,
+            "outputFacts": 17,
+            "omittedIds": [],
+            "unknownIds": [],
+            "facts": [
+              {
+                "kind": "fact",
+                "text": "10月4日，合成本人询问架子是否够用，提出顺路看窄收纳篮；合成对方要求先别买，称把闲置保温壶移入柜子即可腾出空间。本人随后明确不带收纳篮。对方称旧保温壶仅外壳完好，内胆裂过，不能装热水，也不想混入常用品。",
+                "entryIds": [
+                  "16:0",
+                  "17:0"
+                ],
+                "inheritedSourceIds": [
+                  "19",
+                  "20",
+                  "21"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "保温壶是否已移入柜子未明确。",
+                "entryIds": [
+                  "16:0"
+                ],
+                "inheritedSourceIds": [
+                  "19",
+                  "20",
+                  "21"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "10月4日，合成本人因脚酸计划只在附近走、不去远处爬坡，并绕开仍在修建的河边木栈道，称前一天见有人搬木板。合成对方称当天上午看到入口已围起，但公园内平路仍可走。本人随后说已走完回来，未说明具体路线。",
+                "entryIds": [
+                  "18:0"
+                ],
+                "inheritedSourceIds": [
+                  "21",
+                  "22",
+                  "23"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "合成对方在公园树下旧唱片摊只看封套，未带播放器，不知道唱片能否播放。合成本人随后评价对方拍的唱片封面好看；所给材料未含照片本身。",
+                "entryIds": [
+                  "19:0"
+                ],
+                "inheritedSourceIds": [
+                  "22",
+                  "23"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "合成本人发现家中绿萝叶子向一侧歪，猜测与此前只开同一扇窗、单侧进光有关。合成对方建议稍转方向、不要骤移至正午阳光下；对方自己的绿萝曾晒伤叶尖，数周后才恢复，现在放在窗边散光处。",
+                "entryIds": [
+                  "20:0"
+                ],
+                "inheritedSourceIds": [
+                  "23",
+                  "24"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "未确认合成本人实际调整绿萝，也未验证叶片偏向的原因。",
+                "entryIds": [
+                  "20:0"
+                ],
+                "inheritedSourceIds": [
+                  "23",
+                  "24"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "2026-10-07，合成本人称已把九号讨论篇目发到群里，在报名表后补电子版链接，并私下向两名只看到旧通知的人解释。本人称这类消息最后总会绕回自己这里，但材料仅确认此次补发与解释。合成对方已看到新版通知，称九号可能因学校会议拖到六点而稍迟到，计划提前放好纸杯和延长线，让大家不必等其到场才开始。",
+                "entryIds": [
+                  "21:0",
+                  "22:0"
+                ],
+                "inheritedSourceIds": [
+                  "25",
+                  "26"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "2026-10-07，合成本人确认时间仍为六点半，计划提前拿钥匙，已列三条开场问题；担心大家等别人先说，再次变成自己从头问到尾，并提到结束后嗓子特别干。合成对方建议不必由本人问完，可留空让其他人接前一位的话。",
+                "entryIds": [
+                  "23:0",
+                  "24:0"
+                ],
+                "inheritedSourceIds": [
+                  "27",
+                  "28",
+                  "29"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "六点半安排的具体活动名称未点明；提前拿钥匙、放好纸杯和延长线的计划未报告完成。",
+                "entryIds": [
+                  "22:0",
+                  "23:0"
+                ],
+                "inheritedSourceIds": [
+                  "26",
+                  "27"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "合成对方谈起昨日读到的旧房子文章，认为门把手细节比整条街更突出；合成本人也记得门把手，但想不起文章是否交代房子最终被拆。对方指认纸本为上次带来的一摞中最下方、书脊有白色贴纸的蓝封面书，称已展平折角且未夹入其他东西。本人随后说已找到，实际夹在笔记本下面。",
+                "entryIds": [
+                  "24:0",
+                  "25:0"
+                ],
+                "inheritedSourceIds": [
+                  "28",
+                  "29",
+                  "30",
+                  "31"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "文章是否交代房子最终被拆仍未解决；尚未确认合成本人已重读文章。",
+                "entryIds": [
+                  "24:0",
+                  "25:0"
+                ],
+                "inheritedSourceIds": [
+                  "28",
+                  "29",
+                  "30",
+                  "31"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "合成本人翻到小时候画的地图，比较图上直路与实际绕路，联想到去外婆家很远的感受。合成对方随后讲述自己记得的外婆家路口糖水店及误读店名的经历。",
+                "entryIds": [
+                  "26:0"
+                ],
+                "inheritedSourceIds": [
+                  "31",
+                  "32"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "双方所说是否为同一位外婆或同一路口，未说明。",
+                "entryIds": [
+                  "26:0"
+                ],
+                "inheritedSourceIds": [
+                  "31",
+                  "32"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "合成本人说外婆当天上午问围巾是否收到；本人已拆快递、压平纸箱放门边，但因忙发活动通知忘了给外婆拍照。合成对方建议先回电话，且仅在围巾太长的条件下建议不要急着剪、先问外婆如何处理，并非断言围巾太长。10月7日，本人随后称刚结束通话，某物“长度刚好”；“她”让其等天冷再戴，不要为拍照捂出汗，并在电话里让其猜阳台哪盆茉莉先开。",
+                "entryIds": [
+                  "27:0",
+                  "28:0"
+                ],
+                "inheritedSourceIds": [
+                  "33",
+                  "34",
+                  "35"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "后续通话中的“她”和“长度刚好”的所戴物品，可由前文联系外婆及围巾，但未获显式指认；“长度刚好”具体指向仍待确认。",
+                "entryIds": [
+                  "27:0",
+                  "28:0"
+                ],
+                "inheritedSourceIds": [
+                  "33",
+                  "34",
+                  "35"
+                ]
+              },
+              {
+                "kind": "fact",
+                "text": "10月7日，合成对方说自己常猜错“她”那几盆花的位置，并计划先看完会前资料、晚些再读文章，避免两件事都没认真看进去；未报告实际完成情况。",
+                "entryIds": [
+                  "29:0"
+                ],
+                "inheritedSourceIds": [
+                  "36"
+                ]
+              },
+              {
+                "kind": "unknown",
+                "text": "合成对方所说“她”的身份未显式确认。",
+                "entryIds": [
+                  "29:0"
+                ],
+                "inheritedSourceIds": [
+                  "36"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

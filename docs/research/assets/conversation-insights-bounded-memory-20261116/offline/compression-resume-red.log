@@ -1,0 +1,24 @@
+✖ compression recovery preserves completed reading, existing navigation and cumulative charges (80.3925ms)
+✔ compression recovery rejects unread sources, invalid navigation and non-reading failures (4.6371ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 1
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 176.7863
+
+✖ failing tests:
+
+test at tests\quality\insight-comparison.test.mjs:314:1
+✖ compression recovery preserves completed reading, existing navigation and cumulative charges (80.3925ms)
+  Error: INVALID_COMPARISON_READING_RESUME
+      at invalidResume (file:///D:/University/github/whomi/tests/quality/insight-comparison-resume.ts:30:23)
+      at validateReadingResume (file:///D:/University/github/whomi/tests/quality/insight-comparison-resume.ts:79:122)
+      at validateReadingChain (file:///D:/University/github/whomi/tests/quality/insight-comparison-resume.ts:133:7)
+      at TestContext.<anonymous> (file:///D:/University/github/whomi/tests/quality/insight-comparison.test.mjs:319:20)
+      at async Test.run (node:internal/test_runner/test:1113:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:358:3) {
+    code: 'INVALID_COMPARISON_READING_RESUME'
+  }

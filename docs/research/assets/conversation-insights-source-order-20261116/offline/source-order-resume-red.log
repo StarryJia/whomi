@@ -1,0 +1,24 @@
+✖ version two recovery verifies earliest snapshot source order with stable fact and unknown ties (49.3554ms)
+✔ version two recovery rejects wrong leaf order, missing leaves, changed sources and unknown versions (2.4867ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 1
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 138.5388
+
+✖ failing tests:
+
+test at tests\quality\insight-comparison.test.mjs:380:1
+✖ version two recovery verifies earliest snapshot source order with stable fact and unknown ties (49.3554ms)
+  Error: INVALID_COMPARISON_READING_RESUME
+      at invalidResume (file:///D:/University/github/whomi/tests/quality/insight-comparison-resume.ts:30:23)
+      at validateReadingResume (file:///D:/University/github/whomi/tests/quality/insight-comparison-resume.ts:128:122)
+      at validateReadingChain (file:///D:/University/github/whomi/tests/quality/insight-comparison-resume.ts:188:7)
+      at TestContext.<anonymous> (file:///D:/University/github/whomi/tests/quality/insight-comparison.test.mjs:384:20)
+      at async Test.run (node:internal/test_runner/test:1113:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:358:3) {
+    code: 'INVALID_COMPARISON_READING_RESUME'
+  }

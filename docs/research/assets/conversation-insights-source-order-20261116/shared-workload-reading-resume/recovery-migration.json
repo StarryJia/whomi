@@ -1,0 +1,9 @@
+{
+  "kind": "compression-coverage-repair",
+  "sourcePhase": "shared-workload-reading",
+  "checkpointHash": "a306e673fd9e976249cee6ebca2599e69dde1b6bc19a186400bff0ae5dae503b",
+  "requestHash": "c5ae1c5068cc2c7619600bc48219132b88cd64e7dd322b1af24d5a3767991741",
+  "responseHash": "6218af411c95e670057e1938654353d17106b2f32998993081ac2c3979b8fddb",
+  "originalRepairs": 0,
+  "restoredRepairs": 1
+}

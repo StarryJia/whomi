@@ -25,6 +25,7 @@ export function createAiRouter(service: AiMethods) {
       if (method === 'continueAnalysis' || method === 'stopAnalysis') requireOwner('analysis', input[0] as string, owner)
       if (method === 'deleteAnalysis') requireOwner('analysis', input[0] as string, owner)
       if (method === 'arrangeAnalysis') requireOwner('analysis', (input[0] as { id: string }).id, owner)
+      if (method === 'renameAnalysis' || method === 'readInsightCitation') requireOwner('analysis', (input[0] as { taskId: string }).taskId, owner)
       if (method === 'getAnalysis' || method === 'getReport') claim('analysis', input[0] as string, owner)
       if (method === 'getThread') claim('thread', input[0] as string, owner)
       const invoke = service[method] as (...args: unknown[]) => Promise<unknown>

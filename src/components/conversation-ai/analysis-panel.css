@@ -1,9 +1,37 @@
 .conversation-popover:has(.analysis-sheet) {
-  width: min(384px, calc(100vw - 16px));
+  width: min(510px, calc(100vw - 24px));
+  max-height: min(640px, calc(100svh - var(--desktop-titlebar-height, 0px) - 24px));
   padding: 0;
   border-radius: 14px;
 }
-.analysis-sheet { padding: 22px 22px 12px; }
+.analysis-sheet { padding: 18px 20px 16px; }
+.analysis-sheet-title, .analysis-progress-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.analysis-progress-heading { border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+.analysis-conversation { margin: 10px 0; font-size: 14px; overflow-wrap: anywhere; }
+.analysis-progress-heading .analysis-conversation { margin-block: 4px; }
+.insight-close {
+  display: inline-grid; place-items: center; flex-shrink: 0; width: 36px; height: 36px;
+  padding: 0; border: 0; border-radius: 6px; background: transparent; cursor: pointer;
+}
+.insight-close:hover, .insight-close:active { background: var(--hover); }
+.insight-close svg { width: 17px; height: 17px; }
+.insight-scope { margin: 10px 0 0; padding: 0; min-inline-size: 0; border: 0; }
+.insight-scope legend { padding: 0 0 6px; font-size: 14px; font-weight: 610; }
+.insight-scope-options { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--line); border-radius: 8px; }
+.insight-scope-options label { position: relative; cursor: pointer; }
+.insight-scope-options label + label { border-inline-start: 1px solid var(--line); }
+.insight-scope-options input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.insight-scope-options span { display: block; padding: 6px; border-radius: 6px; text-align: center; }
+.insight-scope-options label:hover span { background: var(--hover); }
+.insight-scope-options input:checked + span { background: var(--focus); color: var(--surface); }
+.insight-scope-options input:focus-visible + span { outline: 2px solid var(--focus); outline-offset: 2px; }
+.insight-date-inputs { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; margin-top: 8px; }
+.insight-date-inputs label { display: grid; gap: 4px; font-size: 13px; }
+.insight-date-inputs input {
+  width: 100%; min-width: 0; min-height: 36px; padding: 5px 8px;
+  border: 1px solid var(--line); border-radius: 6px; color: var(--text); background: var(--surface); font: inherit;
+}
+.insight-date-inputs input[aria-invalid="true"] { border-color: #a62328; }
 .conversation-popover .analysis-sheet h3 {
   margin: 0;
   font-size: 19px;
@@ -24,9 +52,22 @@
   margin-top: 14px;
 }
 .analysis-model-row > span { flex: none; color: var(--text-muted); font-size: 13px; }
+.analysis-model-options, .analysis-model-unavailable { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.analysis-model-unavailable {
+  justify-content: space-between; min-height: 36px; padding-inline: 8px; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--canvas); color: var(--text-muted); font-size: 13px;
+}
+.analysis-link {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 3px 6px; border: 0;
+  border-radius: 6px; background: transparent; color: var(--focus); font: inherit; font-size: 14px; cursor: pointer;
+}
+.analysis-link svg { width: 15px; height: 15px; }
+.analysis-link:hover { background: var(--hover); }
 .analysis-model-row .cherry-model-trigger {
-  max-width: min(252px, calc(100% - 68px));
-  min-height: 44px;
+  flex: 1 1 auto;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 36px;
   padding: 0 10px;
   border-radius: 8px;
   background: var(--hover);
@@ -36,7 +77,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 8px;
   margin-top: 16px;
   padding-top: 10px;
@@ -56,25 +97,50 @@
 }
 .analysis-primary { color: var(--surface); background: var(--focus); font-weight: 600; }
 .analysis-primary:hover:not(:disabled) { background: color-mix(in srgb, var(--focus) 86%, black); }
+.analysis-primary:disabled { background: var(--pressed); color: var(--text-muted); cursor: default; }
 .analysis-secondary { background: transparent; color: var(--text-muted); }
 .analysis-secondary:hover { color: var(--text); background: var(--hover); }
 .analysis-sheet button:disabled { cursor: default; opacity: .55; }
 .analysis-sheet :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .analysis-sheet footer svg { width: 15px; height: 15px; }
-.analysis-meter { margin: 16px 0 8px; font-variant-numeric: tabular-nums; }
+.analysis-meter { margin: 10px 0 14px; font-variant-numeric: tabular-nums; }
 .analysis-meter-values { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .analysis-meter-values strong { font-size: 14px; }
-.analysis-track { margin-top: 8px; height: 5px; border-radius: 3px; overflow: hidden; background: var(--line); }
+.analysis-track { margin-top: 8px; height: 9px; border-radius: 8px; overflow: hidden; background: var(--line); }
 .analysis-track > span { display: block; height: 100%; background: var(--focus); }
-.analysis-usage { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 14px 0 0; font-variant-numeric: tabular-nums; }
-.analysis-usage dt { font-size: 12px; color: var(--text-muted); }
-.analysis-usage dd { margin: 0; font-size: 14px; }
-.analysis-report { overflow-wrap: anywhere; font-size: 14px; line-height: 1.75; }
-.analysis-report h4 { margin: 18px 0 4px; }
-.analysis-report p { margin: 6px 0; white-space: pre-wrap; }
-.analysis-report ul { margin: 0; padding-inline-start: 1.3em; }
-.analysis-report li + li { margin-top: 6px; }
-@media (max-width: 420px) { .analysis-sheet { padding-inline: 16px; } }
+.insight-task-runtime, .insight-task-model { display: grid; gap: 10px; margin: 0 0 12px; font-variant-numeric: tabular-nums; }
+.insight-task-runtime { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.insight-task-runtime > div + div { padding-inline-start: 12px; border-inline-start: 1px solid var(--line); }
+.insight-task-runtime dt { color: var(--text-muted); font-size: 13px; }
+.insight-task-runtime dd { margin: 0; font-size: 16px; font-weight: 680; }
+.insight-task-model { gap: 3px; }
+.insight-task-model > div { display: flex; gap: 10px; min-width: 0; font-size: 13px; }
+.insight-task-model dt { flex-shrink: 0; color: var(--text-muted); }
+.insight-task-model dd { margin: 0; overflow-wrap: anywhere; }
+.insight-status { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 620; white-space: nowrap; }
+.insight-status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--focus); }
+.insight-status svg { width: 15px; height: 15px; }
+.insight-status[data-status="生成失败"] { color: #a62328; }
+.insight-complete-icon, .insight-status[data-status="已完成"] svg { color: #25833e; }
+.insight-details-toggle {
+  display: flex; justify-content: space-between; align-items: center; gap: 8px; width: 100%; min-height: 35px; padding: 3px 9px;
+  border: 1px solid var(--line); border-radius: 7px; background: transparent; font: inherit; font-size: 13px; cursor: pointer;
+}
+.insight-details-toggle:hover { background: var(--hover); }
+.insight-details-toggle svg { width: 14px; height: 14px; }
+.insight-details-toggle[aria-expanded="true"] svg { rotate: 180deg; }
+.insight-usage {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 8px 0 0; border-radius: 8px;
+  background: var(--canvas); font-size: 13px; font-variant-numeric: tabular-nums;
+}
+.insight-usage > div { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; padding: 5px 9px; border-bottom: 1px solid var(--line); }
+.insight-usage .insight-detail-wide { grid-column: 1 / -1; }
+.insight-usage dt { color: var(--text-muted); }
+.insight-usage dd { margin: 0; overflow-wrap: anywhere; }
+@media (max-width: 420px) {
+  .analysis-sheet { padding-inline: 16px; }
+  .insight-date-inputs { grid-template-columns: minmax(0, 1fr); }
+}
 @media (forced-colors: active) {
   .analysis-track { border: 1px solid CanvasText; }
   .analysis-track > span { background: Highlight; forced-color-adjust: none; }

@@ -1,0 +1,2377 @@
+{
+  "mode": "final",
+  "status": "evidence-consistent-with-recorded-outcomes",
+  "auditScope": "Artifact integrity, protocol and budget compliance; not completion or model accuracy.",
+  "reportComparisonScope": [
+    {
+      "caseName": "shared-workload",
+      "baselineOutcome": "reports-completed",
+      "currentV2Outcome": "reports-completed",
+      "fourReportComparisonAvailable": true,
+      "currentV2AbsoluteReviewAvailable": true,
+      "accuracyScoredByThisAudit": false
+    },
+    {
+      "caseName": "conditional-reschedule",
+      "baselineOutcome": "stopped-after-failure",
+      "currentV2Outcome": "reports-completed",
+      "fourReportComparisonAvailable": false,
+      "currentV2AbsoluteReviewAvailable": true,
+      "accuracyScoredByThisAudit": false
+    }
+  ],
+  "costs": {
+    "priorClosedDiagnostics": {
+      "requests": 84,
+      "inputTokens": 151868,
+      "outputTokens": 77887
+    },
+    "retiredInitialCurrent": {
+      "requests": 11,
+      "inputTokens": 36211,
+      "outputTokens": 15693
+    },
+    "pairedBaselineAndCurrentV2": {
+      "requests": 42,
+      "inputTokens": 140246,
+      "outputTokens": 67810
+    },
+    "allActual": {
+      "requests": 137,
+      "inputTokens": 328325,
+      "outputTokens": 161390
+    },
+    "tokenCharges": "settled requests only"
+  },
+  "retiredInitialCurrent": {
+    "runId": "memory-capacity-current-20261116",
+    "closed": true,
+    "resumePermitted": false,
+    "originalFilesVerified": 30,
+    "reportGenerated": false,
+    "readingRelatedOriginals": {
+      "requestsWithRelatedOriginals": 0,
+      "relatedOriginalPresentations": 0,
+      "distinctRelatedOriginalIds": [],
+      "previouslySeenPresentations": 0,
+      "presentations": []
+    }
+  },
+  "snapshot": {
+    "initialCurrentFiles": 24,
+    "currentV2Files": 25,
+    "baselineFiles": 9,
+    "baselineBundleSha256": "ef302a81ebdbd5ad8e1b402d57bf91dc6e87b9a46bba0211caf0e8ac65676b54"
+  },
+  "dispatchIntervals": [
+    {
+      "arm": "baseline",
+      "caseName": "shared-workload",
+      "variant": "reading",
+      "call": 1,
+      "start": 1794764184459,
+      "end": 1794764213092
+    },
+    {
+      "arm": "baseline",
+      "caseName": "shared-workload",
+      "variant": "reading",
+      "call": 2,
+      "start": 1794764213111,
+      "end": 1794764242847
+    },
+    {
+      "arm": "baseline",
+      "caseName": "shared-workload",
+      "variant": "reading",
+      "call": 3,
+      "start": 1794764242867,
+      "end": 1794764270331
+    },
+    {
+      "arm": "baseline",
+      "caseName": "shared-workload",
+      "variant": "reading",
+      "call": 4,
+      "start": 1794764270348,
+      "end": 1794764298497
+    },
+    {
+      "arm": "baseline",
+      "caseName": "shared-workload",
+      "variant": "reading",
+      "call": 5,
+      "start": 1794764298517,
+      "end": 1794764331134
+    },
+    {
+      "arm": "baseline",
+      "caseName": "shared-workload",
+      "variant": "reading",
+      "call": 6,
+      "start": 1794764331149,
+      "end": 1794764339198
+    },
+    {
+      "arm": "baseline",
+      "caseName": "shared-workload",
+      "variant": "reading",
+      "call": 7,
+      "start": 1794764339214,
+      "end": 1794764346942
+    },
+    {
+      "arm": "baseline",
+      "caseName": "shared-workload",
+      "variant": "adaptive",
+      "call": 1,
+      "start": 1794764389794,
+      "end": 1794764412144
+    },
+    {
+      "arm": "baseline",
+      "caseName": "shared-workload",
+      "variant": "direct",
+      "call": 1,
+      "start": 1794764414885,
+      "end": 1794764439370
+    },
+    {
+      "arm": "current-v2",
+      "caseName": "shared-workload",
+      "variant": "reading",
+      "call": 1,
+      "start": 1794765470781,
+      "end": 1794765501111
+    },
+    {
+      "arm": "current-v2",
+      "caseName": "shared-workload",
+      "variant": "reading",
+      "call": 2,
+      "start": 1794765501142,
+      "end": 1794765527077
+    },
+    {
+      "arm": "current-v2",
+      "caseName": "shared-workload",
+      "variant": "reading",
+      "call": 3,
+      "start": 1794765527096,
+      "end": 1794765550925
+    },
+    {
+      "arm": "current-v2",
+      "caseName": "shared-workload",
+      "variant": "reading",
+      "call": 4,
+      "start": 1794765550944,
+      "end": 1794765572067
+    },
+    {
+      "arm": "current-v2",
+      "caseName": "shared-workload",
+      "variant": "reading",
+      "call": 5,
+      "start": 1794765572089,
+      "end": 1794765595226
+    },
+    {
+      "arm": "current-v2",
+      "caseName": "shared-workload",
+      "variant": "reading",
+      "call": 6,
+      "start": 1794765595245,
+      "end": 1794765624323
+    },
+    {
+      "arm": "current-v2",
+      "caseName": "shared-workload",
+      "variant": "reading",
+      "call": 7,
+      "start": 1794765624342,
+      "end": 1794765635712
+    },
+    {
+      "arm": "current-v2",
+      "caseName": "shared-workload",
+      "variant": "reading",
+      "call": 8,
+      "start": 1794765635729,
+      "end": 1794765659498
+    },
+    {
+      "arm": "current-v2",
+      "caseName": "shared-workload",
+      "variant": "reading",
+      "call": 9,
+      "start": 1794765659514,
+      "end": 1794765683836
+    },
+    {
+      "arm": "current-v2",
+      "caseName": "shared-workload",
+      "variant": "reading",
+      "call": 10,
+      "start": 1794765683851,
+      "end": 1794765719992
+    },
+    {
+      "arm": "current-v2",
+      "caseName": "shared-workload",
+      "variant": "reading",
+      "call": 11,
+      "start": 1794765720006,
+      "end": 1794765764450
+    },
+    {
+      "arm": "current-v2",
+      "caseName": "shared-workload",
+      "variant": "reading",
+      "call": 12,
+      "start": 1794765764465,
+      "end": 1794765800352
+    },
+    {
+      "arm": "current-v2",
+      "caseName": "shared-workload",
+      "variant": "reading",
+      "call": 13,
+      "start": 1794765800369,
+      "end": 1794765838248
+    },
+    {
+      "arm": "current-v2",
+      "caseName": "shared-workload",
+      "variant": "adaptive",
+      "call": 1,
+      "start": 1794765841004,
+      "end": 1794765874857
+    },
+    {
+      "arm": "current-v2",
+      "caseName": "shared-workload",
+      "variant": "direct",
+      "call": 1,
+      "start": 1794765877276,
+      "end": 1794765910910
+    },
+    {
+      "arm": "baseline",
+      "caseName": "conditional-reschedule",
+      "variant": "reading",
+      "call": 1,
+      "start": 1794765913643,
+      "end": 1794765943670
+    },
+    {
+      "arm": "baseline",
+      "caseName": "conditional-reschedule",
+      "variant": "reading",
+      "call": 2,
+      "start": 1794765943692,
+      "end": 1794765965657
+    },
+    {
+      "arm": "baseline",
+      "caseName": "conditional-reschedule",
+      "variant": "reading",
+      "call": 3,
+      "start": 1794765965675,
+      "end": 1794765992241
+    },
+    {
+      "arm": "baseline",
+      "caseName": "conditional-reschedule",
+      "variant": "reading",
+      "call": 4,
+      "start": 1794765992262,
+      "end": 1794766020329
+    },
+    {
+      "arm": "current-v2",
+      "caseName": "conditional-reschedule",
+      "variant": "reading",
+      "call": 1,
+      "start": 1794766240015,
+      "end": 1794766268565
+    },
+    {
+      "arm": "current-v2",
+      "caseName": "conditional-reschedule",
+      "variant": "reading",
+      "call": 2,
+      "start": 1794766268585,
+      "end": 1794766290126
+    },
+    {
+      "arm": "current-v2",
+      "caseName": "conditional-reschedule",
+      "variant": "reading",
+      "call": 3,
+      "start": 1794766290147,
+      "end": 1794766316435
+    },
+    {
+      "arm": "current-v2",
+      "caseName": "conditional-reschedule",
+      "variant": "reading",
+      "call": 4,
+      "start": 1794766316454,
+      "end": 1794766337165
+    },
+    {
+      "arm": "current-v2",
+      "caseName": "conditional-reschedule",
+      "variant": "reading",
+      "call": 5,
+      "start": 1794766337181,
+      "end": 1794766363460
+    },
+    {
+      "arm": "current-v2",
+      "caseName": "conditional-reschedule",
+      "variant": "reading",
+      "call": 6,
+      "start": 1794766363480,
+      "end": 1794766390424
+    },
+    {
+      "arm": "current-v2",
+      "caseName": "conditional-reschedule",
+      "variant": "reading",
+      "call": 7,
+      "start": 1794766390444,
+      "end": 1794766407905
+    },
+    {
+      "arm": "current-v2",
+      "caseName": "conditional-reschedule",
+      "variant": "reading",
+      "call": 8,
+      "start": 1794766407923,
+      "end": 1794766435610
+    },
+    {
+      "arm": "current-v2",
+      "caseName": "conditional-reschedule",
+      "variant": "reading",
+      "call": 9,
+      "start": 1794766435626,
+      "end": 1794766457992
+    },
+    {
+      "arm": "current-v2",
+      "caseName": "conditional-reschedule",
+      "variant": "reading",
+      "call": 10,
+      "start": 1794766458005,
+      "end": 1794766475379
+    },
+    {
+      "arm": "current-v2",
+      "caseName": "conditional-reschedule",
+      "variant": "reading",
+      "call": 11,
+      "start": 1794766475393,
+      "end": 1794766506728
+    },
+    {
+      "arm": "current-v2",
+      "caseName": "conditional-reschedule",
+      "variant": "reading",
+      "call": 12,
+      "start": 1794766506746,
+      "end": 1794766536757
+    },
+    {
+      "arm": "current-v2",
+      "caseName": "conditional-reschedule",
+      "variant": "adaptive",
+      "call": 1,
+      "start": 1794766611126,
+      "end": 1794766646814
+    },
+    {
+      "arm": "current-v2",
+      "caseName": "conditional-reschedule",
+      "variant": "direct",
+      "call": 1,
+      "start": 1794766728618,
+      "end": 1794766766203
+    }
+  ],
+  "runs": [
+    {
+      "arm": "baseline",
+      "runId": "memory-capacity-baseline-20261116",
+      "active": false,
+      "halt": "INVALID_EVIDENCE",
+      "totals": {
+        "requests": 13,
+        "settled": 13,
+        "inputTokens": 44861,
+        "outputTokens": 19031,
+        "reading": 9,
+        "compression": 2,
+        "checking": 0,
+        "writing": 2
+      },
+      "comparisons": [
+        {
+          "caseName": "shared-workload",
+          "sourceHash": "6f63b461c034eacaebc473ea5637bef13119aae59e286fa1d449347d9c6af756",
+          "completePair": true,
+          "naturalCandidates": 0,
+          "acceptedCandidateUpdates": 0,
+          "checkingRequestsWithOriginals": 0,
+          "modelReadRequests": 0,
+          "modelNavigationRequests": 0,
+          "availableReports": {
+            "adaptive": true,
+            "direct": true,
+            "rich": false
+          },
+          "failedPhases": [],
+          "outcome": "reports-completed",
+          "readingRelatedOriginals": {
+            "requestsWithRelatedOriginals": 1,
+            "relatedOriginalPresentations": 3,
+            "distinctRelatedOriginalIds": [
+              "10",
+              "11",
+              "12"
+            ],
+            "previouslySeenPresentations": 3,
+            "presentations": [
+              {
+                "request": "request-05.json",
+                "sourceId": "10",
+                "seenInEarlierRequest": true
+              },
+              {
+                "request": "request-05.json",
+                "sourceId": "11",
+                "seenInEarlierRequest": true
+              },
+              {
+                "request": "request-05.json",
+                "sourceId": "12",
+                "seenInEarlierRequest": true
+              }
+            ]
+          },
+          "sameBase": true,
+          "sameWriter": true
+        },
+        {
+          "caseName": "conditional-reschedule",
+          "sourceHash": "907c6b680d1acc0e4c021e7ae6c26393d1fd144c9c6f45d6ee4a47b316640b2d",
+          "completePair": false,
+          "naturalCandidates": 1,
+          "acceptedCandidateUpdates": 0,
+          "checkingRequestsWithOriginals": 0,
+          "modelReadRequests": 0,
+          "modelNavigationRequests": 0,
+          "availableReports": {
+            "adaptive": false,
+            "direct": false,
+            "rich": false
+          },
+          "failedPhases": [
+            {
+              "name": "conditional-reschedule-reading",
+              "error": "INVALID_EVIDENCE",
+              "requests": 4
+            }
+          ],
+          "outcome": "stopped-after-failure",
+          "readingRelatedOriginals": {
+            "requestsWithRelatedOriginals": 1,
+            "relatedOriginalPresentations": 2,
+            "distinctRelatedOriginalIds": [
+              "1",
+              "2"
+            ],
+            "previouslySeenPresentations": 2,
+            "presentations": [
+              {
+                "request": "request-04.json",
+                "sourceId": "1",
+                "seenInEarlierRequest": true
+              },
+              {
+                "request": "request-04.json",
+                "sourceId": "2",
+                "seenInEarlierRequest": true
+              }
+            ]
+          }
+        }
+      ],
+      "phases": [
+        {
+          "name": "shared-workload-reading",
+          "variant": "reading",
+          "state": "completed",
+          "requests": 7,
+          "settled": 7,
+          "inputTokens": 24891,
+          "outputTokens": 9116,
+          "reportPresent": false,
+          "elapsedMs": 164165,
+          "readingRelatedOriginals": {
+            "requestsWithRelatedOriginals": 1,
+            "relatedOriginalPresentations": 3,
+            "distinctRelatedOriginalIds": [
+              "10",
+              "11",
+              "12"
+            ],
+            "previouslySeenPresentations": 3,
+            "presentations": [
+              {
+                "request": "request-05.json",
+                "sourceId": "10",
+                "seenInEarlierRequest": true
+              },
+              {
+                "request": "request-05.json",
+                "sourceId": "11",
+                "seenInEarlierRequest": true
+              },
+              {
+                "request": "request-05.json",
+                "sourceId": "12",
+                "seenInEarlierRequest": true
+              }
+            ]
+          },
+          "checkpoint": {
+            "stage": "checking",
+            "callsReserved": 7,
+            "readingBatches": 5,
+            "covered": 120,
+            "checks": []
+          },
+          "timeline": [
+            {
+              "file": "request-01.json",
+              "call": 1,
+              "stage": "reading",
+              "sent": true,
+              "repair": false,
+              "messageIds": [
+                "1",
+                "2",
+                "3",
+                "4",
+                "5",
+                "6",
+                "7",
+                "8",
+                "9",
+                "10",
+                "11",
+                "12",
+                "13",
+                "14",
+                "15",
+                "16",
+                "17",
+                "18",
+                "19",
+                "20",
+                "21",
+                "22",
+                "23",
+                "24",
+                "25"
+              ],
+              "relatedOriginalIds": [],
+              "knownCandidates": [],
+              "candidates": [],
+              "candidateUpdates": [],
+              "readingAccepted": true,
+              "checkingOriginalIds": []
+            },
+            {
+              "file": "request-02.json",
+              "call": 2,
+              "stage": "reading",
+              "sent": true,
+              "repair": false,
+              "messageIds": [
+                "26",
+                "27",
+                "28",
+                "29",
+                "30",
+                "31",
+                "32",
+                "33",
+                "34",
+                "35",
+                "36",
+                "37",
+                "38",
+                "39",
+                "40",
+                "41",
+                "42",
+                "43",
+                "44",
+                "45",
+                "46",
+                "47",
+                "48",
+                "49",
+                "50"
+              ],
+              "relatedOriginalIds": [],
+              "knownCandidates": [],
+              "candidates": [],
+              "candidateUpdates": [],
+              "readingAccepted": true,
+              "checkingOriginalIds": []
+            },
+            {
+              "file": "request-03.json",
+              "call": 3,
+              "stage": "reading",
+              "sent": true,
+              "repair": false,
+              "messageIds": [
+                "51",
+                "52",
+                "53",
+                "54",
+                "55",
+                "56",
+                "57",
+                "58",
+                "59",
+                "60",
+                "61",
+                "62",
+                "63",
+                "64",
+                "65",
+                "66",
+                "67",
+                "68",
+                "69",
+                "70",
+                "71",
+                "72",
+                "73",
+                "74",
+                "75"
+              ],
+              "relatedOriginalIds": [],
+              "knownCandidates": [],
+              "candidates": [],
+              "candidateUpdates": [],
+              "readingAccepted": true,
+              "checkingOriginalIds": []
+            },
+            {
+              "file": "request-04.json",
+              "call": 4,
+              "stage": "reading",
+              "sent": true,
+              "repair": false,
+              "messageIds": [
+                "76",
+                "77",
+                "78",
+                "79",
+                "80",
+                "81",
+                "82",
+                "83",
+                "84",
+                "85",
+                "86",
+                "87",
+                "88",
+                "89",
+                "90",
+                "91",
+                "92",
+                "93",
+                "94",
+                "95",
+                "96",
+                "97",
+                "98",
+                "99"
+              ],
+              "relatedOriginalIds": [],
+              "knownCandidates": [],
+              "candidates": [],
+              "candidateUpdates": [],
+              "readingAccepted": true,
+              "checkingOriginalIds": []
+            },
+            {
+              "file": "request-05.json",
+              "call": 5,
+              "stage": "reading",
+              "sent": true,
+              "repair": false,
+              "messageIds": [
+                "100",
+                "101",
+                "102",
+                "103",
+                "104",
+                "105",
+                "106",
+                "107",
+                "108",
+                "109",
+                "110",
+                "111",
+                "112",
+                "113",
+                "114",
+                "115",
+                "116",
+                "117",
+                "118",
+                "119",
+                "120"
+              ],
+              "relatedOriginalIds": [
+                "10",
+                "11",
+                "12"
+              ],
+              "knownCandidates": [],
+              "candidates": [],
+              "candidateUpdates": [],
+              "readingAccepted": true,
+              "checkingOriginalIds": []
+            },
+            {
+              "file": "request-06.json",
+              "call": 6,
+              "stage": "compress-navigation",
+              "sent": true,
+              "repair": false,
+              "candidateUpdates": [],
+              "readingAccepted": false,
+              "checkingOriginalIds": [],
+              "compression": {
+                "protocol": "legacy-summary",
+                "inputNodes": 37,
+                "acceptedNode": 57,
+                "omittedSourceIds": [
+                  "1",
+                  "2",
+                  "3",
+                  "4",
+                  "5",
+                  "6",
+                  "7",
+                  "8",
+                  "9",
+                  "10",
+                  "11",
+                  "12",
+                  "14",
+                  "15",
+                  "16",
+                  "17",
+                  "18",
+                  "19",
+                  "20",
+                  "21",
+                  "22",
+                  "23",
+                  "24",
+                  "25",
+                  "26",
+                  "27",
+                  "28",
+                  "29",
+                  "30",
+                  "31",
+                  "33",
+                  "34",
+                  "35",
+                  "38",
+                  "40",
+                  "41",
+                  "45",
+                  "46",
+                  "47",
+                  "44",
+                  "49",
+                  "51",
+                  "52",
+                  "56",
+                  "58",
+                  "53",
+                  "54",
+                  "55",
+                  "57",
+                  "59",
+                  "61",
+                  "62",
+                  "63",
+                  "64",
+                  "66",
+                  "67",
+                  "69",
+                  "71",
+                  "72",
+                  "76",
+                  "77",
+                  "84",
+                  "82"
+                ]
+              }
+            },
+            {
+              "file": "request-07.json",
+              "call": 7,
+              "stage": "compress-navigation",
+              "sent": true,
+              "repair": false,
+              "candidateUpdates": [],
+              "readingAccepted": false,
+              "checkingOriginalIds": [],
+              "compression": {
+                "protocol": "legacy-summary",
+                "inputNodes": 20,
+                "acceptedNode": 58,
+                "omittedSourceIds": [
+                  "88",
+                  "89",
+                  "91",
+                  "92",
+                  "93",
+                  "94",
+                  "97",
+                  "77",
+                  "78",
+                  "79",
+                  "80",
+                  "81",
+                  "95",
+                  "96",
+                  "108",
+                  "105",
+                  "106",
+                  "110",
+                  "112",
+                  "101",
+                  "102",
+                  "103",
+                  "104",
+                  "119",
+                  "116",
+                  "117",
+                  "118"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "shared-workload-adaptive",
+          "variant": "adaptive",
+          "state": "completed",
+          "requests": 1,
+          "settled": 1,
+          "inputTokens": 2271,
+          "outputTokens": 1187,
+          "reportPresent": true,
+          "elapsedMs": 24032,
+          "readingRelatedOriginals": {
+            "requestsWithRelatedOriginals": 0,
+            "relatedOriginalPresentations": 0,
+            "distinctRelatedOriginalIds": [],
+            "previouslySeenPresentations": 0,
+            "presentations": []
+          },
+          "writingBase": {
+            "call": 1,
+            "sharedBaseHash": "4bd29bde03ae99767b9b13a77e83d23148c057624c0ad616a5ce38268cb09b1a",
+            "readingCheckpointHash": "b82d4fd23e6fb133f78732c85973cc48a3962d0101a83620847db046e0848133",
+            "repair": false,
+            "outputLimit": 3000
+          },
+          "checkpoint": {
+            "stage": "writing",
+            "callsReserved": 8,
+            "readingBatches": 5,
+            "covered": 120,
+            "checks": []
+          },
+          "timeline": [
+            {
+              "file": "request-01.json",
+              "call": 1,
+              "stage": "writing",
+              "sent": true,
+              "repair": false,
+              "candidateUpdates": [],
+              "readingAccepted": false,
+              "checkingOriginalIds": []
+            }
+          ]
+        },
+        {
+          "name": "shared-workload-direct",
+          "variant": "direct",
+          "state": "completed",
+          "requests": 1,
+          "settled": 1,
+          "inputTokens": 2271,
+          "outputTokens": 1342,
+          "reportPresent": true,
+          "elapsedMs": 26209,
+          "readingRelatedOriginals": {
+            "requestsWithRelatedOriginals": 0,
+            "relatedOriginalPresentations": 0,
+            "distinctRelatedOriginalIds": [],
+            "previouslySeenPresentations": 0,
+            "presentations": []
+          },
+          "timeline": [
+            {
+              "file": "request-01.json",
+              "call": 1,
+              "stage": "writing",
+              "sent": true,
+              "repair": false,
+              "candidateUpdates": [],
+              "readingAccepted": false,
+              "checkingOriginalIds": []
+            }
+          ]
+        },
+        {
+          "name": "conditional-reschedule-reading",
+          "variant": "reading",
+          "state": "failed",
+          "error": "INVALID_EVIDENCE",
+          "requests": 4,
+          "settled": 4,
+          "inputTokens": 15428,
+          "outputTokens": 7386,
+          "reportPresent": false,
+          "elapsedMs": 108363,
+          "readingRelatedOriginals": {
+            "requestsWithRelatedOriginals": 1,
+            "relatedOriginalPresentations": 2,
+            "distinctRelatedOriginalIds": [
+              "1",
+              "2"
+            ],
+            "previouslySeenPresentations": 2,
+            "presentations": [
+              {
+                "request": "request-04.json",
+                "sourceId": "1",
+                "seenInEarlierRequest": true
+              },
+              {
+                "request": "request-04.json",
+                "sourceId": "2",
+                "seenInEarlierRequest": true
+              }
+            ]
+          },
+          "checkpoint": {
+            "stage": "reading",
+            "callsReserved": 4,
+            "readingBatches": 3,
+            "covered": 72,
+            "checks": [
+              {
+                "observation": "需回读双方最初提出的“两件前提”，核对其具体内容及是否曾要求同时满足后才更改餐厅。",
+                "supportingIds": [
+                  "52",
+                  "62",
+                  "63"
+                ],
+                "reason": "本批只提到前提未全部落定，并将余额处理与林舟能否参加明确分开；不能据此补写原约定，也不能认定余额处理完成即代表已决定换餐厅。",
+                "evidenceNotes": [
+                  {
+                    "sourceId": "52",
+                    "quote": "我们开始说的两件前提现在还没全部落定，海报先做完并不着急决定餐厅",
+                    "text": "指向此前两项前提，但未重述具体内容。"
+                  },
+                  {
+                    "sourceId": "62",
+                    "quote": "退成余额这件事就不用再来回问了，我以后去吃饭用得上；林舟能不能参加还是另一件，别把这两项合到一起记。",
+                    "text": "明确接受余额方案，同时要求将参加情况单独记录。"
+                  },
+                  {
+                    "sourceId": "63",
+                    "quote": "原来那张三十一号的位子他们暂时保留着，说最终改不改另发消息就行，退订金并没有自动取消预约。",
+                    "text": "余额办理与预约变更没有自动联动，最终选择仍待定。"
+                  }
+                ],
+                "id": "1",
+                "state": "pending",
+                "rounds": 0,
+                "seenEvidenceIds": [],
+                "navigationRequests": [],
+                "pendingNavigation": null,
+                "pendingIds": [
+                  "52",
+                  "62",
+                  "63"
+                ],
+                "pendingCursor": {
+                  "messageIndex": 0,
+                  "textOffset": 0
+                },
+                "pendingThrough": null,
+                "shrinkDepth": 0,
+                "repairs": 0,
+                "purpose": "本批只提到前提未全部落定，并将余额处理与林舟能否参加明确分开；不能据此补写原约定，也不能认定余额处理完成即代表已决定换餐厅。",
+                "finding": null
+              }
+            ]
+          },
+          "timeline": [
+            {
+              "file": "request-01.json",
+              "call": 1,
+              "stage": "reading",
+              "sent": true,
+              "repair": false,
+              "messageIds": [
+                "1",
+                "2",
+                "3",
+                "4",
+                "5",
+                "6",
+                "7",
+                "8",
+                "9",
+                "10",
+                "11",
+                "12",
+                "13",
+                "14",
+                "15",
+                "16",
+                "17",
+                "18",
+                "19",
+                "20",
+                "21",
+                "22",
+                "23",
+                "24"
+              ],
+              "relatedOriginalIds": [],
+              "knownCandidates": [],
+              "candidates": [],
+              "candidateUpdates": [],
+              "readingAccepted": true,
+              "checkingOriginalIds": []
+            },
+            {
+              "file": "request-02.json",
+              "call": 2,
+              "stage": "reading",
+              "sent": true,
+              "repair": false,
+              "messageIds": [
+                "25",
+                "26",
+                "27",
+                "28",
+                "29",
+                "30",
+                "31",
+                "32",
+                "33",
+                "34",
+                "35",
+                "36",
+                "37",
+                "38",
+                "39",
+                "40",
+                "41",
+                "42",
+                "43",
+                "44",
+                "45",
+                "46",
+                "47",
+                "48"
+              ],
+              "relatedOriginalIds": [],
+              "knownCandidates": [],
+              "candidates": [],
+              "candidateUpdates": [],
+              "readingAccepted": true,
+              "checkingOriginalIds": []
+            },
+            {
+              "file": "request-03.json",
+              "call": 3,
+              "stage": "reading",
+              "sent": true,
+              "repair": false,
+              "messageIds": [
+                "49",
+                "50",
+                "51",
+                "52",
+                "53",
+                "54",
+                "55",
+                "56",
+                "57",
+                "58",
+                "59",
+                "60",
+                "61",
+                "62",
+                "63",
+                "64",
+                "65",
+                "66",
+                "67",
+                "68",
+                "69",
+                "70",
+                "71",
+                "72"
+              ],
+              "relatedOriginalIds": [],
+              "knownCandidates": [],
+              "candidates": [
+                {
+                  "observation": "需回读双方最初提出的“两件前提”，核对其具体内容及是否曾要求同时满足后才更改餐厅。",
+                  "supportingIds": [
+                    "52",
+                    "62",
+                    "63"
+                  ],
+                  "reason": "本批只提到前提未全部落定，并将余额处理与林舟能否参加明确分开；不能据此补写原约定，也不能认定余额处理完成即代表已决定换餐厅。",
+                  "evidenceNotes": [
+                    {
+                      "sourceId": "52",
+                      "quote": "我们开始说的两件前提现在还没全部落定，海报先做完并不着急决定餐厅",
+                      "text": "指向此前两项前提，但未重述具体内容。"
+                    },
+                    {
+                      "sourceId": "62",
+                      "quote": "退成余额这件事就不用再来回问了，我以后去吃饭用得上；林舟能不能参加还是另一件，别把这两项合到一起记。",
+                      "text": "明确接受余额方案，同时要求将参加情况单独记录。"
+                    },
+                    {
+                      "sourceId": "63",
+                      "quote": "原来那张三十一号的位子他们暂时保留着，说最终改不改另发消息就行，退订金并没有自动取消预约。",
+                      "text": "余额办理与预约变更没有自动联动，最终选择仍待定。"
+                    }
+                  ]
+                }
+              ],
+              "candidateUpdates": [],
+              "readingAccepted": true,
+              "checkingOriginalIds": []
+            },
+            {
+              "file": "request-04.json",
+              "call": 4,
+              "stage": "reading",
+              "sent": true,
+              "repair": false,
+              "messageIds": [
+                "73",
+                "74",
+                "75",
+                "76",
+                "77",
+                "78",
+                "79",
+                "80",
+                "81",
+                "82",
+                "83",
+                "84",
+                "85",
+                "86",
+                "87",
+                "88",
+                "89",
+                "90"
+              ],
+              "relatedOriginalIds": [
+                "1",
+                "2"
+              ],
+              "knownCandidates": [
+                {
+                  "id": "1",
+                  "state": "pending"
+                }
+              ],
+              "candidates": [],
+              "candidateUpdates": [
+                {
+                  "id": "1",
+                  "action": "resolve",
+                  "finding": {
+                    "revisedObservation": "最初两项前提已可核实：林舟明确确认能来，以及旧餐厅300元订金能原路退回；原话将其用于从10月31日晚改至11月1日晚，并要求两件未确认前不动原位子，不宜仅概括成换餐厅的条件。后续逐字材料显示合成对方已接受退成余额，不能继续把原路退款当作未经调整的现行硬条件；接受余额也未自动取消旧预约，更不等于林舟确认或已经决定改期换店。",
+                    "supportingIds": [
+                      "1",
+                      "2",
+                      "62",
+                      "63",
+                      "85",
+                      "87",
+                      "89"
+                    ],
+                    "counterexampleIds": [
+                      "62",
+                      "63"
+                    ],
+                    "alternativeExplanations": [],
+                    "limitations": [
+                      "原文62、63仅以knownCandidates中的逐字摘录可见，未提供对应完整消息。",
+                      "余额方案被接受后，双方是否重新完整表述过全部改期条件，当前材料未显示。",
+                      "截至10月22日，林舟参加情况及最终日期、餐厅仍未确定。"
+                    ]
+                  },
+                  "evidenceNotes": [
+                    {
+                      "sourceId": "1",
+                      "quote": "要改到十一月一日晚，得等林舟明确确认能来，而且旧餐厅那三百元订金能原路退回；两件都没确认前先别动原位子。",
+                      "text": "直接给出两项原始前提，约束的是改期及保留原位子。"
+                    },
+                    {
+                      "sourceId": "2",
+                      "quote": "知道，我先留着三十一号，不急着跟新餐厅下单。",
+                      "text": "合成本人显式回复原文1，接受暂留原安排。"
+                    },
+                    {
+                      "sourceId": "62",
+                      "quote": "退成余额这件事就不用再来回问了，我以后去吃饭用得上；林舟能不能参加还是另一件，别把这两项合到一起记。",
+                      "text": "已知候选所附逐字摘录显示余额方案获接受，参加情况须独立记录。"
+                    },
+                    {
+                      "sourceId": "63",
+                      "quote": "原来那张三十一号的位子他们暂时保留着，说最终改不改另发消息就行，退订金并没有自动取消预约。",
+                      "text": "已知候选所附逐字摘录说明订金处理不等于取消预约或最终变更。"
+                    },
+                    {
+                      "sourceId": "85",
+                      "quote": "但林舟还没回新的消息，不能把我的排班改好当成他的也已经确定。",
+                      "text": "合成本人的时间已确认，但林舟的时间仍未确认。"
+                    },
+                    {
+                      "sourceId": "89",
+                      "quote": "我今天也没在大群里宣布改期，只告诉大家还按旧通知准备，真的变了再发明确消息。",
+                      "text": "截至10月22日仍未对群宣布改期，继续按旧通知准备。"
+                    }
+                  ],
+                  "accepted": false
+                }
+              ],
+              "readingAccepted": false,
+              "checkingOriginalIds": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "arm": "current-v2",
+      "runId": "memory-capacity-current-v2-20261116",
+      "active": false,
+      "totals": {
+        "requests": 29,
+        "settled": 29,
+        "inputTokens": 95385,
+        "outputTokens": 48779,
+        "reading": 14,
+        "compression": 11,
+        "checking": 0,
+        "writing": 4
+      },
+      "comparisons": [
+        {
+          "caseName": "shared-workload",
+          "sourceHash": "6f63b461c034eacaebc473ea5637bef13119aae59e286fa1d449347d9c6af756",
+          "completePair": true,
+          "naturalCandidates": 0,
+          "acceptedCandidateUpdates": 0,
+          "checkingRequestsWithOriginals": 0,
+          "modelReadRequests": 0,
+          "modelNavigationRequests": 0,
+          "availableReports": {
+            "adaptive": true,
+            "direct": true,
+            "rich": false
+          },
+          "failedPhases": [],
+          "outcome": "reports-completed",
+          "readingRelatedOriginals": {
+            "requestsWithRelatedOriginals": 0,
+            "relatedOriginalPresentations": 0,
+            "distinctRelatedOriginalIds": [],
+            "previouslySeenPresentations": 0,
+            "presentations": []
+          },
+          "sameBase": true,
+          "sameWriter": true
+        },
+        {
+          "caseName": "conditional-reschedule",
+          "sourceHash": "907c6b680d1acc0e4c021e7ae6c26393d1fd144c9c6f45d6ee4a47b316640b2d",
+          "completePair": true,
+          "naturalCandidates": 0,
+          "acceptedCandidateUpdates": 0,
+          "checkingRequestsWithOriginals": 0,
+          "modelReadRequests": 0,
+          "modelNavigationRequests": 0,
+          "availableReports": {
+            "adaptive": true,
+            "direct": true,
+            "rich": false
+          },
+          "failedPhases": [],
+          "outcome": "reports-completed",
+          "readingRelatedOriginals": {
+            "requestsWithRelatedOriginals": 0,
+            "relatedOriginalPresentations": 0,
+            "distinctRelatedOriginalIds": [],
+            "previouslySeenPresentations": 0,
+            "presentations": []
+          },
+          "sameBase": true,
+          "sameWriter": true
+        }
+      ],
+      "phases": [
+        {
+          "name": "shared-workload-reading",
+          "variant": "reading",
+          "state": "completed",
+          "requests": 13,
+          "settled": 13,
+          "inputTokens": 43284,
+          "outputTokens": 21688,
+          "reportPresent": false,
+          "elapsedMs": 369295,
+          "readingRelatedOriginals": {
+            "requestsWithRelatedOriginals": 0,
+            "relatedOriginalPresentations": 0,
+            "distinctRelatedOriginalIds": [],
+            "previouslySeenPresentations": 0,
+            "presentations": []
+          },
+          "checkpoint": {
+            "stage": "checking",
+            "callsReserved": 13,
+            "readingBatches": 7,
+            "covered": 120,
+            "checks": []
+          },
+          "timeline": [
+            {
+              "file": "request-01.json",
+              "call": 1,
+              "stage": "reading",
+              "sent": true,
+              "repair": false,
+              "messageIds": [
+                "1",
+                "2",
+                "3",
+                "4",
+                "5",
+                "6",
+                "7",
+                "8",
+                "9",
+                "10",
+                "11",
+                "12",
+                "13",
+                "14",
+                "15",
+                "16",
+                "17",
+                "18",
+                "19",
+                "20",
+                "21",
+                "22",
+                "23",
+                "24"
+              ],
+              "relatedOriginalIds": [],
+              "knownCandidates": [],
+              "candidates": [],
+              "candidateUpdates": [],
+              "readingAccepted": true,
+              "checkingOriginalIds": []
+            },
+            {
+              "file": "request-02.json",
+              "call": 2,
+              "stage": "reading",
+              "sent": true,
+              "repair": false,
+              "messageIds": [
+                "25",
+                "26",
+                "27",
+                "28",
+                "29",
+                "30",
+                "31",
+                "32",
+                "33",
+                "34",
+                "35",
+                "36",
+                "37",
+                "38",
+                "39",
+                "40",
+                "41",
+                "42",
+                "43"
+              ],
+              "relatedOriginalIds": [],
+              "knownCandidates": [],
+              "candidates": [],
+              "candidateUpdates": [],
+              "readingAccepted": true,
+              "checkingOriginalIds": []
+            },
+            {
+              "file": "request-03.json",
+              "call": 3,
+              "stage": "reading",
+              "sent": true,
+              "repair": false,
+              "messageIds": [
+                "44",
+                "45",
+                "46",
+                "47",
+                "48",
+                "49",
+                "50",
+                "51",
+                "52",
+                "53",
+                "54",
+                "55",
+                "56",
+                "57",
+                "58",
+                "59",
+                "60",
+                "61",
+                "62"
+              ],
+              "relatedOriginalIds": [],
+              "knownCandidates": [],
+              "candidates": [],
+              "candidateUpdates": [],
+              "readingAccepted": true,
+              "checkingOriginalIds": []
+            },
+            {
+              "file": "request-04.json",
+              "call": 4,
+              "stage": "reading",
+              "sent": true,
+              "repair": false,
+              "messageIds": [
+                "63",
+                "64",
+                "65",
+                "66",
+                "67",
+                "68",
+                "69",
+                "70",
+                "71",
+                "72",
+                "73",
+                "74",
+                "75",
+                "76",
+                "77",
+                "78",
+                "79",
+                "80",
+                "81"
+              ],
+              "relatedOriginalIds": [],
+              "knownCandidates": [],
+              "candidates": [],
+              "candidateUpdates": [],
+              "readingAccepted": true,
+              "checkingOriginalIds": []
+            },
+            {
+              "file": "request-05.json",
+              "call": 5,
+              "stage": "reading",
+              "sent": true,
+              "repair": false,
+              "messageIds": [
+                "82",
+                "83",
+                "84",
+                "85",
+                "86",
+                "87",
+                "88",
+                "89",
+                "90",
+                "91",
+                "92",
+                "93",
+                "94",
+                "95",
+                "96",
+                "97",
+                "98",
+                "99"
+              ],
+              "relatedOriginalIds": [],
+              "knownCandidates": [],
+              "candidates": [],
+              "candidateUpdates": [],
+              "readingAccepted": true,
+              "checkingOriginalIds": []
+            },
+            {
+              "file": "request-06.json",
+              "call": 6,
+              "stage": "reading",
+              "sent": true,
+              "repair": false,
+              "messageIds": [
+                "100",
+                "101",
+                "102",
+                "103",
+                "104",
+                "105",
+                "106",
+                "107",
+                "108",
+                "109",
+                "110",
+                "111",
+                "112",
+                "113",
+                "114",
+                "115",
+                "116",
+                "117"
+              ],
+              "relatedOriginalIds": [],
+              "knownCandidates": [],
+              "candidates": [],
+              "candidateUpdates": [],
+              "readingAccepted": true,
+              "checkingOriginalIds": []
+            },
+            {
+              "file": "request-07.json",
+              "call": 7,
+              "stage": "reading",
+              "sent": true,
+              "repair": false,
+              "messageIds": [
+                "118",
+                "119",
+                "120"
+              ],
+              "relatedOriginalIds": [],
+              "knownCandidates": [],
+              "candidates": [],
+              "candidateUpdates": [],
+              "readingAccepted": true,
+              "checkingOriginalIds": []
+            },
+            {
+              "file": "request-08.json",
+              "call": 8,
+              "stage": "compress-navigation",
+              "sent": true,
+              "repair": false,
+              "candidateUpdates": [],
+              "readingAccepted": false,
+              "checkingOriginalIds": [],
+              "compression": {
+                "protocol": "retained-facts-v2",
+                "inputEntries": 36,
+                "outputEntries": 22,
+                "foreignIds": [],
+                "omittedIds": [],
+                "knownInputsClassifiedOnlyUnknown": [
+                  "0:0",
+                  "6:0",
+                  "8:0",
+                  "9:0",
+                  "12:0",
+                  "14:0",
+                  "20:0",
+                  "22:0",
+                  "24:0",
+                  "26:0",
+                  "31:0",
+                  "32:0"
+                ],
+                "parserState": "accepted",
+                "acceptedNode": 90,
+                "inputFactBytes": 8196,
+                "outputFactBytes": 4970,
+                "netShrank": true
+              }
+            },
+            {
+              "file": "request-09.json",
+              "call": 9,
+              "stage": "compress-navigation",
+              "sent": true,
+              "repair": false,
+              "candidateUpdates": [],
+              "readingAccepted": false,
+              "checkingOriginalIds": [],
+              "compression": {
+                "protocol": "retained-facts-v2",
+                "inputEntries": 33,
+                "outputEntries": 22,
+                "foreignIds": [],
+                "omittedIds": [],
+                "knownInputsClassifiedOnlyUnknown": [
+                  "47:0",
+                  "51:0",
+                  "55:0",
+                  "56:0",
+                  "61:0",
+                  "62:0",
+                  "66:0",
+                  "67:0"
+                ],
+                "parserState": "accepted",
+                "acceptedNode": 91,
+                "inputFactBytes": 8289,
+                "outputFactBytes": 5071,
+                "netShrank": true
+              }
+            },
+            {
+              "file": "request-10.json",
+              "call": 10,
+              "stage": "compress-navigation",
+              "sent": true,
+              "repair": false,
+              "candidateUpdates": [],
+              "readingAccepted": false,
+              "checkingOriginalIds": [],
+              "compression": {
+                "protocol": "retained-facts-v2",
+                "inputEntries": 21,
+                "outputEntries": 11,
+                "foreignIds": [],
+                "omittedIds": [],
+                "knownInputsClassifiedOnlyUnknown": [
+                  "69:0",
+                  "72:0",
+                  "78:0",
+                  "80:0",
+                  "81:0",
+                  "83:0",
+                  "85:0",
+                  "88:0"
+                ],
+                "parserState": "accepted",
+                "acceptedNode": 92,
+                "inputFactBytes": 4692,
+                "outputFactBytes": 2839,
+                "netShrank": true
+              }
+            },
+            {
+              "file": "request-11.json",
+              "call": 11,
+              "stage": "compress-navigation",
+              "sent": true,
+              "repair": false,
+              "candidateUpdates": [],
+              "readingAccepted": false,
+              "checkingOriginalIds": [],
+              "compression": {
+                "protocol": "retained-facts-v2",
+                "inputEntries": 44,
+                "outputEntries": 38,
+                "foreignIds": [],
+                "omittedIds": [],
+                "knownInputsClassifiedOnlyUnknown": [
+                  "90:21",
+                  "91:3",
+                  "91:8"
+                ],
+                "parserState": "accepted",
+                "acceptedNode": 93,
+                "inputFactBytes": 10007,
+                "outputFactBytes": 8082,
+                "netShrank": true
+              }
+            },
+            {
+              "file": "request-12.json",
+              "call": 12,
+              "stage": "compress-navigation",
+              "sent": true,
+              "repair": false,
+              "candidateUpdates": [],
+              "readingAccepted": false,
+              "checkingOriginalIds": [],
+              "compression": {
+                "protocol": "retained-facts-v2",
+                "inputEntries": 38,
+                "outputEntries": 31,
+                "foreignIds": [],
+                "omittedIds": [],
+                "knownInputsClassifiedOnlyUnknown": [
+                  "93:1",
+                  "93:12",
+                  "93:24",
+                  "93:31"
+                ],
+                "parserState": "accepted",
+                "acceptedNode": 94,
+                "inputFactBytes": 8082,
+                "outputFactBytes": 6927,
+                "netShrank": true
+              }
+            },
+            {
+              "file": "request-13.json",
+              "call": 13,
+              "stage": "compress-navigation",
+              "sent": true,
+              "repair": false,
+              "candidateUpdates": [],
+              "readingAccepted": false,
+              "checkingOriginalIds": [],
+              "compression": {
+                "protocol": "retained-facts-v2",
+                "inputEntries": 42,
+                "outputEntries": 34,
+                "foreignIds": [],
+                "omittedIds": [],
+                "knownInputsClassifiedOnlyUnknown": [],
+                "parserState": "accepted",
+                "acceptedNode": 95,
+                "inputFactBytes": 9732,
+                "outputFactBytes": 8082,
+                "netShrank": true
+              }
+            }
+          ]
+        },
+        {
+          "name": "shared-workload-adaptive",
+          "variant": "adaptive",
+          "state": "completed",
+          "requests": 1,
+          "settled": 1,
+          "inputTokens": 2942,
+          "outputTokens": 1950,
+          "reportPresent": true,
+          "elapsedMs": 35555,
+          "readingRelatedOriginals": {
+            "requestsWithRelatedOriginals": 0,
+            "relatedOriginalPresentations": 0,
+            "distinctRelatedOriginalIds": [],
+            "previouslySeenPresentations": 0,
+            "presentations": []
+          },
+          "writingBase": {
+            "call": 1,
+            "sharedBaseHash": "5314c634b7c7d362a8456114b873259b7f533eebb76fcc6c159adc61855c261a",
+            "readingCheckpointHash": "6f4513b0417ec6897e21999d7b49c1256d8ab633a2dc1a85f80cfcb87269fd75",
+            "repair": false,
+            "outputLimit": 3000
+          },
+          "checkpoint": {
+            "stage": "writing",
+            "callsReserved": 14,
+            "readingBatches": 7,
+            "covered": 120,
+            "checks": []
+          },
+          "timeline": [
+            {
+              "file": "request-01.json",
+              "call": 1,
+              "stage": "writing",
+              "sent": true,
+              "repair": false,
+              "candidateUpdates": [],
+              "readingAccepted": false,
+              "checkingOriginalIds": []
+            }
+          ]
+        },
+        {
+          "name": "shared-workload-direct",
+          "variant": "direct",
+          "state": "completed",
+          "requests": 1,
+          "settled": 1,
+          "inputTokens": 2941,
+          "outputTokens": 2026,
+          "reportPresent": true,
+          "elapsedMs": 35303,
+          "readingRelatedOriginals": {
+            "requestsWithRelatedOriginals": 0,
+            "relatedOriginalPresentations": 0,
+            "distinctRelatedOriginalIds": [],
+            "previouslySeenPresentations": 0,
+            "presentations": []
+          },
+          "timeline": [
+            {
+              "file": "request-01.json",
+              "call": 1,
+              "stage": "writing",
+              "sent": true,
+              "repair": false,
+              "candidateUpdates": [],
+              "readingAccepted": false,
+              "checkingOriginalIds": []
+            }
+          ]
+        },
+        {
+          "name": "conditional-reschedule-reading",
+          "variant": "reading",
+          "state": "completed",
+          "requests": 12,
+          "settled": 12,
+          "inputTokens": 41120,
+          "outputTokens": 19243,
+          "reportPresent": false,
+          "elapsedMs": 298422,
+          "readingRelatedOriginals": {
+            "requestsWithRelatedOriginals": 0,
+            "relatedOriginalPresentations": 0,
+            "distinctRelatedOriginalIds": [],
+            "previouslySeenPresentations": 0,
+            "presentations": []
+          },
+          "checkpoint": {
+            "stage": "checking",
+            "callsReserved": 12,
+            "readingBatches": 7,
+            "covered": 120,
+            "checks": []
+          },
+          "timeline": [
+            {
+              "file": "request-01.json",
+              "call": 1,
+              "stage": "reading",
+              "sent": true,
+              "repair": false,
+              "messageIds": [
+                "1",
+                "2",
+                "3",
+                "4",
+                "5",
+                "6",
+                "7",
+                "8",
+                "9",
+                "10",
+                "11",
+                "12",
+                "13",
+                "14",
+                "15",
+                "16",
+                "17",
+                "18",
+                "19",
+                "20",
+                "21",
+                "22",
+                "23"
+              ],
+              "relatedOriginalIds": [],
+              "knownCandidates": [],
+              "candidates": [],
+              "candidateUpdates": [],
+              "readingAccepted": true,
+              "checkingOriginalIds": []
+            },
+            {
+              "file": "request-02.json",
+              "call": 2,
+              "stage": "reading",
+              "sent": true,
+              "repair": false,
+              "messageIds": [
+                "24",
+                "25",
+                "26",
+                "27",
+                "28",
+                "29",
+                "30",
+                "31",
+                "32",
+                "33",
+                "34",
+                "35",
+                "36",
+                "37",
+                "38",
+                "39",
+                "40",
+                "41"
+              ],
+              "relatedOriginalIds": [],
+              "knownCandidates": [],
+              "candidates": [],
+              "candidateUpdates": [],
+              "readingAccepted": true,
+              "checkingOriginalIds": []
+            },
+            {
+              "file": "request-03.json",
+              "call": 3,
+              "stage": "reading",
+              "sent": true,
+              "repair": false,
+              "messageIds": [
+                "42",
+                "43",
+                "44",
+                "45",
+                "46",
+                "47",
+                "48",
+                "49",
+                "50",
+                "51",
+                "52",
+                "53",
+                "54",
+                "55",
+                "56",
+                "57",
+                "58",
+                "59"
+              ],
+              "relatedOriginalIds": [],
+              "knownCandidates": [],
+              "candidates": [],
+              "candidateUpdates": [],
+              "readingAccepted": true,
+              "checkingOriginalIds": []
+            },
+            {
+              "file": "request-04.json",
+              "call": 4,
+              "stage": "reading",
+              "sent": true,
+              "repair": false,
+              "messageIds": [
+                "60",
+                "61",
+                "62",
+                "63",
+                "64",
+                "65",
+                "66",
+                "67",
+                "68",
+                "69",
+                "70",
+                "71",
+                "72",
+                "73",
+                "74",
+                "75",
+                "76",
+                "77"
+              ],
+              "relatedOriginalIds": [],
+              "knownCandidates": [],
+              "candidates": [],
+              "candidateUpdates": [],
+              "readingAccepted": true,
+              "checkingOriginalIds": []
+            },
+            {
+              "file": "request-05.json",
+              "call": 5,
+              "stage": "reading",
+              "sent": true,
+              "repair": false,
+              "messageIds": [
+                "78",
+                "79",
+                "80",
+                "81",
+                "82",
+                "83",
+                "84",
+                "85",
+                "86",
+                "87",
+                "88",
+                "89",
+                "90",
+                "91",
+                "92",
+                "93",
+                "94",
+                "95"
+              ],
+              "relatedOriginalIds": [],
+              "knownCandidates": [],
+              "candidates": [],
+              "candidateUpdates": [],
+              "readingAccepted": true,
+              "checkingOriginalIds": []
+            },
+            {
+              "file": "request-06.json",
+              "call": 6,
+              "stage": "reading",
+              "sent": true,
+              "repair": false,
+              "messageIds": [
+                "96",
+                "97",
+                "98",
+                "99",
+                "100",
+                "101",
+                "102",
+                "103",
+                "104",
+                "105",
+                "106",
+                "107",
+                "108",
+                "109",
+                "110",
+                "111",
+                "112",
+                "113"
+              ],
+              "relatedOriginalIds": [],
+              "knownCandidates": [],
+              "candidates": [],
+              "candidateUpdates": [],
+              "readingAccepted": true,
+              "checkingOriginalIds": []
+            },
+            {
+              "file": "request-07.json",
+              "call": 7,
+              "stage": "reading",
+              "sent": true,
+              "repair": false,
+              "messageIds": [
+                "114",
+                "115",
+                "116",
+                "117",
+                "118",
+                "119",
+                "120"
+              ],
+              "relatedOriginalIds": [],
+              "knownCandidates": [],
+              "candidates": [],
+              "candidateUpdates": [],
+              "readingAccepted": true,
+              "checkingOriginalIds": []
+            },
+            {
+              "file": "request-08.json",
+              "call": 8,
+              "stage": "compress-navigation",
+              "sent": true,
+              "repair": false,
+              "candidateUpdates": [],
+              "readingAccepted": false,
+              "checkingOriginalIds": [],
+              "compression": {
+                "protocol": "retained-facts-v2",
+                "inputEntries": 34,
+                "outputEntries": 18,
+                "foreignIds": [],
+                "omittedIds": [],
+                "knownInputsClassifiedOnlyUnknown": [
+                  "3:0",
+                  "5:0",
+                  "14:0",
+                  "15:0",
+                  "16:0",
+                  "17:0",
+                  "18:0",
+                  "20:0",
+                  "21:0",
+                  "25:0",
+                  "26:0",
+                  "27:0",
+                  "29:0",
+                  "32:0",
+                  "33:0"
+                ],
+                "parserState": "accepted",
+                "acceptedNode": 88,
+                "inputFactBytes": 8542,
+                "outputFactBytes": 4992,
+                "netShrank": true
+              }
+            },
+            {
+              "file": "request-09.json",
+              "call": 9,
+              "stage": "compress-navigation",
+              "sent": true,
+              "repair": false,
+              "candidateUpdates": [],
+              "readingAccepted": false,
+              "checkingOriginalIds": [],
+              "compression": {
+                "protocol": "retained-facts-v2",
+                "inputEntries": 31,
+                "outputEntries": 12,
+                "foreignIds": [],
+                "omittedIds": [],
+                "knownInputsClassifiedOnlyUnknown": [
+                  "34:0",
+                  "35:0",
+                  "38:0",
+                  "40:0",
+                  "41:0",
+                  "42:0",
+                  "45:0",
+                  "46:0",
+                  "48:0",
+                  "50:0",
+                  "51:0",
+                  "52:0",
+                  "54:0",
+                  "55:0",
+                  "57:0",
+                  "58:0",
+                  "59:0",
+                  "63:0",
+                  "64:0"
+                ],
+                "parserState": "accepted",
+                "acceptedNode": 89,
+                "inputFactBytes": 8487,
+                "outputFactBytes": 4338,
+                "netShrank": true
+              }
+            },
+            {
+              "file": "request-10.json",
+              "call": 10,
+              "stage": "compress-navigation",
+              "sent": true,
+              "repair": false,
+              "candidateUpdates": [],
+              "readingAccepted": false,
+              "checkingOriginalIds": [],
+              "compression": {
+                "protocol": "retained-facts-v2",
+                "inputEntries": 23,
+                "outputEntries": 10,
+                "foreignIds": [],
+                "omittedIds": [],
+                "knownInputsClassifiedOnlyUnknown": [
+                  "65:0",
+                  "68:0",
+                  "69:0",
+                  "71:0",
+                  "73:0",
+                  "75:0",
+                  "76:0",
+                  "77:0",
+                  "78:0",
+                  "80:0",
+                  "82:0",
+                  "84:0",
+                  "86:0"
+                ],
+                "parserState": "accepted",
+                "acceptedNode": 90,
+                "inputFactBytes": 5389,
+                "outputFactBytes": 2877,
+                "netShrank": true
+              }
+            },
+            {
+              "file": "request-11.json",
+              "call": 11,
+              "stage": "compress-navigation",
+              "sent": true,
+              "repair": false,
+              "candidateUpdates": [],
+              "readingAccepted": false,
+              "checkingOriginalIds": [],
+              "compression": {
+                "protocol": "retained-facts-v2",
+                "inputEntries": 30,
+                "outputEntries": 20,
+                "foreignIds": [],
+                "omittedIds": [],
+                "knownInputsClassifiedOnlyUnknown": [
+                  "88:0",
+                  "88:1",
+                  "88:5",
+                  "88:6"
+                ],
+                "parserState": "accepted",
+                "acceptedNode": 91,
+                "inputFactBytes": 9296,
+                "outputFactBytes": 6968,
+                "netShrank": true
+              }
+            },
+            {
+              "file": "request-12.json",
+              "call": 12,
+              "stage": "compress-navigation",
+              "sent": true,
+              "repair": false,
+              "candidateUpdates": [],
+              "readingAccepted": false,
+              "checkingOriginalIds": [],
+              "compression": {
+                "protocol": "retained-facts-v2",
+                "inputEntries": 30,
+                "outputEntries": 23,
+                "foreignIds": [],
+                "omittedIds": [],
+                "knownInputsClassifiedOnlyUnknown": [
+                  "91:6",
+                  "90:4"
+                ],
+                "parserState": "accepted",
+                "acceptedNode": 92,
+                "inputFactBytes": 9811,
+                "outputFactBytes": 6757,
+                "netShrank": true
+              }
+            }
+          ]
+        },
+        {
+          "name": "conditional-reschedule-adaptive",
+          "variant": "adaptive",
+          "state": "completed",
+          "requests": 1,
+          "settled": 1,
+          "inputTokens": 2548,
+          "outputTokens": 1690,
+          "reportPresent": true,
+          "elapsedMs": 37423,
+          "readingRelatedOriginals": {
+            "requestsWithRelatedOriginals": 0,
+            "relatedOriginalPresentations": 0,
+            "distinctRelatedOriginalIds": [],
+            "previouslySeenPresentations": 0,
+            "presentations": []
+          },
+          "writingBase": {
+            "call": 1,
+            "sharedBaseHash": "c9faefdf484e1de43ba7e9ebe8de798d56d4f9a3ea8ac67693083621c154ba60",
+            "readingCheckpointHash": "0701858d53129667d16698802e5834d0729eb6bef6d481fd64b9df125464372f",
+            "repair": false,
+            "outputLimit": 3000
+          },
+          "checkpoint": {
+            "stage": "writing",
+            "callsReserved": 13,
+            "readingBatches": 7,
+            "covered": 120,
+            "checks": []
+          },
+          "timeline": [
+            {
+              "file": "request-01.json",
+              "call": 1,
+              "stage": "writing",
+              "sent": true,
+              "repair": false,
+              "candidateUpdates": [],
+              "readingAccepted": false,
+              "checkingOriginalIds": []
+            }
+          ]
+        },
+        {
+          "name": "conditional-reschedule-direct",
+          "variant": "direct",
+          "state": "completed",
+          "requests": 1,
+          "settled": 1,
+          "inputTokens": 2550,
+          "outputTokens": 2182,
+          "reportPresent": true,
+          "elapsedMs": 39272,
+          "readingRelatedOriginals": {
+            "requestsWithRelatedOriginals": 0,
+            "relatedOriginalPresentations": 0,
+            "distinctRelatedOriginalIds": [],
+            "previouslySeenPresentations": 0,
+            "presentations": []
+          },
+          "timeline": [
+            {
+              "file": "request-01.json",
+              "call": 1,
+              "stage": "writing",
+              "sent": true,
+              "repair": false,
+              "candidateUpdates": [],
+              "readingAccepted": false,
+              "checkingOriginalIds": []
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "pending": [],
+  "issues": [],
+  "limitations": [
+    "Pending phases are not scored.",
+    "A preserved failed phase is a valid recorded outcome, not a successful comparison.",
+    "Reading-stage relatedMessages can re-present prior originals without an active checking request.",
+    "Evidence identity and source coverage do not establish semantic accuracy.",
+    "Old 84 requests and the retired 11-request current attempt are separate from the paired report comparison."
+  ]
+}

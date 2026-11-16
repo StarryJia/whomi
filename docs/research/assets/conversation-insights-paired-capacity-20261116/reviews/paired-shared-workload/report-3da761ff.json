@@ -1,0 +1,214 @@
+{
+  "aboutYou": [
+    {
+      "content": [
+        {
+          "text": "筹备读书小组时，你多次感到预约、通知及后续整理的负担集中在自己身上。疲惫并未使你取消10月18日的活动；现场你还尝试不急着接话，让参与者把话讲完。这说明，你在承担事务之外，也实际调整了自己的参与方式，但你的负担感不能直接证明其他人没有参与。",
+          "citationId": "o1"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "text": "当ta补充九月及现场承担过的劳动后，你承认先前有所遗漏，收回了把安排工作一概归到自己身上的说法，转而提出具体分工。",
+          "citationId": "87"
+        },
+        {
+          "text": "之后，你既确认新安排减轻了负担，也没有把一次有效的配合当作长期保证；对于尚未确定的采购，你明确没有接下。你的表达从概括累积的不满，逐渐转向说明这一次能承担什么、哪些事项仍需另行安排。",
+          "citationId": "o2"
+        }
+      ]
+    }
+  ],
+  "relationship": [
+    {
+      "content": [
+        {
+          "text": "这段互动中的关键变化，是双方开始修正对劳动分配的概括：ta补充了此前未被计入的参与，你承认遗漏并改谈具体安排。这里既有你持续感受到的负担，也有ta实际投入却未被先前概括充分涵盖的部分，不能简化为只有一方在做事。",
+          "citationId": "r1"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "text": "10月25日，双方把报名回复限定到具体时段，由ta回复、你核名单，并暂缓采购。到28日，你反馈27日的活动较轻松；这支持本次调整对你有所帮助，但不能据此确认所有约定都已执行完毕。",
+          "citationId": "r2"
+        },
+        {
+          "text": "双方也保留了安排的条件：下月能参加的时间、采购及现场负责人，还要等工作安排和ta的晚课通知后再议。因此，目前更接近一次减负的尝试，而不是已经稳定下来的长期分工。",
+          "citationId": "r3"
+        }
+      ]
+    }
+  ],
+  "citations": [
+    {
+      "id": "o1",
+      "conversationId": "1",
+      "fragments": [
+        {
+          "sources": [
+            {
+              "messageId": "13",
+              "revision": "4265141a4b1dd09f097e1555e448b6f4eb0e14b0b1e43b14b5f6196a0ab1aa03"
+            },
+            {
+              "messageId": "37",
+              "revision": "d5177dedb1baafc81598e4da240dd351fccf5e643b6f083a0676d06b03f7adc6"
+            },
+            {
+              "messageId": "39",
+              "revision": "1f6619a19bb5df05f21f3ee9bba301ebeefe73d5abbdd2444246313387d7746e"
+            },
+            {
+              "messageId": "65",
+              "revision": "ec0677ecc68abcacc0d17b089bc7bd1954390e663dff612953560525eeb80718"
+            },
+            {
+              "messageId": "73",
+              "revision": "74b3e0d29dc6c100f5ffec2600c25edfa06375ce3f78e8ace54d3a61334b1666"
+            },
+            {
+              "messageId": "74",
+              "revision": "1c15fa0f5f0f52521b634c4138d4ed39a941724f5ba244491e0c5e1682784bb3"
+            },
+            {
+              "messageId": "75",
+              "revision": "3d470cca2aca92c934aef181b6564397032bc86e575dcf18016617b5d1596ca9"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "87",
+      "conversationId": "1",
+      "fragments": [
+        {
+          "sources": [
+            {
+              "messageId": "86",
+              "revision": "eecf7dc0e8849865227eae2bffb240ba127a6df6eecd6b9a81c2a5471d6a175c"
+            },
+            {
+              "messageId": "87",
+              "revision": "ddb6b4c00800086edb31c66ed6e47e0cb8e21dff3c4f9910c2529740f8af2f16"
+            },
+            {
+              "messageId": "90",
+              "revision": "fd8a08bd7824a739e884128528006976c18d2cc33bca72562c3d8461be7a248c"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "o2",
+      "conversationId": "1",
+      "fragments": [
+        {
+          "sources": [
+            {
+              "messageId": "98",
+              "revision": "7ac6b3d7c2cf4b19c6ed615167d25bb561d5633133131bdbe439de49ef37c429"
+            },
+            {
+              "messageId": "99",
+              "revision": "d9253f0a4cb5e85c3959c1e84c4279efe32feb2d28474c0aa7e374614c133078"
+            },
+            {
+              "messageId": "107",
+              "revision": "8f4901ce48961257505409ec5709a48b51af49fd8fb78ae797c8b6677b5d7a68"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "r1",
+      "conversationId": "1",
+      "fragments": [
+        {
+          "sources": [
+            {
+              "messageId": "86",
+              "revision": "eecf7dc0e8849865227eae2bffb240ba127a6df6eecd6b9a81c2a5471d6a175c"
+            },
+            {
+              "messageId": "87",
+              "revision": "ddb6b4c00800086edb31c66ed6e47e0cb8e21dff3c4f9910c2529740f8af2f16"
+            },
+            {
+              "messageId": "90",
+              "revision": "fd8a08bd7824a739e884128528006976c18d2cc33bca72562c3d8461be7a248c"
+            },
+            {
+              "messageId": "91",
+              "revision": "a8c7903db759558729d4403e914e30b74f2679b49291844579f9da21a072f240"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "r2",
+      "conversationId": "1",
+      "fragments": [
+        {
+          "sources": [
+            {
+              "messageId": "98",
+              "revision": "7ac6b3d7c2cf4b19c6ed615167d25bb561d5633133131bdbe439de49ef37c429"
+            },
+            {
+              "messageId": "99",
+              "revision": "d9253f0a4cb5e85c3959c1e84c4279efe32feb2d28474c0aa7e374614c133078"
+            },
+            {
+              "messageId": "100",
+              "revision": "c6a1b392c674f2d39cccebe68133b9090432e8024b75a82cb500a2d6d6fe1cc8"
+            },
+            {
+              "messageId": "107",
+              "revision": "8f4901ce48961257505409ec5709a48b51af49fd8fb78ae797c8b6677b5d7a68"
+            },
+            {
+              "messageId": "109",
+              "revision": "7fe250b4cc2c3fd3d7b5458cf395db96a52aa074d020cf0c2b8962380c7a5faa"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "r3",
+      "conversationId": "1",
+      "fragments": [
+        {
+          "sources": [
+            {
+              "messageId": "107",
+              "revision": "8f4901ce48961257505409ec5709a48b51af49fd8fb78ae797c8b6677b5d7a68"
+            },
+            {
+              "messageId": "113",
+              "revision": "9fbb4544b6033ca2818f302ccbf5bccf50cf8f0f32311cd99d78406593044cc7"
+            },
+            {
+              "messageId": "114",
+              "revision": "cbee97e447879f69078cd33aff12a9e8bc722a895163f7952eb49e93492e404f"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "被回提的63未提供原文，无法还原先前概括的完整语境、措辞及条件，也无法据此核定双方长期的实际劳动比例。",
+    "限时回复是否完整执行、名单是否核验完毕、库存是否全面核查及最终是否采购，均缺少完成记录；28日关于较轻松的反馈不能替代这些核实。",
+    "18日活动后的名单、费用最终由谁整理、何时完成仍未知；已有费用核对还表明，部分物品不能全部计入18日活动。",
+    "现有材料不足以确认这次减负能否延续，下月参与时间与具体分工仍待商定。"
+  ]
+}

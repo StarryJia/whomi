@@ -1,0 +1,10 @@
+{"kind":"reserved","call":1,"stage":"reading","inputEstimate":3804,"outputLimit":1500,"at":1794740767688}
+{"kind":"dispatched","call":1,"wireOutputLimit":1500,"at":1794740769624}
+{"kind":"http-status","call":1,"status":200,"at":1794740777432}
+{"kind":"returned","call":1,"stopReason":"stop"}
+{"kind":"settled","call":1,"usage":{"cacheReadTokens":0,"cacheWriteTokens":1119,"inputTokens":3,"totalInputTokens":1122,"outputTokens":486,"outputTokensPerSecond":42.98583159571659,"durationMs":11306.0509,"firstTokenMs":8023.199299999999,"startedAt":1794740769414,"completedAt":1794740780720,"incomplete":false},"charged":{"input":1122,"output":486},"at":1794740780721}
+{"kind":"reserved","call":2,"stage":"writing","inputEstimate":2983,"outputLimit":5514,"at":1794740780738}
+{"kind":"dispatched","call":2,"wireOutputLimit":5514,"at":1794740780752}
+{"kind":"http-status","call":2,"status":200,"at":1794740788003}
+{"kind":"returned","call":2,"stopReason":"stop"}
+{"kind":"settled","call":2,"usage":{"cacheReadTokens":0,"cacheWriteTokens":0,"inputTokens":782,"totalInputTokens":782,"outputTokens":787,"outputTokensPerSecond":39.87884270463418,"durationMs":19734.7753,"firstTokenMs":7274.0823,"startedAt":1794740780747,"completedAt":1794740800482,"incomplete":false},"charged":{"input":1904,"output":1273},"at":1794740800483}

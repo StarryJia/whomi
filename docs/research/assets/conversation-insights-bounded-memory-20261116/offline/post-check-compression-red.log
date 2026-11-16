@@ -1,0 +1,33 @@
+
+> whomi@0.1.11 test:backend
+> vitest run --config vitest.backend.config.ts tests/backend/insight-generation.test.ts -t larger checked finding
+
+
+ RUN  v5.0.5 D:/University/github/whomi
+
+ ❯ tests/backend/insight-generation.test.ts (64 tests | 1 failed | 62 skipped) 26ms
+   × writing recompresses facts after a larger checked finding without repeating checking (resume at writing: false) 17ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/backend/insight-generation.test.ts > writing recompresses facts after a larger checked finding without repeating checking (resume at writing: false)
+Error: 请使用输入容量更大的模型重新生成洞察。
+ ❯ insightCapacityError electron/main/insight-packing.ts:50:10
+     48|
+     49| export function insightCapacityError(upstream = false): BoundaryError {
+     50|   return new BoundaryError(upstream ? 'MODEL_CONTEXT_LIMIT' : 'CONTEXT…
+       |          ^
+     51| }
+     52|
+ ❯ call electron/main/insight-generation.ts:547:59
+ ❯ generateInsight electron/main/insight-generation.ts:933:22
+ ❯ tests/backend/insight-generation.test.ts:194:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 1 passed | 62 skipped (64)
+   Start at  00:10:47
+   Duration  457ms (transform 50%, import 31%, tests 12%, worker 6%)
+

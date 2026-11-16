@@ -1,0 +1,232 @@
+{
+  "total": {
+    "httpRequests": 12,
+    "inputCharged": 18579,
+    "outputCharged": 9653
+  },
+  "pairs": [
+    {
+      "caseName": "shared-planning",
+      "identicalFinalRequests": true,
+      "payloadHash": "7c99aad12b70d1d1d529caf66d2366a99a5767336b9033b770c4fa2891a6531a"
+    },
+    {
+      "caseName": "conditional-permission",
+      "identicalFinalRequests": true,
+      "payloadHash": "6f12c7367ed2b2abb8922bd492465e360fb1fe88fda66a2a1289ee3e5ce1cb50"
+    }
+  ],
+  "sourceIntegrity": "passed",
+  "referenceIdsAndRevisions": "passed",
+  "semanticCitationMismatchCount": 2,
+  "note": "编号有效不代表引用文字受到原文支持；两处语义错配见研究记录。",
+  "rows": [
+    {
+      "name": "conditional-permission-adaptive",
+      "state": "completed",
+      "calls": 1,
+      "httpRequests": 1,
+      "elapsedMs": 20799,
+      "inputCharged": 815,
+      "outputCharged": 867,
+      "trialRequestsAfterPhase": 10,
+      "accounting": {
+        "incremental": {
+          "httpRequests": 1,
+          "elapsedMs": 20799,
+          "inputCharged": 815,
+          "outputCharged": 867
+        },
+        "sharedReading": {
+          "httpRequests": 3,
+          "inputCharged": 5381,
+          "outputCharged": 2404,
+          "elapsedMs": 48249
+        },
+        "hypotheticalArmTotal": {
+          "httpRequests": 4,
+          "inputCharged": 6196,
+          "outputCharged": 3271,
+          "elapsedMs": 69048
+        }
+      },
+      "sharedBaseHash": "ef1be71b5f0787b0e48d202389543c63d9ccdfc74abf6db3b3c46678dd3fb6c1",
+      "pairWarnings": [],
+      "adaptiveWriting": {
+        "repair": false,
+        "outputLimit": 3000
+      }
+    },
+    {
+      "name": "conditional-permission-direct",
+      "state": "completed",
+      "calls": 1,
+      "httpRequests": 1,
+      "elapsedMs": 19018,
+      "inputCharged": 815,
+      "outputCharged": 865,
+      "trialRequestsAfterPhase": 11,
+      "accounting": {
+        "incremental": {
+          "httpRequests": 1,
+          "elapsedMs": 19018,
+          "inputCharged": 815,
+          "outputCharged": 865
+        },
+        "sharedReading": {
+          "httpRequests": 3,
+          "inputCharged": 5381,
+          "outputCharged": 2404,
+          "elapsedMs": 48249
+        },
+        "hypotheticalArmTotal": {
+          "httpRequests": 4,
+          "inputCharged": 6196,
+          "outputCharged": 3269,
+          "elapsedMs": 67267
+        }
+      },
+      "sharedBaseHash": "ef1be71b5f0787b0e48d202389543c63d9ccdfc74abf6db3b3c46678dd3fb6c1",
+      "pairWarnings": [],
+      "adaptiveWriting": {
+        "repair": false,
+        "outputLimit": 3000
+      },
+      "directOutputLimit": 3000
+    },
+    {
+      "name": "conditional-permission-full",
+      "state": "completed",
+      "calls": 1,
+      "httpRequests": 1,
+      "elapsedMs": 19593,
+      "inputCharged": 2636,
+      "outputCharged": 805,
+      "trialRequestsAfterPhase": 12,
+      "accounting": {
+        "incremental": {
+          "httpRequests": 1,
+          "elapsedMs": 19593,
+          "inputCharged": 2636,
+          "outputCharged": 805
+        }
+      }
+    },
+    {
+      "name": "conditional-permission-reading",
+      "state": "completed",
+      "calls": 3,
+      "httpRequests": 3,
+      "elapsedMs": 48249,
+      "inputCharged": 5381,
+      "outputCharged": 2404,
+      "trialRequestsAfterPhase": 9,
+      "accounting": {
+        "incremental": {
+          "httpRequests": 3,
+          "elapsedMs": 48249,
+          "inputCharged": 5381,
+          "outputCharged": 2404
+        }
+      }
+    },
+    {
+      "name": "shared-planning-adaptive",
+      "state": "completed",
+      "calls": 1,
+      "httpRequests": 1,
+      "elapsedMs": 23288,
+      "inputCharged": 758,
+      "outputCharged": 867,
+      "trialRequestsAfterPhase": 4,
+      "accounting": {
+        "incremental": {
+          "httpRequests": 1,
+          "elapsedMs": 23288,
+          "inputCharged": 758,
+          "outputCharged": 867
+        },
+        "sharedReading": {
+          "httpRequests": 3,
+          "inputCharged": 4946,
+          "outputCharged": 2009,
+          "elapsedMs": 50204
+        },
+        "hypotheticalArmTotal": {
+          "httpRequests": 4,
+          "inputCharged": 5704,
+          "outputCharged": 2876,
+          "elapsedMs": 73492
+        }
+      },
+      "sharedBaseHash": "a9d4a530dc3b55bb88f8c98efe254a69d838ac7d4da40b67eca45387bae158df"
+    },
+    {
+      "name": "shared-planning-direct",
+      "state": "completed",
+      "calls": 1,
+      "httpRequests": 1,
+      "elapsedMs": 26162,
+      "inputCharged": 758,
+      "outputCharged": 1113,
+      "trialRequestsAfterPhase": 5,
+      "accounting": {
+        "incremental": {
+          "httpRequests": 1,
+          "elapsedMs": 26162,
+          "inputCharged": 758,
+          "outputCharged": 1113
+        },
+        "sharedReading": {
+          "httpRequests": 3,
+          "inputCharged": 4946,
+          "outputCharged": 2009,
+          "elapsedMs": 50204
+        },
+        "hypotheticalArmTotal": {
+          "httpRequests": 4,
+          "inputCharged": 5704,
+          "outputCharged": 3122,
+          "elapsedMs": 76366
+        }
+      },
+      "sharedBaseHash": "a9d4a530dc3b55bb88f8c98efe254a69d838ac7d4da40b67eca45387bae158df"
+    },
+    {
+      "name": "shared-planning-full",
+      "state": "completed",
+      "calls": 1,
+      "httpRequests": 1,
+      "elapsedMs": 18459,
+      "inputCharged": 2470,
+      "outputCharged": 723,
+      "trialRequestsAfterPhase": 6,
+      "accounting": {
+        "incremental": {
+          "httpRequests": 1,
+          "elapsedMs": 18459,
+          "inputCharged": 2470,
+          "outputCharged": 723
+        }
+      }
+    },
+    {
+      "name": "shared-planning-reading",
+      "state": "completed",
+      "calls": 3,
+      "httpRequests": 3,
+      "elapsedMs": 50204,
+      "inputCharged": 4946,
+      "outputCharged": 2009,
+      "trialRequestsAfterPhase": 3,
+      "accounting": {
+        "incremental": {
+          "httpRequests": 3,
+          "elapsedMs": 50204,
+          "inputCharged": 4946,
+          "outputCharged": 2009
+        }
+      }
+    }
+  ]
+}

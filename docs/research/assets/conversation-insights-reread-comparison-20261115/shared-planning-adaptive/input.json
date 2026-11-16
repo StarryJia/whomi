@@ -1,0 +1,224 @@
+{
+  "caseName": "shared-planning",
+  "variant": "adaptive",
+  "regression": false,
+  "scope": {
+    "kind": "dates",
+    "startDate": "2026-10-08",
+    "endDate": "2026-10-10",
+    "timezone": "Asia/Shanghai"
+  },
+  "messages": [
+    {
+      "id": "1",
+      "revision": "c9fbcd7ba20c9bfaf6a9058e6c167011555c4a67cc3163ce61b0d2c5f6534e2e",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "这周末又是我订场地、买票、通知大家，这几件都弄完了。",
+      "sentAtMs": 1791446460000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "2",
+      "revision": "756a70a0b9503e5edf9d3d8d57bf26abc6406102b4348066f4b08bdc6649d002",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "每次都等着我来安排，想到这些就有点累。",
+      "sentAtMs": 1791446520000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "3",
+      "revision": "36b8d12e68274b199cc22fe2ec69d82b1e70b1a908192b5d564355dc2cf3fbdc",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "这次几件事情碰在一起，是挺费精力的。",
+      "sentAtMs": 1791446580000,
+      "replyToMessageId": "2"
+    },
+    {
+      "id": "4",
+      "revision": "8c4a429917005c13f461d40440bd9bd268b2c25d56850c52e8b5229a4ae4da55",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "我现在只想先歇一会，聚会还是照常。",
+      "sentAtMs": 1791446640000,
+      "replyToMessageId": "3"
+    },
+    {
+      "id": "5",
+      "revision": "d04b7f97e212d8a685c9b474e85d489f02b5b0969b71d7596ca2bc7485dae70a",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "公园里的银杏开始变黄了，我今天走的是靠河的那条路，回家时没有下雨。",
+      "sentAtMs": 1791533100000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "6",
+      "revision": "5cd8848cee382b0c39f4f3ff471a7dfea2feda84be123080d67b17df935a3fa3",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "刚看完的纪录片讲海岸鸟类，最后一段是退潮以后沙滩上留下的脚印。",
+      "sentAtMs": 1791533160000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "7",
+      "revision": "50341d2d1c61c58c796485217daf9d83d91963d9df764fd34c997a2786f16287",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "今天用旧杯子喝了热茶，杯底那枚蓝色印章是以前就有的，我刚才又看见了。",
+      "sentAtMs": 1791533220000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "8",
+      "revision": "961a3fa665b75a530985d5f6bd27103b358dee28cc053717bc1cb04e3d3a3cbf",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "这周的展览我已经看完，二楼是黑白照片，一楼是彩色插画，出口在南边。",
+      "sentAtMs": 1791533280000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "9",
+      "revision": "d5a8814cf3d5cbe04994e93bad16617ff5b909bf0060ce8774a13d6558f0dc84",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "晚饭吃完了，番茄面有点酸，碗也已经洗好放回柜子，今天没有剩饭。",
+      "sentAtMs": 1791533340000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "10",
+      "revision": "de74ddf1cc54167c92b368ba5fe7e6305183a6db30c6c697f8d258b5adc0519b",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "我今天读到书中第三章，里面描述的是春天的草地，配的插图只有灰色和绿色。",
+      "sentAtMs": 1791533400000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "11",
+      "revision": "70916d7948330e6a5a85f84bc262a2c926596616bbc4b50f96b4ea0241c8ad56",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "从桥上看到两条小船，一条刷了蓝漆，另一条还是木头原色，它们当时都停着。",
+      "sentAtMs": 1791533460000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "12",
+      "revision": "e4921b625c492f3e37b2e2ab39609a9e6eff3a13412228dbf3dc1a65312cf867",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "窗外的风停了，刚才有一片叶子落在窗台上，现在还在原来的角落。",
+      "sentAtMs": 1791533520000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "13",
+      "revision": "84d27ae44843029e917c40d96f41ed51edab6624234ec02c8d0d14c7c84f3e67",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "那张明信片已经收到，画面是傍晚的山，背面邮戳的字有些模糊，但图案完整。",
+      "sentAtMs": 1791533580000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "14",
+      "revision": "061708702bdcfb02a278bce173af5169d478988ea334abe51a4a6472dfe41ec5",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "上午听的是钢琴独奏，曲子结尾停了几秒才响起掌声，录音到那里就结束了。",
+      "sentAtMs": 1791533640000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "15",
+      "revision": "96d3643a24c567caa55f00d9cd6b20ec6d34f15b6e706005b024359b39b396bf",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "我把桌面擦干净了，水杯和笔都放回原位，灯下那小块划痕仍然能看见。",
+      "sentAtMs": 1791533700000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "16",
+      "revision": "442dd239a048f5fee05380b7b9784b29bdea7cd48d1145b9864d11d6b5bbd2e2",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "今天楼下的猫在花坛旁睡觉，它醒来后绕着树走了一圈，又回到原处趴着。",
+      "sentAtMs": 1791533760000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "17",
+      "revision": "a72e3d565bddff76caa64df804ad266e61286cd8022ff0f466cc95be0ff31c96",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "书店橱窗换成了旅行主题，最外面一本书的封面是雪山，旁边放着蓝色地球仪。",
+      "sentAtMs": 1791533820000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "18",
+      "revision": "3cacdb8dd7ec8eb860aca095dd0d58a07d50d110ed2e15533cc44c5049a1f2e2",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "刚散步回来，街角的路灯已经亮了，便利店门口的两把椅子还是昨晚的位置。",
+      "sentAtMs": 1791533880000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "19",
+      "revision": "959ab6a8662024c13c185dac3151468d6875e7da7f72dd7be7f51db01f24af51",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "上个月你出差，是我订场地和通知大家；这个月我们原先说好轮到你，你还记得吗？",
+      "sentAtMs": 1791620340000,
+      "replyToMessageId": "2"
+    },
+    {
+      "id": "20",
+      "revision": "efd53131197a4ce2ad4d53c3930dbbec3eab19ac938077a97bf3f6e0ef3676a5",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "记得，上个月确实都是你张罗的，这个月轮到我也是说好的。刚才说每次都等我安排不准确，我今天只是几件事赶在一起有点累。",
+      "sentAtMs": 1791620400000,
+      "replyToMessageId": "19"
+    }
+  ],
+  "excluded": {
+    "id": "99",
+    "revision": "cad004adcbe806ceb84878c9ccd949fdc9b4a1895b3c4e35944a6936231012dc",
+    "senderName": "合成对方",
+    "isSelf": false,
+    "text": "范围外的合成记录，只能在本地核对，不发送给模型。",
+    "sentAtMs": 1792489140000,
+    "replyToMessageId": null
+  },
+  "limits": {
+    "maxChecks": 2,
+    "maxRoundsPerCheck": 4,
+    "maxCalls": 8,
+    "maxInputTokens": 120000,
+    "maxOutputTokens": 12000,
+    "maxElapsedMs": 300000
+  },
+  "model": "gpt-6.1-sol",
+  "protocol": "openai-completions",
+  "perRequestEstimateCeiling": 7000,
+  "experiment": "candidate-comparison",
+  "totalRequestLimit": 24,
+  "precedingRequests": 3,
+  "configuredCapacity": {
+    "known": false,
+    "contextWindow": 16000,
+    "maxOutputTokens": 8192,
+    "margin": 256
+  },
+  "syntheticPackingInputEstimateLimit": 7000,
+  "perRequestOutputLimit": 3000
+}

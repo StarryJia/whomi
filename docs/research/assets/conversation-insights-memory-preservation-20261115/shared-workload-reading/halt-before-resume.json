@@ -1,0 +1,1 @@
+{"caseName":"shared-workload","variant":"reading","state":"failed","error":"INVALID_EVIDENCE","calls":3,"httpRequests":3,"elapsedMs":64754,"inputCharged":5842,"outputCharged":3461,"trialRequestsAfterPhase":3,"accounting":{"incremental":{"httpRequests":3,"elapsedMs":64754,"inputCharged":5842,"outputCharged":3461}}}

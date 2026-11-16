@@ -1,10 +1,12 @@
 import { dimensionKeys, isMemoryReport, type SavedReport } from '../shared/memory'
+import { isInsightReport } from '../shared/conversation-insights'
 import { personalityDimensions, predictionText } from './personality-dimensions'
 import './memory-article.css'
 
 export { predictionText } from './personality-dimensions'
 
 export function MemoryArticle({ report }: { report: SavedReport }) {
+  if (isInsightReport(report)) return null
   if (!isMemoryReport(report)) return <article className="memory-prose">
     <h3>摘要</h3><p>{report.summary}</p>
     {!!report.observations.length && <section><h3>观察</h3>{report.observations.map((item, index) => <div key={index}><p>{item.text}</p>{item.limitations && <p>{item.limitations}</p>}</div>)}</section>}

@@ -1,0 +1,134 @@
+{
+  "format": "conversation-insights-v1",
+  "aboutYou": [
+    {
+      "content": [
+        {
+          "text": "10月持续组织读书活动时，你多次表达疲累，觉得自己默认要兜底，却没有因此取消活动。你描述的负担不只是现场主持，还包括预约、通知，以及同时回应不同类型的消息；当晚关闭群提醒、由 ta 留意临时变动，只是临时安排，尚不能算长期卸下了这些责任。",
+          "citationId": "63"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "text": "月底分工落实后，你感到重复答疑减少、自己轻松了一些，但也明确保留了边界：这次较轻松，不代表以后就能长期多承担。你在区分一次活动的改善和持续承担更多工作的能力，没有把前者直接变成新的承诺。",
+          "citationId": "111"
+        }
+      ]
+    }
+  ],
+  "relationship": [
+    {
+      "content": [
+        {
+          "text": "你们围绕活动负担的沟通出现了修正：10月22日，你承认 ta 已有的贡献，收回此前将安排工作全部归于自己的概括。这并不抹去你所表达的疲累，但让讨论能够同时保留你的负担与 ta 实际做过的事。",
+          "citationId": "73"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "text": "10月25日，你们约定由 ta 回答报名及路线问题，你负责最终核对名单；27日活动到场10人，之后你反馈重复答疑减少、负担有所减轻。这次改善有具体的责任划分和你的事后反馈支持，但目前只能说明该场活动的协作有所改善，还不能推定已经形成稳定的长期分工。",
+          "citationId": "111"
+        }
+      ]
+    }
+  ],
+  "citations": [
+    {
+      "id": "63",
+      "conversationId": "1",
+      "fragments": [
+        {
+          "sources": [
+            {
+              "messageId": "35",
+              "revision": "85ef7bc26f7fffa0bd19c37933361cbfaca386975dc61a4b5fa558db5dbb8f33"
+            },
+            {
+              "messageId": "63",
+              "revision": "5aa8b100938d7a86875cc69f2a67a131e769bc58b2b8a02ec1a5188e9d8371d5"
+            },
+            {
+              "messageId": "65",
+              "revision": "ec0677ecc68abcacc0d17b089bc7bd1954390e663dff612953560525eeb80718"
+            },
+            {
+              "messageId": "66",
+              "revision": "ec15616096ca5c657e97699a307c66efb6e5096d63793434aa8f170e33b309bc"
+            },
+            {
+              "messageId": "67",
+              "revision": "61c388b33ca8bf899a5108215a95d267aaf1588cf6428f4e418aa415bdd9e5e9"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "73",
+      "conversationId": "1",
+      "fragments": [
+        {
+          "sources": [
+            {
+              "messageId": "73",
+              "revision": "74b3e0d29dc6c100f5ffec2600c25edfa06375ce3f78e8ace54d3a61334b1666"
+            },
+            {
+              "messageId": "75",
+              "revision": "3d470cca2aca92c934aef181b6564397032bc86e575dcf18016617b5d1596ca9"
+            },
+            {
+              "messageId": "76",
+              "revision": "6fde443a769039cee150f599015ae7bba5ffe587d5bc2cad68ece81bd3c3b167"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "111",
+      "conversationId": "1",
+      "fragments": [
+        {
+          "sources": [
+            {
+              "messageId": "97",
+              "revision": "308f36b4fe135371bcac0ba3e217df3d8093bcf8adb0a0cf52208b4b74732de1"
+            },
+            {
+              "messageId": "98",
+              "revision": "7ac6b3d7c2cf4b19c6ed615167d25bb561d5633133131bdbe439de49ef37c429"
+            },
+            {
+              "messageId": "106",
+              "revision": "8de3ce7e896b237df40658b032520a946a7eac95f2e080b4f8620b8d97c4ff24"
+            },
+            {
+              "messageId": "108",
+              "revision": "114e1c4bc3a42fd6b04d51d44b4334632d5e06b47b02211aec902e2af87c9060"
+            },
+            {
+              "messageId": "111",
+              "revision": "b9c9a9394df320e5045d0ea635f7639f2f7af5234441ee2b3d21170f4780f34d"
+            },
+            {
+              "messageId": "112",
+              "revision": "a3351f31f81ac41efa711457e0499fe59085e20de06ff76b96ec31e95fb4b636"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "11月的具体分工仍未确定，书单、库存及收据是否完成交付也待确认；现有改善能否持续，材料尚不能回答。",
+    "茶与纸杯涉及不同场次，不能全部计入10月18日的采购或据此比较双方投入。",
+    "来源86明确回复来源63，但其所指正文未提供，不能据此补写 ta 对此前负担表达的具体回应。",
+    "材料未说明你后来是否调整了无人开口时立即接话的做法，因此不能认定现场主持负担也已得到重新分配。"
+  ],
+  "judgments": []
+}

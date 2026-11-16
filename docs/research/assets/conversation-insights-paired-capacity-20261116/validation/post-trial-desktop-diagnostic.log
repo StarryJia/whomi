@@ -1,0 +1,86 @@
+
+Running 1 test using 1 worker
+
+(node:32416) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  pw:api => electron.launch started +0ms
+  pw:api <= electron.launch succeeded +516ms
+  pw:api   "commit" event fired +285ms
+  pw:api   "commit" event fired +11ms
+  pw:api   navigated to "file:///D:/University/github/whomi/out/renderer/index.html" +0ms
+  pw:api <= electronApplication.firstWindow succeeded +2ms
+  pw:api => electronApplication.evaluate started +1ms
+  pw:api <= electronApplication.evaluate succeeded +11ms
+  pw:api => page.evaluate started +1ms
+  pw:api <= page.evaluate succeeded +32ms
+  pw:api => page.evaluate started +1ms
+  pw:api   "domcontentloaded" event fired +116ms
+  pw:api   "load" event fired +1ms
+  pw:api <= page.evaluate succeeded +18ms
+  pw:api => page.evaluate started +7ms
+  pw:api   "networkidle" event fired +411ms
+  pw:api <= page.evaluate succeeded +378ms
+  pw:api => page.evaluate started +2ms
+  pw:api <= page.evaluate succeeded +20ms
+  pw:api => page.evaluate started +2s
+  pw:api <= page.evaluate succeeded +25ms
+  pw:api => page.evaluate started +1ms
+  pw:api <= page.evaluate failed +6ms
+  pw:api => electronApplication.close started +3ms
+  pw:api <= electronApplication.close succeeded +188ms
+  pw:api => electron.launch started +1ms
+  pw:api <= electron.launch succeeded +465ms
+  pw:api   "commit" event fired +245ms
+  pw:api   "commit" event fired +7ms
+  pw:api   navigated to "file:///D:/University/github/whomi/out/renderer/index.html" +0ms
+  pw:api <= electronApplication.firstWindow succeeded +1ms
+  pw:api => page.evaluate started +1ms
+  pw:api <= page.evaluate succeeded +65ms
+  pw:api => page.evaluate started +1ms
+  pw:api <= page.evaluate succeeded +15ms
+  pw:api => page.evaluate started +1ms
+  pw:api <= page.evaluate succeeded +7ms
+  pw:api   "domcontentloaded" event fired +78ms
+  pw:api   "load" event fired +1ms
+  pw:api => page.evaluate started +33ms
+  pw:api   "networkidle" event fired +402ms
+  pw:api <= page.evaluate succeeded +382ms
+  pw:api => page.evaluate started +258ms
+  pw:api <= page.evaluate succeeded +4ms
+  pw:api => page.evaluate started +514ms
+  pw:api <= page.evaluate succeeded +4ms
+  pw:api => page.evaluate started +1s
+  pw:api <= page.evaluate succeeded +3ms
+  pw:api => page.evaluate started +1ms
+  pw:api <= page.evaluate failed +6ms
+  pw:api => page.evaluate started +1ms
+  pw:api <= page.evaluate succeeded +11ms
+  pw:api => page.evaluate started +1ms
+  pw:api <= page.evaluate succeeded +6ms
+  pw:api => page.evaluate started +110ms
+  pw:api <= page.evaluate succeeded +6ms
+  pw:api => page.evaluate started +4ms
+  pw:api <= page.evaluate succeeded +4ms
+  pw:api => page.evaluate started +2ms
+  pw:api <= page.evaluate succeeded +7ms
+  pw:api => page.evaluate started +1ms
+  pw:api <= page.evaluate succeeded +5ms
+  pw:api => page.evaluate started +1ms
+  pw:api <= page.evaluate succeeded +9ms
+  pw:api => page.evaluate started +1ms
+  pw:api <= page.evaluate succeeded +3ms
+  pw:api => page.evaluate started +0ms
+  pw:api <= page.evaluate succeeded +8ms
+  pw:api => page.evaluate started +1ms
+  pw:api <= page.evaluate succeeded +2ms
+  pw:api => page.evaluate started +1ms
+  pw:api <= page.evaluate succeeded +2ms
+  pw:api => page.evaluate started +1ms
+  pw:api <= page.evaluate succeeded +2ms
+  pw:api => page.evaluate started +1ms
+  pw:api <= page.evaluate succeeded +7ms
+  pw:api => electronApplication.close started +3ms
+  pw:api <= electronApplication.close succeeded +526ms
+  ok 1 tests\desktop\conversation-insights.spec.mjs:14:1 › isolated Electron resumes a scoped insight, retries writing, and preserves exact citations through rename and deletion (8.2s)
+
+  1 passed (9.5s)

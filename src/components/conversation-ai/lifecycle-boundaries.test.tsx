@@ -286,6 +286,6 @@ describe('AI 对话结束与切换边界', () => {
     await waitFor(() => expect(client.respond).toHaveBeenCalledOnce())
     expect(screen.queryByRole('complementary', { name: 'AI 对话' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'AI 对话' }))
-    expect(await screen.findByText('新回答')).toBeVisible()
+    await visibleAnswer('新回答')
   })
 })

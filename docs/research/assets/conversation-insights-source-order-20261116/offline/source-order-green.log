@@ -1,0 +1,133 @@
+
+ RUN  v5.0.5 D:/University/github/whomi
+
+ ❯ tests/backend/insight-generation.test.ts (74 tests | 4 failed) 177ms
+   × a real 546-character compression remains valid above its 522-character target when writing memory shrinks by a quarter 15ms
+   × writing recompresses facts after a larger checked finding without repeating checking (resume at writing: false) 5ms
+   × writing recompresses facts after a larger checked finding without repeating checking (resume at writing: true) 3ms
+   × selecting a visible leaf note rereads its original sources and supports revising the initial observation 2ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/backend/insight-generation.test.ts > a real 546-character compression remains valid above its 522-character target when writing memory shrinks by a quarter
+AssertionError: expected [ …(5) ] to deep equally contain { text: '对方已追问带孩子路线中的年龄。', …(1) }
+
+- Expected:
+{
+  "sourceIds": [
+    "106",
+  ],
+  "text": "对方已追问带孩子路线中的年龄。",
+}
+
++ Received:
+[
+  {
+    "sourceIds": [
+      "47",
+      "48",
+    ],
+    "text": "对方已追问带孩子路线中的年龄。",
+  },
+  {
+    "sourceIds": [
+      "75",
+    ],
+    "text": "本人称分工未明使事情回落自己。",
+  },
+  {
+    "sourceIds": [
+      "78",
+      "79",
+    ],
+    "text": "对方洗净杯子仍晾厨房架。",
+  },
+  {
+    "sourceIds": [
+      "106",
+    ],
+    "text": "本人确认10月18日活动照常、已通知。",
+  },
+  {
+    "sourceIds": [
+      "113",
+      "114",
+    ],
+    "text": "10月27日新朋友想带书签；对方不代诺每人一份。",
+  },
+]
+
+ ❯ Object.run tests/backend/insight-generation.test.ts:187:34
+    185|       return result(compressionTargetFixture.response)
+    186|     }
+    187|     expect(payload.observations).toContainEqual({ text: '对方已追问带孩子路线中的年…
+       |                                  ^
+    188|     expect(payload.openThreads).toContainEqual({ text: '年龄及路线适宜性未明。', …
+    189|     expect(Buffer.byteLength(JSON.stringify({ observations: payload.ob…
+ ❯ call electron/main/insight-generation.ts:567:27
+ ❯ generateInsight electron/main/insight-generation.ts:945:22
+ ❯ tests/backend/insight-generation.test.ts:199:3
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  tests/backend/insight-generation.test.ts > writing recompresses facts after a larger checked finding without repeating checking (resume at writing: false)
+ FAIL  tests/backend/insight-generation.test.ts > writing recompresses facts after a larger checked finding without repeating checking (resume at writing: true)
+AssertionError: expected [ 'compress-navigation', …(2) ] to deeply equal [ 'checking', …(2) ]
+
+- Expected
++ Received
+
+  [
+-   "checking",
+    "compress-navigation",
++   "checking",
+    "writing",
+  ]
+
+ ❯ tests/backend/insight-generation.test.ts:306:18
+    304|     await generateInsight({ ...input, checkpoint }, deps)
+    305|   }
+    306|   expect(stages).toEqual(['checking', 'compress-navigation', 'writing'…
+       |                  ^
+    307|   expect(state.checkpoint?.checks[0]).toMatchObject({ rounds: 1, state…
+    308|   expect(state.checkpoint?.observations).toEqual([original])
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  tests/backend/insight-generation.test.ts > selecting a visible leaf note rereads its original sources and supports revising the initial observation
+AssertionError: expected [ [ '2', '3', '4', '19', '20' ], …(1) ] to deep equally contain [ '19', '20' ]
+
+- Expected
++ Received
+
+  [
++   [
++     "2",
++     "3",
++     "4",
+      "19",
+      "20",
++   ],
++   [
++     "2",
++     "3",
++     "4",
++   ],
+  ]
+
+ ❯ tests/backend/insight-generation.test.ts:969:23
+    967|   })
+    968|   await generateInsight(input, deps)
+    969|   expect(state.reads).toContainEqual(['19', '20'])
+       |                       ^
+    970|   expect(state.checkpoint?.checks[0].finding).toMatchObject({
+    971|     revisedObservation: '撤回长期单方承担的概括，已有轮流分工；当次疲惫仍有依据。', counterexample…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  4 failed | 74 passed (78)
+   Start at  00:51:29
+   Duration  561ms (tests 38%, transform 37%, import 22%, worker 2%)
+
