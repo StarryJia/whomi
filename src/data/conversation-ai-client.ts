@@ -233,6 +233,7 @@ export async function createConversationAiClient(api: AiApi, settings?: Settings
       return followAnalysis(initial, signal, onProgress)
     },
     prepareAnalysis: request => api.prepareAnalysis(request),
+    discardAnalysisPreparation: token => api.discardAnalysisPreparation(token),
     ...(api.previewInsightScope && { previewInsightScope: request => api.previewInsightScope(request) }),
     arrangeThread: (conversationId, change) => api.arrangeThread(conversationId, change),
     async deleteThread(conversationId, threadId) { await api.deleteThread(conversationId, threadId); threads.delete(conversationId) },

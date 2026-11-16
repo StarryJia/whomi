@@ -376,8 +376,7 @@ function queueCandidates(state: InsightCheckpoint, candidates: ReadCandidate[], 
   for (const candidate of candidates) {
     if (state.checks.length >= state.limits.maxChecks) break
     const normalized = candidate.observation.trim().replace(/\s+/g, '').toLowerCase()
-    if (state.checks.some(check => check.observation.trim().replace(/\s+/g, '').toLowerCase() === normalized
-      || (check.supportingIds.length === candidate.supportingIds.length && check.supportingIds.every(id => candidate.supportingIds.includes(id))))) continue
+    if (state.checks.some(check => check.observation.trim().replace(/\s+/g, '').toLowerCase() === normalized)) continue
     state.checks.push({
       ...candidate, id: String(state.checks.length + 1), state: 'pending', rounds: 0, seenEvidenceIds: [],
       navigationRequests: [], pendingNavigation: null,

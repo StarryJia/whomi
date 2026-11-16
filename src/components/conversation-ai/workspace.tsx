@@ -24,6 +24,11 @@ import '../../vendor/cherry-chat/shared/theme.css'
 
 function errorText(error: unknown) { return error instanceof Error ? error.message : error && typeof error === 'object' && 'action' in error && typeof error.action === 'string' ? error.action : '操作失败，请重试。' }
 
+function discardPreparation(adapter: ConversationAiAdapter | undefined, token: string) {
+  // 后台过期清理会补偿离页时的释放失败。
+  void adapter?.discardAnalysisPreparation?.(token).catch(() => {})
+}
+
 function Popover({ anchor, label, children, onClose, above = false, alignStart = false, onMouseEnter, onMouseLeave, id, focusOnOpen }: {
   anchor: RefObject<HTMLElement | null>; label: string; children: ReactNode; onClose: () => void; above?: boolean; alignStart?: boolean
   onMouseEnter?: () => void; onMouseLeave?: () => void
@@ -229,6 +234,7 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
     error: analysisError, setError: setAnalysisError, progress, result: analysisResult } = analysis
   const [showReport, setShowReport] = useState(false)
   const [preparation, setPreparation] = useState<AnalysisPreparation>()
+  const submittedPreparations = useRef(new Set<string>())
   const [analysisScope, setAnalysisScope] = useState<InsightScope>({ kind: 'all' })
   const [scopePreview, setScopePreview] = useState<{ scope: InsightScope; preview: InsightScopePreview }>()
   const [scopeError, setScopeError] = useState('')
@@ -447,14 +453,20 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
       return
     }
     let current = true
+    let preparedToken: string | undefined
     setPreparing(true)
     setPreparation(undefined)
     setAnalysisError('')
     void adapter.prepareAnalysis({ conversationId, modelId: analysisModelId, scope: analysisScope,
       ...(effectiveAnalysisThinkingLevel ? { thinkingLevel: effectiveAnalysisThinkingLevel } : {}) }).then(value => {
+      preparedToken = value.token
       if (current) setPreparation(value)
+      else discardPreparation(adapter, value.token)
     }, error => { if (current) setAnalysisError(errorText(error)) }).finally(() => { if (current) setPreparing(false) })
-    return () => { current = false }
+    return () => {
+      current = false
+      if (preparedToken && !submittedPreparations.current.has(preparedToken)) discardPreparation(adapter, preparedToken)
+    }
   }, [analysisOpen, analysisConfirming, adapter, conversationId, identityRevision, analysisModelId, effectiveAnalysisThinkingLevel,
     selectedAnalysisModel, prepareAttempt, analysisScope, validScope, currentScope])
   useEffect(() => {
@@ -714,10 +726,21 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
 
   function analyze() {
     if (!canStart || !analysisAnchor.current || approveAnalysisEntry?.(analysisAnchor.current) === false) return
+    const token = preparation?.token
+    if (token) {
+      if (submittedPreparations.current.has(token)) return
+      // 确认界面先关闭，后端受理前仍需保留准备快照。
+      submittedPreparations.current.add(token)
+    }
     void analysis.run({ conversationId, modelId: analysisModelId,
       ...(analysisScope.kind === 'dates' ? { scope: analysisScope } : {}),
       ...(effectiveAnalysisThinkingLevel ? { thinkingLevel: effectiveAnalysisThinkingLevel } : {}),
-      ...(preparation ? { preparationToken: preparation.token, requestId: crypto.randomUUID() } : {}) })
+      ...(token ? { preparationToken: token, requestId: crypto.randomUUID() } : {}) }).finally(() => {
+      if (token) {
+        submittedPreparations.current.delete(token)
+        discardPreparation(adapter, token)
+      }
+    })
   }
   const completed = progress?.analyzedMessages
   const total = progress?.totalMessages

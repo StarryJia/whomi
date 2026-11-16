@@ -182,3 +182,87 @@ it('初读与运行进度交错时保留最新版本和删除结果', async () =
   expect(screen.getByRole('button', { name: /#0010/ }).closest('li')).toHaveTextContent('8 / 12')
   expect(screen.queryByRole('button', { name: /#0001/ })).toBeNull()
 })
+
+it('运行进度更新保留同一会话的置顶和手动排列顺序', async () => {
+  let listener!: (event: AiEvent) => void
+  const pinned = { ...memory, id: '23', pinned: true }
+  const first = { ...memory, id: '21' }
+  const running: AnalysisTask = { ...memory, id: '24', state: 'running', totalMessages: 12, report: undefined }
+  const last = { ...memory, id: '22' }
+  const api = { ai: { listAnalyses: async () => [pinned, first, running, last],
+    onEvent: (callback: typeof listener) => { listener = callback; return () => {} } } } as unknown as DesktopApi
+  render(<App conversations={[]} preview importApi={api} />)
+  await userEvent.click(screen.getByRole('button', { name: '对话洞察' }))
+  const rows = [
+    await screen.findByRole('button', { name: /#0023/ }),
+    screen.getByRole('button', { name: /#0021/ }),
+    screen.getByRole('button', { name: /#0024/ }),
+    screen.getByRole('button', { name: /#0022/ }),
+  ]
+  expect(screen.getAllByRole('button', { name: /#002[1-4]/ })).toEqual(rows)
+  await act(async () => listener({ kind: 'analysis', snapshot: { ...running, analyzedMessages: 8, eventSequence: 4 } }))
+  expect(screen.getByRole('button', { name: /#0024/ }).closest('li')).toHaveTextContent('8 / 12')
+  expect(screen.getAllByRole('button', { name: /#002[1-4]/ })).toEqual(rows)
+})
+
+it('新任务到达及生成完成后仍排在同会话的置顶报告后面', async () => {
+  let listener!: (event: AiEvent) => void
+  const pinned = { ...memory, id: '23', pinned: true }
+  const first = { ...memory, id: '21' }
+  const last = { ...memory, id: '22' }
+  const running: AnalysisTask = { ...memory, id: '24', state: 'running', totalMessages: 12, report: undefined }
+  let stored = [pinned, first, last]
+  const api = { ai: { listAnalyses: async () => stored,
+    onEvent: (callback: typeof listener) => { listener = callback; return () => {} } } } as unknown as DesktopApi
+  render(<App conversations={[]} preview importApi={api} />)
+  await userEvent.click(screen.getByRole('button', { name: '对话洞察' }))
+  const pinnedRow = await screen.findByRole('button', { name: /#0023/ })
+  const firstRow = screen.getByRole('button', { name: /#0021/ })
+  const lastRow = screen.getByRole('button', { name: /#0022/ })
+  await act(async () => listener({ kind: 'analysis', snapshot: running }))
+  expect(screen.getAllByRole('button', { name: /#002[1-4]/ })).toEqual([
+    pinnedRow, screen.getByRole('button', { name: /#0024/ }), firstRow, lastRow,
+  ])
+  const completed: AnalysisTask = { ...running, state: 'completed', analyzedMessages: 12, eventSequence: 4, report: memory.report }
+  stored = [pinned, completed, first, last]
+  await act(async () => listener({ kind: 'analysis', snapshot: completed }))
+  expect(screen.getAllByRole('button', { name: /#002[1-4]/ })).toEqual([
+    pinnedRow, screen.getByRole('button', { name: /#0024/ }), firstRow, lastRow,
+  ])
+  await userEvent.click(screen.getByRole('button', { name: /#0024/ }))
+  expect(screen.getByRole('dialog')).toHaveTextContent('你们会一起商量。')
+})
+
+it('置顶与取消置顶后的新顺序在后续进度更新中保持生效', async () => {
+  const user = userEvent.setup()
+  let listener!: (event: AiEvent) => void
+  const report = { ...memory, id: '23' }
+  const running: AnalysisTask = { ...memory, id: '24', state: 'running', totalMessages: 12, report: undefined }
+  let stored = [running, report]
+  const api = { ai: {
+    listAnalyses: async () => stored,
+    onEvent: (callback: typeof listener) => { listener = callback; return () => {} },
+    arrangeAnalysis: async (change: { id: string; pinned: boolean }) => {
+      if (change.id !== '23') throw Error('unexpected report')
+      const updated = { ...report, pinned: change.pinned, eventSequence: change.pinned ? 4 : 5 }
+      stored = change.pinned ? [updated, running] : [running, updated]
+    },
+  } } as unknown as DesktopApi
+  render(<App conversations={[]} preview importApi={api} />)
+  await user.click(screen.getByRole('button', { name: '对话洞察' }))
+  const reportRow = await screen.findByRole('button', { name: /#0023/ })
+  const runningRow = screen.getByRole('button', { name: /#0024/ })
+  expect(screen.getAllByRole('button', { name: /#002[34]/ })).toEqual([runningRow, reportRow])
+  await user.pointer({ target: reportRow, keys: '[MouseRight]' })
+  await user.click(screen.getByRole('menuitem', { name: '置顶' }))
+  await waitFor(() => expect(screen.getAllByRole('button', { name: /#002[34]/ })).toEqual([reportRow, runningRow]))
+  await act(async () => listener({ kind: 'analysis', snapshot: { ...running, analyzedMessages: 8, eventSequence: 4 } }))
+  expect(runningRow.closest('li')).toHaveTextContent('8 / 12')
+  expect(screen.getAllByRole('button', { name: /#002[34]/ })).toEqual([reportRow, runningRow])
+  await user.pointer({ target: reportRow, keys: '[MouseRight]' })
+  await user.click(screen.getByRole('menuitem', { name: '取消置顶' }))
+  await waitFor(() => expect(screen.getAllByRole('button', { name: /#002[34]/ })).toEqual([runningRow, reportRow]))
+  await act(async () => listener({ kind: 'analysis', snapshot: { ...running, analyzedMessages: 10, eventSequence: 5 } }))
+  expect(runningRow.closest('li')).toHaveTextContent('10 / 12')
+  expect(screen.getAllByRole('button', { name: /#002[34]/ })).toEqual([runningRow, reportRow])
+})

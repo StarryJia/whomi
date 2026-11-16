@@ -62,6 +62,7 @@ const input: Record<keyof AiMethods, Check[]> = {
   listModels: [], saveModel: [object({ ...modelFields, apiKey: optional(text(16384)) })], testModel: [key], listSkills: [],
   previewInsightScope: [object({ conversationId: localId, scope: optional(isInsightScope) })],
   prepareAnalysis: [object({ conversationId: localId, modelId: key, thinkingLevel: optional(thinking), scope: optional(isInsightScope) })], confirmAnalysis: [object({ token: key, requestId: key })],
+  discardAnalysisPreparation: [key],
   getAnalysis: [localId], listAnalyses: [optional(localId)], arrangeAnalysis: [listArrangement], renameAnalysis: [object({ taskId: localId, title: value => insightTitle(value) !== null })], deleteAnalysis: [localId], stopAnalysis: [localId], continueAnalysis: [localId], getReport: [localId],
   readInsightCitation: [object({ taskId: localId, citationId: key, fragmentIndex: count })],
   openThread: [localId], listThreads: [localId], createThread: [localId], getThread: [localId], arrangeThread: [localId, listArrangement], deleteThread: [localId, localId], sendTurn: [object({ threadId: localId, requestId: key, prompt: text(100000, true), referenceIds: ids, modelId: key, thinkingLevel: optional(thinking), skillId: optional(key) })], retryTurn: [localId], stopTurn: [localId],
@@ -70,6 +71,7 @@ const output: Record<keyof AiMethods, Check> = {
   listModels: array(model, 1000), saveModel: model, testModel: value => value === undefined, listSkills: array(object({ id: key, label: text(256, true), version: key }), 1000),
   previewInsightScope: object({ scope: isInsightScope, timezone: isInsightTimezone, totalMessages: count, analyzableMessages: count, sourceStartTimeMs: nullable(timestamp), sourceEndTimeMs: nullable(timestamp) }),
   prepareAnalysis: preparation, confirmAnalysis: analysis, getAnalysis: analysis, listAnalyses: array(analysis), arrangeAnalysis: value => value === undefined, renameAnalysis: analysis, deleteAnalysis: value => value === undefined, stopAnalysis: analysis, continueAnalysis: analysis, getReport: report, readInsightCitation: citationWindow,
+  discardAnalysisPreparation: value => value === undefined,
   openThread: thread, listThreads: array(object(threadFields)), createThread: thread, getThread: thread, arrangeThread: value => value === undefined, deleteThread: value => value === undefined, sendTurn: turn, retryTurn: turn, stopTurn: turn,
 }
 export function validateAiCall(method: unknown, args: unknown): asserts method is keyof AiMethods {

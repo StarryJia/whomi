@@ -356,6 +356,7 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
       await record.task
     },
     listSkills: () => storage('listSkills'), prepareAnalysis: input => control(async () => { available(input.conversationId); const { model } = await storage<{ model: AiModel }>('modelSecret', input.modelId); return storage('prepareAnalysis', { ...input, thinkingLevel: await acceptedThinking(model, input.thinkingLevel) }) }),
+    discardAnalysisPreparation: token => control(() => storage('discardAnalysisPreparation', token)),
     confirmAnalysis: input => control(async () => { const task = await storage<AnalysisTask>('confirmAnalysis', input); available(task.conversationId); if (task.state === 'queued') launch(`analysis:${task.id}`, task.conversationId, signal => executeAnalysis(task.id, signal), task.modelId); return task }),
     getAnalysis: id => storage('getAnalysis', id), listAnalyses: id => storage('listAnalyses', id), getReport: id => storage('getReport', id),
     previewInsightScope: input => storage('previewInsightScope', input),

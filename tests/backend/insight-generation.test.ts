@@ -707,6 +707,68 @@ function setup(messages: InsightSourceMessage[], run: InsightGenerationDeps['run
   return { input, deps, state }
 }
 
+test('reading keeps independent candidates backed by the same message while skipping a repeated question', async () => {
+  const { input, deps, state } = setup([source('1', true, '刚才我先道歉了，这次聚会也由我安排。')], async request => {
+    const payload = JSON.parse(request.prompt)
+    if (payload.stage === 'reading') return result({ ...noObservations, candidates: [
+      { observation: '是否总由本人先道歉？', supportingIds: ['1'], reason: '核对其他冲突由谁先道歉。' },
+      { observation: '是否总由本人 先道歉？', supportingIds: ['1'], reason: '核对其他冲突由谁先道歉。' },
+      { observation: '是否总由本人安排聚会？', supportingIds: ['1'], reason: '核对其他聚会的分工。' },
+    ] })
+    if (payload.stage === 'checking') return result({
+      action: 'finish', checkId: payload.check.id, revisedObservation: payload.check.observation,
+      supportingIds: ['1'], counterexampleIds: [], alternativeExplanations: [], limitations: ['只能确认这一次。'],
+    })
+    return result(noConclusion)
+  })
+  await generateInsight(input, deps)
+  expect(state.checkpoint?.checks.map(check => ({ observation: check.observation, state: check.state, finding: check.finding }))).toEqual([
+    { observation: '是否总由本人先道歉？', state: 'finished', finding: {
+      revisedObservation: '是否总由本人先道歉？', supportingIds: ['1'], counterexampleIds: [],
+      alternativeExplanations: [], limitations: ['只能确认这一次。'],
+    } },
+    { observation: '是否总由本人安排聚会？', state: 'finished', finding: {
+      revisedObservation: '是否总由本人安排聚会？', supportingIds: ['1'], counterexampleIds: [],
+      alternativeExplanations: [], limitations: ['只能确认这一次。'],
+    } },
+  ])
+})
+
+test('shared-source candidates keep the check limit and spent rounds when writing resumes', async () => {
+  const stages: string[] = []
+  let writingFailed = false
+  const { input, deps, state } = setup([source('1', true, '刚才我先道歉了，这次聚会由我安排，场地还没订。')], async request => {
+    const payload = JSON.parse(request.prompt)
+    stages.push(payload.stage)
+    if (payload.stage === 'reading') return result({ ...noObservations, candidates: [
+      { observation: '是否总由本人先道歉？', supportingIds: ['1'] },
+      { observation: '是否总由本人安排聚会？', supportingIds: ['1'] },
+      { observation: '场地是否已经订好？', supportingIds: ['1'] },
+    ] })
+    if (payload.stage === 'checking') return result({
+      action: 'finish', checkId: payload.check.id, revisedObservation: payload.check.observation,
+      supportingIds: ['1'], counterexampleIds: [], alternativeExplanations: [], limitations: ['只能确认这一次。'],
+    })
+    if (!writingFailed) {
+      writingFailed = true
+      throw new Error('fixture interruption after shared-source checks')
+    }
+    return result(noConclusion)
+  })
+  const configured = { ...input, limits: { ...limits, maxChecks: 2, maxCalls: 5 } }
+  await expect(generateInsight(configured, deps)).rejects.toThrow('fixture interruption after shared-source checks')
+  expect(state.checkpoint?.checks.map(check => ({ id: check.id, observation: check.observation, state: check.state, rounds: check.rounds })))
+    .toEqual([
+      { id: '1', observation: '是否总由本人先道歉？', state: 'finished', rounds: 1 },
+      { id: '2', observation: '是否总由本人安排聚会？', state: 'finished', rounds: 1 },
+    ])
+  const savedChecks = structuredClone(state.checkpoint?.checks)
+  await generateInsight({ ...configured, checkpoint: state.checkpoint }, deps)
+  expect(state.checkpoint?.checks).toEqual(savedChecks)
+  expect(state.checkpoint?.callsReserved).toBe(5)
+  expect(stages).toEqual(['reading', 'checking', 'checking', 'writing', 'writing'])
+})
+
 test('reading a later correction settles a candidate without a separate check and keeps the counterexample citable after recovery', async () => {
   const messages = [paddedSource('1', true, previousArrangement), source('2', false, '这次事情碰在一起。'),
     source('3', false, lastMonthArrangement + 'x'.repeat(1000), '1'), source('4', true, acknowledgeArrangement, '3')]
