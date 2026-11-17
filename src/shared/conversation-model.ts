@@ -1,5 +1,7 @@
 export type LocalId = string
-export type MessageKind = 'text' | 'image' | 'audio' | 'video' | 'file' | 'sticker' | 'link' | 'location' | 'reply' | 'forward' | 'system' | 'unknown'
+export const attachmentKinds = ['text', 'image', 'audio', 'video', 'file', 'sticker', 'link', 'location', 'reply', 'forward', 'system', 'unknown'] as const
+export const messageKinds = [...attachmentKinds, 'contact', 'call', 'poke'] as const
+export type MessageKind = typeof messageKinds[number]
 export type SourceIdentity = { platform: string; ownerKey: string | null; conversationKey: string | null; namespace: string }
 export type ParsedMember = { sourceKey: string; displayName: string; stableAccountKey: string | null; selfHint: boolean | null }
 export type ParsedConversation = { sourceKey: string; title: string; kind: 'direct' | 'group' | 'unknown'; identity: SourceIdentity }
@@ -7,7 +9,8 @@ export type ParsedReply = { originalId: string | null; idNamespace: string | nul
 export type ParsedAttachment = { kind: MessageKind; locator: string | null; name: string | null; state: 'unresolved' | 'missing' }
 export type ParsedMessage = { modelVersion: 1; conversationKey: string; ordinal: number; originalId: string | null; idNamespace: string | null; senderKey: string | null; senderKind: 'member' | 'system' | 'unknown'; senderName: string; sentAtMs: number | null; timeRaw: string | null; timePrecision: 'millisecond' | 'second' | 'minute' | 'unknown'; timezone: string | null; kind: MessageKind; text: string; sourceType: string | null; reply: ParsedReply | null; attachments: ParsedAttachment[]; extra: Record<string, unknown> }
 export type ImportIssue = { code: string; severity: 'warning' | 'blocking'; candidateId: string; ordinal?: number; action: string }
-const kinds = new Set(['text','image','audio','video','file','sticker','link','location','reply','forward','system','unknown'])
+const kinds = new Set<string>(messageKinds)
+const attachmentKindSet = new Set<string>(attachmentKinds)
 function record(value: unknown): value is Record<string, unknown> { return value !== null && typeof value === 'object' && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype }
 function nullableText(value: unknown) { return value === null || typeof value === 'string' }
 function time(value: unknown) { return value === null || (typeof value === 'number' && Number.isSafeInteger(value)) }
@@ -38,7 +41,7 @@ export function normalizeModel(input: unknown): ParsedMessage {
   }
   if (!Array.isArray(m.attachments) || !record(m.extra)) invalid()
   for (const a of m.attachments) {
-    if (!record(a) || !kinds.has(a.kind as string) || !nullableText(a.locator) ||
+    if (!record(a) || !attachmentKindSet.has(a.kind as string) || !nullableText(a.locator) ||
         !nullableText(a.name) || !['unresolved', 'missing'].includes(a.state as string)) invalid()
   }
   // 只复制规范化字段，避免来源文件的其他字段进入内部模型。

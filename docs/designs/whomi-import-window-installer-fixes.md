@@ -157,3 +157,25 @@
 - [带引用会话删除后的总览](../../release/acceptance-fixes-20261030/05-reply-conversation-deleted.png)
 
 截图为本地验收产物，保存在被忽略的 release 目录中，不包含真实聊天数据。
+
+## 5. 微信导出消息类型与保存结果 · #22
+
+2026-11-17。范围为 [工单 #22](https://github.com/StarryJia/whomi/issues/22) 中通过微信导出工具 SIWX（Stories in WeChat）生成的记录和导入结果。界面沿用同一个操作区，保存结束后在对应会话的条数下显示代表性警告，保留打开会话和继续导入入口。
+
+| 合成输入 | 解析和保存结果 | 类型依据 |
+| --- | --- | --- |
+| 外层 `1`，正文「明晚见」 | 文字，保留原正文、发送者和时间 | [SIWX 类型表](https://github.com/ImUpXuu/SIWX/blob/c83ba6e7e601230dcb550432a8717e30f0bfd13f/siwx/api_chat.py#L789-L792) |
+| 外层 `49`，应用消息子类型 `4`、`5`、`6`、`8`、`19`、`57`、`62` | 分别为链接、链接、文件、表情、合并转发、引用、拍一拍。合并转发也能识别 `<appmsg type="19">`。拍一拍也能通过带子类型的组合数字 `266287972401` 识别。 | [SIWX 拍一拍识别](https://github.com/ImUpXuu/SIWX/blob/c83ba6e7e601230dcb550432a8717e30f0bfd13f/siwx/api_chat.py#L216-L224) · [SIWX 转发识别](https://github.com/ImUpXuu/SIWX/blob/c83ba6e7e601230dcb550432a8717e30f0bfd13f/siwx/api_chat.py#L642-L658) · [Chatlog 子类型](https://github.com/ysy950803/chatlog/blob/main/internal/model/message.go#L51-L87) |
+| 名称「名片消息」或外层 `42`，名称「通话消息」或外层 `50` | 分别保存为名片和通话，保留各自正文和发送者 | [SIWX 类型表](https://github.com/ImUpXuu/SIWX/blob/c83ba6e7e601230dcb550432a8717e30f0bfd13f/siwx/api_chat.py#L789-L792) |
+| `quote` 包含摘录，引用正文也含类似消息编号的标记 | 引用只使用结构中直接给出的目标编号。编号缺失或无效时仍可读摘录。 | [SIWX 引用识别](https://github.com/ImUpXuu/SIWX/blob/c83ba6e7e601230dcb550432a8717e30f0bfd13f/siwx/api_chat.py#L532-L548) |
+| 外层 `49` 缺少可核验的子类型，正文「未识别的分享」 | 记录保存为未知类型。遇到未知子类型、残缺结构、重复的子类型字段或与组合数字冲突时，同样保留导出的可读正文。 | [SIWX 导出字段](https://github.com/ImUpXuu/SIWX/blob/c83ba6e7e601230dcb550432a8717e30f0bfd13f/siwx/export_stream.py#L63-L110) |
+
+合成微信会话含八条记录，第六、七条无法识别。首次保存显示「已保存 8 条消息」，只提示一次并以第六条为例。重导显示新增 0 条、重复 8 条，提示沿用已有正文。若同批另有解析失败的文件，该文件显示无法保存和重选入口。
+
+资料库升级保留原有消息编号、类型和引用。没有稳定消息编号的旧版微信记录可按原有去重条件匹配重新导出的对应记录，每条旧记录只抵扣一次。例如旧库有一条未知类型的示例文件消息，新导出含两条相同记录，其中一条计为重复，另一条计为新增。
+
+### 验证结果
+
+- 类型检查和桌面构建通过。测试限制为两个并行进程后，前端 605 项、后端 699 项全部通过。
+- 首次全量桌面运行 44 项通过、11 项失败、2 项跳过，六项导入用例均通过。失败现场对应八处旧入口名称、两处旧模型模拟响应和一处订阅设置布局断言。首次日志、报告和错误现场保存在 `release/issue-22-validation/first-20261117-164736-698/`。
+- 最终构建的六项桌面导入用例在 Windows 正常用户环境全部通过。已核对首次保存、重导、窄窗口和同批部分失败截图，取消与失败重试也通过。合成截图、标准输出、标准错误和测试报告保存在 `release/issue-22-validation/import-final-20261117-170351-694/`。

@@ -1,5 +1,5 @@
 import type { Store } from './open'
-import { schema, schemaVersion, selfOptOutSchema, importStateSchema } from './schema'
+import { schema, schemaVersion, selfOptOutSchema, importStateSchema, messageKindSchema } from './schema'
 import { aiSchema, insightSchema } from '../ai/schema'
 import { migrateAiThreads } from '../ai/thread-migration'
 export function migrateStore(store: Pick<Store, 'writer'>): void {
@@ -7,7 +7,7 @@ export function migrateStore(store: Pick<Store, 'writer'>): void {
   const version = db.pragma('user_version', { simple: true }) as bigint
   if (version > BigInt(schemaVersion)) throw new Error('请升级应用后打开资料库。')
   if (version === BigInt(schemaVersion)) return
-  // 重建被问答引用的线程表时，事务提交前统一检查外键。
+  // 重建被其他表引用的数据表时，事务提交前统一检查外键。
   db.pragma('foreign_keys = OFF')
   try {
     db.transaction(() => {
@@ -35,6 +35,7 @@ export function migrateStore(store: Pick<Store, 'writer'>): void {
       if (version < 8n) db.exec(`ALTER TABLE ai_analysis_tasks ADD COLUMN prompt_snapshot TEXT CHECK(prompt_snapshot IS NULL OR json_valid(prompt_snapshot));
         ALTER TABLE ai_turns ADD COLUMN system_prompt TEXT;`)
       if (version < 9n) db.exec(insightSchema)
+      if (version < 10n) db.exec(messageKindSchema)
       if ((db.pragma('foreign_key_check') as unknown[]).length) throw new Error('资料库迁移失败，请从备份恢复后重试。')
       db.pragma(`user_version = ${schemaVersion}`)
     }).immediate()

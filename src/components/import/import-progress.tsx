@@ -1,11 +1,33 @@
 import { isImportActive, isPersistedResult } from '../../data/use-import'
-import type { ImportSnapshot } from '../../shared/import-contract'
+import type { ImportCandidateResult, ImportSnapshot } from '../../shared/import-contract'
 import type { ImportIssue } from '../../shared/conversation-model'
 import { ImportStateMark } from './import-artwork'
 
-function visibleIssues(issues:readonly ImportIssue[]) {
-  return issues.filter((issue,index)=>!issues.some((other,otherIndex)=>other.candidateId===issue.candidateId &&
-    ((other.action===issue.action && otherIndex<index) || (other.action!==issue.action && other.action.endsWith(issue.action)))))
+function isUnknownTypeWarning(issue: ImportIssue) {
+  return issue.code === 'unknown-type' && issue.severity === 'warning'
+}
+
+function visibleIssues(issues: readonly ImportIssue[]) {
+  return issues.filter((issue, index) => !issues.some((other, otherIndex) => {
+    if (other.candidateId !== issue.candidateId || other.severity !== issue.severity) return false
+    if (isUnknownTypeWarning(issue)) return other.code === issue.code && otherIndex < index
+    return other.action === issue.action ? otherIndex < index : other.action.endsWith(issue.action)
+  }))
+}
+
+function ImportIssueNotice({ issue, result }: { issue: ImportIssue; result?: ImportCandidateResult }) {
+  let action = issue.action
+  if (isUnknownTypeWarning(issue)) {
+    const location = issue.ordinal === undefined ? '' : `，如第 ${issue.ordinal + 1} 条记录`
+    let nextStep = '请核对来源文件。'
+    if (result && isPersistedResult(result)) {
+      if (result.status === 'duplicate') nextStep = '重复记录沿用已有正文，可打开会话核对。'
+      else if (result.duplicates > 0) nextStep = '新增记录保留正文，重复记录沿用已有正文。'
+      else nextStep = '记录已保留，可打开会话核对正文。'
+    }
+    action = `部分消息类型无法识别${location}。${nextStep}`
+  }
+  return <p className={issue.severity === 'blocking' ? 'import-error' : 'import-muted'}>{action}</p>
 }
 
 const statusLabels: Record<string, string> = {
@@ -25,7 +47,9 @@ export function ImportProgress({ snapshot, busy, onCancel, onOpen, onRetrySummar
   const singleComplete = !isImportActive(snapshot) && snapshot.results.length===1 && hasSaved
   const replaceSingleFile = snapshot.status === 'failed' && snapshot.results.length === 1 && !hasSaved && !!onRechoose
   const unassignedIssues = snapshot.issues.filter(issue =>
-    !snapshot.results.some(result => result.issues.some(item => item.code === issue.code && item.action === issue.action))
+    !snapshot.results.some(result => result.candidateId === issue.candidateId &&
+      (isUnknownTypeWarning(issue) || result.issues.some(item =>
+        item.code === issue.code && item.severity === issue.severity && item.action === issue.action)))
   )
 
   return <section className={`import-step${snapshot.results.length<=1 ? ' import-step-centered import-result-single':''}`} aria-label="导入进度与结果">
@@ -41,9 +65,11 @@ export function ImportProgress({ snapshot, busy, onCancel, onOpen, onRetrySummar
         <button className="import-secondary" type="button" onClick={onCancel}>取消导入</button>
       </div>
     )}
-    {visibleIssues(unassignedIssues).map((issue, index) => <p className="import-error" key={index}>{issue.action}</p>)}
+    {visibleIssues(unassignedIssues).map((issue, index) => <ImportIssueNotice key={index} issue={issue} />)}
     {snapshot.results.length > 0 && <ul className="import-results">{snapshot.results.map(result => {
       const persisted = isPersistedResult(result)
+      // 保存失败时结果只保留阻断原因，类型提示仍来自解析。
+      const typeWarnings = snapshot.issues.filter(issue => issue.candidateId === result.candidateId && isUnknownTypeWarning(issue))
       const matchedTitle = result.matchedConversationTitle
       const title = persisted && matchedTitle !== undefined
         ? `发现已有会话：${matchedTitle.trim() ? matchedTitle : '未命名会话'}`
@@ -52,7 +78,7 @@ export function ImportProgress({ snapshot, busy, onCancel, onOpen, onRetrySummar
         <h3>{title}</h3>
         {!replaceSingleFile && <p>{persisted ? result.status === 'duplicate' ? `新增 0 条消息，重复 ${result.duplicates} 条。` : `已保存 ${result.inserted} 条消息。` : result.status === 'saved' || result.status === 'duplicate' ? '请重新查询保存结果。' : resultLabels[result.status]}</p>}
         {persisted && result.status !== 'duplicate' && result.duplicates > 0 && <p className="import-muted">跳过重复 {result.duplicates} 条。</p>}
-        {visibleIssues(result.issues).map((issue, index) => <p className="import-error" key={index}>{issue.action}</p>)}
+        {visibleIssues([...result.issues, ...typeWarnings]).map((issue, index) => <ImportIssueNotice key={index} issue={issue} result={result} />)}
         {persisted && !singleComplete && <button className="import-primary" type="button" disabled={!onOpen} onClick={() => onOpen?.(result.conversationId!)}>打开会话</button>}
         {persisted && result.summaryFailed && !retriedSummaries.has(result.conversationId!) && <>
           <p className="import-muted">消息已保存，摘要待更新。</p>

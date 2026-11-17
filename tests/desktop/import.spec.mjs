@@ -167,6 +167,66 @@ test('actual import UI preserves old messages, self identity, source bytes and s
   } finally { await application?.close(); await cleanup(directory) }
 })
 
+test('SIWX import retains unknown records and reports their saved state after reimport', async ({}, testInfo) => {
+  const directory = await mkdtemp(join(tmpdir(), 'whomi-runtime-'))
+  let application
+  try {
+    const source = join(directory, 'synthetic-wechat.json')
+    await copyFile('tests/desktop/probe.cjs', join(directory, 'probe.cjs'))
+    const records = [
+      { localType: 1, content: '明晚见', serverId: '101' },
+      { localType: 49, typeName: '链接/文件', rawContent: '<msg><appmsg><type>5</type></appmsg></msg>', content: '活动链接' },
+      { localType: 42, content: '示例名片' },
+      { localType: 50, content: '通话结束' },
+      { localType: 49, rawContent: '<msg><appmsg><type>62</type></appmsg></msg>', content: '拍了拍示例联系人' },
+      { localType: 49, content: '未识别的分享' },
+      { localType: 998, content: '另一条未知记录' },
+      { localType: 49, rawContent: '<msg><appmsg><type>57</type><refermsg><svrid>101</svrid></refermsg></appmsg></msg>',
+        content: '好的', quote: { content: '明晚见' } },
+    ]
+    await writeFile(source, JSON.stringify({
+      exportInfo: { exporter: 'SIWX', wxid: 'example-owner' },
+      session: { wxid: 'example-peer', displayName: '合成微信会话', type: '私聊', messageCount: records.length },
+      messages: records.map((record, index) => ({
+        senderUsername: 'example-peer', senderDisplayName: '示例发送者', createTime: 1700000000 + index, ...record,
+      })),
+    }))
+    application = await electron.launch({ args: [resolve('out/main/index.cjs'), '--whomi-runtime-test'], env: { ...process.env, WHOMI_RUNTIME_TEST: directory } })
+    const page = await application.firstWindow()
+    await save(page, source)
+    await expect(page.getByText('已保存 8 条消息。', { exact: true })).toBeVisible()
+    const warning = page.getByText('部分消息类型无法识别，如第 6 条记录。记录已保留，可打开会话核对正文。', { exact: true })
+    await expect(warning).toBeVisible()
+    await expect(page.getByText(/部分消息类型无法识别/)).toHaveCount(1)
+    await page.screenshot({ path: testInfo.outputPath('unknown-saved.png') })
+
+    const [conversation] = (await page.evaluate(() => window.whomi.listConversations({}))).items
+    const messages = (await page.evaluate(conversationId => window.whomi.readMessages({ conversationId, direction: 'after' }), conversation.id)).items
+    expect(messages.map(message => message.kind)).toEqual(['text', 'link', 'contact', 'call', 'poke', 'unknown', 'unknown', 'reply'])
+    expect(messages.map(message => message.text)).toEqual(records.map(record => record.content))
+    expect(messages[7].reply.targetMessageId).toBe(messages[0].id)
+    await page.getByRole('button', { name: '继续导入', exact: true }).click()
+    await save(page, source)
+    await expect(page.getByText('新增 0 条消息，重复 8 条。', { exact: true })).toBeVisible()
+    await expect(page.getByText('部分消息类型无法识别，如第 6 条记录。重复记录沿用已有正文，可打开会话核对。', { exact: true })).toBeVisible()
+    await expect(warning).toHaveCount(0)
+    const minimumSize = await application.evaluate(({ BrowserWindow }) => {
+      const window = BrowserWindow.getAllWindows()[0]
+      const minimum = window.getMinimumSize()
+      window.setSize(...minimum)
+      return minimum
+    })
+    await expect.poll(() => application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].getSize())).toEqual(minimumSize)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+    await page.screenshot({ path: testInfo.outputPath('unknown-duplicate-narrow.png') })
+    await page.getByRole('button', { name: '打开会话', exact: true }).click()
+    await dismissIdentity(page)
+    await expect(page.getByText('未识别的分享', { exact: true })).toBeVisible()
+    await expect(page.getByText('另一条未知记录', { exact: true })).toBeVisible()
+    expect((await page.evaluate(() => window.whomi.listConversations({}))).items.map(item => [item.id, item.messageCount])).toEqual([[conversation.id, 8]])
+  } finally { await application?.close(); await cleanup(directory) }
+})
+
 test('actual reader bounds six pages and preserves a visible anchor in both directions', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'whomi-runtime-')); let application
   try {

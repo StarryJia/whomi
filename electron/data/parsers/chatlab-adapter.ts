@@ -14,7 +14,7 @@ function issue(input: ParserInput, code: string, severity: 'blocking' | 'warning
     : severity === 'blocking' ? '请检查导出文件后重试。'
     : code === 'unknown-sender' ? '发送者缺失，请核对导出文件中的成员信息。'
     : code === 'unknown-time' ? '时间缺失，请核对导出文件中的消息时间。'
-    : code === 'unknown-type' ? '消息类型无法识别，请核对保留的原文。'
+    : code === 'unknown-type' ? '消息类型无法识别，请核对来源文件。'
     : code === 'upstream-skipped-records' ? '导出记录数量与解析结果不一致，请核对导出文件。'
     : code === 'owner-conflict' ? '导出账号信息不一致，请在会话中确认本人。'
     : '部分消息格式异常，请核对来源导出文件。'
@@ -162,7 +162,8 @@ async function detect(module: FormatModule, probe: SourceProbe) {
 export function adapt(module: FormatModule): ParserAdapter {
   const stream = module.feature.id === 'chatlab-jsonl'
   return Object.freeze({
-    id: module.feature.id, version: 'f19beeadda27b-whomi.2', extensions: Object.freeze([...module.feature.extensions]),
+    id: module.feature.id, version: ['echotrace', 'weflow'].includes(module.feature.id) ? 'f19beeadda27b-whomi.3' : 'f19beeadda27b-whomi.2',
+    extensions: Object.freeze([...module.feature.extensions]),
     mode: stream ? 'stream' : 'bounded',
     capabilities: { multiConversation: Boolean(module.feature.multiChat), stableMessageIds: ['qq-native', 'qq-shuakami', 'qq-shuakami-chunked', 'line-native', 'whatsapp-native', 'instagram-native'].includes(module.feature.id) ? 'none' : 'conditional', media: 'descriptors-only' },
     detect: (probe: SourceProbe) => detect(module, probe),

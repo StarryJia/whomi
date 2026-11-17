@@ -115,7 +115,7 @@ function messageTime(message: MessageView) {
 }
 const messageKinds: Record<MessageView['kind'], string> = {
   text: '文字', image: '图片', audio: '语音', video: '视频', file: '文件', sticker: '表情', link: '链接',
-  location: '位置', reply: '引用', forward: '转发', system: '系统', unknown: '未知类型',
+  location: '位置', reply: '引用', forward: '转发', contact: '名片', call: '通话', poke: '拍一拍', system: '系统', unknown: '未知类型',
 }
 
 type QuoteJump = { targetId: string; originId?: string; referenceIds?: readonly string[]; pending?: boolean }

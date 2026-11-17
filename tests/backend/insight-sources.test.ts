@@ -3,6 +3,7 @@ import { createAiRepository } from '../../electron/data/ai/repository'
 import { ANALYSIS_PROMPT_VERSION } from '../../electron/data/ai/prompt-version'
 import { openStore } from '../../electron/data/db/open'
 import { purgeConversation } from '../../electron/data/db/purge'
+import { schemaVersion } from '../../electron/data/db/schema'
 import { validateAiCall, validateAiResult } from '../../src/shared/ai-validation'
 import type { InsightReport } from '../../src/shared/conversation-insights'
 import { removeInsightSchemaForMigrationTest, temporaryStore, useLegacyAnalysisFixture } from './helpers'
@@ -218,7 +219,7 @@ test('版本 8 的已保存报告和分析断点升级后仍可读取和续跑',
   const reopened = openStore(temp.path)
   cleanup.push(() => reopened.close())
   const restored = createAiRepository(reopened, async operation => operation())
-  expect(reopened.reader.pragma('user_version', { simple: true })).toBe(9n)
+  expect(reopened.reader.pragma('user_version', { simple: true })).toBe(BigInt(schemaVersion))
   expect(restored.getReport(completed.id)).toEqual(oldReport)
   expect(restored.getAnalysis(completed.id)).not.toHaveProperty('scope')
   expect(await restored.readInsightCitation({ taskId: completed.id, citationId: 'old', fragmentIndex: 0 })).toEqual({ status: 'unavailable' })

@@ -84,6 +84,8 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 新增运行依赖 stream-json 1.9.1、stream-chain 2.2.5 按各安装包声明的 BSD-3-Clause 提供；开发类型依赖 @types/stream-json 1.7.8、@types/stream-chain 2.1.0 按 MIT 提供。锁定版本与固定上游锁文件一致，安全限制及审计残留见 [复用审计](docs/research/chatlab-parser-reuse.md)。
 
+微信应用消息使用 [saxes 6.0.0](https://www.npmjs.com/package/saxes/v/6.0.0) 校验可扩展标记语言（XML）结构。安装包附带 saxes 的 [ISC 许可原文](electron/vendor/saxes/LICENSE)和传递依赖 [xmlchars 2.2.0](https://www.npmjs.com/package/xmlchars/v/2.2.0) 的 MIT 许可原文。
+
 当前只完成已授权的本地集成。与下述 GSAP 许可组合的公开分发条件尚未确认；本声明不改变整个 Whomi 的许可证，也不构成公开发布授权。
 
 本地 Windows 验证包的 resources/licenses 目录附本声明、ChatLab 原始许可证与逐文件来源修改清单。打包只纳入生产 out、运行依赖和上述声明；不纳入虚构测试夹具、测试探针、临时数据库或私人导出。公开分发前仍必须明确全项目组合许可，准备与二进制对应的完整源代码、锁文件、构建安装说明和全部依赖原始许可，并核对修改告知义务；当前本地验证包不表示这些发布条件已满足。

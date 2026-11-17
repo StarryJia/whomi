@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { expect, it, vi } from 'vitest'
 import { FileImport } from '../file-import'
@@ -136,6 +136,50 @@ it('解析失败只就近展示具体问题，不重复同一操作提示',async
   act(()=>emit(snapshot({status:'failed',candidates:[candidate()],issues,results:[saved('a','7',{status:'blocked',inserted:0,committedAt:null,issues})]})))
   expect(await screen.findByText('第 1 条记录：请检查导出文件后重试。')).toBeVisible()
   expect(screen.queryByText('请检查导出文件后重试。',{exact:true})).not.toBeInTheDocument()
+})
+it('按实际新增与重复结果说明未知类型记录的正文去向', async () => {
+  const { api, emit } = fakeImportApi()
+  const firstWarning = { code: 'unknown-type', candidateId: 'a', severity: 'warning' as const, ordinal: 1, action: '第 2 条记录：消息类型无法识别，请核对保留的原文。' }
+  const nextWarning = { ...firstWarning, ordinal: 3, action: '第 4 条记录：消息类型无法识别，请核对来源文件。' }
+  const duplicateWarning = { ...firstWarning, candidateId: 'b' }
+  const failedWarning = { ...firstWarning, candidateId: 'c' }
+  const mixedWarning = { ...firstWarning, candidateId: 'd' }
+  const failure = { code: 'COMMIT_FAILED', candidateId: 'c', severity: 'blocking' as const, action: '保存失败，请重新导入。' }
+  const sourceWarning = /部分消息类型无法识别，如第 2 条记录。请核对来源文件/
+  const retainedWarning = /部分消息类型无法识别，如第 2 条记录。记录已保留/
+
+  vi.mocked(api.startImport).mockResolvedValue('job')
+  render(<FileImport api={api} />)
+  await userEvent.click(screen.getByRole('button', { name: '选择文件' }))
+  act(() => emit(snapshot({
+    status: 'committing',
+    candidates: [candidate('a')],
+    issues: [nextWarning],
+    results: [saved('a', '7', { status: 'committing', inserted: 0, committedAt: null, issues: [firstWarning] })],
+  })))
+  expect(await screen.findByText(sourceWarning)).toBeVisible()
+  expect(screen.queryByText(retainedWarning)).not.toBeInTheDocument()
+  expect(screen.queryByText(/第 4 条记录/)).not.toBeInTheDocument()
+
+  act(() => emit(snapshot({
+    status: 'partially_completed',
+    candidates: ['a', 'b', 'c', 'd'].map(candidate),
+    issues: [firstWarning, duplicateWarning, failedWarning, mixedWarning],
+    results: [
+      saved('a', '7', { inserted: 3, issues: [firstWarning, nextWarning] }),
+      saved('b', '8', { status: 'duplicate', inserted: 0, duplicates: 3, issues: [duplicateWarning] }),
+      saved('c', '9', { status: 'failed', inserted: 0, committedAt: null, issues: [failure] }),
+      saved('d', '10', { inserted: 2, duplicates: 1, issues: [mixedWarning] }),
+    ],
+  })))
+  const [savedItem, duplicateItem, failedItem, mixedItem] = screen.getAllByRole('listitem')
+  expect(within(savedItem).getByText(retainedWarning)).not.toHaveClass('import-error')
+  expect(within(duplicateItem).getByText(/如第 2 条记录。重复记录沿用已有正文/)).toBeVisible()
+  expect(within(mixedItem).getByText(/如第 2 条记录。新增记录保留正文，重复记录沿用已有正文/)).toBeVisible()
+  expect(within(failedItem).getByText(sourceWarning)).toBeVisible()
+  expect(within(failedItem).queryByText(retainedWarning)).not.toBeInTheDocument()
+  expect(within(failedItem).getByText(failure.action)).toHaveClass('import-error')
+  expect(screen.queryByText(/第 4 条记录/)).not.toBeInTheDocument()
 })
 it('没有入口时提供具体文件和重新选择操作', async () => {
   const { api } = fakeImportApi()

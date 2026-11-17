@@ -1,4 +1,51 @@
-export const schemaVersion = 9
+export const schemaVersion = 10
+
+const legacyMessageKinds = "'text','image','audio','video','file','sticker','link','location','reply','forward','system','unknown'"
+
+function messageTable(table: 'messages' | 'messages_next', kinds: string): string {
+  return `CREATE TABLE ${table} (
+ id INTEGER PRIMARY KEY AUTOINCREMENT,
+ conversation_id INTEGER NOT NULL REFERENCES conversations(id),
+ member_id INTEGER,
+ sender_kind TEXT NOT NULL CHECK(sender_kind IN ('member','system','unknown')),
+ sender_name TEXT NOT NULL,
+ sent_at_ms INTEGER CHECK(sent_at_ms BETWEEN -9007199254740991 AND 9007199254740991),
+ time_raw TEXT,
+ time_precision TEXT NOT NULL DEFAULT 'unknown' CHECK(time_precision IN ('millisecond','second','minute','unknown')),
+ timezone TEXT,
+ kind TEXT NOT NULL CHECK(kind IN (${kinds})),
+ text TEXT NOT NULL,
+ ordinal INTEGER NOT NULL CHECK(ordinal>=0),
+ source_type TEXT,
+ extra TEXT NOT NULL DEFAULT '{}' CHECK(json_valid(extra) AND json_type(extra)='object'),
+ time_bucket INTEGER GENERATED ALWAYS AS (CASE WHEN sent_at_ms IS NULL THEN 1 ELSE 0 END) STORED,
+ sort_time INTEGER GENERATED ALWAYS AS (coalesce(sent_at_ms,0)) STORED,
+ UNIQUE(id,conversation_id),
+ FOREIGN KEY(member_id,conversation_id) REFERENCES memberships(id,conversation_id),
+ CHECK((sender_kind='member' AND member_id IS NOT NULL) OR (sender_kind!='member' AND member_id IS NULL))
+) STRICT;`
+}
+
+const messageIndexes = `CREATE INDEX messages_read_order ON messages(conversation_id,time_bucket,sort_time,id);
+CREATE INDEX messages_member ON messages(member_id,conversation_id);`
+
+export const legacyMessageSchema = `${messageTable('messages', legacyMessageKinds)}\n${messageIndexes}`
+
+const storedMessageColumns = `id,conversation_id,member_id,sender_kind,sender_name,sent_at_ms,
+ time_raw,time_precision,timezone,kind,text,ordinal,source_type,extra`
+export const messageKindSchema = `
+${messageTable('messages_next', `${legacyMessageKinds},'contact','call','poke'`)}
+INSERT INTO messages_next (${storedMessageColumns}) SELECT ${storedMessageColumns} FROM messages;
+-- 已删除的编号不能重用，即使消息表为空。
+INSERT INTO sqlite_sequence(name,seq) SELECT 'messages_next',0
+ WHERE NOT EXISTS (SELECT 1 FROM sqlite_sequence WHERE name='messages_next');
+UPDATE sqlite_sequence SET seq=max(seq,coalesce((SELECT seq FROM sqlite_sequence WHERE name='messages'),0))
+ WHERE name='messages_next';
+DROP TABLE messages;
+ALTER TABLE messages_next RENAME TO messages;
+${messageIndexes}
+`
+
 export const schema = `
 CREATE TABLE conversations (
  id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -82,29 +129,7 @@ CREATE TABLE import_results (
  CHECK(status!='committed' OR (committed_at_ms IS NOT NULL AND conversation_id IS NOT NULL))
 ) STRICT;
 CREATE INDEX import_results_conversation ON import_results(conversation_id);
-CREATE TABLE messages (
- id INTEGER PRIMARY KEY AUTOINCREMENT,
- conversation_id INTEGER NOT NULL REFERENCES conversations(id),
- member_id INTEGER,
- sender_kind TEXT NOT NULL CHECK(sender_kind IN ('member','system','unknown')),
- sender_name TEXT NOT NULL,
- sent_at_ms INTEGER CHECK(sent_at_ms BETWEEN -9007199254740991 AND 9007199254740991),
- time_raw TEXT,
- time_precision TEXT NOT NULL DEFAULT 'unknown' CHECK(time_precision IN ('millisecond','second','minute','unknown')),
- timezone TEXT,
- kind TEXT NOT NULL CHECK(kind IN ('text','image','audio','video','file','sticker','link','location','reply','forward','system','unknown')),
- text TEXT NOT NULL,
- ordinal INTEGER NOT NULL CHECK(ordinal>=0),
- source_type TEXT,
- extra TEXT NOT NULL DEFAULT '{}' CHECK(json_valid(extra) AND json_type(extra)='object'),
- time_bucket INTEGER GENERATED ALWAYS AS (CASE WHEN sent_at_ms IS NULL THEN 1 ELSE 0 END) STORED,
- sort_time INTEGER GENERATED ALWAYS AS (coalesce(sent_at_ms,0)) STORED,
- UNIQUE(id,conversation_id),
- FOREIGN KEY(member_id,conversation_id) REFERENCES memberships(id,conversation_id),
- CHECK((sender_kind='member' AND member_id IS NOT NULL) OR (sender_kind!='member' AND member_id IS NULL))
-) STRICT;
-CREATE INDEX messages_read_order ON messages(conversation_id,time_bucket,sort_time,id);
-CREATE INDEX messages_member ON messages(member_id,conversation_id);
+${legacyMessageSchema}
 CREATE TABLE message_keys (
  conversation_id INTEGER NOT NULL,
  id_namespace TEXT NOT NULL CHECK(length(id_namespace)>0),
