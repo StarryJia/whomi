@@ -46,10 +46,15 @@ it.each(formats)('%s follows the same snapshot, preview, atomic save, exact reim
     expect(reimported.results).toHaveLength(second.candidates.length)
     for (const candidate of second.candidates) {
       const result = reimported.results.find(result => result.candidateId === candidate.candidateId)
+      const original = first.candidates.find(old => old.sourceKey === candidate.sourceKey)!
       expect(result).toMatchObject({ status: 'duplicate', inserted: 0, duplicates: candidate.counts.validRecords })
+      expect(result?.matchedConversationTitle).toBe(original.title)
+      expect(result?.issues).toEqual(second.results.find(result => result.candidateId === candidate.candidateId)?.issues)
       expect(result!.committedAt).toEqual(expect.any(Number))
     }
     store.close(); store = openStore(join(directory, 'whomi.db'))
+    const reopened = createDataService({ store, appDataDirectory: directory })
+    expect((await reopened.getImport(second.jobId)).results).toEqual(reimported.results)
     const queries = createQueries(store), conversations = (await queries.listConversations({})).items
     expect(conversations.reduce((total, c) => total+c.messageCount, 0)).toBe(count)
     let read = 0

@@ -20,5 +20,15 @@ export type SourceRecordKey = { fingerprint: string; sourceConversationKey: stri
 export type JobId = string
 export type ImportPlan = { jobId: JobId; decisions: TargetDecision[] }
 export type StartImportRequest = { kind: 'stage'; jobId: JobId; entryIds: string[] } | { kind: 'commit'; plan: ImportPlan }
-export type ImportCandidateResult = { candidateId: string; conversationId: LocalId | null; status: ImportResultState; inserted: number; duplicates: number; committedAt: number | null; issues: ImportIssue[]; summaryFailed: boolean }
+export type ImportCandidateResult = {
+  candidateId: string
+  conversationId: LocalId | null
+  matchedConversationTitle?: string
+  status: ImportResultState
+  inserted: number
+  duplicates: number
+  committedAt: number | null
+  issues: ImportIssue[]
+  summaryFailed: boolean
+}
 export type ImportSnapshot = { jobId: JobId; status: ImportJobState; discovery: Discovery | null; candidates: Candidate[]; results: ImportCandidateResult[]; issues: ImportIssue[]; counts: ImportCounts; inserted: number; duplicates: number; progress?: {processed:number;total:number|null} }

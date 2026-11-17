@@ -5,6 +5,7 @@ import App from './App'
 
 const sidebarStorageKey = 'whomi:sidebar-open'
 const unavailableDestinations = [
+  '心事屋',
   '设置',
 ]
 

@@ -77,7 +77,7 @@ test('import guide stays in the app, adapts to the panel and returns to the same
   } finally { await app?.close(); await cleanup(directory) }
 })
 
-test('actual import UI preserves old messages, self identity, source bytes and stable locations after restart', async () => {
+test('actual import UI preserves old messages, self identity, source bytes and stable locations after restart', async ({}, testInfo) => {
   test.setTimeout(90000)
   const directory = await mkdtemp(join(tmpdir(), 'whomi-runtime-'))
   const sources = join(directory, 'sources'), folder = join(sources, 'new-computer')
@@ -86,23 +86,22 @@ test('actual import UI preserves old messages, self identity, source bytes and s
   try {
     await mkdir(folder, { recursive: true }); await copyFile('tests/desktop/probe.cjs', join(directory, 'probe.cjs'))
     const first = join(sources, 'first.json'), second = join(folder, 'second.json')
-    await writeFile(first, JSON.stringify(documentFor([1,2,3])))
-    const changed = documentFor([2,4]); changed.messages[0].content = 'changed old body'
+    const conversationTitle = '示例联系人'
+    await writeFile(first, JSON.stringify(documentFor([1,2,3], conversationTitle)))
+    const changed = documentFor([2,4], conversationTitle)
+    changed.meta.name = '导出文件中的名称'
+    changed.messages[0].content = 'changed old body'
     await writeFile(second, JSON.stringify(changed))
     const before = await fingerprint(sources)
     const started = performance.now(); application = await launch(); let page = await application.firstWindow()
     await expect(page.getByRole('button', { name: '导入会话', exact: true })).toBeVisible()
     console.info(`firstWindowReadyMs=${Math.round(performance.now()-started)}`)
-    const evidence=resolve('release/auto-import-20261031');await mkdir(evidence,{recursive:true})
     await page.getByRole('button',{name:'导入会话',exact:true}).click()
-    await page.screenshot({path:join(evidence,'01-file-selection.png')})
+    await page.screenshot({ path: testInfo.outputPath('01-file-selection.png') })
     await save(page, first)
     await expect(page.getByText('已保存 3 条消息。', { exact: true })).toBeVisible()
-    await page.screenshot({path:join(evidence,'02-completed.png')})
-    const viewport=await page.evaluate(()=>({width:innerWidth,height:innerHeight}))
-    await page.setViewportSize({width:960,height:720})
-    await page.screenshot({path:join(evidence,'03-completed-narrow.png')})
-    await page.setViewportSize(viewport)
+    await expect(page.getByRole('heading', { name: conversationTitle, exact: true })).toBeVisible()
+    await page.screenshot({ path: testInfo.outputPath('02-completed.png') })
     const initial = (await page.evaluate(() => window.whomi.listConversations({}))).items[0]
     await page.getByRole('button', { name: '打开会话', exact: true }).click()
     await expect(page.locator('.message-text').first()).toHaveText(malicious)
@@ -125,8 +124,32 @@ test('actual import UI preserves old messages, self identity, source bytes and s
     }
     await save(page, folder)
     await expect(page.getByText('已保存 1 条消息。', { exact: true })).toBeVisible()
+    const matchedTitle = page.getByRole('heading', { name: '发现已有会话：示例联系人', exact: true })
+    await expect(matchedTitle).toBeVisible()
+    await expect(page.getByRole('heading', { name: '导出文件中的名称', exact: true })).toHaveCount(0)
+    await page.screenshot({ path: testInfo.outputPath('matched-desktop.png') })
     await save(page, second)
-    await expect(page.getByText('新增 0 条消息，重复 2 条。', { exact: true })).toBeVisible()
+    const duplicateCounts = page.getByText('新增 0 条消息，重复 2 条。', { exact: true })
+    await expect(duplicateCounts).toBeVisible()
+    const { normalSize, minimumSize } = await application.evaluate(({ BrowserWindow }) => {
+      const window = BrowserWindow.getAllWindows()[0]
+      const normalSize = window.getSize()
+      const minimumSize = window.getMinimumSize()
+      window.setSize(...minimumSize)
+      return { normalSize, minimumSize }
+    })
+    await expect.poll(() => application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].getSize())).toEqual(minimumSize)
+    await expect(matchedTitle).toBeVisible()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+    await page.screenshot({ path: testInfo.outputPath('matched-narrow.png') })
+    await page.getByRole('button', { name: '打开会话', exact: true }).click()
+    await expect(page.getByRole('heading', { name: conversationTitle, exact: true })).toBeVisible()
+    await page.getByRole('button', { name: '返回导入结果', exact: true }).click()
+    await expect(matchedTitle).toBeVisible()
+    await expect(duplicateCounts).toBeVisible()
+    await page.getByRole('button', { name: '继续导入', exact: true }).click()
+    await expect(page.getByRole('button', { name: '选择文件', exact: true })).toBeVisible()
+    await application.evaluate(({ BrowserWindow }, size) => BrowserWindow.getAllWindows()[0].setSize(...size), normalSize)
     const beforeRestart = await page.evaluate(id => window.whomi.readMessages({ conversationId: id, direction: 'after' }), initial.id)
     const stableMessage = beforeRestart.items[2]
     expect(stableMessage.text).toBe('synthetic-3')
@@ -172,12 +195,12 @@ test('actual reader bounds six pages and preserves a visible anchor in both dire
   } finally { await application?.close(); await cleanup(directory) }
 })
 
-test('actual import cancels before saving and retains partial results for recovery',async()=>{
+test('actual import cancels before saving and retains partial results for recovery', async ({}, testInfo) => {
   test.setTimeout(60000)
   const directory=await mkdtemp(join(tmpdir(),'whomi-runtime-'));let application
   try {
-    const sources=join(directory,'sources'),evidence=resolve('release/auto-import-20261031')
-    await mkdir(sources);await mkdir(evidence,{recursive:true});await copyFile('tests/desktop/probe.cjs',join(directory,'probe.cjs'))
+    const sources=join(directory,'sources')
+    await mkdir(sources);await copyFile('tests/desktop/probe.cjs',join(directory,'probe.cjs'))
     const good=join(sources,'good.json'),broken=join(sources,'broken.json')
     await writeFile(good,JSON.stringify(documentFor([1],'Good synthetic')))
     await writeFile(broken,JSON.stringify({...documentFor([2],'Broken synthetic'),messages:[null]}))
@@ -185,33 +208,33 @@ test('actual import cancels before saving and retains partial results for recove
     const page=await application.firstWindow()
     await page.getByRole('button',{name:'导入会话',exact:true}).click();await drop(page,sources)
     await expect(page.getByRole('checkbox')).toHaveCount(2)
-    await page.screenshot({path:join(evidence,'04-entry-selection.png')})
+    await page.screenshot({ path: testInfo.outputPath('04-entry-selection.png') })
     await page.getByRole('button',{name:'取消导入',exact:true}).click()
     await expect(page.getByRole('button',{name:'选择文件',exact:true})).toBeVisible()
     expect((await page.evaluate(()=>window.whomi.listConversations({}))).items).toHaveLength(0)
-    await page.screenshot({path:join(evidence,'05-cancelled-restored.png')})
+    await page.screenshot({ path: testInfo.outputPath('05-cancelled-restored.png') })
     await drop(page,sources)
     await page.getByRole('checkbox').nth(0).check();await page.getByRole('checkbox').nth(1).check()
     await page.getByRole('button',{name:'解析所选入口',exact:true}).click()
     await expect(page.getByText('部分会话未完成，请查看下方结果。',{exact:true})).toBeVisible()
     await expect(page.getByText('已保存 1 条消息。',{exact:true})).toBeVisible()
     await expect(page.getByRole('button',{name:'打开会话',exact:true})).toHaveCount(1)
-    await page.screenshot({path:join(evidence,'06-partial-failure.png')})
+    await page.screenshot({ path: testInfo.outputPath('06-partial-failure.png') })
     expect((await page.evaluate(()=>window.whomi.listConversations({}))).items).toHaveLength(1)
     await writeFile(broken,JSON.stringify(documentFor([2],'Broken synthetic')))
     await page.getByRole('button',{name:'继续导入',exact:true}).click();await drop(page,broken)
     await expect(page.getByText('导入完成。',{exact:true})).toBeVisible()
     expect((await page.evaluate(()=>window.whomi.listConversations({}))).items).toHaveLength(2)
-    await page.screenshot({path:join(evidence,'07-recovered.png')})
+    await page.screenshot({ path: testInfo.outputPath('07-recovered.png') })
   }finally{await application?.close();await cleanup(directory)}
 })
 
-test('actual large-file parsing shows real counts and can be cancelled',async()=>{
+test('actual large-file parsing shows real counts and can be cancelled', async ({}, testInfo) => {
   test.setTimeout(90000)
   const directory=await mkdtemp(join(tmpdir(),'whomi-runtime-'));let application
   try {
-    const source=join(directory,'large.jsonl'),evidence=resolve('release/auto-import-20261031')
-    await mkdir(evidence,{recursive:true});await copyFile('tests/desktop/probe.cjs',join(directory,'probe.cjs'))
+    const source=join(directory,'large.jsonl')
+    await copyFile('tests/desktop/probe.cjs',join(directory,'probe.cjs'))
     const header={_type:'header',chatlab:fixture.chatlab,meta:{...fixture.meta,name:'Progress synthetic',groupId:'progress-synthetic'}}
     await writeFile(source,JSON.stringify(header)+'\n'+fixture.members.map(m=>JSON.stringify({_type:'member',...m})).join('\n')+'\n')
     for(let start=0;start<100000;start+=5000) {
@@ -227,10 +250,10 @@ test('actual large-file parsing shows real counts and can be cancelled',async()=
     const parsing=page.getByRole('region',{name:'解析进度',exact:true})
     await expect(parsing.getByRole('progressbar')).not.toHaveAttribute('value')
     await expect(parsing).toContainText(/已检查 [1-9][0-9]* 条记录/)
-    await page.screenshot({path:join(evidence,'08-real-parsing.png')})
+    await page.screenshot({ path: testInfo.outputPath('08-real-parsing.png') })
     await parsing.getByRole('button',{name:'取消导入',exact:true}).click()
     await expect(page.getByRole('button',{name:'选择文件',exact:true})).toBeVisible()
     expect((await page.evaluate(()=>window.whomi.listConversations({}))).items).toHaveLength(0)
-    await page.screenshot({path:join(evidence,'09-parsing-cancelled.png')})
+    await page.screenshot({ path: testInfo.outputPath('09-parsing-cancelled.png') })
   }finally{await application?.close();await cleanup(directory)}
 })

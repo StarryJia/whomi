@@ -20,6 +20,40 @@ it('单入口自动解析保存，无需目标、别名或预览，完成可打�
   await userEvent.click(screen.getByRole('button', { name: '继续导入' }))
   expect(screen.getByRole('button', { name: '选择文件' })).toBeVisible()
 })
+it('恢复多项结果时逐项显示实际匹配名称，缺少匹配记录的结果使用导出标题', async () => {
+  const { api, emit } = fakeImportApi(), onOpen = vi.fn()
+  const matched = {
+    ...saved('a', '7', { status: 'duplicate', inserted: 0, duplicates: 100 }),
+    matchedConversationTitle: '示例联系人',
+  }
+  const warning = { code: 'UNKNOWN_TYPE', candidateId: 'b', severity: 'warning' as const, action: '第 1 条消息保留为文本。' }
+  emit(snapshot({
+    status: 'completed',
+    candidates: [{ ...candidate('a'), title: '示例导出标题' }, { ...candidate('b'), title: '示例新会话' }, candidate('c')],
+    results: [
+      matched,
+      saved('b', '8', { inserted: 2, duplicates: 1, issues: [warning] }),
+      saved('c', '9', { inserted: 1, matchedConversationTitle: '' }),
+    ],
+    inserted: 3,
+    duplicates: 101,
+  }))
+  localStorage.setItem('whomi:import-job', 'job')
+  render(<FileImport api={api} onOpenConversation={onOpen} />)
+
+  expect(await screen.findByRole('heading', { name: '发现已有会话：示例联系人' })).toBeVisible()
+  expect(screen.queryByRole('heading', { name: '示例导出标题' })).not.toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: '示例新会话' })).toBeVisible()
+  expect(screen.getByRole('heading', { name: '发现已有会话：未命名会话' })).toBeVisible()
+  expect(screen.getByText('新增 0 条消息，重复 100 条。')).toBeVisible()
+  expect(screen.getByText('已保存 2 条消息。')).toBeVisible()
+  expect(screen.getByText('跳过重复 1 条。')).toBeVisible()
+  expect(screen.getByText(warning.action)).toBeVisible()
+  await userEvent.click(screen.getAllByRole('button', { name: '打开会话' })[0])
+  expect(onOpen).toHaveBeenCalledWith('7')
+  await userEvent.click(screen.getByRole('button', { name: '继续导入' }))
+  expect(screen.getByRole('button', { name: '选择文件' })).toBeVisible()
+})
 it('多入口保留选择且不显示技术格式名', async () => {
   const { api } = fakeImportApi()
   vi.mocked(api.prepareImport).mockResolvedValue('job')

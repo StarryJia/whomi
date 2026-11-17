@@ -36,6 +36,9 @@ export function createCommitter(dependencies: CommitDependencies = {}) {
         return r.target
       })
       let conversationId = resolved[0].conversationId
+      const matchedConversation = conversationId === null ? undefined : db.prepare<[bigint], { title: string }>(
+        'SELECT title FROM conversations WHERE id=?',
+      ).get(BigInt(conversationId))
       if (conversationId === null) conversationId = db.prepare('INSERT INTO conversations(title,kind,created_at_ms) VALUES (?,?,?)').run(first.title, first.kind, Date.now()).lastInsertRowid.toString()
       const conversation = BigInt(conversationId), bound = new Map<string,ResolvedTarget>(), sources = new Map<string,bigint>(), results = new Map<string,{id:bigint;candidateId:string;inserted:number;duplicates:number}>()
       function canonicalAccount(platform: string, key: string): bigint {
@@ -146,7 +149,11 @@ export function createCommitter(dependencies: CommitDependencies = {}) {
         else { db.prepare('DELETE FROM self_opt_outs WHERE conversation_id=?').run(conversation); db.prepare("INSERT INTO self_confirmations(conversation_id,member_id,status,source) VALUES (?,?,'confirmed','user')").run(conversation,chosen.id) }
       }
       const committedAt = Date.now()
-      for (const r of results.values()) db.prepare("UPDATE import_results SET status='committed',phase=?,added_count=?,skipped_count=?,committed_at_ms=?,error_code=NULL,error_action=NULL WHERE id=?").run(r.inserted ? 'saved':'duplicate',r.inserted,r.duplicates,committedAt,r.id)
+      const saveCommittedResult = db.prepare(`UPDATE import_results SET status='committed',phase=?,added_count=?,skipped_count=?,
+        committed_at_ms=?,error_code=NULL,error_action=NULL,metadata=json_set(metadata,'$.matchedConversationTitle',?) WHERE id=?`)
+      for (const r of results.values()) {
+        saveCommittedResult.run(r.inserted ? 'saved' : 'duplicate', r.inserted, r.duplicates, committedAt, matchedConversation?.title ?? null, r.id)
+      }
       const summaryChanged = inserted > 0 || membershipChanged
       if (summaryChanged) db.prepare("INSERT INTO conversation_summaries(conversation_id,status) VALUES (?,'pending') ON CONFLICT(conversation_id) DO UPDATE SET status='pending'").run(conversation)
       checkSignal(signal); dependencies.beforeCommit?.(); db.exec('COMMIT'); committed = true

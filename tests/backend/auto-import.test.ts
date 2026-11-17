@@ -3,6 +3,7 @@ import { openStore, type Store } from '../../electron/data/db/open'
 import { commitConversation } from '../../electron/data/import/merge'
 import { resolveTarget } from '../../electron/data/import/identity'
 import { resolveAutoTarget } from '../../electron/data/import/auto-target'
+import { getSnapshot } from '../../electron/data/import/state'
 import { conversation } from '../../electron/data/parsers/normalize'
 import { temporaryStore } from './helpers'
 import { candidate, view } from './import-fixture'
@@ -39,11 +40,13 @@ test('an unknown source uniquely overlaps the old trailing five records and appe
 test('fewer than five overlapping messages and duplicate candidates both create a new conversation', async () => {
   await save(unknown('a'), [0, 1, 2, 3, 4])
   expect(await save(unknown('short'), [1, 2, 3, 4])).toMatchObject({ conversationId: '2', inserted: 4 })
+  expect(getSnapshot(store, '2').results[0]).not.toHaveProperty('matchedConversationTitle')
   const duplicate = records(unknown('copy'), [0, 1, 2, 3, 4])
   const explicit = resolveTarget(store, duplicate.candidates[0], { candidateId: 'copy', target: { kind: 'new' }, confirmedAliases: [] })
   if (explicit.status !== 'matched') throw Error('target')
   await commitConversation(store, duplicate, explicit.target, new AbortController().signal)
   expect(await save(unknown('ambiguous'), [0, 1, 2, 3, 4, 5])).toMatchObject({ conversationId: '4', inserted: 6 })
+  expect(getSnapshot(store, '4').results[0]).not.toHaveProperty('matchedConversationTitle')
 })
 test('the same short file reuses its exact saved origins without requiring five messages', async () => {
   const first = unknown('first'); first.fingerprint = 'same-bytes'
@@ -73,6 +76,17 @@ test('stable identities append old backfill and preserve distinct stable identif
   v.messages = function* () { for (const r of read()) yield { ...r, message: { ...r.message, text: '相同正文', sentAtMs: 1000 } } }
   const t = await resolveAutoTarget(store, c, () => v.messages()); if (t.status !== 'matched') throw Error('target')
   expect(await commitConversation(store, v, t.target, new AbortController().signal)).toMatchObject({ inserted: 2, duplicates: 0 })
+})
+test('an all-new append reports the title of its matched conversation in the import result', async () => {
+  const original = { ...candidate('original'), title: '示例联系人' }
+  expect(await save(original, [1, 1], true)).toMatchObject({ inserted: 1, duplicates: 1 })
+  expect(getSnapshot(store, '1').results[0]).not.toHaveProperty('matchedConversationTitle')
+
+  const exported = { ...candidate('append'), title: '另一份导出名称' }
+  expect(await save(exported, [2, 3], true)).toMatchObject({ conversationId: '1', inserted: 2, duplicates: 0 })
+  expect(getSnapshot(store, '2').results[0]).toMatchObject({
+    matchedConversationTitle: '示例联系人', inserted: 2, duplicates: 0,
+  })
 })
 test('fallback deduplication preserves repeated occurrences at the same timestamp', async () => {
   expect(await save(candidate('a'), [1, 1])).toMatchObject({ inserted: 2 })
@@ -117,5 +131,8 @@ test('overlapping files in one target group preserve the largest per-file occurr
     *messages(){yield* first.messages();yield* second.messages()}}
   const t=resolveTarget(store,a);if(t.status!=='matched')throw Error('target')
   expect(await commitConversation(store,group,t.target,new AbortController().signal)).toMatchObject({inserted:3,duplicates:2})
+  const results = getSnapshot(store, first.jobId).results
+  expect(results.map(result => result.candidateId)).toEqual(['a', 'b'])
+  for (const result of results) expect(result).not.toHaveProperty('matchedConversationTitle')
   expect(store.reader.prepare('SELECT count(*) n FROM messages').get()).toEqual({n:3n})
 })

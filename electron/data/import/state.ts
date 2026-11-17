@@ -18,7 +18,20 @@ export function getSnapshot(store: Store, jobId: string): ImportSnapshot {
   if(!job) throw new ImportFailure('INVALID_JOB')
   const metadata=JSON.parse(job.metadata)
   const rows=store.reader.prepare(`SELECT r.*,s.status summary_status FROM import_results r LEFT JOIN conversation_summaries s ON s.conversation_id=r.conversation_id WHERE job_id=? ORDER BY r.id`).all(BigInt(jobId)) as {candidate_id:string;conversation_id:bigint|null;phase:ImportResultState;added_count:bigint;skipped_count:bigint;committed_at_ms:bigint|null;metadata:string;summary_status:string|null}[]
-  const results: ImportCandidateResult[]=rows.map(r => ({candidateId:r.candidate_id,conversationId:r.conversation_id?.toString() ?? null,status:r.phase,inserted:Number(r.added_count),duplicates:Number(r.skipped_count),committedAt:r.committed_at_ms === null ? null:Number(r.committed_at_ms),issues:JSON.parse(r.metadata).issues ?? [],summaryFailed:r.summary_status === 'failed'}))
+  const results: ImportCandidateResult[] = rows.map(r => {
+    const { issues, matchedConversationTitle } = JSON.parse(r.metadata)
+    return {
+      candidateId: r.candidate_id,
+      conversationId: r.conversation_id?.toString() ?? null,
+      status: r.phase,
+      inserted: Number(r.added_count),
+      duplicates: Number(r.skipped_count),
+      committedAt: r.committed_at_ms === null ? null : Number(r.committed_at_ms),
+      issues: issues ?? [],
+      summaryFailed: r.summary_status === 'failed',
+      ...(typeof matchedConversationTitle === 'string' ? { matchedConversationTitle } : {}),
+    }
+  })
   return {jobId,status:job.phase,discovery:metadata.discovery ?? null,candidates:metadata.candidates ?? [],issues:metadata.issues ?? [],counts:metadata.counts ?? {seen:0,validRecords:0,invalidRecords:0},results,inserted:results.reduce((n,r)=>n+r.inserted,0),duplicates:results.reduce((n,r)=>n+r.duplicates,0),...(metadata.progress ? {progress:metadata.progress}:{})}
 }
 export function finishJob(store: Store, jobId: string, cancelled=false, fatal=false) {
