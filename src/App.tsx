@@ -1,17 +1,13 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type ReactElement } from 'react'
 import {
-  ContactRound,
-  FileText,
-  HouseHeart,
-  MessageCircleQuestion,
   PanelLeftClose,
   PanelLeftOpen,
   Settings,
-  type LucideIcon,
 } from 'lucide-react'
 import clsx from 'clsx'
 import { usePaneDivider } from './components/ui/pane-divider'
 import { SidebarProvider, useSidebar } from './components/ui/sidebar'
+import { AskIcon, HeartRoomIcon, InsightsIcon, OverviewIcon } from './components/ui/sidebar-icons'
 import { Tooltip, TooltipProvider } from './components/ui/tooltip'
 import { StartupIntro } from './components/startup-intro'
 import { HelloCover } from './components/hello-cover'
@@ -42,7 +38,7 @@ import wordmark from '../assets/branding/whomi-wordmark.png'
 import './styles.css'
 import './components/conversations.css'
 
-function UnavailableDestination({ label, icon: Icon }: { label: string; icon: LucideIcon }) {
+function UnavailableDestination({ label, icon }: { label: string; icon: ReactElement }) {
   return (
     <Tooltip
       content={
@@ -52,7 +48,7 @@ function UnavailableDestination({ label, icon: Icon }: { label: string; icon: Lu
       }
     >
       <button className="nav-control" type="button" aria-label={label} aria-disabled="true">
-        <span className="control-icon"><Icon aria-hidden="true" /></span>
+        <span className="control-icon">{icon}</span>
         <span className="control-label" aria-hidden="true">{label}</span>
       </button>
     </Tooltip>
@@ -467,22 +463,23 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
         <nav className="sidebar-navigation" aria-label="主导航" inert={settingsLocked}>
           <Tooltip content="个人总览">
             <button className="nav-control" type="button" aria-label="个人总览" aria-current={!settingsOpen && view === 'overview' ? 'page' : undefined} onClick={() => navigateFromSidebar(enterOverview)}>
-              <span className="control-icon"><ContactRound aria-hidden="true" /></span>
+              <span className="control-icon"><OverviewIcon className="sidebar-icon" aria-hidden="true" /></span>
               <span className="control-label" aria-hidden="true">个人总览</span>
             </button>
           </Tooltip>
           <Tooltip content="对话洞察">
             <button className="nav-control" type="button" aria-label="对话洞察" aria-current={!settingsOpen && view === 'library' ? 'page' : undefined} onClick={() => navigateFromSidebar(() => openLibrary())}>
-              <span className="control-icon"><FileText aria-hidden="true" /></span><span className="control-label" aria-hidden="true">对话洞察</span>
+              <span className="control-icon"><InsightsIcon className="sidebar-icon" aria-hidden="true" /></span>
+              <span className="control-label" aria-hidden="true">对话洞察</span>
             </button>
           </Tooltip>
           <Tooltip content="问一问">
             <button className="nav-control" type="button" aria-label="问一问" aria-current={!settingsOpen && view === 'clarification' ? 'page' : undefined} onClick={() => navigateFromSidebar(openClarification)}>
-              <span className="control-icon"><MessageCircleQuestion aria-hidden="true" /></span>
+              <span className="control-icon"><AskIcon className="sidebar-icon" aria-hidden="true" /></span>
               <span className="control-label" aria-hidden="true">问一问</span>
             </button>
           </Tooltip>
-          <UnavailableDestination label="心事屋" icon={HouseHeart} />
+          <UnavailableDestination label="心事屋" icon={<HeartRoomIcon className="sidebar-icon" aria-hidden="true" />} />
           <ConversationNavigation wide={open} conversations={reader.conversations} activeId={!settingsOpen && view === 'conversation' ? activeId : undefined}
             openRequest={conversationNavigationRequest}
             arrange={api?.arrangeConversation && (async change => { await api.arrangeConversation(change); await reader.refresh({ preserveReader: true }) })}
@@ -497,7 +494,7 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
             setSettingsOpen(true)
           }}>
             <span className="control-icon"><Settings aria-hidden="true" /></span><span className="control-label" aria-hidden="true">设置</span>
-          </button> : <UnavailableDestination label="设置" icon={Settings} />}
+          </button> : <UnavailableDestination label="设置" icon={<Settings aria-hidden="true" />} />}
         </footer>
       </aside>
       {/* 设置返回时复用原阅读器的草稿、引用和滚动位置。 */}
