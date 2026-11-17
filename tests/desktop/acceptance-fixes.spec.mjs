@@ -44,7 +44,7 @@ test('active import remains recoverable and compact reply navigation preserves t
     await page.screenshot({ path: join(evidence, '01-active-import-restored.png'), animations: 'disabled' })
     await discovery.getByRole('checkbox', { name: /example.json$/ }).check()
     await page.getByRole('button', { name: '解析所选入口' }).click()
-    await expect(page.getByText('导入完成。', { exact: true })).toBeVisible()
+    await expect(page.getByText('导入完成', { exact: true })).toBeVisible()
     await expect(page.getByLabel('导入目标', { exact: true })).toHaveCount(0)
     await page.getByRole('button', { name: '打开会话', exact: true }).click()
     await dismissIdentity(page)

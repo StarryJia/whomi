@@ -37,9 +37,9 @@ test.each(['awaiting_commit', 'committing', 'partially_completed', 'failed'] as 
   await user.click(screen.getByRole('button', { name: '个人总览' }))
   await user.click(screen.getByRole('button', { name: '导入会话' }))
   await waitFor(() => expect(localStorage.getItem('whomi:import-job')).toBe('job'))
-  if (status === 'awaiting_commit' || status === 'committing') expect(await screen.findByText('正在保存…')).toBeInTheDocument()
+  if (status === 'awaiting_commit' || status === 'committing') expect(await screen.findByText('正在保存')).toBeInTheDocument()
   else if (status === 'partially_completed') expect(await screen.findByText('已保存 500 条消息。')).toBeInTheDocument()
-  else expect(await screen.findByText('导入失败，请查看操作提示。')).toBeInTheDocument()
+  else expect(await screen.findByText('导入失败')).toBeInTheDocument()
   expect(api.cancelImport).not.toHaveBeenCalled()
 })
 

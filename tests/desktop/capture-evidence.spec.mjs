@@ -118,7 +118,7 @@ test('capture comprehensive evidence for import flow, unified top bar, conversat
     // 单文件自动解析并保存，不经过目标选择、身份填写或消息预览。
     const results = page.getByRole('region', { name: '导入进度与结果' })
     await expect(results).toBeVisible()
-    await expect(page.getByText('导入完成。', { exact: true })).toBeVisible()
+    await expect(page.getByText('导入完成', { exact: true })).toBeVisible()
     await expect(page.getByText('已保存 3 条消息。', { exact: true })).toBeVisible()
     await expect(page.getByLabel('导入目标', { exact: true })).toHaveCount(0)
     await expect(page.getByRole('button', { name: '预览消息', exact: true })).toHaveCount(0)

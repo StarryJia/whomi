@@ -21,13 +21,29 @@ const numeric: Partial<Record<number, MessageKind>> = {
   50: 'call', 10000: 'system', 10002: 'system',
 }
 const applicationKinds: Partial<Record<number, MessageKind>> = {
-  4: 'link', 5: 'link', 6: 'file', 8: 'sticker', 19: 'forward', 57: 'reply', 62: 'poke',
+  4: 'link', 5: 'link', 6: 'file', 8: 'sticker', 19: 'forward', 36: 'link', 57: 'reply', 62: 'poke', 76: 'link',
 }
 const applicationTypeBase = 2 ** 32
+
+export type UnknownTypeDetail = { reason: string; type?: number; subtype?: number; alternateSubtype?: number }
+type ReportUnknownType = (detail: UnknownTypeDetail) => void
+
+function unknownKind(report: ReportUnknownType | undefined, detail: UnknownTypeDetail): MessageKind {
+  report?.(detail)
+  return 'unknown'
+}
 
 function typeNumber(value: unknown): number | undefined {
   const number = typeof value === 'string' && /^\d+$/.test(value) ? Number(value) : value
   return typeof number === 'number' && Number.isSafeInteger(number) && number > 0 ? number : undefined
+}
+
+function withoutTrailingNullPadding(content: string): string {
+  let end = content.length
+  while (end > 0 && ' \r\n\t'.includes(content[end - 1])) end--
+  const paddingEnd = end
+  while (end > 0 && content[end - 1] === '\0') end--
+  return end === paddingEnd ? content : content.slice(0, end)
 }
 
 function readSiwxPayload(content: unknown) {
@@ -77,30 +93,59 @@ function readSiwxPayload(content: unknown) {
     if (typeField.count === 1 && (attributeType === undefined || attribute === elementType)) subtype = elementType
     if (typeField.count === 0 && attribute === 19) subtype = attribute
   }
+  let subtypeProblem: UnknownTypeDetail | undefined
+  if (subtype === undefined) {
+    if (applications > 1 || typeField.count > 1 || (typeField.count === 1 && (!elementType || (attributeType !== undefined && !attribute)))) {
+      subtypeProblem = { reason: '应用消息格式无效' }
+    } else if (typeField.count === 1 && elementType && attribute) {
+      subtypeProblem = { reason: '应用消息子类型冲突', subtype: elementType, alternateSubtype: attribute }
+    } else {
+      subtypeProblem = { reason: '缺少应用消息子类型' }
+    }
+  }
   const serverId = referenceField.text.trim()
   return {
     subtype,
+    subtypeProblem,
     replyId: applications <= 1 && references === 1 && referenceField.count === 1 && /^[1-9]\d*$/.test(serverId) ? serverId : null,
   }
 }
 
-export function siwxKind(raw: Record<string, any>): MessageKind {
+export function siwxKind(raw: Record<string, any>, report?: ReportUnknownType): MessageKind {
   if (siwxQuote(raw)) return 'reply'
   const label = sourceKey(raw.typeName ?? raw.type)
   if (label && Object.hasOwn(named, label)) return named[label]
   const localType = typeNumber(raw.localType)
   const isApplicationType = localType !== undefined && localType % applicationTypeBase === 49
+  const type = isApplicationType ? 49 : localType
   if (isApplicationType || label === '链接/文件') {
     const packedSubtype = isApplicationType ? Math.floor(localType / applicationTypeBase) : 0
+    let subtype = packedSubtype
     if (typeof raw.rawContent === 'string' && raw.rawContent.trim()) {
-      const subtype = readSiwxPayload(raw.rawContent)?.subtype
-      if (subtype === undefined || (packedSubtype && packedSubtype !== subtype)) return 'unknown'
-      return applicationKinds[subtype] ?? 'unknown'
+      const xml = withoutTrailingNullPadding(raw.rawContent)
+      const payload = readSiwxPayload(xml)
+      if (!payload) return unknownKind(report, { reason: '应用消息格式无效', type })
+      if (xml !== raw.rawContent) {
+        // 已核实导出工具会为分享链接和表情附加尾部空字符。
+        const paddedKind = payload.subtype === undefined ? undefined : applicationKinds[payload.subtype]
+        if (paddedKind !== 'link' && paddedKind !== 'sticker') return unknownKind(report, { reason: '应用消息格式无效', type })
+      }
+      if (payload.subtype === undefined) return unknownKind(report, { ...payload.subtypeProblem!, type })
+      subtype = payload.subtype
+      if (packedSubtype && packedSubtype !== subtype) {
+        return unknownKind(report, { reason: '应用消息子类型冲突', type, subtype, alternateSubtype: packedSubtype })
+      }
     }
-    if (packedSubtype) return applicationKinds[packedSubtype] ?? 'unknown'
-    return 'unknown'
+    if (!subtype) return unknownKind(report, { reason: '缺少应用消息子类型', type })
+    return applicationKinds[subtype] ?? unknownKind(report, { reason: '应用消息子类型尚未支持', type, subtype })
   }
-  return localType === undefined ? 'unknown' : numeric[localType] ?? 'unknown'
+  const kind = localType === undefined ? undefined : numeric[localType]
+  if (kind) return kind
+  if (localType !== undefined && label === `类型${localType}` && raw.content === `[${label}]` &&
+      (typeof raw.rawContent !== 'string' || !raw.rawContent.trim())) {
+    return unknownKind(report, { reason: '导出正文为类型占位', type })
+  }
+  return unknownKind(report, { reason: label || localType ? '消息类型尚未支持' : '缺少消息类型', type })
 }
 
 function siwxQuote(raw: Record<string, any>) {
@@ -111,8 +156,8 @@ function siwxQuote(raw: Record<string, any>) {
   const hasTime = epoch(quote.createTime ?? quote.ts, 'second') !== null
   return hasExcerpt || hasSender || hasTime ? quote : null
 }
-export function normalizeSiwx(raw: Record<string, any>, base: ParsedMessage): ParsedMessage {
-  const kind = siwxKind(raw)
+export function normalizeSiwx(raw: Record<string, any>, base: ParsedMessage, reportUnknownType?: ReportUnknownType): ParsedMessage {
+  const kind = siwxKind(raw, reportUnknownType)
   const sender = sourceKey(raw.senderUsername)
   // SIWX/WeFlow numeric createTime exports may use either epoch unit.
   const unit = Math.abs(Number(raw.createTime)) >= 100_000_000_000 ? 'millisecond' : 'second'

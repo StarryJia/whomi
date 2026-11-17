@@ -144,7 +144,7 @@ export function FileImport({ api, onSaved, onOpenConversation }: {
         {(snapshot.status === 'preparing' || snapshot.status === 'scanning') && (
           <div className="import-step import-step-centered" role="region" aria-label="导入准备">
             <ImportStateMark state={controller.error ? 'failed' : 'working'} />
-            <h2>{snapshot.status === 'scanning' ? '正在查找文件入口…' : '正在准备…'}</h2>
+            <h2>{snapshot.status === 'scanning' ? '正在查找文件入口' : '正在准备'}</h2>
             <progress className="import-meter" aria-label="查找文件进度" />
             <div className="import-step-actions">
               <button className="import-secondary" type="button" onClick={() => { void controller.cancel() }}>取消导入</button>
@@ -161,7 +161,7 @@ export function FileImport({ api, onSaved, onOpenConversation }: {
         {snapshot.status === 'awaiting_confirmation' && snapshot.discovery?.entries.length === 1 && (
           <div className="import-step import-step-centered" role="region" aria-label="解析进度">
             <ImportStateMark state={controller.error ? 'failed' : 'working'} />
-            <h2>正在解析…</h2>
+            <h2>正在解析</h2>
             <p className="import-muted">{snapshot.discovery.entries[0].displayName}</p>
             <progress className="import-meter" aria-label="解析进度" />
             {controller.error && <p className="import-error" role="alert">{controller.error.action}</p>}
@@ -174,7 +174,7 @@ export function FileImport({ api, onSaved, onOpenConversation }: {
         {(snapshot.status === 'staging' || snapshot.status === 'validating') && (
           <div className="import-step import-step-centered" role="region" aria-label="解析进度">
             <ImportStateMark state={controller.error ? 'failed' : 'working'} />
-            <h2>{snapshot.status === 'staging' ? '正在解析…' : '正在校验…'}</h2>
+            <h2>{snapshot.status === 'staging' ? '正在解析' : '正在校验'}</h2>
             <progress className="import-meter" aria-label="解析进度" />
             <p className="import-muted">已检查 {snapshot.counts.seen} 条记录 · 有效 {snapshot.counts.validRecords} 条 · 异常 {snapshot.counts.invalidRecords} 条</p>
             <div className="import-step-actions">
@@ -186,7 +186,7 @@ export function FileImport({ api, onSaved, onOpenConversation }: {
         {snapshot.status === 'awaiting_commit' && (
           <div className="import-step import-step-centered" role="region" aria-label="保存进度">
             <ImportStateMark state={controller.error ? 'failed' : 'working'} />
-            <h2>正在保存…</h2>
+            <h2>正在保存</h2>
             <progress className="import-meter" aria-label="保存进度" />
             <p className="import-muted">已解析 {snapshot.counts.validRecords} 条记录</p>
             {controller.error && <p className="import-error" role="alert">{controller.error.action}</p>}
