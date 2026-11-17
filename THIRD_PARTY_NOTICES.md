@@ -36,6 +36,26 @@ README 及应用内操作指引的会话平台图标取自 [Simple Icons 13.0.0]
 
 ## 其他依赖
 
+### Lucide 侧栏图标
+
+[侧栏图标](src/components/ui/sidebar-icons.tsx)中的对话洞察与问一问分别改编自 `lucide-react` 1.61.0 的 `FileText` 和 `MessageCircleQuestionMark`。Whomi 将外轮廓与内部笔画分层，并为问号气泡补上闭合路径，以支持选中状态的填色与反白。[依赖来源](https://www.npmjs.com/package/lucide-react/v/1.61.0)
+
+ISC License
+
+Copyright (c) 2026 Lucide Icons and Contributors
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
 ### Cherry Studio 对话与设置模块
 
 本轮采用 [CherryHQ/cherry-studio 固定提交 f19aa72f969b782ed72f81be80976b237ae26605](https://github.com/CherryHQ/cherry-studio/tree/f19aa72f969b782ed72f81be80976b237ae26605) 中服务商菜单、模型编辑与同步、对话提交、模型分组和生成统计的结构与行为，并将其数据读写接入 Whomi 本地接口。逐文件来源、必要改动及兼容边界见[设置来源清单](docs/research/cherry-settings-reuse.md)与[对话来源清单](docs/research/cherry-conversation-reuse.md)。业务模块采用 AGPL-3.0，完整许可证保留在 [electron/vendor/cherry-studio/LICENSE](electron/vendor/cherry-studio/LICENSE)；共用界面包的许可按设置来源清单单独记录。没有将整个 Cherry 应用、云服务或其私有数据迁入 Whomi。
