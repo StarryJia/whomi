@@ -5,6 +5,8 @@ import { parseGoogleChatDate } from '../../vendor/chatlab-parser/src/formats/goo
 import { detectMessageType } from '../../vendor/chatlab-parser/src/formats/utils/telegram-utils'
 import type { TelegramMessage } from '../../vendor/chatlab-parser/src/formats/utils/telegram-utils'
 import { epoch, normalizeSiwx, sourceKey } from './siwx-normalizer'
+import type { UnknownTypeDetail } from './siwx-normalizer'
+import type { SiwxCompatibility } from './types'
 import type { Raw } from './source-records'
 
 const kinds: Record<number, MessageKind> = { 0: 'text', 1: 'image', 2: 'audio', 3: 'video', 4: 'file', 5: 'sticker', 7: 'link', 8: 'location', 25: 'reply', 26: 'forward', 80: 'system', 81: 'system', 99: 'unknown' }
@@ -16,7 +18,8 @@ export function conversation(id: string, root: Raw, meta: ParsedMeta, index: num
   return { sourceKey: source, title: root.meta?.name ?? root.session?.displayName ?? meta.name ?? '未命名会话', kind: meta.type === 'private' ? 'direct' : meta.type === 'group' ? 'group' : 'unknown', identity: { platform, ownerKey: sourceKey(owner), conversationKey: sourceKey(key), namespace: id.startsWith('telegram-') ? 'telegram' : id.startsWith('chatlab') ? 'chatlab' : id === 'echotrace' || id === 'weflow' ? 'wechat' : id } }
 }
 
-export function normalizeMessage(id: string, raw: Raw, parsed: UpMessage | undefined, chat: ParsedConversation, ordinal: number): ParsedMessage {
+export function normalizeMessage(id: string, raw: Raw, parsed: UpMessage | undefined, chat: ParsedConversation, ordinal: number,
+  reportUnknownType?: (detail: UnknownTypeDetail) => void, reportCompatibility?: (value: SiwxCompatibility) => void): ParsedMessage {
   let message: ParsedMessage = {
     modelVersion: 1, conversationKey: chat.sourceKey, ordinal, originalId: null, idNamespace: null,
     senderKey: sourceKey(parsed?.senderPlatformId), senderKind: parsed?.senderPlatformId ? 'member' : 'unknown',
@@ -25,7 +28,7 @@ export function normalizeMessage(id: string, raw: Raw, parsed: UpMessage | undef
     kind: parsed ? kinds[parsed.type] ?? 'unknown' : 'unknown', text: parsed?.content ?? '', sourceType: sourceKey(raw.type ?? raw.messageType), reply: null, attachments: [], extra: {},
   }
   let original: unknown = null, replyId: unknown = null, namespace: string | null = null
-  if (id === 'echotrace' || id === 'weflow') return normalizeModel(normalizeSiwx(raw, message))
+  if (id === 'echotrace' || id === 'weflow') return normalizeModel(normalizeSiwx(raw, message, reportUnknownType, reportCompatibility))
   if (id.startsWith('chatlab')) {
     message.text = typeof raw.content === 'string' ? raw.content : raw.content == null ? '' : JSON.stringify(raw.content)
     message.kind = kinds[raw.type] ?? 'unknown'

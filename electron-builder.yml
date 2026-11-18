@@ -45,6 +45,10 @@ extraResources:
     to: licenses/chatlab/LICENSE
   - from: electron/vendor/chatlab-parser/UPSTREAM.md
     to: licenses/chatlab/UPSTREAM.md
+  - from: electron/vendor/saxes/LICENSE
+    to: licenses/saxes/LICENSE
+  - from: node_modules/xmlchars/LICENSE
+    to: licenses/xmlchars/LICENSE
   - from: electron/vendor/cherry-studio/LICENSE
     to: licenses/cherry-studio/LICENSE
   - from: docs/research/cherry-settings-reuse.md

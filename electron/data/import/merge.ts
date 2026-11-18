@@ -98,7 +98,7 @@ export function createCommitter(dependencies: CommitDependencies = {}) {
           fallbackCandidate=candidateId
           fallbackDuplicate=createFallbackDeduplicator(store,conversationId,signal)
         }
-        let classification = m.originalId===null && await fallbackDuplicate(c,m) ? 'duplicate':classifyMessage(store,t,m,o)
+        let classification = m.originalId===null && await fallbackDuplicate(c,m,record.siwxCompatibility?.previousReply) ? 'duplicate':classifyMessage(store,t,m,o)
         if (classification === 'ambiguous') classification = 'new'
         if (classification === 'duplicate') {
           result.duplicates++; duplicates++

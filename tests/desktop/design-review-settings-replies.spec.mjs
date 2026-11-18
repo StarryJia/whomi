@@ -116,7 +116,7 @@ test('SIWX reimport repairs an old quote and jumps across unloaded pages without
     async function importSource() {
       await page.getByRole('button', { name: '导入会话', exact: true }).click()
       await page.getByRole('button', { name: '选择文件', exact: true }).click()
-      await expect(page.getByText('导入完成。', { exact: true })).toBeVisible()
+      await expect(page.getByText('导入完成', { exact: true })).toBeVisible()
       await expect(page.getByLabel('导入目标', { exact: true })).toHaveCount(0)
       await page.getByRole('button', { name: '打开会话', exact: true }).click()
       await dismissIdentity(page)

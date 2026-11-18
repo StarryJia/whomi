@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { expect, it, vi } from 'vitest'
 import { FileImport } from '../file-import'
@@ -41,14 +41,14 @@ it('恢复多项结果时逐项显示实际匹配名称，缺少匹配记录的�
   localStorage.setItem('whomi:import-job', 'job')
   render(<FileImport api={api} onOpenConversation={onOpen} />)
 
-  expect(await screen.findByRole('heading', { name: '发现已有会话：示例联系人' })).toBeVisible()
+  expect(await screen.findByRole('heading', { name: '发现已有会话：示例联系人 已更新' })).toBeVisible()
   expect(screen.queryByRole('heading', { name: '示例导出标题' })).not.toBeInTheDocument()
   expect(screen.getByRole('heading', { name: '示例新会话' })).toBeVisible()
-  expect(screen.getByRole('heading', { name: '发现已有会话：未命名会话' })).toBeVisible()
+  expect(screen.getByRole('heading', { name: '发现已有会话：未命名会话 已更新' })).toBeVisible()
   expect(screen.getByText('新增 0 条消息，重复 100 条。')).toBeVisible()
   expect(screen.getByText('已保存 2 条消息。')).toBeVisible()
   expect(screen.getByText('跳过重复 1 条。')).toBeVisible()
-  expect(screen.getByText(warning.action)).toBeVisible()
+  expect(screen.queryByText(warning.action)).not.toBeInTheDocument()
   await userEvent.click(screen.getAllByRole('button', { name: '打开会话' })[0])
   expect(onOpen).toHaveBeenCalledWith('7')
   await userEvent.click(screen.getByRole('button', { name: '继续导入' }))
@@ -79,7 +79,7 @@ it('等待解析显示不定进度和真实计数，取消立即恢复起点', a
   expect(await screen.findByRole('button', { name: '选择文件' })).toBeVisible()
   expect(api.cancelImport).toHaveBeenCalledWith('job')
   await act(async () => { pending.resolve('job') })
-  expect(screen.queryByText('已取消导入。')).not.toBeInTheDocument()
+  expect(screen.queryByText('已取消导入')).not.toBeInTheDocument()
 })
 it('保存失败保留恢复入口并可重试', async () => {
   const { api } = fakeImportApi(), original = vi.mocked(api.startImport).getMockImplementation()!
@@ -100,7 +100,7 @@ it('部分成功后取消保留真实成果，重复通知不重复回报', asyn
   const partial = snapshot({ status: 'committing', candidates: [candidate('a'), candidate('b')], results: [saved('a', '7', { inserted: 320 }), saved('b', '8', { status: 'cancelled', committedAt: null, inserted: 0 })] })
   act(() => emit(partial)); act(() => emit({ ...partial }))
   await userEvent.click(screen.getByRole('button', { name: '取消导入' }))
-  expect(await screen.findByText('部分会话已保存，其余已取消。')).toBeVisible()
+  expect(await screen.findByText('已取消剩余导入')).toBeVisible()
   expect(screen.getByText('已保存 320 条消息。')).toBeVisible()
   expect(onSaved).toHaveBeenCalledTimes(1)
   await userEvent.click(screen.getByRole('button', { name: '打开会话' }))
@@ -136,6 +136,49 @@ it('解析失败只就近展示具体问题，不重复同一操作提示',async
   act(()=>emit(snapshot({status:'failed',candidates:[candidate()],issues,results:[saved('a','7',{status:'blocked',inserted:0,committedAt:null,issues})]})))
   expect(await screen.findByText('第 1 条记录：请检查导出文件后重试。')).toBeVisible()
   expect(screen.queryByText('请检查导出文件后重试。',{exact:true})).not.toBeInTheDocument()
+})
+it('保存过程和结果省略解析提示，保留真实条数与失败操作', async () => {
+  const { api, emit } = fakeImportApi()
+  const firstWarning = { code: 'unknown-type', candidateId: 'a', severity: 'warning' as const, ordinal: 1, action: '第 2 条记录：消息类型无法识别，请核对保留的原文。' }
+  const nextWarning = { ...firstWarning, ordinal: 3, action: '第 4 条记录：消息类型无法识别，请核对来源文件。' }
+  const duplicateWarning = { ...firstWarning, candidateId: 'b' }
+  const failedWarning = { ...firstWarning, candidateId: 'c' }
+  const mixedWarning = { ...firstWarning, candidateId: 'd' }
+  const failure = { code: 'COMMIT_FAILED', candidateId: 'c', severity: 'blocking' as const, action: '保存失败，请重新导入。' }
+  const typeWarning = /消息类型无法识别/
+
+  vi.mocked(api.startImport).mockResolvedValue('job')
+  render(<FileImport api={api} />)
+  await userEvent.click(screen.getByRole('button', { name: '选择文件' }))
+  act(() => emit(snapshot({
+    status: 'committing',
+    candidates: [candidate('a')],
+    issues: [nextWarning],
+    results: [saved('a', '7', { status: 'staged', inserted: 0, committedAt: null, issues: [firstWarning] })],
+  })))
+  expect(await screen.findByRole('progressbar')).toBeVisible()
+  expect(screen.queryByText('已解析，尚未保存')).not.toBeInTheDocument()
+  expect(screen.queryByRole('list')).not.toBeInTheDocument()
+  expect(screen.queryByText(typeWarning)).not.toBeInTheDocument()
+
+  act(() => emit(snapshot({
+    status: 'partially_completed',
+    candidates: ['a', 'b', 'c', 'd'].map(candidate),
+    issues: [firstWarning, duplicateWarning, failedWarning, mixedWarning],
+    results: [
+      saved('a', '7', { inserted: 3, issues: [firstWarning, nextWarning] }),
+      saved('b', '8', { status: 'duplicate', inserted: 0, duplicates: 3, issues: [duplicateWarning] }),
+      saved('c', '9', { status: 'failed', inserted: 0, committedAt: null, issues: [failure] }),
+      saved('d', '10', { inserted: 2, duplicates: 1, issues: [mixedWarning] }),
+    ],
+  })))
+  const [savedItem, duplicateItem, failedItem, mixedItem] = screen.getAllByRole('listitem')
+  expect(within(savedItem).getByText('已保存 3 条消息。')).toBeVisible()
+  expect(within(duplicateItem).getByText('新增 0 条消息，重复 3 条。')).toBeVisible()
+  expect(within(mixedItem).getByText('跳过重复 1 条。')).toBeVisible()
+  expect(within(failedItem).getByText(failure.action)).toHaveClass('import-error')
+  expect(screen.getByRole('button', { name: '重新选择失败的来源' })).toBeVisible()
+  expect(screen.queryByText(typeWarning)).not.toBeInTheDocument()
 })
 it('没有入口时提供具体文件和重新选择操作', async () => {
   const { api } = fakeImportApi()

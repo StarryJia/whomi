@@ -33,6 +33,11 @@ test('SIWX accepts reference attributes and a CDATA server id without parsing it
   expect(parsed.reply?.originalId).toBe(targetId)
 })
 
+test('SIWX uses the direct server ID even when the quote text resembles reference markup', () => {
+  const rawContent = `<msg><appmsg><refermsg><content><![CDATA[<svrid>101</svrid>]]></content><svrid>${targetId}</svrid></refermsg></appmsg></msg>`
+  expect(normalizeSiwx({ ...raw, rawContent }, normalizeModel(message())).reply?.originalId).toBe(targetId)
+})
+
 test('reimport enriches old SIWX reply metadata without duplicating or rewriting messages', async () => {
   const temp = temporaryStore(), store = openStore(temp.path)
   cleanups.push(() => { store.close(); temp.cleanup() })

@@ -1,6 +1,7 @@
 import { importJobStates, importResultStates } from './import-contract'
 import type { ImportSnapshot } from './import-contract'
 import type { DesktopError, DesktopMethod } from './desktop-api'
+import { attachmentKinds, messageKinds } from './conversation-model'
 
 type Check = (value: unknown) => boolean
 const text: Check = value => typeof value === 'string' && value.length <= 8 * 1024 ** 2
@@ -21,11 +22,11 @@ export const localId: Check = value => typeof value === 'string' && value.length
 const zeroId: Check = value => value === '0' || localId(value)
 const cursor: Check = value => typeof value === 'string' && value.length > 0 && value.length <= 2048 && /^[A-Za-z0-9_-]+$/.test(value)
 const limit = (max: number): Check => value => count(value) && (value as number) >= 1 && (value as number) <= max
-const kind = oneOf('text', 'image', 'audio', 'video', 'file', 'sticker', 'link', 'location', 'reply', 'forward', 'system', 'unknown')
+const kind = oneOf(...messageKinds)
 const chatKind = oneOf('direct', 'group', 'unknown')
 const senderKind = oneOf('member', 'system', 'unknown')
 const precision = oneOf('millisecond', 'second', 'minute', 'unknown')
-const attachment = object({ kind, name: nullable(text), state: oneOf('unresolved', 'missing') })
+const attachment = object({ kind: oneOf(...attachmentKinds), name: nullable(text), state: oneOf('unresolved', 'missing') })
 const parsedReplyFields = { originalId: nullable(text), idNamespace: nullable(text), text: nullable(text), senderName: nullable(text), sentAtMs: nullable(integer) }
 const messageFields = { ordinal: count, senderKind, senderName: text, sentAtMs: nullable(integer), timeRaw: nullable(text), timePrecision: precision, timezone: nullable(text), kind, text, sourceType: nullable(text), attachments: array(attachment) }
 const message = object({ ...messageFields, id: localId, conversationId: localId, memberId: nullable(localId), isSelf: bool, timeBucket: oneOf(0, 1), sortTime: integer, reply: nullable(object({ ...parsedReplyFields, targetMessageId: nullable(localId), state: oneOf('unresolved', 'resolved') })) })

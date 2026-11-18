@@ -1,4 +1,11 @@
-import type { ImportIssue, ParsedConversation, ParsedMember, ParsedMessage } from '../../../src/shared/conversation-model'
+import type { ImportIssue, MessageKind, ParsedConversation, ParsedMember, ParsedMessage, ParsedReply } from '../../../src/shared/conversation-model'
+
+/** Internal data for matching earlier SIWX parser output; never part of the stored message. */
+export type SiwxCompatibility = {
+  kindBeforeTypeExpansion?: MessageKind
+  kindBeforeShareExpansion?: 'unknown'
+  previousReply?: ParsedReply
+}
 
 export type SourceProbe = { extension: string; prefix: Uint8Array; size: number }
 /** 后台创建并保持不可变的快照文件；不接受来自界面的任意路径。 */
@@ -12,7 +19,7 @@ export type ParserInput = {
 export type ParseEvent =
   | { type: 'conversation'; value: ParsedConversation }
   | { type: 'member'; conversationKey: string; value: ParsedMember }
-  | { type: 'message'; value: ParsedMessage }
+  | { type: 'message'; value: ParsedMessage; siwxCompatibility?: SiwxCompatibility }
   | { type: 'issue'; value: ImportIssue }
   | { type: 'end'; conversationKey: string; seen: number; declaredMessages?: number }
 export type ParserAdapter = {

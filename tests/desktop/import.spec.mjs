@@ -26,7 +26,7 @@ async function drop(page, path) {
 async function save(page, path) {
   await page.getByRole('button', { name: '导入会话', exact: true }).click()
   await drop(page, path)
-  await expect(page.getByText('导入完成。', { exact: true })).toBeVisible()
+  await expect(page.getByText('导入完成', { exact: true })).toBeVisible()
   await expect(page.getByLabel('导入目标', { exact: true })).toHaveCount(0)
   await expect(page.getByRole('button', { name: '预览消息', exact: true })).toHaveCount(0)
 }
@@ -124,7 +124,7 @@ test('actual import UI preserves old messages, self identity, source bytes and s
     }
     await save(page, folder)
     await expect(page.getByText('已保存 1 条消息。', { exact: true })).toBeVisible()
-    const matchedTitle = page.getByRole('heading', { name: '发现已有会话：示例联系人', exact: true })
+    const matchedTitle = page.getByRole('heading', { name: '发现已有会话：示例联系人 已更新', exact: true })
     await expect(matchedTitle).toBeVisible()
     await expect(page.getByRole('heading', { name: '导出文件中的名称', exact: true })).toHaveCount(0)
     await page.screenshot({ path: testInfo.outputPath('matched-desktop.png') })
@@ -164,6 +164,82 @@ test('actual import UI preserves old messages, self identity, source bytes and s
     expect(located.status).toBe('available')
     expect(located.page.items.find(item => item.id === stableMessage.id)?.text).toBe(stableMessage.text)
     expect(await fingerprint(sources)).toBe(before)
+  } finally { await application?.close(); await cleanup(directory) }
+})
+
+test('SIWX import retains unknown records and reports their saved state after reimport', async ({}, testInfo) => {
+  const directory = await mkdtemp(join(tmpdir(), 'whomi-runtime-'))
+  let application
+  try {
+    const source = join(directory, 'synthetic-wechat.json')
+    await copyFile('tests/desktop/probe.cjs', join(directory, 'probe.cjs'))
+    const records = [
+      { localType: 1, content: '明晚见', serverId: '101' },
+      { localType: 49, typeName: '链接/文件', rawContent: '<msg><appmsg><type>5</type></appmsg></msg>\n\0\0', content: '活动链接' },
+      { localType: 42, content: '示例名片' },
+      { localType: 50, content: '通话结束' },
+      { localType: 49, rawContent: '<msg><appmsg><type>62</type></appmsg></msg>', content: '拍了拍示例联系人' },
+      { localType: 49, content: '未识别的分享' },
+      { localType: 11000, typeName: '类型11000', rawContent: '', content: '[类型11000]' },
+      { localType: 49, rawContent: '<msg><appmsg><type>57</type><refermsg><svrid>101</svrid></refermsg></appmsg></msg>',
+        content: '好的', quote: { content: '明晚见' } },
+      { localType: 49, rawContent: '<msg><appmsg><type>36</type><url>https://example.invalid/app</url><weappinfo/></appmsg></msg>', content: '小程序分享' },
+      { localType: 49, rawContent: '<msg><appmsg><type>76</type><url>https://example.invalid/music</url><songlyric/></appmsg></msg>', content: '音乐分享' },
+      { localType: 49, rawContent: '<msg><appmsg><type>8</type></appmsg></msg>\n\0\0', content: '示例表情' },
+    ]
+    await writeFile(source, JSON.stringify({
+      exportInfo: { exporter: 'SIWX', wxid: 'example-owner' },
+      session: { wxid: 'example-peer', displayName: '合成微信会话', type: '私聊', messageCount: records.length },
+      messages: records.map((record, index) => ({
+        senderUsername: 'example-peer', senderDisplayName: '示例发送者', createTime: 1700000000 + index, ...record,
+      })),
+    }))
+    application = await electron.launch({ args: [resolve('out/main/index.cjs'), '--whomi-runtime-test'], env: { ...process.env, WHOMI_RUNTIME_TEST: directory } })
+    let stderr = ''
+    application.process().stderr.on('data', chunk => { stderr += chunk })
+    const diagnostics = () => stderr.split(/\r?\n/).slice(0, -1)
+      .filter(line => line.startsWith('[导入诊断] '))
+      .map(line => JSON.parse(line.slice('[导入诊断] '.length)))
+    const expectedDiagnostic = {
+      format: 'echotrace', unknownCount: 2, otherCount: 0,
+      details: [
+        { reason: '缺少应用消息子类型', type: 49, count: 1, firstRecord: 6 },
+        { reason: '导出正文为类型占位', type: 11000, count: 1, firstRecord: 7 },
+      ],
+    }
+    const page = await application.firstWindow()
+    await save(page, source)
+    await expect(page.getByText('已保存 11 条消息。', { exact: true })).toBeVisible()
+    const typeWarning = page.getByText(/消息类型无法识别/)
+    await expect(typeWarning).toHaveCount(0)
+    await expect.poll(diagnostics).toEqual([expectedDiagnostic])
+    await page.screenshot({ path: testInfo.outputPath('unknown-saved.png') })
+
+    const [conversation] = (await page.evaluate(() => window.whomi.listConversations({}))).items
+    const messages = (await page.evaluate(conversationId => window.whomi.readMessages({ conversationId, direction: 'after' }), conversation.id)).items
+    expect(messages.map(message => message.kind)).toEqual(['text', 'link', 'contact', 'call', 'poke', 'unknown', 'unknown', 'reply', 'link', 'link', 'sticker'])
+    expect(messages.map(message => message.text)).toEqual(records.map(record => record.content))
+    expect(messages[7].reply.targetMessageId).toBe(messages[0].id)
+    await page.getByRole('button', { name: '继续导入', exact: true }).click()
+    await save(page, source)
+    await expect(page.getByText('新增 0 条消息，重复 11 条。', { exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '发现已有会话：合成微信会话 已更新', exact: true })).toBeVisible()
+    await expect(typeWarning).toHaveCount(0)
+    await expect.poll(diagnostics).toEqual([expectedDiagnostic, expectedDiagnostic])
+    const minimumSize = await application.evaluate(({ BrowserWindow }) => {
+      const window = BrowserWindow.getAllWindows()[0]
+      const minimum = window.getMinimumSize()
+      window.setSize(...minimum)
+      return minimum
+    })
+    await expect.poll(() => application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].getSize())).toEqual(minimumSize)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+    await page.screenshot({ path: testInfo.outputPath('unknown-duplicate-narrow.png') })
+    await page.getByRole('button', { name: '打开会话', exact: true }).click()
+    await dismissIdentity(page)
+    await expect(page.getByText('未识别的分享', { exact: true })).toBeVisible()
+    await expect(page.getByText('[类型11000]', { exact: true })).toBeVisible()
+    expect((await page.evaluate(() => window.whomi.listConversations({}))).items.map(item => [item.id, item.messageCount])).toEqual([[conversation.id, 11]])
   } finally { await application?.close(); await cleanup(directory) }
 })
 
@@ -216,14 +292,14 @@ test('actual import cancels before saving and retains partial results for recove
     await drop(page,sources)
     await page.getByRole('checkbox').nth(0).check();await page.getByRole('checkbox').nth(1).check()
     await page.getByRole('button',{name:'解析所选入口',exact:true}).click()
-    await expect(page.getByText('部分会话未完成，请查看下方结果。',{exact:true})).toBeVisible()
+    await expect(page.getByText('部分会话未完成',{exact:true})).toBeVisible()
     await expect(page.getByText('已保存 1 条消息。',{exact:true})).toBeVisible()
     await expect(page.getByRole('button',{name:'打开会话',exact:true})).toHaveCount(1)
     await page.screenshot({ path: testInfo.outputPath('06-partial-failure.png') })
     expect((await page.evaluate(()=>window.whomi.listConversations({}))).items).toHaveLength(1)
     await writeFile(broken,JSON.stringify(documentFor([2],'Broken synthetic')))
     await page.getByRole('button',{name:'继续导入',exact:true}).click();await drop(page,broken)
-    await expect(page.getByText('导入完成。',{exact:true})).toBeVisible()
+    await expect(page.getByText('导入完成',{exact:true})).toBeVisible()
     expect((await page.evaluate(()=>window.whomi.listConversations({}))).items).toHaveLength(2)
     await page.screenshot({ path: testInfo.outputPath('07-recovered.png') })
   }finally{await application?.close();await cleanup(directory)}

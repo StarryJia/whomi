@@ -7,14 +7,43 @@ import { sourceConversations } from './source-records'
 import type { Raw } from './source-records'
 import { conversation, decodeInstagram, normalizeMessage } from './normalize'
 import { sourceKey } from './siwx-normalizer'
+import type { UnknownTypeDetail } from './siwx-normalizer'
+import type { SiwxCompatibility } from './types'
 import { withSnapshot } from './snapshot-fs'
+
+function diagnosticType(value: number | undefined) {
+  return value !== undefined && Number.isSafeInteger(value) && value >= 0 && value < 2 ** 32 ? value : undefined
+}
+
+function unknownTypeLog(format: string) {
+  const details = new Map<string, UnknownTypeDetail & { count: number; firstRecord: number }>()
+  let unknownCount = 0, otherCount = 0
+  return {
+    record(message: ParsedMessage, detail?: UnknownTypeDetail) {
+      unknownCount++
+      const typeCode = message.sourceType
+      const type = typeCode && /^\d{1,10}$/.test(typeCode) ? Number(typeCode) : undefined
+      const safeDetail = { reason: detail?.reason ?? '消息类型无法识别',
+        type: diagnosticType(detail ? detail.type : type), subtype: diagnosticType(detail?.subtype),
+        alternateSubtype: diagnosticType(detail?.alternateSubtype) }
+      const key = JSON.stringify(safeDetail)
+      const existing = details.get(key)
+      if (existing) existing.count++
+      else if (details.size < 12) details.set(key, { ...safeDetail, count: 1, firstRecord: message.ordinal + 1 })
+      else otherCount++
+    },
+    write() {
+      if (unknownCount) console.warn('[导入诊断] ' + JSON.stringify({ format, unknownCount, details: [...details.values()], otherCount }))
+    },
+  }
+}
 
 function issue(input: ParserInput, code: string, severity: 'blocking' | 'warning' = 'blocking', ordinal?: number): ParseEvent {
   const action = code === 'cancelled' ? '导入已取消。'
     : severity === 'blocking' ? '请检查导出文件后重试。'
     : code === 'unknown-sender' ? '发送者缺失，请核对导出文件中的成员信息。'
     : code === 'unknown-time' ? '时间缺失，请核对导出文件中的消息时间。'
-    : code === 'unknown-type' ? '消息类型无法识别，请核对保留的原文。'
+    : code === 'unknown-type' ? '消息类型无法识别，请核对来源文件。'
     : code === 'upstream-skipped-records' ? '导出记录数量与解析结果不一致，请核对导出文件。'
     : code === 'owner-conflict' ? '导出账号信息不一致，请在会话中确认本人。'
     : '部分消息格式异常，请核对来源导出文件。'
@@ -42,7 +71,8 @@ function* declaredMemberEvents(rows: Raw[], chat: ParsedConversation, id: string
     } }
   }
 }
-function* messageEvents(input: ParserInput, message: ParsedMessage, raw: Raw, chat: ParsedConversation, id: string, members: Set<string>): Generator<ParseEvent> {
+function* messageEvents(input: ParserInput, message: ParsedMessage, raw: Raw, chat: ParsedConversation, id: string, members: Set<string>,
+  siwxCompatibility?: SiwxCompatibility): Generator<ParseEvent> {
   if (Buffer.byteLength(JSON.stringify(message)) > recordLimit(input)) throw new ParseFailure('record-limit', message.ordinal)
   if (message.senderKind === 'member' && !members.has(message.senderKey!)) {
     members.add(message.senderKey!)
@@ -51,7 +81,7 @@ function* messageEvents(input: ParserInput, message: ParsedMessage, raw: Raw, ch
   if (message.senderKind === 'unknown') yield issue(input, 'unknown-sender', 'warning', message.ordinal)
   if (message.sentAtMs === null) yield issue(input, 'unknown-time', 'warning', message.ordinal)
   if (message.kind === 'unknown') yield issue(input, 'unknown-type', 'warning', message.ordinal)
-  yield { type: 'message', value: message }
+  yield { type: 'message', value: message, ...(siwxCompatibility && { siwxCompatibility }) }
 }
 
 async function* bounded(module: FormatModule, input: ParserInput): AsyncGenerator<ParseEvent> {
@@ -73,6 +103,7 @@ async function* bounded(module: FormatModule, input: ParserInput): AsyncGenerato
     const chat = conversation(id, source.root, meta, source.chatIndex)
     yield { type: 'conversation', value: chat }
     const members = new Set<string>()
+    const typeLog = unknownTypeLog(id)
     if (id === 'chatlab') yield* declaredMemberEvents(source.root.members ?? [], chat, id, members)
     if (id === 'instagram-native') yield* declaredMemberEvents(source.root.participants.map((row: Raw) => ({
       platformId: decodeInstagram(row.name), accountName: decodeInstagram(row.name),
@@ -89,18 +120,26 @@ async function* bounded(module: FormatModule, input: ParserInput): AsyncGenerato
     const self = new Set(source.records.filter(row => row.isSend === 1).map(row => sourceKey(row.senderUsername)).filter(Boolean))
     const declaredOwner = sourceKey(source.root.exportInfo?.wxid ?? source.root.exportInfo?.username)
     if (self.size > 1 || (declaredOwner && self.size && !self.has(declaredOwner))) yield issue(input, 'owner-conflict', 'warning')
+    let typeDetail: UnknownTypeDetail | undefined
+    let compatibility: SiwxCompatibility | undefined
+    const reportUnknownType = (detail: UnknownTypeDetail) => { typeDetail = detail }
+    const reportCompatibility = (value: SiwxCompatibility) => { compatibility = value }
     for (let ordinal = 0; ordinal < source.records.length; ordinal++) {
       checkCancelled(input)
       const raw = source.records[ordinal]
       const parsed = messages.length === source.records.length ? messages[ordinal]
         : messages.find(m => m.platformMessageId && m.platformMessageId === sourceKey(raw.id ?? raw.messageId ?? raw.platformMessageId))
-      const message = normalizeMessage(id, raw, parsed, chat, ordinal)
-      yield* messageEvents(input, message, raw, chat, id, members)
+      const message = normalizeMessage(id, raw, parsed, chat, ordinal, reportUnknownType, reportCompatibility)
+      if (message.kind === 'unknown') typeLog.record(message, typeDetail)
+      typeDetail = undefined
+      yield* messageEvents(input, message, raw, chat, id, members, compatibility)
+      compatibility = undefined
       if (ordinal % 500 === 499) await new Promise<void>(resolve => setImmediate(resolve))
     }
     const declared = ['weflow', 'echotrace'].includes(id) ? source.root.session?.messageCount
       : id.startsWith('qq-shuakami') ? source.root.statistics?.totalMessages : undefined
     if (declared !== undefined && (!Number.isSafeInteger(declared) || declared < 0)) yield issue(input, 'invalid-declared-count')
+    typeLog.write()
     yield { type: 'end', conversationKey: chat.sourceKey, seen: source.records.length,
       ...(Number.isSafeInteger(declared) && declared >= 0 ? { declaredMessages: declared } : {}) }
   }
@@ -109,6 +148,7 @@ async function* bounded(module: FormatModule, input: ParserInput): AsyncGenerato
 async function* jsonl(module: FormatModule, input: ParserInput): AsyncGenerator<ParseEvent> {
   let root: Raw | undefined, chat: ParsedConversation | undefined, ordinal = 0, done = false
   const queued: Raw[] = [], declared: Raw[] = [], members = new Set<string>()
+  const typeLog = unknownTypeLog(module.feature.id)
   async function* checkedLines() {
     for await (const line of lines(input)) {
       const trimmed = line.replace(/^\uFEFF/, '').trim()
@@ -139,6 +179,7 @@ async function* jsonl(module: FormatModule, input: ParserInput): AsyncGenerator<
         const raw = queued.shift()
         if (!raw) throw new ParseFailure('record-count-mismatch')
         const normalized = normalizeMessage(module.feature.id, raw, value, chat, ordinal++)
+        if (normalized.kind === 'unknown') typeLog.record(normalized)
         yield* messageEvents(input, normalized, raw, chat, module.feature.id, members)
       }
     }
@@ -146,6 +187,7 @@ async function* jsonl(module: FormatModule, input: ParserInput): AsyncGenerator<
     if (event.type === 'done') done = true
   }
   if (!done || !chat || queued.length) throw new ParseFailure('incomplete-parse')
+  typeLog.write()
   yield { type: 'end', conversationKey: chat.sourceKey, seen: ordinal }
 }
 
@@ -162,7 +204,8 @@ async function detect(module: FormatModule, probe: SourceProbe) {
 export function adapt(module: FormatModule): ParserAdapter {
   const stream = module.feature.id === 'chatlab-jsonl'
   return Object.freeze({
-    id: module.feature.id, version: 'f19beeadda27b-whomi.2', extensions: Object.freeze([...module.feature.extensions]),
+    id: module.feature.id, version: ['echotrace', 'weflow'].includes(module.feature.id) ? 'f19beeadda27b-whomi.4' : 'f19beeadda27b-whomi.2',
+    extensions: Object.freeze([...module.feature.extensions]),
     mode: stream ? 'stream' : 'bounded',
     capabilities: { multiConversation: Boolean(module.feature.multiChat), stableMessageIds: ['qq-native', 'qq-shuakami', 'qq-shuakami-chunked', 'line-native', 'whatsapp-native', 'instagram-native'].includes(module.feature.id) ? 'none' : 'conditional', media: 'descriptors-only' },
     detect: (probe: SourceProbe) => detect(module, probe),

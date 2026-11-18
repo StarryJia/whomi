@@ -8,6 +8,7 @@ import { conversation } from '../../electron/data/parsers/normalize'
 import { temporaryStore } from './helpers'
 import { candidate, view } from './import-fixture'
 import type { Candidate } from '../../src/shared/import-contract'
+import type { MessageKind } from '../../src/shared/conversation-model'
 
 let store: Store, temp: ReturnType<typeof temporaryStore>
 beforeEach(() => { temp = temporaryStore(); store = openStore(temp.path) })
@@ -91,6 +92,72 @@ test('an all-new append reports the title of its matched conversation in the imp
 test('fallback deduplication preserves repeated occurrences at the same timestamp', async () => {
   expect(await save(candidate('a'), [1, 1])).toMatchObject({ inserted: 2 })
   expect(await save(candidate('b'), [1, 1, 1])).toMatchObject({ inserted: 1, duplicates: 2 })
+})
+test('a new WeChat export matches only the prior occurrences of messages recognized by the updated parser', async () => {
+  async function importMessages(id: string, version: string, kinds: MessageKind[], sourceKey = 'chat',
+    source: { sourceType: string; localType?: number | string } = { sourceType: '链接/文件', localType: 49 }) {
+    const c = candidate(id, sourceKey)
+    c.formatId = 'echotrace'
+    c.parserVersion = version
+    c.identity = { ...c.identity, platform: 'weixin', namespace: 'wechat' }
+    const v = records(c, kinds.map(() => 1)), read = v.messages
+    v.messages = function* () {
+      for (const record of read()) {
+        const kind = kinds[record.message.ordinal]
+        yield {
+          ...record,
+          origin: { ...record.origin, parserId: c.formatId, parserVersion: c.parserVersion },
+          message: {
+            ...record.message, kind, text: '合成导出正文', sourceType: source.sourceType,
+            extra: source.localType === undefined ? {} : { localType: source.localType },
+            attachments: kind === 'file' || kind === 'sticker' ? [{ kind, locator: 'media/example', name: null, state: 'unresolved' }] : [],
+          },
+        }
+      }
+    }
+    const target = await resolveAutoTarget(store, c, () => v.messages())
+    if (target.status !== 'matched') throw Error(target.status)
+    return commitConversation(store, v, target.target, new AbortController().signal)
+  }
+
+  const legacyVersion = 'f19beeadda27b-whomi.2'
+  const currentVersion = 'f19beeadda27b-whomi.3'
+  await importMessages('old-export', legacyVersion, ['unknown'])
+  expect(await importMessages('newer-export-with-two-occurrences', currentVersion, ['file', 'file']))
+    .toMatchObject({ conversationId: '1', inserted: 1, duplicates: 1 })
+  expect(await importMessages('newer-export-with-an-unrecognized-record', currentVersion, ['file', 'unknown']))
+    .toMatchObject({ conversationId: '1', inserted: 0, duplicates: 2 })
+  expect(await importMessages('newer-mixed-export', currentVersion, ['file', 'unknown', 'file']))
+    .toMatchObject({ conversationId: '1', inserted: 1, duplicates: 2 })
+  expect(store.reader.prepare('SELECT kind FROM messages ORDER BY id').all())
+    .toEqual([{ kind: 'unknown' }, { kind: 'file' }, { kind: 'file' }])
+
+  await importMessages('current-unknown', currentVersion, ['unknown'], 'other-conversation')
+  expect(await importMessages('current-file', currentVersion, ['file'], 'other-conversation'))
+    .toMatchObject({ conversationId: '2', inserted: 1, duplicates: 0 })
+
+  const newestVersion = 'f19beeadda27b-whomi.4'
+  await importMessages('old-unknown-link', currentVersion, ['unknown'], 'link-conversation')
+  expect(await importMessages('new-link', newestVersion, ['link', 'link'], 'link-conversation'))
+    .toMatchObject({ inserted: 1, duplicates: 1 })
+  await importMessages('old-unknown-sticker', currentVersion, ['unknown'], 'sticker-conversation')
+  expect(await importMessages('new-sticker', newestVersion, ['sticker', 'sticker'], 'sticker-conversation'))
+    .toMatchObject({ inserted: 1, duplicates: 1 })
+  expect(await importMessages('mixed-sticker', newestVersion, ['sticker', 'unknown', 'sticker'], 'sticker-conversation'))
+    .toMatchObject({ inserted: 1, duplicates: 2 })
+  const packedType = 5 * 2 ** 32 + 49
+  const packed = { sourceType: String(packedType), localType: packedType }
+  await importMessages('old-packed-link', currentVersion, ['unknown'], 'packed-conversation', packed)
+  expect(await importMessages('new-packed-link', newestVersion, ['link'], 'packed-conversation', packed))
+    .toMatchObject({ inserted: 0, duplicates: 1 })
+  const generic = { sourceType: '链接/文件' }
+  await importMessages('old-generic-link', currentVersion, ['unknown'], 'generic-conversation', generic)
+  expect(await importMessages('new-generic-link', newestVersion, ['link'], 'generic-conversation', generic))
+    .toMatchObject({ inserted: 0, duplicates: 1 })
+  const other = { sourceType: '777', localType: 777 }
+  await importMessages('old-unknown-other', currentVersion, ['unknown'], 'non-application-conversation', other)
+  expect(await importMessages('new-other', newestVersion, ['link'], 'non-application-conversation', other))
+    .toMatchObject({ inserted: 1, duplicates: 0 })
 })
 test('candidate read errors propagate rather than producing a new-conversation decision', async () => {
   const c = unknown('broken')

@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3'
 import { expect, test } from 'vitest'
 import { openStore } from '../../electron/data/db/open'
-import { schema, schemaVersion, selfOptOutSchema } from '../../electron/data/db/schema'
+import { legacyMessageSchema, schema, schemaVersion, selfOptOutSchema } from '../../electron/data/db/schema'
 import { temporaryStore } from './helpers'
 test('migrates and reopens a durable store with independent committed reads', () => {
   const temp = temporaryStore(); const store = openStore(temp.path)
@@ -90,6 +90,60 @@ test('keeps identifiers exact and never reuses deleted message ids', () => {
     expect(insert.run(9007199254740993n).lastInsertRowid > id).toBe(true)
   } finally { s.close(); temp.cleanup() }
 })
+
+test('upgrades schema nine to save new message kinds while preserving existing message references and identifiers', () => {
+  const temp = temporaryStore()
+  try {
+    openStore(temp.path).close()
+    const old = new Database(temp.path)
+    try {
+      // The messages table was unchanged from schema one through schema nine.
+      old.exec(`PRAGMA foreign_keys=OFF; DROP TABLE messages; ${legacyMessageSchema} PRAGMA foreign_keys=ON; PRAGMA user_version=9;
+        INSERT INTO conversations(id,title,kind,created_at_ms) VALUES (1,'Synthetic conversation','direct',0);
+        INSERT INTO source_conversations(id,conversation_id,platform,namespace) VALUES (1,1,'weixin','wechat');
+        INSERT INTO memberships(id,conversation_id,source_conversation_id,source_key,display_name) VALUES (1,1,1,'alice','Alice');
+        INSERT INTO messages(id,conversation_id,member_id,sender_kind,sender_name,kind,text,ordinal,sent_at_ms) VALUES
+          (9007199254740993,1,1,'member','Alice','file','original attachment',0,1700000000000),
+          (9007199254740994,1,1,'member','Alice','reply','original reply',1,NULL),
+          (9007199254741000,1,1,'member','Alice','text','deleted',2,NULL);
+        DELETE FROM messages WHERE id=9007199254741000;
+        INSERT INTO message_keys VALUES (1,'wechat:server-message','42',9007199254740993);
+        INSERT INTO message_replies(message_id,conversation_id,target_message_id,original_id,id_namespace,state)
+          VALUES (9007199254740994,1,9007199254740993,'42','wechat:server-message','resolved');
+        INSERT INTO message_attachments(message_id,kind,state) VALUES (9007199254740993,'file','missing');
+        INSERT INTO import_jobs(id,status,created_at_ms) VALUES (1,'completed',0);
+        INSERT INTO import_results(id,job_id,candidate_id,conversation_id,status,committed_at_ms) VALUES (1,1,'example',1,'committed',0);
+        INSERT INTO message_origins(message_id,conversation_id,import_result_id,file_fingerprint,source_conversation_key,ordinal,parser_id,parser_version)
+          VALUES (9007199254740993,1,1,'fingerprint','example',0,'echotrace','1');`)
+    } finally { old.close() }
+
+    const store = openStore(temp.path)
+    try {
+      const add = store.writer.prepare(`INSERT INTO messages(conversation_id,member_id,sender_kind,sender_name,kind,text,ordinal)
+        VALUES (1,1,'member','Alice',?,?,?)`)
+      expect(add.run('contact', 'contact', 3).lastInsertRowid).toBe(9007199254741001n)
+      expect(add.run('call', 'call', 4).lastInsertRowid).toBe(9007199254741002n)
+      expect(add.run('poke', 'poke', 5).lastInsertRowid).toBe(9007199254741003n)
+      expect(() => add.run('unsupported', 'unsupported', 6)).toThrow(/CHECK/)
+      expect(store.reader.prepare(`SELECT m.text,m.time_bucket,m.sort_time FROM messages m
+        WHERE m.conversation_id=1 ORDER BY m.time_bucket,m.sort_time,m.id LIMIT 2`).all()).toEqual([
+        { text: 'original attachment', time_bucket: 0n, sort_time: 1700000000000n },
+        { text: 'original reply', time_bucket: 1n, sort_time: 0n },
+      ])
+      expect(store.reader.prepare(`SELECT r.message_id, m.id target_id, a.kind attachment_kind, o.file_fingerprint
+        FROM message_replies r JOIN messages m ON m.id=r.target_message_id
+        JOIN message_attachments a ON a.message_id=m.id JOIN message_origins o ON o.message_id=m.id`).get()).toEqual({
+        message_id: 9007199254740994n, target_id: 9007199254740993n, attachment_kind: 'file', file_fingerprint: 'fingerprint',
+      })
+      expect(store.writer.pragma('foreign_key_check')).toEqual([])
+      expect(() => store.writer.exec('UPDATE messages SET member_id=999 WHERE id=9007199254740993')).toThrow(/FOREIGN KEY/)
+      expect(store.writer.pragma('index_list(messages)')).toEqual(expect.arrayContaining([
+        expect.objectContaining({ name: 'messages_read_order' }), expect.objectContaining({ name: 'messages_member' }),
+      ]))
+    } finally { store.close() }
+  } finally { temp.cleanup() }
+})
+
 test('sorts known times before unknown times and keeps unknown source order', () => {
   const temp=temporaryStore(); const s=openStore(temp.path)
   try {

@@ -1,5 +1,5 @@
-import { expect, it } from 'vitest'
-import { collect } from './parser-helpers'
+import { expect, it, vi } from 'vitest'
+import { collect, parseSynthetic } from './parser-helpers'
 import { normalizeModel } from '../../src/shared/conversation-model'
 
 it('keeps SIWX kinds, whitespace, unresolved quote and one exact self hint', async () => {
@@ -20,6 +20,65 @@ it('keeps SIWX kinds, whitespace, unresolved quote and one exact self hint', asy
   expect(messages[1].sentAtMs).toBe(1700000000123)
 })
 
+it('recognizes SIWX application subtypes, contact cards and calls while retaining unrecognized records', async () => {
+  const examples = [
+    { localType: 1, typeName: '文本消息' },
+    { localType: 49, typeName: '链接/文件', rawContent: 'example-peer:\n<msg><appmsg appid=""><title>活动</title><type>5</type></appmsg></msg>' },
+    { localType: 49, typeName: '链接/文件', rawContent: '<msg><appmsg><type><![CDATA[6]]></type></appmsg></msg>' },
+    { localType: 49, typeName: '链接/文件', rawContent: '<msg><appmsg><type>19</type></appmsg></msg>' },
+    { localType: 49, typeName: '链接/文件', rawContent: '<msg><appmsg><type>62</type></appmsg></msg>' },
+    { localType: '266287972401', typeName: '拍一拍' },
+    { localType: 42, typeName: '名片消息' },
+    { typeName: '名片消息' },
+    { localType: '50' },
+    { typeName: '通话消息' },
+    { localType: 49, typeName: '链接/文件', rawContent: '<msg><appmsg><type>57</type><refermsg><svrid>101</svrid></refermsg></appmsg></msg>',
+      quote: { content: '合成正文 1', displayname: '示例发送者', ts: 1700000000 } },
+    { localType: 49, typeName: '链接/文件', rawContent: '<msg><appmsg><type>987</type></appmsg></msg>' },
+    { localType: 49, typeName: '链接/文件', rawContent: '<msg><appmsg><nested><type>5</type></nested></appmsg></msg>' },
+    { localType: 49, typeName: '链接/文件', rawContent: '<msg><appmsg><type>5</type></appmsg>' },
+    { localType: 49, typeName: '链接/文件', rawContent: '<msg><appmsg><type>5</type><type>5</type></appmsg></msg>' },
+    { localType: 266287972401, typeName: '链接/文件', rawContent: '<msg><appmsg><type>5</type></appmsg></msg>' },
+    { localType: 49, typeName: '链接/文件' },
+    { localType: 62 },
+    { localType: 49, rawContent: '<msg><appmsg><type>4</type></appmsg></msg>' },
+    { localType: 49, rawContent: '<msg><appmsg><type>8</type></appmsg></msg>' },
+    { localType: 49, rawContent: '<msg><appmsg type="19"/></msg>' },
+    { localType: 49, typeName: '文件消息', rawContent: '示例文件' },
+    { localType: 49, rawContent: '<appmsg><type>5</type>' + '<a>'.repeat(129) + '</a>'.repeat(129) + '</appmsg>' },
+    { localType: 49, rawContent: '<msg><appmsg>', quote: { bad: true } },
+    { localType: 49, rawContent: '<msg><appmsg><type>76</type><url>https://example.invalid/music</url><songlyric/></appmsg></msg>' },
+    { localType: 49, rawContent: '<msg><appmsg><type>36</type><url>https://example.invalid/app</url><weappinfo/></appmsg></msg>' },
+    { localType: 49, rawContent: '<msg><appmsg><type>5</type></appmsg></msg>\n\0\0' },
+    { localType: 49, rawContent: '<msg><appmsg><type>8</type></appmsg></msg>\n\0\0' },
+    { localType: 49, rawContent: '<msg><appmsg><type>5\0</type></appmsg></msg>' },
+    { localType: 49, rawContent: '<msg><appmsg><type>6</type></appmsg></msg>\n\0\0' },
+  ]
+  const messages = examples.map((entry, index) => ({
+    ...entry, serverId: String(101 + index), senderUsername: 'example-peer', senderDisplayName: '示例发送者',
+    createTime: 1700000000 + index, content: `合成正文 ${index + 1}`,
+  }))
+  const events = await parseSynthetic('echotrace', JSON.stringify({
+    exportInfo: { exporter: 'SIWX', wxid: 'example-owner' },
+    session: { wxid: 'example-peer', type: '私聊', messageCount: messages.length },
+    messages,
+  }))
+  const parsed = events.flatMap(event => event.type === 'message' ? [event.value] : [])
+  expect(parsed.map(message => message.kind)).toEqual([
+    'text', 'link', 'file', 'forward', 'poke', 'poke', 'contact', 'contact', 'call', 'call', 'reply',
+    'unknown', 'unknown', 'unknown', 'unknown', 'unknown', 'unknown', 'unknown',
+    'link', 'sticker', 'forward', 'file', 'unknown', 'unknown',
+    'link', 'link', 'link', 'sticker', 'unknown', 'unknown',
+  ])
+  expect(parsed.map(message => message.text)).toEqual(messages.map(message => message.content))
+  expect(parsed.every(message => message.senderKey === 'example-peer' && message.senderName === '示例发送者')).toBe(true)
+  expect(parsed[17].sentAtMs).toBe(1700000017000)
+  expect(parsed[10].reply).toMatchObject({ originalId: '101', idNamespace: 'wechat:server-message', text: '合成正文 1' })
+  expect(events.flatMap(event => event.type === 'issue' ? [event.value] : [])).toEqual(
+    [11, 12, 13, 14, 15, 16, 17, 22, 23, 28, 29].map(ordinal => expect.objectContaining({ code: 'unknown-type', severity: 'warning', ordinal })),
+  )
+})
+
 it('rejects empty or half-specified stable message/reply keys', async () => {
   const events = await collect('echotrace')
   const message = events.find(e => e.type === 'message')!
@@ -27,4 +86,45 @@ it('rejects empty or half-specified stable message/reply keys', async () => {
   expect(() => normalizeModel({ ...message.value, originalId: '', idNamespace: 'wechat' })).toThrow()
   expect(() => normalizeModel({ ...message.value, originalId: 'one', idNamespace: null })).toThrow()
   expect(() => normalizeModel({ ...message.value, reply: { originalId: '', idNamespace: '', text: 'quote', senderName: null, sentAtMs: null } })).toThrow()
+})
+
+it('logs one aggregate of unknown type causes without logging source strings', async () => {
+  const unsupportedShare = { localType: 49, rawContent: '<msg><appmsg><type>987</type><title>synthetic title</title></appmsg></msg>' }
+  const examples = [
+    { localType: 1 },
+    unsupportedShare,
+    { localType: 49, rawContent: '<msg><appmsg/></msg>' },
+    unsupportedShare,
+    { localType: 49, rawContent: '<msg><appmsg>' },
+    { localType: 266287972401, rawContent: '<msg><appmsg><type>5</type></appmsg></msg>' },
+    { localType: 987 },
+    { localType: 11000, typeName: '类型11000', rawContent: '', content: '[类型11000]' },
+  ]
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  try {
+    await parseSynthetic('echotrace', JSON.stringify({
+      exportInfo: { exporter: 'SIWX', wxid: 'synthetic owner' },
+      session: { displayName: 'synthetic conversation', wxid: 'synthetic peer', type: '私聊', messageCount: examples.length },
+      messages: examples.map((entry, index) => ({
+        senderUsername: 'synthetic peer', senderDisplayName: 'synthetic name',
+        createTime: 1700000000 + index, content: 'synthetic body', ...entry,
+      })),
+    }))
+    expect(warn).toHaveBeenCalledOnce()
+    const [line] = warn.mock.calls[0]
+    expect(line).toMatch(/^\[导入诊断\] /)
+    expect(JSON.parse(line.slice('[导入诊断] '.length))).toEqual({
+      format: 'echotrace',
+      unknownCount: 7,
+      details: [
+        { reason: '应用消息子类型尚未支持', type: 49, subtype: 987, count: 2, firstRecord: 2 },
+        { reason: '缺少应用消息子类型', type: 49, count: 1, firstRecord: 3 },
+        { reason: '应用消息格式无效', type: 49, count: 1, firstRecord: 5 },
+        { reason: '应用消息子类型冲突', type: 49, subtype: 5, alternateSubtype: 62, count: 1, firstRecord: 6 },
+        { reason: '消息类型尚未支持', type: 987, count: 1, firstRecord: 7 },
+        { reason: '导出正文为类型占位', type: 11000, count: 1, firstRecord: 8 },
+      ],
+      otherCount: 0,
+    })
+  } finally { warn.mockRestore() }
 })

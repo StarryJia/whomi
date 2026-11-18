@@ -11,7 +11,11 @@ export interface DataHost {
 
 export function startDataHost(userDataPath: string): DataHost {
   const probeEnabled = process.argv.includes('--whomi-runtime-test') && process.env.WHOMI_RUNTIME_TEST === userDataPath
-  const child = utilityProcess.fork(join(__dirname, 'data/entry.cjs'), [userDataPath, ...(probeEnabled ? ['--runtime-probe'] : [])], { serviceName: 'Whomi Data' })
+  const child = utilityProcess.fork(join(__dirname, 'data/entry.cjs'), [userDataPath, ...(probeEnabled ? ['--runtime-probe'] : [])], {
+    serviceName: 'Whomi Data', stdio: ['ignore', 'inherit', 'pipe'],
+  })
+  // Windows utility processes can lose inherited terminal output.
+  child.stderr?.pipe(process.stderr, { end: false })
   let sequence = 0
   let closed = false
   const pending = new Map<number, { resolve(value: unknown): void; reject(error: Error): void }>()
