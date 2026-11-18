@@ -95,6 +95,7 @@ export type DesktopApi = DesktopMethods & {
   settings?: import('./settings-contract').SettingsApi
   acceptDroppedFiles(files: File[]): Promise<SourceHandle[]>
   onImport(listener: (snapshot: ImportSnapshot) => void): () => void
+  onConversationDeleted?(listener: (id: LocalId) => void): () => void
 }
 export type DesktopMethod = keyof DesktopMethods
 export type DesktopError = { code: string; action: string }

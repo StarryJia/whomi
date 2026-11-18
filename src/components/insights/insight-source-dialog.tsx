@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type RefObject } from 'react'
-import { ChevronDown, ChevronUp, X } from 'lucide-react'
+import { ChevronDown, ChevronUp, CircleAlert, X } from 'lucide-react'
 import type { AiApi } from '../../shared/ai-contract'
 import type { DesktopApi, MessagePage } from '../../shared/desktop-api'
 import type { InsightCitationWindow } from '../../shared/conversation-insights'
@@ -112,11 +112,14 @@ export function InsightSourceDialog({ taskId, citationId, phrase, conversationTi
           <button type="button" className="insight-source-close" aria-label="关闭原文" onClick={onClose}><X aria-hidden="true" /></button>
         </header>
         <div className="insight-source-top"><button type="button" disabled={busy || !current || fragment === 0} onClick={() => void jump(fragment - 1)}><ChevronUp aria-hidden="true" />上一段</button></div>
-        {error && <p className="insight-source-error" role="alert">{error} <button type="button" disabled={busy} onClick={() => retry.current()}>重试</button></p>}
         <div ref={scroll} className="insight-source-scroll" role="region" aria-label="引用聊天记录" tabIndex={0} aria-busy={busy} onScroll={onScroll}>
           {current && <ReadOnlyMessages messages={current.page.items} highlightIds={current.highlightIds} />}
           {busy && <p className="insight-source-loading" role="status">正在读取原文…</p>}
         </div>
+        {error && <div className="insight-source-error" role="alert">
+          <CircleAlert size={18} aria-hidden="true" /><span>{error}</span>
+          <button type="button" disabled={busy} onClick={() => retry.current()}>重试</button>
+        </div>}
         <footer className="insight-source-footer">
           {away && <button type="button" className="insight-source-return" onClick={returnToCitation}>回到引用</button>}
           <span>{fragment + 1} / {fragmentCount}</span><button type="button" disabled={busy || !current || fragment >= fragmentCount - 1} onClick={() => void jump(fragment + 1)}><ChevronDown aria-hidden="true" />下一段</button>

@@ -3,6 +3,7 @@ import { mkdtemp, rm, writeFile, readFile } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
+import { setTimeout as delay } from 'node:timers/promises'
 import { insightModelPrompt, insightModelReply, syntheticInsightMessages, syntheticInsightReportTitle, syntheticInsightScope } from './fixtures/insight-model.mjs'
 
 function writeCompletion(response, result) {
@@ -11,16 +12,20 @@ function writeCompletion(response, result) {
   response.end(`data: ${JSON.stringify({ id: 'synthetic-insight', choices: [{ index: 0, delta: {}, finish_reason: 'stop' }], usage: { prompt_tokens: 20, completion_tokens: 10, total_tokens: 30 } })}\n\ndata: [DONE]\n\n`)
 }
 
-test('isolated Electron resumes a scoped insight, retries writing, and preserves exact citations through rename and deletion', async () => {
+test('isolated Electron resumes a scoped insight, retries writing, and preserves exact citations through rename and deletion', async ({}, testInfo) => {
   test.setTimeout(60_000)
   const directory = resolve(await mkdtemp(join(tmpdir(), 'whomi-runtime-insight-')))
   const requests = []
+  const requestArrivals = []
   const fixtureErrors = []
   let interruptedCheck = false, rejectedWriting = false
   const server = createServer((request, response) => {
+    const arrival = { receivedAt: Date.now(), bodyReceivedAt: null }
+    requestArrivals.push(arrival)
     let body = ''
     request.on('data', chunk => { body += chunk })
     request.on('end', () => {
+      arrival.bodyReceivedAt = Date.now()
       try {
         const input = JSON.parse(body)
         const prompt = insightModelPrompt(input)
@@ -68,14 +73,45 @@ test('isolated Electron resumes a scoped insight, retries writing, and preserves
     const preview = await page.evaluate(scope => window.whomi.ai.previewInsightScope({ conversationId: '1', scope }), syntheticInsightScope)
     expect(preview).toMatchObject({ scope: syntheticInsightScope, totalMessages: 3, analyzableMessages: 3 })
     await page.evaluate(async ({ modelId, scope }) => {
-      window.syntheticInsightEvents = []
-      window.whomi.ai.onEvent(event => window.syntheticInsightEvents.push(event))
+      window.syntheticInsightStarted = []
+      window.whomi.ai.onEvent(event => {
+        if (event.kind !== 'analysis') return
+        const { state, analyzedMessages, eventSequence } = event.snapshot
+        window.syntheticInsightStarted.push({ receivedAt: Date.now(), state, analyzedMessages, eventSequence })
+      })
       window.syntheticInsightPreparation = await window.whomi.ai.prepareAnalysis({ conversationId: '1', modelId, scope })
     }, { modelId: model.id, scope: syntheticInsightScope })
     expect(requests).toHaveLength(0)
+    const confirmStartedAt = Date.now()
     const task = await page.evaluate(() => window.whomi.ai.confirmAnalysis({ token: window.syntheticInsightPreparation.token, requestId: 'synthetic-insight' }))
     expect(task).toMatchObject({ title: '会话洞察', totalMessages: 3, scope: syntheticInsightScope })
-    await expect.poll(() => requests.map(request => request.prompt.stage), { timeout: 15_000 }).toEqual(['reading', 'checking'])
+    const confirmedAt = Date.now()
+    try {
+      await expect.poll(() => requests.map(request => request.prompt.stage), { timeout: 15_000 }).toEqual(['reading', 'checking'])
+    } catch (error) {
+      const timeline = {
+        confirmStartedAt, confirmedAt, timedOutAt: Date.now(),
+        requestArrivals: requestArrivals.map(arrival => ({ ...arrival })),
+        parsedStages: requests.map(request => request.prompt.stage), fixtureErrorCount: fixtureErrors.length,
+      }
+      const [renderer, screenshot] = await Promise.allSettled([
+        Promise.race([page.evaluate(async id => {
+          const events = [...window.syntheticInsightStarted]
+          const current = await window.whomi.ai.getAnalysis(id).catch(() => null)
+          return { events, task: current && { state: current.state, analyzedMessages: current.analyzedMessages,
+            elapsedMs: current.elapsedMs, usageIncomplete: current.usage.incomplete, error: current.error } }
+        }, task.id), delay(2_000, null, { ref: false })]),
+        page.screenshot({ timeout: 2_000 }),
+      ])
+      await testInfo.attach('first-model-request-timeout', { contentType: 'application/json', body: JSON.stringify({
+        ...timeline, renderer: renderer.status === 'fulfilled' ? renderer.value : null,
+        screenshotCaptured: screenshot.status === 'fulfilled',
+      }, null, 2) })
+      if (screenshot.status === 'fulfilled') {
+        await testInfo.attach('first-model-request-window', { contentType: 'image/png', body: screenshot.value })
+      }
+      throw error
+    }
     const paused = await page.evaluate(id => window.whomi.ai.stopAnalysis(id), task.id)
     expect(paused).toMatchObject({ state: 'stopped', analyzedMessages: 3 })
     await expect(page.evaluate(id => window.whomi.ai.getReport(id), task.id)).rejects.toThrow()

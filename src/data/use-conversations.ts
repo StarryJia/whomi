@@ -77,6 +77,18 @@ export function useConversations(client?: ConversationClient) {
     }
   }, [client, updateWindow])
 
+  const forgetConversation = useCallback((id: string) => {
+    setConversations(items => items.filter(item => item.id !== id))
+    if (windowRef.current?.conversationId === id) {
+      ++readerGeneration.current
+      readerBusy.current = false
+      updateWindow(undefined)
+      setLoading(false)
+      setError(undefined)
+    }
+    return refresh({ preserveReader: true })
+  }, [refresh, updateWindow])
+
   useEffect(() => {
     mounted.current = true
     updateWindow(undefined)
@@ -181,5 +193,5 @@ export function useConversations(client?: ConversationClient) {
   const loadBefore = useCallback(() => load('before'), [load])
   const loadAfter = useCallback(() => load('after'), [load])
   return { available: !!client, conversations, listCursor, listLoading, listError, current, loading, error,
-    refresh, loadMore, open, locate, loadBefore, loadAfter }
+    refresh, forgetConversation, loadMore, open, locate, loadBefore, loadAfter }
 }
