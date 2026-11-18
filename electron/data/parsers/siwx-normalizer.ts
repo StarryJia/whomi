@@ -1,5 +1,6 @@
 import { SaxesParser } from 'saxes'
-import type { MessageKind, ParsedMessage } from '../../../src/shared/conversation-model'
+import type { MessageKind, ParsedMessage, ParsedReply } from '../../../src/shared/conversation-model'
+import type { SiwxCompatibility } from './types'
 
 export const sourceKey = (value: unknown): string | null =>
   typeof value === 'string' ? value.length ? value : null : typeof value === 'number' && Number.isSafeInteger(value) ? String(value) : null
@@ -111,7 +112,7 @@ function readSiwxPayload(content: unknown) {
   }
 }
 
-export function siwxKind(raw: Record<string, any>, report?: ReportUnknownType): MessageKind {
+export function siwxKind(raw: Record<string, any>, report?: ReportUnknownType, markExpandedShare?: () => void): MessageKind {
   if (siwxQuote(raw)) return 'reply'
   const label = sourceKey(raw.typeName ?? raw.type)
   if (label && Object.hasOwn(named, label)) return named[label]
@@ -121,6 +122,7 @@ export function siwxKind(raw: Record<string, any>, report?: ReportUnknownType): 
   if (isApplicationType || label === '链接/文件') {
     const packedSubtype = isApplicationType ? Math.floor(localType / applicationTypeBase) : 0
     let subtype = packedSubtype
+    let padded = false
     if (typeof raw.rawContent === 'string' && raw.rawContent.trim()) {
       const xml = withoutTrailingNullPadding(raw.rawContent)
       const payload = readSiwxPayload(xml)
@@ -129,6 +131,7 @@ export function siwxKind(raw: Record<string, any>, report?: ReportUnknownType): 
         // 已核实导出工具会为分享链接和表情附加尾部空字符。
         const paddedKind = payload.subtype === undefined ? undefined : applicationKinds[payload.subtype]
         if (paddedKind !== 'link' && paddedKind !== 'sticker') return unknownKind(report, { reason: '应用消息格式无效', type })
+        padded = true
       }
       if (payload.subtype === undefined) return unknownKind(report, { ...payload.subtypeProblem!, type })
       subtype = payload.subtype
@@ -137,6 +140,7 @@ export function siwxKind(raw: Record<string, any>, report?: ReportUnknownType): 
       }
     }
     if (!subtype) return unknownKind(report, { reason: '缺少应用消息子类型', type })
+    if (padded || subtype === 36 || subtype === 76) markExpandedShare?.()
     return applicationKinds[subtype] ?? unknownKind(report, { reason: '应用消息子类型尚未支持', type, subtype })
   }
   const kind = localType === undefined ? undefined : numeric[localType]
@@ -156,8 +160,59 @@ function siwxQuote(raw: Record<string, any>) {
   const hasTime = epoch(quote.createTime ?? quote.ts, 'second') !== null
   return hasExcerpt || hasSender || hasTime ? quote : null
 }
-export function normalizeSiwx(raw: Record<string, any>, base: ParsedMessage, reportUnknownType?: ReportUnknownType): ParsedMessage {
-  const kind = siwxKind(raw, reportUnknownType)
+
+function parsedReply(quote: Record<string, any>, replyId: string | null): ParsedReply {
+  return {
+    originalId: replyId, idNamespace: replyId ? 'wechat:server-message' : null,
+    text: typeof quote.content === 'string' ? quote.content : null,
+    senderName: sourceKey(quote.senderName ?? quote.displayName ?? quote.displayname),
+    sentAtMs: epoch(quote.createTime ?? quote.ts, 'second'),
+  }
+}
+
+// Match the old parser's first reference and field without restarting a scan for each unclosed tag.
+function previousReferenceId(content: unknown): string | null {
+  if (typeof content !== 'string') return null
+  const lastClose = content.lastIndexOf('</refermsg>')
+  if (lastClose < 0) return null
+  const lastOpenEnd = content.lastIndexOf('>', lastClose - 1)
+  const open = /<refermsg(?:\s[^>]*)?>/.exec(content.slice(0, lastOpenEnd + 1))
+  if (!open) return null
+  const start = open.index + open[0].length
+  const close = content.indexOf('</refermsg>', start)
+  const fieldStart = content.indexOf('<svrid>', start)
+  if (fieldStart < 0 || fieldStart >= close) return null
+  const valueStart = fieldStart + '<svrid>'.length
+  const fieldEnd = content.indexOf('</svrid>', valueStart)
+  if (fieldEnd < 0 || fieldEnd >= close) return null
+  const field = content.slice(valueStart, fieldEnd).trim()
+  const id = field.replace(/^<!\[CDATA\[([\s\S]*)\]\]>$/, '$1').trim()
+  return /^[1-9]\d*$/.test(id) ? id : null
+}
+
+function previousSiwxReply(raw: Record<string, any>, message: ParsedMessage): ParsedReply | undefined {
+  if (message.originalId !== null) return
+  const id = previousReferenceId(raw.rawContent)
+  if (message.reply && message.reply.originalId === id) return
+  return parsedReply(raw.quote, id)
+}
+
+function previousSiwxKind(raw: Record<string, any>, hadQuote: boolean): MessageKind {
+  if (hadQuote) return 'reply'
+  const label = raw.typeName ?? raw.type
+  const namedKind = typeof label === 'string' && Object.hasOwn(named, label) ? named[label] : undefined
+  if (namedKind && namedKind !== 'contact' && namedKind !== 'call' && namedKind !== 'poke') return namedKind
+  const type = raw.localType
+  // The older numeric lookup used the original key, without normalizing leading zeroes.
+  if (type === 42 || type === '42' || type === 50 || type === '50') return 'unknown'
+  return typeof type === 'number' || typeof type === 'string'
+    ? (Object.hasOwn(numeric, type) ? numeric[type as number] ?? 'unknown' : 'unknown') : 'unknown'
+}
+
+export function normalizeSiwx(raw: Record<string, any>, base: ParsedMessage, reportUnknownType?: ReportUnknownType,
+  reportCompatibility?: (value: SiwxCompatibility) => void): ParsedMessage {
+  let expandedShare = false
+  const kind = siwxKind(raw, reportUnknownType, () => { expandedShare = true })
   const sender = sourceKey(raw.senderUsername)
   // SIWX/WeFlow numeric createTime exports may use either epoch unit.
   const unit = Math.abs(Number(raw.createTime)) >= 100_000_000_000 ? 'millisecond' : 'second'
@@ -165,7 +220,7 @@ export function normalizeSiwx(raw: Record<string, any>, base: ParsedMessage, rep
   const originalId = sourceKey(raw.serverId ?? raw.platformMessageId)
   const quote = siwxQuote(raw)
   const replyId = quote ? readSiwxPayload(raw.rawContent)?.replyId ?? null : null
-  return {
+  const message: ParsedMessage = {
     ...base, originalId: originalId === '0' ? null : originalId,
     idNamespace: originalId && originalId !== '0' ? 'wechat:server-message' : null,
     senderKey: kind === 'system' ? null : sender,
@@ -175,9 +230,22 @@ export function normalizeSiwx(raw: Record<string, any>, base: ParsedMessage, rep
     timePrecision: sentAtMs === null ? 'unknown' : unit, timezone: sentAtMs === null ? null : 'UTC', kind,
     text: typeof raw.content === 'string' ? raw.content : raw.content == null ? '' : JSON.stringify(raw.content),
     sourceType: sourceKey(raw.typeName ?? raw.type ?? raw.localType),
-    reply: quote ? { originalId: replyId, idNamespace: replyId ? 'wechat:server-message' : null, text: typeof quote.content === 'string' ? quote.content : null, senderName: sourceKey(quote.senderName ?? quote.displayName ?? quote.displayname), sentAtMs: epoch(quote.createTime ?? quote.ts, 'second') } : null,
+    reply: quote ? parsedReply(quote, replyId) : null,
     attachments: ['image', 'audio', 'video', 'file', 'sticker'].includes(kind)
       ? [{ kind, locator: sourceKey(raw.mediaFile), name: null, state: raw.mediaFile ? 'unresolved' : 'missing' }] : [],
     extra: { ...(raw.localType !== undefined ? { localType: raw.localType } : {}), ...(raw.isSend === 1 ? { selfHint: true } : {}) },
   }
+  if (reportCompatibility) {
+    const hadQuote = Boolean(raw.quote && typeof raw.quote === 'object' && Object.keys(raw.quote).length)
+    const previousKind = previousSiwxKind(raw, hadQuote)
+    const previousReply = hadQuote ? previousSiwxReply(raw, message) : undefined
+    if (previousKind !== kind || expandedShare || previousReply) {
+      reportCompatibility({
+        kindBeforeTypeExpansion: previousKind === kind ? undefined : previousKind,
+        kindBeforeShareExpansion: expandedShare ? 'unknown' : undefined,
+        previousReply,
+      })
+    }
+  }
+  return message
 }

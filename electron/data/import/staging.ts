@@ -4,14 +4,14 @@ import { statfs } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { Candidate, Discovery, ImportCounts } from '../../../src/shared/import-contract'
 import { normalizeModel, type ImportIssue, type ParsedConversation, type ParsedMessage, type SourceIdentity } from '../../../src/shared/conversation-model'
-import type { ParserAdapter } from '../parsers/types'
+import type { ParserAdapter, SiwxCompatibility } from '../parsers/types'
 import { createDiscovery, type PrivateEntry } from './discovery'
 import { checkSignal, failureCode, ImportFailure, importLimits, issue } from './limits'
 import { sourceAccess, type SourceAccess } from './source-access'
 import { createSnapshotArea, snapshotEntry, type StagingOwnership } from './snapshot'
 
 export type MessageOrigin = { fingerprint: string; sourceConversationKey: string; ordinal: number; parserId: string; parserVersion: string }
-export type StagedMessage = { message: ParsedMessage; candidateId: string; origin: MessageOrigin }
+export type StagedMessage = { message: ParsedMessage; candidateId: string; origin: MessageOrigin; siwxCompatibility?: SiwxCompatibility }
 /** A read view only. The merge caller must resolve all candidates to one target before committing. */
 export type StagedConversation = { jobId: string; candidates: readonly Candidate[]; decisions?: readonly import('../../../src/shared/import-contract').TargetDecision[]; candidateIds: readonly string[]; sources: readonly { candidateId: string; identity: SourceIdentity }[]; messages(): Iterable<StagedMessage> }
 export type StagedImport = {
@@ -55,9 +55,9 @@ export function createStagingService(options: StagingOptions) {
       db.pragma('journal_mode = DELETE'); db.pragma('synchronous = FULL')
       db.exec(`CREATE TABLE candidates (id TEXT PRIMARY KEY, data TEXT NOT NULL);
         CREATE TABLE snapshots (entry_id TEXT PRIMARY KEY, fingerprint TEXT NOT NULL, files TEXT NOT NULL);
-        CREATE TABLE messages (candidate_id TEXT NOT NULL, ordinal INTEGER NOT NULL, data TEXT NOT NULL, PRIMARY KEY(candidate_id,ordinal));
+        CREATE TABLE messages (candidate_id TEXT NOT NULL, ordinal INTEGER NOT NULL, data TEXT NOT NULL, siwx_compatibility TEXT, PRIMARY KEY(candidate_id,ordinal));
         CREATE TABLE issues (candidate_id TEXT NOT NULL, data TEXT NOT NULL);`)
-      const insert = db.prepare('INSERT INTO messages VALUES (?,?,?)'), saveCandidate = db.prepare('INSERT INTO candidates VALUES (?,?)')
+      const insert = db.prepare('INSERT INTO messages VALUES (?,?,?,?)'), saveCandidate = db.prepare('INSERT INTO candidates VALUES (?,?)')
       const saveIssue = db.prepare('INSERT INTO issues VALUES (?,?)')
       const candidates: Candidate[] = [], issues: ImportIssue[] = [...input.issues]
       for (const source of entries) {
@@ -65,8 +65,8 @@ export function createStagingService(options: StagingOptions) {
         const local: Candidate[] = [], chats = new Map<string, Candidate>(), ends = new Set<string>(), invalid = new Map<string, Set<number>>(), lastOrdinal = new Map<string, number>()
         const pendingIssues: ImportIssue[] = []
         let fingerprint: string | null = null, current: Candidate | undefined, blocked = false
-        let batch: { id: string; ordinal: number; data: string }[] = [], batchBytes = 0
-        const flush = db.transaction(() => { for (const row of batch) insert.run(row.id, row.ordinal, row.data) })
+        let batch: { id: string; ordinal: number; data: string; compatibility: string | null }[] = [], batchBytes = 0
+        const flush = db.transaction(() => { for (const row of batch) insert.run(row.id, row.ordinal, row.data, row.compatibility) })
         async function flushBatch() {
           if (batch.length) { flush(); batch = []; batchBytes = 0 }
           const validRecords = [...candidates, ...local].reduce((n,c)=>n+c.counts.validRecords,0)
@@ -109,8 +109,10 @@ export function createStagingService(options: StagingOptions) {
                 if (message.ordinal <= (lastOrdinal.get(target.candidateId) ?? -1)) throw new ImportFailure('RECORD_ORDER')
                 lastOrdinal.set(target.candidateId, message.ordinal)
                 if (message.senderKind === 'member' && !target.members.some(member => member.sourceKey === message.senderKey)) throw new ImportFailure('MEMBER_MISSING')
-                if (batch.length >= importLimits.batchRecords || batchBytes + size > importLimits.batchBytes) await flushBatch()
-                batch.push({ id: target.candidateId, ordinal: message.ordinal, data }); batchBytes += size; target.counts.validRecords++
+                const compatibility = event.siwxCompatibility ? JSON.stringify(event.siwxCompatibility) : null
+                const stagedBytes = size + (compatibility ? Buffer.byteLength(compatibility) : 0)
+                if (batch.length >= importLimits.batchRecords || batchBytes + stagedBytes > importLimits.batchBytes) await flushBatch()
+                batch.push({ id: target.candidateId, ordinal: message.ordinal, data, compatibility }); batchBytes += stagedBytes; target.counts.validRecords++
               } catch (error) {
                 if (signal.aborted || failureCode(error) === 'DISK_SPACE') throw error
                 addIssue({ ...issue(error instanceof ImportFailure ? error.code : 'INVALID_RECORD', target.candidateId), ordinal: event.value.ordinal })
@@ -174,9 +176,10 @@ export function createStagingService(options: StagingOptions) {
             *messages() {
               for (const c of group) {
                 active()
-                for (const row of database.prepare('SELECT data FROM messages WHERE candidate_id=? ORDER BY ordinal').iterate(c.candidateId) as Iterable<{ data: string }>) {
+                for (const row of database.prepare('SELECT data, siwx_compatibility FROM messages WHERE candidate_id=? ORDER BY ordinal').iterate(c.candidateId) as Iterable<{ data: string; siwx_compatibility: string | null }>) {
                   const message = JSON.parse(row.data) as ParsedMessage
-                  yield { message, candidateId: c.candidateId, origin: { fingerprint: c.fingerprint!, sourceConversationKey: c.sourceKey, ordinal: message.ordinal, parserId: c.formatId, parserVersion: c.parserVersion } }
+                  const siwxCompatibility = row.siwx_compatibility ? JSON.parse(row.siwx_compatibility) as SiwxCompatibility : undefined
+                  yield { message, siwxCompatibility, candidateId: c.candidateId, origin: { fingerprint: c.fingerprint!, sourceConversationKey: c.sourceKey, ordinal: message.ordinal, parserId: c.formatId, parserVersion: c.parserVersion } }
                 }
               }
             } }

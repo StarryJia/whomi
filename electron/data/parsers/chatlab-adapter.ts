@@ -8,6 +8,7 @@ import type { Raw } from './source-records'
 import { conversation, decodeInstagram, normalizeMessage } from './normalize'
 import { sourceKey } from './siwx-normalizer'
 import type { UnknownTypeDetail } from './siwx-normalizer'
+import type { SiwxCompatibility } from './types'
 import { withSnapshot } from './snapshot-fs'
 
 function diagnosticType(value: number | undefined) {
@@ -70,7 +71,8 @@ function* declaredMemberEvents(rows: Raw[], chat: ParsedConversation, id: string
     } }
   }
 }
-function* messageEvents(input: ParserInput, message: ParsedMessage, raw: Raw, chat: ParsedConversation, id: string, members: Set<string>): Generator<ParseEvent> {
+function* messageEvents(input: ParserInput, message: ParsedMessage, raw: Raw, chat: ParsedConversation, id: string, members: Set<string>,
+  siwxCompatibility?: SiwxCompatibility): Generator<ParseEvent> {
   if (Buffer.byteLength(JSON.stringify(message)) > recordLimit(input)) throw new ParseFailure('record-limit', message.ordinal)
   if (message.senderKind === 'member' && !members.has(message.senderKey!)) {
     members.add(message.senderKey!)
@@ -79,7 +81,7 @@ function* messageEvents(input: ParserInput, message: ParsedMessage, raw: Raw, ch
   if (message.senderKind === 'unknown') yield issue(input, 'unknown-sender', 'warning', message.ordinal)
   if (message.sentAtMs === null) yield issue(input, 'unknown-time', 'warning', message.ordinal)
   if (message.kind === 'unknown') yield issue(input, 'unknown-type', 'warning', message.ordinal)
-  yield { type: 'message', value: message }
+  yield { type: 'message', value: message, ...(siwxCompatibility && { siwxCompatibility }) }
 }
 
 async function* bounded(module: FormatModule, input: ParserInput): AsyncGenerator<ParseEvent> {
@@ -119,16 +121,19 @@ async function* bounded(module: FormatModule, input: ParserInput): AsyncGenerato
     const declaredOwner = sourceKey(source.root.exportInfo?.wxid ?? source.root.exportInfo?.username)
     if (self.size > 1 || (declaredOwner && self.size && !self.has(declaredOwner))) yield issue(input, 'owner-conflict', 'warning')
     let typeDetail: UnknownTypeDetail | undefined
+    let compatibility: SiwxCompatibility | undefined
     const reportUnknownType = (detail: UnknownTypeDetail) => { typeDetail = detail }
+    const reportCompatibility = (value: SiwxCompatibility) => { compatibility = value }
     for (let ordinal = 0; ordinal < source.records.length; ordinal++) {
       checkCancelled(input)
       const raw = source.records[ordinal]
       const parsed = messages.length === source.records.length ? messages[ordinal]
         : messages.find(m => m.platformMessageId && m.platformMessageId === sourceKey(raw.id ?? raw.messageId ?? raw.platformMessageId))
-      const message = normalizeMessage(id, raw, parsed, chat, ordinal, reportUnknownType)
+      const message = normalizeMessage(id, raw, parsed, chat, ordinal, reportUnknownType, reportCompatibility)
       if (message.kind === 'unknown') typeLog.record(message, typeDetail)
       typeDetail = undefined
-      yield* messageEvents(input, message, raw, chat, id, members)
+      yield* messageEvents(input, message, raw, chat, id, members, compatibility)
+      compatibility = undefined
       if (ordinal % 500 === 499) await new Promise<void>(resolve => setImmediate(resolve))
     }
     const declared = ['weflow', 'echotrace'].includes(id) ? source.root.session?.messageCount

@@ -1,12 +1,14 @@
 import { createHash } from 'node:crypto'
 import type { Store } from '../db/open'
 import type { Candidate } from '../../../src/shared/import-contract'
+import type { MessageKind } from '../../../src/shared/conversation-model'
 import type { StagedMessage } from './staging'
 import { resolveTarget } from './identity'
 import { checkSignal } from './limits'
 
 type TrailingMessage = { sent_at_ms: bigint; kind: string; text: string; sender: string; id_namespace: string | null; original_id: string | null }
 type WindowTarget = { conversationId: string; ids: (string | null)[] }
+type WindowRecord = { key: string; id: string | null }
 const signature = (time: number, sender: string, kind: string, content: string) =>
   createHash('sha256').update(JSON.stringify([time, sender, kind, content])).digest('hex')
 
@@ -17,6 +19,22 @@ export async function resolveAutoTarget(store: Store, candidate: Candidate, mess
   if (direct.status === 'blocked' || (direct.status === 'matched' && direct.target.conversationId !== null)) return direct
   const stableSenders = new Map(candidate.members.map(m => [m.sourceKey,m.stableAccountKey]))
   const windows = new Map<string,WindowTarget[]>(), matches = new Set<string>(), i = candidate.identity
+  const isSiwx = candidate.formatId === 'echotrace' || candidate.formatId === 'weflow'
+  const olderSources = isSiwx ? store.writer.prepare<[bigint], { parser_version: string }>(`
+    SELECT DISTINCT o.parser_version FROM import_results r
+    JOIN message_origins o ON o.import_result_id=r.id AND o.conversation_id=r.conversation_id
+    WHERE r.conversation_id=? AND o.parser_id IN ('echotrace','weflow')
+      AND o.parser_version IN ('f19beeadda27b-whomi.1','f19beeadda27b-whomi.2','f19beeadda27b-whomi.3')`) : undefined
+  const olderVersions = new Map<string, Set<string>>()
+  function hasOlderSource(conversationId: string, before: 'types' | 'shares') {
+    let versions = olderVersions.get(conversationId)
+    if (!versions) {
+      versions = new Set(olderSources?.all(BigInt(conversationId)).map(row => row.parser_version))
+      olderVersions.set(conversationId, versions)
+    }
+    return before === 'shares' ? versions.has('f19beeadda27b-whomi.3')
+      : versions.has('f19beeadda27b-whomi.1') || versions.has('f19beeadda27b-whomi.2')
+  }
   const exact = new Set(candidate.fingerprint === null ? [] : (store.writer.prepare('SELECT DISTINCT conversation_id FROM message_origins WHERE file_fingerprint=? AND source_conversation_key=?').all(candidate.fingerprint,candidate.sourceKey) as {conversation_id:bigint}[]).map(r=>r.conversation_id.toString()))
   const possible = store.writer.prepare('SELECT id,kind FROM conversations').iterate() as Iterable<{ id: bigint; kind: string }>
   let checked = 0
@@ -41,18 +59,35 @@ export async function resolveAutoTarget(store: Store, candidate: Candidate, mess
     const target={conversationId,ids:rows.map(r=>r.original_id===null ? null:JSON.stringify([r.id_namespace,r.original_id]))}
     windows.set(key,[...(windows.get(key) ?? []),target])
   }
-  const recent:string[]=[],ids:(string|null)[]=[]
+  const current: WindowRecord[] = [], beforeTypes: WindowRecord[] = [], beforeShares: WindowRecord[] = []
+  function matchWindow(recent: WindowRecord[], record: WindowRecord | null, before?: 'types' | 'shares') {
+    if (!record) return
+    recent.push(record)
+    if (recent.length > 5) recent.shift()
+    if (recent.length !== 5) return
+    for (const target of windows.get(recent.map(record => record.key).join('')) ?? []) {
+      if (!matches.has(target.conversationId) &&
+          target.ids.every((value,index) => value === null || recent[index].id === null || value === recent[index].id) &&
+          (!before || hasOlderSource(target.conversationId, before))) matches.add(target.conversationId)
+    }
+  }
   let processed=0
-  for(const {message:m} of messages()) {
+  for(const {message:m, siwxCompatibility} of messages()) {
     checkSignal(signal)
     if(++processed % 500 === 0) {await new Promise<void>(resolve=>setImmediate(resolve));checkSignal(signal)}
     const sender=m.senderKey===null ? null:stableSenders.get(m.senderKey)
-    if(m.sentAtMs===null || !sender || m.kind==='system' || m.kind==='unknown' || !m.text.trim())continue
-    recent.push(signature(m.sentAtMs,sender,m.kind,m.text));ids.push(m.originalId===null ? null:JSON.stringify([m.idNamespace,m.originalId]))
-    if(recent.length>5){recent.shift();ids.shift()}
-    if(recent.length!==5)continue
-    for(const target of windows.get(recent.join('')) ?? []) {
-      if(target.ids.every((id,index)=>id===null || ids[index]===null || id===ids[index]))matches.add(target.conversationId)
+    if(m.sentAtMs===null || !sender || !m.text.trim())continue
+    const time = m.sentAtMs
+    const id = m.originalId === null ? null : JSON.stringify([m.idNamespace,m.originalId])
+    const entry = (kind: MessageKind): WindowRecord | null => kind === 'system' || kind === 'unknown' ? null
+      : { key: signature(time,sender,kind,m.text), id }
+    const record = entry(m.kind)
+    matchWindow(current,record)
+    if (isSiwx) {
+      // Earlier parsers skipped records they could not classify when building the five-message window.
+      const oldKind = siwxCompatibility?.kindBeforeTypeExpansion
+      matchWindow(beforeTypes,oldKind === undefined ? record : entry(oldKind),'types')
+      matchWindow(beforeShares,siwxCompatibility?.kindBeforeShareExpansion ? null : record,'shares')
     }
   }
   checkSignal(signal)
