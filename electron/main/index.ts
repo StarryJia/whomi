@@ -47,10 +47,11 @@ let aiService: ReturnType<typeof createAiService> | undefined
 let quitting = false
 if (!app.requestSingleInstanceLock()) app.quit()
 else {
-  const appErrorLogs = createAppErrorLogs(app.getPath('userData'), appVersion, path => shell.openPath(path), () => {
+  const installDirectory = app.isPackaged ? dirname(process.execPath) : testDirectory ?? app.getAppPath()
+  const appErrorLogs = createAppErrorLogs(installDirectory, app.getPath('userData'), appVersion, path => shell.openPath(path), action => {
     if (!app.isReady() || quitting) return
     for (const window of BrowserWindow.getAllWindows()) window.webContents.send(appExceptionChannel, {
-      title: '未能保存错误日志', detail: '请检查磁盘空间和日志目录权限。',
+      title: '未能保存错误日志', detail: action,
     })
   })
   process.on('uncaughtExceptionMonitor', (_error, origin) => appErrorLogs.recordMainException(origin))
@@ -104,7 +105,7 @@ else {
       servicesClosed = false
     }
     const storage = await resolveStorageSelection(userDataPath)
-    await appErrorLogs.setStorageDirectory(storage.path, storage.retainedErrorLogDirectories)
+    appErrorLogs.setDataArchives(storage.path, storage.retainedErrorLogDirectories)
     await startServices(storage.path)
     await importDiagnostics.flush()
     const aiRouter = createAiRouter(new Proxy({} as AiMethods, { get: (_target, method: keyof AiMethods) => (...args: unknown[]) => (aiService![method] as (...values: unknown[]) => Promise<unknown>)(...args) }))
@@ -194,7 +195,11 @@ else {
         const selected = await dialog.showOpenDialog(window, { defaultPath: path, properties: ['openDirectory', 'createDirectory'] })
         return selected.canceled || !selected.filePaths[0] ? null : locations.issueChoice(windowId, selected.filePaths[0])
       },
-      relocateStorage: token => appErrorLogs.withStorageRelocation(() => locations.relocateStorage(windowId, token)),
+      async relocateStorage(token) {
+        const location = await locations.relocateStorage(windowId, token)
+        appErrorLogs.setDataArchives(location.path, location.retainedErrorLogDirectories)
+        return location
+      },
       async restart() { if (!suspended || !(await locations.getStorage()).restartRequired) throw new BoundaryError('INVALID_STATE'); app.relaunch(); app.quit() },
       async getDiagnostics() { const current = await settingsService.get(); return { version: appVersion, platform: process.platform, entries: current.debug ? [...diagnostics] : [] } },
       getErrorLogArchives: appErrorLogs.getArchives,
@@ -282,7 +287,7 @@ else {
     if (probeEnabled) console.error('Whomi test startup failed:', serializableError(error).code, logDirectory ?? 'ERROR_LOG_UNWRITABLE')
     else dialog.showErrorBox('Whomi 无法启动', detail + (logDirectory
       ? `\n打开 ${logDirectory} 查看错误日志。`
-      : '\n无法保存错误日志。请检查用户目录权限和磁盘空间。'))
+      : `\n${appErrorLogs.writeFailureAction}`))
     await Promise.allSettled([agentHost?.close(), dataHost?.close()])
     app.exit(1)
   })

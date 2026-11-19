@@ -24,7 +24,7 @@ function setup(withProvider = true, withModel = false, showExceptionNotices = fa
     getStorage: vi.fn(async () => ({ path: 'D:\\Whomi', defaultPath: 'D:\\Whomi', restartRequired: false })),
     openStorageDirectory: vi.fn(async () => {}),
     getErrorLogArchives: vi.fn<SettingsApi['getErrorLogArchives']>(async () => []),
-    openErrorLogDirectory: vi.fn<SettingsApi['openErrorLogDirectory']>(async () => ({ path: 'D:\\Whomi\\logs', fallback: false })),
+    openErrorLogDirectory: vi.fn<SettingsApi['openErrorLogDirectory']>(async () => ({ path: 'D:\\Whomi\\logs' })),
     chooseStorage: vi.fn(async () => ({ token: 'choice', path: 'D:\\新的目录' })),
     relocateStorage: vi.fn(async () => ({ path: 'D:\\新的目录', defaultPath: 'D:\\Whomi', restartRequired: true })), restart: vi.fn(async () => {}),
   }
@@ -351,21 +351,20 @@ describe('正式设置', () => {
     expect(screen.queryByRole('button', { name: '第三方声明' })).not.toBeInTheDocument()
   })
 
-  it('调试模式关闭时可打开错误目录，失败后重试并显示备用目录和旧导入日志入口', async () => {
+  it('调试模式关闭时可打开错误目录，权限恢复后显示漏记条数并可查阅旧日志', async () => {
     const { api, user } = setup(false, false, true)
     const retained = 'retained:D:\\previous\\logs' as const
     vi.mocked(api.getErrorLogArchives).mockResolvedValue(['legacy-import', retained])
     vi.mocked(api.openErrorLogDirectory)
       .mockRejectedValueOnce({ code: 'ERROR_LOG_UNWRITABLE', action: '请检查日志目录权限后重试。' })
-      .mockResolvedValueOnce({ path: 'C:\\Users\\example\\Whomi\\logs', fallback: true, missedRecords: 2 })
+      .mockResolvedValueOnce({ path: 'C:\\Apps\\Whomi\\logs', missedRecords: 2 })
     await screen.findByRole('button', { name: '添加服务商' })
     await user.click(screen.getByRole('button', { name: '关于 Whomi' }))
     const logs = screen.getByRole('button', { name: '打开错误日志目录' })
     await user.click(logs)
     expect(await screen.findByRole('alert')).toHaveTextContent('请检查日志目录权限后重试。')
     await user.click(logs)
-    expect(await screen.findByText(/日志存放在备用目录/)).toHaveTextContent('C:\\Users\\example\\Whomi\\logs')
-    expect(screen.getByText(/2 条错误日志未保存/)).toBeVisible()
+    expect(await screen.findByText(/2 条错误日志未保存/)).toBeVisible()
     await user.click(screen.getByRole('button', { name: /打开迁移前的日志目录/ }))
     await user.click(screen.getByRole('button', { name: '打开旧版导入日志目录' }))
     expect(vi.mocked(api.openErrorLogDirectory).mock.calls).toEqual([['current'], ['current'], [retained], ['legacy-import']])

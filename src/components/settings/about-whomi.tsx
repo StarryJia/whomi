@@ -18,7 +18,6 @@ export function AboutWhomi({ api, debug, onDebug, onBusy }: { api: SettingsApi; 
   const [loading, setLoading] = useState(false)
   const [logOpening, setLogOpening] = useState(false)
   const [logError, setLogError] = useState('')
-  const [fallbackLocation, setFallbackLocation] = useState('')
   const [missedRecords, setMissedRecords] = useState(0)
   const [archives, setArchives] = useState<ErrorLogArchive[]>([])
   useEffect(() => {
@@ -48,13 +47,9 @@ export function AboutWhomi({ api, debug, onDebug, onBusy }: { api: SettingsApi; 
   async function openLog(target: ErrorLogTarget) {
     if (logOpening) return
     setLogOpening(true); setLogError('')
-    if (target === 'current') setFallbackLocation('')
     try {
       const location = await api.openErrorLogDirectory(target)
-      if (target === 'current') {
-        setFallbackLocation(location.fallback ? location.path : '')
-        setMissedRecords(location.missedRecords ?? 0)
-      }
+      if (target === 'current') setMissedRecords(location.missedRecords ?? 0)
     }
     catch (cause) { setLogError(errorText(cause, '无法打开错误日志目录，请重试。')) }
     finally { setLogOpening(false) }
@@ -63,10 +58,9 @@ export function AboutWhomi({ api, debug, onDebug, onBusy }: { api: SettingsApi; 
     <section className="aw-identity" aria-label="Whomi 项目信息"><img className="aw-symbol" src={symbol} alt="Whomi 图形标识" /><span className="aw-wordmark"><img src={wordmark} alt="Whomi" /></span><p className="aw-version">版本 {packageMetadata.version}</p><p className="aw-introduction">从对话中找出你不曾注意的细节</p></section>
     <section className="aw-information" aria-label="项目与诊断"><a className="aw-information-row" href="https://github.com/StarryJia/whomi" target="_blank" rel="noopener noreferrer"><span>项目仓库</span><span className="aw-link-value">StarryJia/whomi <ArrowUpRight size={16} /></span></a>
       <button type="button" className="aw-information-row" disabled={logOpening} onClick={() => void openLog('current')}>打开错误日志目录<FolderOpen size={16} aria-hidden="true" /></button>
-      {fallbackLocation && <p className="aw-muted aw-log-location" role="status">日志存放在备用目录 {fallbackLocation}</p>}
       {archives.includes('legacy-import') && <button type="button" className="aw-information-row" disabled={logOpening} onClick={() => void openLog('legacy-import')}>打开旧版导入日志目录<FolderOpen size={16} aria-hidden="true" /></button>}
-      {!fallbackLocation && archives.includes('fallback') && <button type="button" className="aw-information-row" disabled={logOpening} onClick={() => void openLog('fallback')}>打开用户目录中的日志<FolderOpen size={16} aria-hidden="true" /></button>}
-      {fallbackLocation && archives.includes('data') && <button type="button" className="aw-information-row" disabled={logOpening} onClick={() => void openLog('data')}>打开数据目录中的日志<FolderOpen size={16} aria-hidden="true" /></button>}
+      {archives.includes('profile') && <button type="button" className="aw-information-row" disabled={logOpening} onClick={() => void openLog('profile')}>打开用户目录中的日志<FolderOpen size={16} aria-hidden="true" /></button>}
+      {archives.includes('data') && <button type="button" className="aw-information-row" disabled={logOpening} onClick={() => void openLog('data')}>打开数据目录中的日志<FolderOpen size={16} aria-hidden="true" /></button>}
       {archives.filter(archive => archive.startsWith('retained:')).map(archive =>
         <button key={archive} type="button" className="aw-information-row" disabled={logOpening} onClick={() => void openLog(archive)}>
           <span>打开迁移前的日志目录 {archive.slice('retained:'.length)}</span><FolderOpen size={16} aria-hidden="true" />

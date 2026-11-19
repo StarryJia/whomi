@@ -2,7 +2,7 @@ import { _electron as electron, expect, test } from '@playwright/test'
 import { execFile } from 'node:child_process'
 import { createServer } from 'node:http'
 import { createRequire } from 'node:module'
-import { access as fileAccess, copyFile, mkdir, mkdtemp, readFile, readdir, realpath, rm, rmdir, stat, unlink, writeFile } from 'node:fs/promises'
+import { access as fileAccess, copyFile, cp, mkdir, mkdtemp, readFile, readdir, realpath, rm, rmdir, stat, unlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -12,7 +12,7 @@ const invoke = promisify(execFile)
 const explorerScript = fileURLToPath(new URL('./fixtures/windows-explorer.ps1', import.meta.url))
 const accessScript = fileURLToPath(new URL('./fixtures/windows-log-access.ps1', import.meta.url))
 
-test('Windows log actions select the current folder, job file, legacy and fallback locations', async ({}, info) => {
+test('Windows settings and import use installation logs across data changes and write permission failures', async ({}, info) => {
   test.skip(process.platform !== 'win32', 'Requires Windows file permissions.')
   test.setTimeout(120_000)
   const profile = await realpath(await mkdtemp(join(tmpdir(), 'whomi-runtime-error-logs-')))
@@ -20,7 +20,10 @@ test('Windows log actions select the current folder, job file, legacy and fallba
   await mkdir(dataRoot, { recursive: true })
   const data = await realpath(await mkdtemp(join(dataRoot, 'feedback-')))
   const source = join(profile, 'synthetic-broken-export.json')
-  const logs = join(data, 'logs')
+  const packaged = process.env.WHOMI_PACKAGED_EXECUTABLE
+  const install = packaged ? await realpath(await mkdtemp(join(tmpdir(), 'whomi-test-log-install-'))) : profile
+  const logs = join(install, 'logs')
+  const executablePath = packaged ? join(install, basename(packaged)) : undefined
   const privateMarker = 'SYNTHETIC-CHAT-AND-CREDENTIAL'
   let app, page, restoreAccess = false, nativeFolderPending = false
   const server = createServer((request, response) => {
@@ -43,7 +46,8 @@ test('Windows log actions select the current folder, job file, legacy and fallba
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve))
   const button = name => page.getByRole('button', { name, exact: true })
   async function launch() {
-    app = await electron.launch({ args: [resolve('out/main/index.cjs'), '--whomi-runtime-test'], env: { ...process.env, WHOMI_RUNTIME_TEST: profile } })
+    app = await electron.launch({ executablePath, args: executablePath ? ['--whomi-runtime-test'] : [resolve('out/main/index.cjs'), '--whomi-runtime-test'],
+      env: { ...process.env, WHOMI_RUNTIME_TEST: profile } })
     page = await app.firstWindow()
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await app.evaluate(({ shell, dialog }, { file, nativeFolder }) => {
@@ -55,7 +59,7 @@ test('Windows log actions select the current folder, job file, legacy and fallba
         return result
       }
       dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [file] })
-    }, { file: source, nativeFolder: nativeFolderPending ? join(profile, 'logs') : null })
+    }, { file: source, nativeFolder: nativeFolderPending ? logs : null })
   }
   async function openAbout() {
     await button('设置').click()
@@ -75,6 +79,10 @@ test('Windows log actions select the current folder, job file, legacy and fallba
   const access = action => invoke('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass',
     '-File', accessScript, '-Directory', logs, '-Action', action], { windowsHide: true, timeout: 12_000 })
   try {
+    if (packaged) {
+      const distribution = dirname(resolve(packaged))
+      await cp(distribution, install, { recursive: true, filter: path => path !== join(distribution, 'logs') })
+    }
     await writeFile(join(profile, 'probe.cjs'), `module.exports = writer => async method => {
       if (method !== 'probe.logConversation') throw Error('Unsupported log fixture')
       writer.exec(\`INSERT INTO conversations(id,title,kind,created_at_ms) VALUES(1,'合成日志会话','direct',0);
@@ -91,12 +99,16 @@ test('Windows log actions select the current folder, job file, legacy and fallba
     await launch()
     await openAbout()
     await button('打开错误日志目录').click()
-    await confirmFolder(join(profile, 'logs'))
-    expect(await readdir(join(profile, 'logs'))).toEqual([])
+    await confirmFolder(logs)
+    expect(await readdir(logs)).toEqual([])
+    if (packaged) expect(await app.evaluate(() => process.execPath)).toBe(executablePath)
     await app.evaluate(() => globalThis.__whomiRuntimeProbe.request('probe.logConversation', null))
     await app.close(); app = undefined
     await copyFile(join(profile, 'whomi.db'), join(data, 'whomi.db'))
     await writeFile(join(profile, 'storage-location.json'), JSON.stringify({ version: 1, path: data, hasDatabase: true }))
+    const previousDataLogs = join(data, 'logs')
+    await mkdir(previousDataLogs)
+    await writeFile(join(previousDataLogs, 'older-model.json'), '{}')
     await mkdir(join(profile, 'import-errors'))
     await writeFile(join(profile, 'import-errors', '1700000000000-12345678-1234-4123-8123-123456789012-none.txt'),
       JSON.stringify({ recordedAt: '2023-11-14T22:13:20.000Z', version: '0.1.10', phase: 'parse', code: 'INVALID_FORMAT' }))
@@ -123,7 +135,8 @@ test('Windows log actions select the current folder, job file, legacy and fallba
     await failure.getByRole('button', { name: '查看错误日志' }).click()
     await expect.poll(lastOpen).toMatchObject({ path: expect.stringMatching(/import-errors.*\.txt$/), result: '' })
     const directLog = (await lastOpen()).path
-    expect(dirname(directLog)).toBe(join(data, 'logs', 'import-errors'))
+    expect(dirname(directLog)).toBe(join(logs, 'import-errors'))
+    await writeFile(info.outputPath('log-locations.json'), JSON.stringify({ executablePath, install, profile, data, logs, directLog }, null, 2))
     expect(basename(directLog)).toMatch(new RegExp('-' + importJob + '\\.txt$'))
     await app.close(); app = undefined
     await launch()
@@ -141,19 +154,28 @@ test('Windows log actions select the current folder, job file, legacy and fallba
     expect(model + insight + importLog).not.toContain(privateMarker)
     await button('打开旧版导入日志目录').click()
     await confirmFolder(join(profile, 'import-errors'))
+    await button('打开数据目录中的日志').click()
+    await confirmFolder(previousDataLogs)
     await access('Block')
     restoreAccess = true
     await expect(writeFile(join(logs, 'blocked-probe.tmp'), '')).rejects.toMatchObject({ code: expect.stringMatching(/^(EACCES|EPERM)$/) })
-    await page.evaluate(() => window.whomi.importDiagnostics.report({ phase: 'parse', code: 'INVALID_RECORD' }))
+    await expect(page.evaluate(() => window.whomi.importDiagnostics.report({ phase: 'parse', code: 'INVALID_RECORD' }))).rejects.toThrow()
     await expect(page.evaluate(id => window.whomi.settings.testModel(id), modelId)).rejects.toThrow()
+    const opens = () => app.evaluate(() => globalThis.logOpens.length)
+    const before = await opens()
     await button('打开错误日志目录').click()
-    await expect(page.getByRole('status').filter({ hasText: '备用目录' })).toContainText(join(profile, 'logs'))
-    await confirmFolder(join(profile, 'logs'))
-    expect(await readdir(join(profile, 'logs'))).toEqual(expect.arrayContaining([expect.stringContaining('-model-')]))
-    expect(await readdir(join(profile, 'logs', 'import-errors'))).toEqual([expect.stringMatching(/-none\.txt$/)])
-    await page.screenshot({ path: info.outputPath('05-about-fallback.png') })
-    await button('打开数据目录中的日志').click()
+    await expect(page.getByText(/^无法写入安装日志目录 /).first()).toContainText(logs)
+    expect(await opens()).toBe(before)
+    expect(await readdir(previousDataLogs)).toEqual(['older-model.json'])
+    if (install !== profile) expect(await readdir(profile)).not.toContain('logs')
+    await page.screenshot({ path: info.outputPath('about-install-permission.png') })
+    await access('Restore')
+    restoreAccess = false
+    await button('打开错误日志目录').click()
     await confirmFolder(logs)
+    await expect(page.getByRole('status').filter({ hasText: /[1-9]\d* 条错误日志未保存/ })).toBeVisible()
+    await page.evaluate(() => window.whomi.importDiagnostics.report({ phase: 'parse', code: 'INVALID_RECORD' }))
+    expect(await readdir(join(logs, 'import-errors'))).toContainEqual(expect.stringMatching(/-none\.txt$/))
   } catch (error) {
     await page?.screenshot({ path: info.outputPath('failure.png') }).catch(() => {})
     throw error
@@ -172,6 +194,7 @@ test('Windows log actions select the current folder, job file, legacy and fallba
       }
     }
     if (dirname(data) === dataRoot && basename(data).startsWith('feedback-')) await clean(data)
+    if (install !== profile && !nativeFolderPending && dirname(install) === await realpath(tmpdir()) && basename(install).startsWith('whomi-test-log-install-')) await clean(install)
     if (!nativeFolderPending && dirname(profile) === await realpath(tmpdir()) && basename(profile).startsWith('whomi-runtime-error-logs-')) {
       await clean(profile)
     }
@@ -203,7 +226,7 @@ test('startup reports where to find logs when the selected data disk is unavaila
       expect(result.code).toBe(1)
       return result.stderr
     }
-    expect(await capture('profile-fallback')).toContain('Whomi test startup failed: STORAGE_UNAVAILABLE ' + logs)
+    expect(await capture('startup-log')).toContain('Whomi test startup failed: STORAGE_UNAVAILABLE ' + logs)
     const entries = await readdir(logs)
     const entry = entries.find(name => name.includes('-startup-'))
     expect(JSON.parse(await readFile(join(logs, entry), 'utf8'))).toMatchObject({ area: 'startup', phase: 'initialize', code: 'STORAGE_UNAVAILABLE' })
