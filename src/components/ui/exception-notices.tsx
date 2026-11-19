@@ -4,9 +4,11 @@ import { ChevronDown, CircleAlert, X } from 'lucide-react'
 import './exception-notices.css'
 
 type Notice = { key: string; title: string; detail?: string; blocking?: boolean }
-type NoticeState = { sources: ReadonlyMap<string, Notice>; dismissed: ReadonlySet<string> }
+type NoticeSource = { notice: Notice; visible: boolean } | { unresolved: ReadonlySet<string> }
+type NoticeState = { sources: ReadonlyMap<string, NoticeSource>; dismissed: ReadonlySet<string> }
 type NoticeContext = {
-  publish: (source: string, notice?: Notice) => void
+  publish: (source: string, entry?: NoticeSource) => void
+  resolve: (key: string) => void
   addLayer: (layer: HTMLElement) => () => void
 }
 
@@ -18,16 +20,26 @@ export function ExceptionNoticeScope({ active, children }: { active: boolean; ch
   return <ScopeVisibility.Provider value={parentActive && active}>{children}</ScopeVisibility.Provider>
 }
 
-export function useExceptionNotice(notice: Notice | null): void {
+function useNoticeSource() {
   const source = useId()
   const publish = useContext(ExceptionNotices)?.publish
+  useLayoutEffect(() => () => publish?.(source), [source, publish])
+  return useCallback((entry?: NoticeSource) => publish?.(source, entry), [source, publish])
+}
+
+export function useUnresolvedExceptionNotices(keys: ReadonlySet<string>) {
+  const update = useNoticeSource()
+  useLayoutEffect(() => update(keys.size ? { unresolved: keys } : undefined), [update, keys])
+  return useContext(ExceptionNotices)?.resolve
+}
+
+export function useExceptionNotice(notice: Notice | null): void {
+  const update = useNoticeSource()
   const visible = useContext(ScopeVisibility)
   const { key, title, detail, blocking } = notice ?? {}
   useLayoutEffect(() => {
-    if (!visible || !publish || !key || !title) return
-    publish(source, { key, title, detail, blocking })
-    return () => publish(source)
-  }, [publish, source, visible, key, title, detail, blocking])
+    update(key && title ? { notice: { key, title, detail, blocking }, visible } : undefined)
+  }, [update, visible, key, title, detail, blocking])
 }
 
 export function useExceptionNoticeLayer(ref: RefObject<HTMLElement | null>, active = true) {
@@ -104,19 +116,16 @@ function ExceptionNoticeViewport({ notices, dismiss, layer }: { notices: Notice[
 export function ExceptionNoticeProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<NoticeState>(() => ({ sources: new Map(), dismissed: new Set() }))
   const [layers, setLayers] = useState<HTMLElement[]>([])
-  const publish = useCallback<NoticeContext['publish']>((source, notice) => {
+  const publish = useCallback<NoticeContext['publish']>((source, entry) => {
     setState(current => {
+      if (!entry && !current.sources.has(source)) return current
       const sources = new Map(current.sources)
-      if (notice) {
-        sources.set(source, notice)
-        return { ...current, sources }
-      }
-      const previous = sources.get(source)
-      if (!previous) return current
-      sources.delete(source)
-      if (!current.dismissed.has(previous.key) || [...sources.values()].some(item => item.key === previous.key)) return { ...current, sources }
-      const dismissed = new Set(current.dismissed)
-      dismissed.delete(previous.key)
+      if (entry) sources.set(source, entry)
+      else sources.delete(source)
+      if (!current.dismissed.size) return { ...current, sources }
+      const remaining = [...sources.values()]
+      const dismissed = new Set([...current.dismissed].filter(key => remaining.some(item =>
+        'notice' in item ? item.notice.key === key : item.unresolved.has(key))))
       return { sources, dismissed }
     })
   }, [])
@@ -125,9 +134,17 @@ export function ExceptionNoticeProvider({ children }: { children: ReactNode }) {
     return () => setLayers(current => current.filter(item => item !== layer))
   }, [])
   const dismiss = useCallback((key: string) => setState(current => ({ ...current, dismissed: new Set([...current.dismissed, key]) })), [])
-  const context = useMemo(() => ({ publish, addLayer }), [publish, addLayer])
+  const resolve = useCallback((key: string) => setState(current => {
+    if (!current.dismissed.has(key)) return current
+    const dismissed = new Set(current.dismissed)
+    dismissed.delete(key)
+    return { ...current, dismissed }
+  }), [])
+  const context = useMemo(() => ({ publish, resolve, addLayer }), [publish, resolve, addLayer])
   const notices = new Map<string, Notice>()
-  for (const notice of state.sources.values()) {
+  for (const source of state.sources.values()) {
+    if (!('notice' in source) || !source.visible) continue
+    const { notice } = source
     if (notice.blocking || (!state.dismissed.has(notice.key) && !notices.has(notice.key))) notices.set(notice.key, notice)
   }
   const layer = layers.at(-1)

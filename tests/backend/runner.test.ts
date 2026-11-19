@@ -2,7 +2,8 @@ import { beforeEach,afterEach,expect,test } from 'vitest'
 import { mkdtemp,rm,writeFile,readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createDataService } from '../../electron/data/service'
+import { createDataService, type DataServiceOptions } from '../../electron/data/service'
+import type { ImportSnapshot } from '../../src/shared/import-contract'
 import { openStore,type Store } from '../../electron/data/db/open'
 import { createCommitter } from '../../electron/data/import/merge'
 import { rebuildSummary } from '../../electron/data/import/summary'
@@ -23,10 +24,10 @@ const parser:ParserAdapter={id:'test',version:'1',mode:'bounded',extensions:['.j
   if(payload.blocked) yield {type:'issue',value:{code:'BAD',severity:'blocking',candidateId:'',action:'请检查文件。'}}
   yield {type:'end',conversationKey:c.sourceKey,seen:payload.ids.length}
 }}
-async function setup(files:{key:string;ids:string[];blocked?:boolean;noId?:boolean;selfMember?:boolean}[],runner:Parameters<typeof createDataService>[0]['runner']={}) {
+async function setup(files:{key:string;ids:string[];blocked?:boolean;noId?:boolean;selfMember?:boolean}[],runner:DataServiceOptions['runner']={},changed?:DataServiceOptions['changed']) {
   const grants=[]
   for(const [i,payload] of files.entries()){const path=join(directory,`${i}.json`);await writeFile(path,JSON.stringify(payload));grants.push({rootPath:path})}
-  const service=createDataService({store,appDataDirectory:directory,staging:{parsers:[parser]},runner})
+  const service=createDataService({store,appDataDirectory:directory,staging:{parsers:[parser]},runner,changed})
   const id=await service.prepareImport(grants),d=await service.getImport(id)
   await service.startImport({kind:'stage',jobId:id,entryIds:d.discovery!.entries.map(e=>e.entryId)});await service.idle()
   return {service,id}
@@ -46,6 +47,39 @@ test('a completed result no longer opens after its last conversation is deleted'
   const [result] = (await service.getImport(id)).results
   await service.deleteConversation(result.conversationId!)
   await expect(service.getImport(id)).rejects.toMatchObject({ code: 'IMPORT_RESULT_REMOVED' })
+})
+test.each([false, true])('publishes the final surviving results when deletion is queued during an append (second target: %s)', async secondTarget => {
+  store.writer.exec(`INSERT INTO conversations(id,title,kind,created_at_ms) VALUES (1,'已有会话','direct',0);
+    INSERT INTO source_conversations(conversation_id,platform,owner_key,conversation_key,namespace) VALUES (1,'p','owner','existing','test')`)
+  const events: ImportSnapshot[] = []
+  let deletion: Promise<void> | undefined
+  let lookup: Promise<ImportSnapshot | string> | undefined
+  const files = [{ key: 'existing', ids: ['append'] }]
+  if (secondTarget) files.push({ key: 'other', ids: ['surviving message'] })
+  const { service, id } = await setup(files, { progress() {
+    if (deletion) return
+    void service.write(() => { lookup = service.getImport(id).catch((error: ImportFailure) => error.code) })
+    deletion = service.deleteConversation('1')
+  } }, event => events.push(event))
+  await service.startImport({ kind: 'commit', plan: { jobId: id, decisions: [] } })
+  await service.idle()
+  expect(deletion).toBeDefined()
+  await deletion
+  expect(store.reader.prepare('SELECT text FROM messages').all()).toEqual(secondTarget ? [{ text: 'surviving message' }] : [])
+  expect(store.reader.prepare('SELECT phase FROM import_jobs WHERE id=?').get(BigInt(id))).toEqual({ phase: 'completed' })
+  const completed = events.filter(event => event.status === 'completed')
+  expect(completed.flatMap(event => event.results.map(result => result.conversationId))).not.toContain('1')
+  if (secondTarget) {
+    const saved = await service.getImport(id)
+    expect(saved).toMatchObject({ status: 'completed', inserted: 1, results: [{ conversationId: '2', status: 'saved' }] })
+    expect(await lookup).toEqual(saved)
+    expect(events.at(-1)).toEqual(saved)
+  } else {
+    await expect(service.getImport(id)).rejects.toMatchObject({ code: 'IMPORT_RESULT_REMOVED' })
+    expect(await lookup).toBe('IMPORT_RESULT_REMOVED')
+    expect(completed).toHaveLength(0)
+    expect(events.at(-1)).toMatchObject({ jobId: id, status: 'removed', results: [], inserted: 0 })
+  }
 })
 test('a historical statistics error does not turn a committed import into a cancellable batch', async () => {
   const { service, id } = await setup([{ key: 'a', ids: ['m1'] }])

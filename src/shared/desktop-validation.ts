@@ -1,4 +1,4 @@
-import { importFailurePhases, importJobStates, importResultStates } from './import-contract'
+import { importFailurePhases, importSnapshotStates, importResultStates } from './import-contract'
 import type { ImportSnapshot } from './import-contract'
 import type { DesktopError, DesktopMethod } from './desktop-api'
 import { attachmentKinds, messageKinds } from './conversation-model'
@@ -50,7 +50,7 @@ const candidateResult = object({
   issues: array(issue),
   summaryFailed: bool,
 })
-const snapshot = object({ jobId: localId, status: oneOf(...importJobStates), discovery: nullable(discovery), candidates: array(candidate), results: array(candidateResult), issues: array(issue), counts, inserted: count, duplicates: count, failurePhase: optional(oneOf(...importFailurePhases)), progress:optional(object({processed:count,total:nullable(count)})) })
+const snapshot = object({ jobId: localId, jobCreatedAt: optional(count), status: oneOf(...importSnapshotStates), discovery: nullable(discovery), candidates: array(candidate), results: array(candidateResult), issues: array(issue), counts, inserted: count, duplicates: count, failurePhase: optional(oneOf(...importFailurePhases)), progress:optional(object({processed:count,total:nullable(count)})) })
 export const sourceHandle = object({ token: key, displayName: text, kind: oneOf('file', 'directory') })
 const alias = object({ platform: text, aliasKey: text, accountKey: text })
 const target: Check = value => object({ kind: oneOf('new') })(value) || object({ kind: oneOf('existing'), conversationId: localId })(value)
@@ -62,11 +62,13 @@ const locateInput = object({ conversationId: localId, messageId: localId, endMes
 const previewOptions = object({ afterOrdinal: optional(value => integer(value) && (value as number) >= -1), limit: optional(limit(50)) })
 const argumentsByMethod: Record<DesktopMethod, Check[]> = {
   chooseSources: [oneOf('files', 'directory')], prepareImport: [array(sourceHandle, 10000)], startImport: [start], getImport: [localId], cancelImport: [localId],
+  getInterruptedImport: [],
   previewImport: [localId, key, previewOptions], listConversations: [listInput], readMessages: [readInput], locateSource: [locateInput], listMembers: [localId], confirmSelf: [localId, nullable(localId)], deleteConversation: [localId], arrangeConversation: [listArrangement], retrySummary: [localId],
 }
 const nothing: Check = value => value === undefined
 const resultsByMethod: Record<DesktopMethod, Check> = {
   chooseSources: array(sourceHandle, 10000), prepareImport: localId, startImport: localId, getImport: snapshot, cancelImport: nothing,
+  getInterruptedImport: nullable(localId),
   previewImport: object({ messages: array(object({ ...messageFields, senderKey: nullable(text), reply: nullable(object(parsedReplyFields)) }), 50), nextOrdinal: nullable(count) }),
   listConversations: object({ items: array(object({ id: localId, title: text, pinned: optional(bool), kind: chatKind, messageCount: count, memberCount: count, firstSentAtMs: nullable(integer), lastSentAtMs: nullable(integer), summaryStatus: oneOf('pending', 'ready', 'failed') }), 200), nextCursor: nullable(cursor) }),
   readMessages: messagePage, locateSource: sourceWindow, listMembers: array(object({ id: localId, displayName: text, selfHint: nullable(bool), confirmedSelf: bool })), confirmSelf: nothing, deleteConversation: nothing, arrangeConversation: nothing, retrySummary: nothing,

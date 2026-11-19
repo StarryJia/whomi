@@ -3,7 +3,7 @@ import { BookOpen, Download, FolderOpen } from 'lucide-react'
 import clsx from 'clsx'
 import type { DesktopApi } from '../shared/desktop-api'
 import type { ImportFailurePhase } from '../shared/import-contract'
-import { hasConfirmedImport, importFailureNotice, isPersistedResult, useImport } from '../data/use-import'
+import { useImportWorkflow } from '../data/use-import'
 import { ConversationChoices } from './import/import-candidates'
 import { ImportProgress } from './import/import-progress'
 import { ImportStateMark } from './import/import-artwork'
@@ -28,17 +28,23 @@ function failureTitle(phase: ImportFailurePhase, code: string) {
   return failureTitles[phase]
 }
 
-export function FileImport({ api, onSaved, onCancelled, onOpenConversation }: {
+type ImportProps = {
   api?: DesktopApi
   onSaved?: (conversationIds: string[]) => void
   onCancelled?: () => void
   onOpenConversation?: (conversationId: string) => void
+}
+
+export function FileImport(props: ImportProps) {
+  const controller = useImportWorkflow(props.api, props)
+  useExceptionNotice(controller.notice)
+  return <ImportWorkspace {...props} controller={controller} />
+}
+
+export function ImportWorkspace({ api, onOpenConversation, controller }: Pick<ImportProps, 'api' | 'onOpenConversation'> & {
+  controller: ReturnType<typeof useImportWorkflow>
 }) {
-  const controller = useImport(api)
-  const { snapshot, busy, failure, failedJobId, pickerOpen, cancelling, openingLog, logError } = controller
-  const notified = useRef(new Set<string>())
-  const cancelled = useRef(new Set<string>())
-  const started = useRef(new Set<string>())
+  const { snapshot, busy, failure, pickerOpen, cancelling, openingLog } = controller
   const input = useRef<HTMLInputElement>(null)
   const choose = useRef<HTMLButtonElement>(null)
   const failureHeading = useRef<HTMLHeadingElement>(null)
@@ -51,27 +57,12 @@ export function FileImport({ api, onSaved, onCancelled, onOpenConversation }: {
   const [filename, setFilename] = useState('')
   const [previewError, setPreviewError] = useState('')
 
-  const cancelledCompletely = snapshot?.status === 'cancelled' && !snapshot.results.some(isPersistedResult)
   const showInitial = !failure && (!snapshot || snapshot.status === 'cancelled')
   const canDrop = showInitial && !busy
   const candidates = snapshot?.candidates.filter(candidate => candidate.status === 'staged') ?? []
   const isSelection = snapshot?.status === 'awaiting_commit' && candidates.length > 1
-  const notice = importFailureNotice(failure, failedJobId, logError)
-  const noticeKey = notice?.key
-  useExceptionNotice(notice ?? (previewError ? { key: 'import:preview', title: previewError } : null))
-
-  useEffect(() => {
-    if (!api || !snapshot || busy || failure) return
-    const key = `${snapshot.jobId}:${snapshot.status}`
-    if (started.current.has(key)) return
-    if (snapshot.status === 'awaiting_confirmation' && snapshot.discovery?.entries.length) {
-      started.current.add(key)
-      void controller.stage(snapshot.discovery.entries.map(entry => entry.entryId))
-    } else if (snapshot.status === 'awaiting_commit' && candidates.length === 1) {
-      started.current.add(key)
-      void controller.commit([])
-    }
-  }, [api, snapshot, busy, failure, controller, candidates.length])
+  const noticeKey = failure && controller.notice?.key
+  useExceptionNotice(previewError ? { key: 'import:preview', title: previewError } : null)
 
   useLayoutEffect(() => {
     if (!showInitial || busy || readingGuide) return
@@ -84,17 +75,6 @@ export function FileImport({ api, onSaved, onCancelled, onOpenConversation }: {
     if (noticeKey && !cancelling) failureHeading.current?.focus({ preventScroll: true })
   }, [noticeKey, cancelling])
 
-  useEffect(() => {
-    if (!snapshot || !onSaved || failure || cancelling || !hasConfirmedImport(snapshot) || notified.current.has(snapshot.jobId)) return
-    notified.current.add(snapshot.jobId)
-    const ids = [...new Set(snapshot.results.map(result => result.conversationId!))]
-    onSaved(ids)
-  }, [snapshot, failure, cancelling, onSaved])
-  useEffect(() => {
-    if (!snapshot || !cancelledCompletely || cancelling || cancelled.current.has(snapshot.jobId)) return
-    cancelled.current.add(snapshot.jobId)
-    onCancelled?.()
-  }, [snapshot, cancelledCompletely, cancelling, onCancelled])
   useEffect(() => {
     // 防止文件落在接收区外时替换整个应用页面。
     const preventFileNavigation = (event: globalThis.DragEvent) => {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useEffectEvent, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type ReactElement } from 'react'
+import { useCallback, useEffect, useEffectEvent, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type ReactElement } from 'react'
 import {
   PanelLeftClose,
   PanelLeftOpen,
@@ -9,24 +9,25 @@ import { usePaneDivider } from './components/ui/pane-divider'
 import { SidebarProvider, useSidebar } from './components/ui/sidebar'
 import { AskIcon, HeartRoomIcon, InsightsIcon, OverviewIcon } from './components/ui/sidebar-icons'
 import { Tooltip, TooltipProvider } from './components/ui/tooltip'
-import { ExceptionNotice, ExceptionNoticeProvider, ExceptionNoticeScope, useExceptionNotice } from './components/ui/exception-notices'
+import { ExceptionNotice, ExceptionNoticeProvider, ExceptionNoticeScope, useExceptionNotice, useExceptionNoticeLayer } from './components/ui/exception-notices'
 import { StartupIntro } from './components/startup-intro'
 import { HelloCover } from './components/hello-cover'
 import { ConversationNavigation, ConversationReader, type Conversation } from './components/conversations'
-import { FileImport } from './components/file-import'
+import { ImportWorkspace } from './components/file-import'
 import { SettingsPage } from './components/settings/settings-page'
 import type { LeaveGuard } from './components/settings/common'
 import { getDesktopClient } from './data/desktop-client'
 import { createPreviewClient } from './data/preview-client'
 import { createConversationAiClient } from './data/conversation-ai-client'
 import { useConversations, type ConversationClient } from './data/use-conversations'
-import { getSnapshotFailure, hasConfirmedImport, importError, importFailureNotice, isImportActive } from './data/use-import'
+import { useImportWorkflow } from './data/use-import'
 import type { DesktopApi } from './shared/desktop-api'
 import type { ConversationAiAdapter } from './components/conversation-ai/types'
 import type { AnalysisTask } from './shared/ai-contract'
 import { currentOverviewContributions } from './shared/insight-overview'
 import { RelationshipObservations, relationshipPreferences } from './components/overview/relationship-observations'
 import { InsightsLibrary } from './components/insights/insights-library'
+import { useInsightTaskFailureNotices } from './components/insights/insight-task'
 import { InsightSourceDialog } from './components/insights/insight-source-dialog'
 import { PersonalOverview } from './components/overview/personal-overview'
 import { useOverviewFeedback } from './components/overview/use-overview-feedback'
@@ -94,6 +95,7 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
   const [fromImport, setFromImport] = useState(false)
   const { open, isMobile, toggle, closeMobile } = useSidebar()
   const navPane = usePaneDivider('navigation', open && !isMobile)
+  const sidebarRef = useRef<HTMLElement>(null)
   const toggleRef = useRef<HTMLButtonElement>(null)
   const restoreToggleFocus = useRef(false)
   const mainRef = useRef<HTMLElement>(null)
@@ -109,6 +111,7 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
   const removedConversations = useRef(new Set<string>())
   const [conversationNavigationRequest, setConversationNavigationRequest] = useState(0)
   const [tasks, setTasks] = useState<AnalysisTask[]>([])
+  const observeInsightFailure = useInsightTaskFailureNotices(tasks)
   const memories = useMemo(() => tasks.filter(task => task.state === 'completed' && !!task.report), [tasks])
   const [memoryEntry, setMemoryEntry] = useState<{ taskId?:string; origin:'overview'|'library' }>()
   const [memoryError, setMemoryError] = useState('')
@@ -135,6 +138,7 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
         const last = changes.get(task.id)
         if (last === null || (last && last.eventSequence > task.eventSequence)) return
         changes.set(task.id, task)
+        observeInsightFailure(task)
         setTasks(items => {
           const stored = items.find(item => item.id === task.id)
           if (stored && stored.eventSequence > task.eventSequence) return items
@@ -177,14 +181,14 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
   const preferences = useMemo(() => relationshipPreferences(contributions), [contributions])
   const [coverKey, setCoverKey] = useState(0)
   const [importKey, setImportKey] = useState(0)
+  const refreshAfterImport = useCallback(() => { void reader.refresh({ preserveReader: true }) }, [reader.refresh])
+  const importSession = useImportWorkflow(api, { onSaved: refreshAfterImport, onCancelled: refreshAfterImport })
   const [activeId, setActiveId] = useState<string | undefined>(preview ? previewConversationId : undefined)
   const [source, setSource] = useState<SourceReference>()
   const [sourceOrigin, setSourceOrigin] = useState<'overview' | 'clarification'>('overview')
   const feedback = useOverviewFeedback(saveFeedback)
   const clarification = useClarification(clarificationAdapter)
   const activeSummary = reader.conversations.find(conversation => conversation.id === activeId)
-  const saved = useCallback(() => { void reader.refresh() }, [reader.refresh])
-  const importCancelled = useCallback(() => { void reader.refresh({ preserveReader: true }) }, [reader.refresh])
   const [windowError, setWindowError] = useState<{ title: string; detail: string; count: number } | null>(null)
   useEffect(() => api?.onAppException?.(notice => setWindowError(previous => ({ ...notice, count: (previous?.count ?? 0) + 1 }))), [api])
   useExceptionNotice(windowError && { key: `desktop-window-${windowError.count}`, title: windowError.title, detail: windowError.detail })
@@ -198,13 +202,8 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
   }, [preview, previewConversationId, reader.open])
   const name = displayName.trim()
   const mobileDialog = isMobile && open
-  const [backgroundImport, setBackgroundImport] = useState<{ jobId: string; notice: NonNullable<ReturnType<typeof importFailureNotice>> } | null>(null)
-  useEffect(() => api?.onImport?.(snapshot => {
-    const notice = importFailureNotice(getSnapshotFailure(snapshot), snapshot.jobId)
-    setBackgroundImport(current => notice ? { jobId: snapshot.jobId, notice } : current?.jobId === snapshot.jobId ? null : current)
-  }), [api])
-  const importVisible = view === 'import' && !settingsOpen && !mobileDialog && !introActive
-  useExceptionNotice(importVisible ? null : backgroundImport?.notice ?? null)
+  useExceptionNoticeLayer(sidebarRef, mobileDialog)
+  useExceptionNotice(importSession.notice)
 
   const finishIntro = useCallback(() => {
     setIntroActive(false)
@@ -228,15 +227,16 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
     closeMobile()
   }
 
-  function handleNavigationKey(event: KeyboardEvent<HTMLElement>) {
-    if (!mobileDialog || !event.currentTarget.contains(event.target as Node)) return
+  const handleNavigationKey = useEffectEvent((event: KeyboardEvent) => {
+    const sidebar = sidebarRef.current
+    if (!sidebar || !mobileDialog) return
     if (event.key === 'Escape') {
       event.preventDefault()
       dismissMobile()
     }
     if (event.key !== 'Tab') return
-    const controls = Array.from(event.currentTarget.querySelectorAll<HTMLElement>('a[href], button, [tabindex="0"]'))
-      .filter(control => !control.closest('[inert], [hidden], [aria-hidden="true"]'))
+    const controls = Array.from(sidebar.querySelectorAll<HTMLElement>('a[href], button, [tabindex="0"]'))
+      .filter(control => control.tabIndex >= 0 && !control.matches(':disabled') && !control.closest('[inert], [hidden], [aria-hidden="true"]'))
     const first = controls[0]
     const last = controls[controls.length - 1]
     if (event.shiftKey && document.activeElement === first) {
@@ -246,7 +246,15 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
       event.preventDefault()
       first?.focus()
     }
-  }
+  })
+
+  useLayoutEffect(() => {
+    const sidebar = sidebarRef.current
+    if (!mobileDialog || !sidebar) return
+    // 提醒通过 portal 移入面板，须按实际 DOM 层级捕获键盘事件。
+    sidebar.addEventListener('keydown', handleNavigationKey, true)
+    return () => sidebar.removeEventListener('keydown', handleNavigationKey, true)
+  }, [mobileDialog])
 
   function closeSettings(destination?: () => void) {
     setSettingsOpen(false)
@@ -290,27 +298,8 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
   }
 
   async function startNewImport() {
-    let previous: string | null = null
-    try { previous = localStorage.getItem('whomi:import-job') } catch { /* 无存储时使用当前会话。 */ }
-    if (api && previous) {
-      try {
-        const task = await api.getImport(previous)
-        if (isImportActive(task) || task.status === 'failed' || (task.status === 'completed' && !hasConfirmedImport(task))) {
-          openImport()
-          return
-        }
-      } catch (cause) {
-        if (importError(cause).code !== 'IMPORT_RESULT_REMOVED') {
-          openImport()
-          return
-        }
-      }
-    }
-    try { localStorage.removeItem('whomi:import-job') } catch { /* ignore */ }
-    setImportKey(key => key + 1)
-    setView('import')
-    closeMobile()
-    requestAnimationFrame(() => mainRef.current?.querySelector<HTMLButtonElement>('.import-dropzone')?.focus())
+    openImport()
+    if (await importSession.startNew()) setImportKey(key => key + 1)
   }
 
   function openImport() {
@@ -329,6 +318,7 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
   useEffect(() => api?.onConversationDeleted?.(id => onConversationDeleted(id)), [api])
 
   function forgetConversation(id: string) {
+    void importSession.conversationDeleted(id)
     removedConversations.current.add(id)
     if (tasks.some(task => task.id === selectedMemory && task.conversationId === id)) setSelectedMemory(undefined)
     setTasks(entries => entries.filter(task => task.conversationId !== id))
@@ -435,12 +425,12 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
         />
       )}
       <aside
+        ref={sidebarRef}
         id="app-sidebar"
         className="sidebar"
         aria-label={mobileDialog ? '导航面板' : '应用导航'}
         role={mobileDialog ? 'dialog' : undefined}
         aria-modal={mobileDialog || undefined}
-        onKeyDownCapture={handleNavigationKey}
         inert={introActive}
       >
         {open && !isMobile && navPane.divider}
@@ -539,7 +529,7 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
             loading={memoryLoading} error={memoryError} retry={refreshMemories}
             renderSource={queryClient && readInsightCitation && (target => <InsightSourceDialog {...target}
               client={queryClient} readCitation={readInsightCitation} />)} />
-          : view === 'import' ? <FileImport key={importKey} api={api} onSaved={saved} onCancelled={importCancelled} onOpenConversation={openConversation} />
+          : view === 'import' ? <ImportWorkspace key={importKey} api={api} controller={importSession} onOpenConversation={openConversation} />
           : view === 'clarification' ? <ClarificationPage question={clarificationQuestion} models={clarificationModels ?? (conversationAiAdapter ?? desktopAi)?.models.map(model => ({ ...model, available: true })) ?? []} controller={clarification}
             headingRef={clarificationTitleRef} preview={previewing}
             onOpenSource={reference => openSource(reference, 'clarification')}

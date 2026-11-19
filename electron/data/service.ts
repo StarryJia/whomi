@@ -1,12 +1,13 @@
 import type { Store } from './db/open'
 import type { Discovery, ImportFailurePhase, ImportSnapshot, StartImportRequest } from '../../src/shared/import-contract'
+import { terminalImportStates } from '../../src/shared/import-contract'
 import { createStagingService, type StagedImport, type StagingOptions } from './import/staging'
 import type { GrantedSource } from './import/discovery'
 import { confirmSelf as mutateSelf } from './import/identity'
 import { purgeConversation } from './db/purge'
 import { runImport, type RunnerDependencies, type WriterQueue } from './import/runner'
 import { cleanupImportStaging, recoverImports } from './import/recovery'
-import { getSnapshot, recordImportFailure, saveResult, setJobState, terminalStates } from './import/state'
+import { getSnapshot, recordImportFailure, saveResult, setJobState } from './import/state'
 import { ImportFailure, issue } from './import/limits'
 import { rebuildSummary } from './import/summary'
 import type { ImportPreview, PreviewOptions } from '../../src/shared/desktop-api'
@@ -37,14 +38,17 @@ export function createDataService(options:DataServiceOptions) {
     if(!options.changed) return
     let snapshot: ImportSnapshot
     try { snapshot = currentSnapshot(id) } catch { return }
-    if (snapshot.status === 'completed' && active?.id === id) return
+    if (awaitingPublication(snapshot)) return
     const now=Date.now()
-    if(terminalStates.has(snapshot.status) || now-lastEvent>=200) {
+    if(terminalImportStates.has(snapshot.status) || now-lastEvent>=200) {
       if(notificationTimer)clearTimeout(notificationTimer);notificationTimer=undefined
       lastEvent=now;try {options.changed(snapshot)} catch { /* Subscribers cannot affect committed data. */ }
     }else if(!notificationTimer) {
       notificationTimer=setTimeout(()=>{notificationTimer=undefined;notify(id)},200-(now-lastEvent));notificationTimer.unref()
     }
+  }
+  function awaitingPublication(snapshot: ImportSnapshot) {
+    return active?.id === snapshot.jobId && (snapshot.status === 'completed' || snapshot.status === 'removed')
   }
   function currentSnapshot(id:string):ImportSnapshot {
     const current = active?.id === id ? active : undefined
@@ -161,7 +165,7 @@ export function createDataService(options:DataServiceOptions) {
     if (pending) return pending
     const current = active?.id === id ? active : undefined
     const status = currentSnapshot(id).status
-    if (status === 'completed' || status === 'partially_completed' || (!current && !terminalStates.has(status) && undurableFailure?.id !== id)) return
+    if (status === 'completed' || status === 'partially_completed' || status === 'removed' || (!current && !terminalImportStates.has(status) && undurableFailure?.id !== id)) return
     const cancellation = (async () => {
       current?.signal.abort()
       if (current && (current.finishedCandidates || status === 'staging' || status === 'validating' || status === 'failed')) await task
@@ -197,10 +201,13 @@ export function createDataService(options:DataServiceOptions) {
     },
     async getImport(jobId:string) {
       await ready
-      const snapshot = currentSnapshot(jobId)
-      if (snapshot.status !== 'completed' || active?.id !== jobId) return snapshot
-      await task
-      return currentSnapshot(jobId)
+      let snapshot = currentSnapshot(jobId)
+      if (awaitingPublication(snapshot)) {
+        await task
+        snapshot = currentSnapshot(jobId)
+      }
+      if (snapshot.status === 'removed') throw new ImportFailure('IMPORT_RESULT_REMOVED')
+      return snapshot
     },
     async confirmSelf(conversationId:string,memberId:string|null) {await ready;return write(()=>mutateSelf(store,conversationId,memberId))},
     async deleteConversation(conversationId:string) {await ready;return write(()=>purgeConversation(store,conversationId))},

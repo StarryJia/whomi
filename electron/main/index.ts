@@ -25,7 +25,7 @@ import { settingsMethods } from '../../src/data/settings-client'
 import type { ProcessingMember } from './message-processing'
 import { loadWindowState, rememberWindowState } from './window-state'
 import { createImportDiagnostics, snapshotDiagnostic } from './import-diagnostics'
-import { appExceptionChannel, importDiagnosticsChannel } from '../../src/shared/import-diagnostics'
+import { appExceptionChannel, importDiagnosticsChannel, type StoredImportDiagnostic } from '../../src/shared/import-diagnostics'
 import { version as appVersion } from '../../package.json'
 
 // 测试资料必须是操作系统临时目录下的独立目录。
@@ -49,7 +49,8 @@ else {
   app.on('second-instance', () => { const window = BrowserWindow.getAllWindows()[0]; window?.show(); window?.focus() })
   app.whenReady().then(async () => {
     const userDataPath = app.getPath('userData')
-    const importDiagnostics = createImportDiagnostics(userDataPath, appVersion, path => shell.openPath(path))
+    const importDiagnostics = createImportDiagnostics(userDataPath, appVersion, path => shell.openPath(path),
+      jobId => dataHost!.request('getImport', [jobId]))
     let suspended = false, servicesClosed = false, requests = 0
     let publishImport: Parameters<DataHost['onEvent']>[0] = () => {}
     let publishAi: Parameters<NonNullable<typeof aiService>['subscribe']>[0] = () => {}
@@ -65,7 +66,8 @@ else {
     async function startServices(directory: string) {
       dataHost = startDataHost(directory)
       if (probeEnabled) (globalThis as typeof globalThis & { __whomiRuntimeProbe?: DataHost }).__whomiRuntimeProbe = dataHost
-      await dataHost.request('health', null)
+      const failures = await dataHost.request<StoredImportDiagnostic[]>('unresolvedImportDiagnostics', null)
+      for (const { diagnostic, counts, jobCreatedAt } of failures) await importDiagnostics.report(diagnostic, counts, jobCreatedAt).catch(() => {})
       dataHost.onEvent(snapshot => publishImport(snapshot))
       agentHost = startAgentHost(directory)
       aiService = createAiService({ storage: (method, args) => dataHost!.request('aiStorage', [method, args]), runtime: { run: (input, options) => {
@@ -124,7 +126,7 @@ else {
     } })
     publishImport = snapshot => {
       const diagnostic = snapshotDiagnostic(snapshot)
-      if (diagnostic) void importDiagnostics.report(diagnostic, snapshot.counts).catch(() => {})
+      if (diagnostic) void importDiagnostics.report(diagnostic, snapshot.counts, snapshot.jobCreatedAt).catch(() => {})
       router.publish(snapshot)
     }
     const stopWindowEvents = router.onImport(window.webContents.id, snapshot => { if (!window.isDestroyed()) window.webContents.send(desktopChannels.progress, snapshot) })

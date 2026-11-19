@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { DesktopApi, DesktopError, ImportPreview, SourceHandle } from '../shared/desktop-api'
-import { importJobStates, type ImportCandidateResult, type ImportFailurePhase, type ImportPlan, type ImportSnapshot } from '../shared/import-contract'
+import { currentImportIssue } from '../shared/import-diagnostics'
+import { importSnapshotStates, terminalImportStates, type ImportCandidateResult, type ImportFailurePhase, type ImportPlan, type ImportSnapshot } from '../shared/import-contract'
 
 const storageKey = 'whomi:import-job'
-const terminal = new Set(['completed', 'partially_completed', 'failed', 'cancelled'])
-export const isImportActive = (value: ImportSnapshot) => !terminal.has(value.status)
+export const isImportActive = (value: ImportSnapshot) => !terminalImportStates.has(value.status)
 export const isPersistedResult = (value: ImportCandidateResult) =>
   (value.status === 'saved' || value.status === 'duplicate') &&
   typeof value.conversationId === 'string' && value.conversationId.length > 0 &&
@@ -43,6 +43,8 @@ export function getSnapshotFailure(snapshot: ImportSnapshot | null): ImportFailu
     return { phase, ...fallbacks[phase] }
   }
   if (snapshot.status === 'awaiting_confirmation' && !snapshot.discovery?.entries.length) {
+    const issue = currentImportIssue('scan', snapshot.issues) ?? currentImportIssue('scan', snapshot.discovery?.issues ?? [])
+    if (issue && issue.code !== fallbacks.scan.code) return { phase: 'scan', code: issue.code, action: issue.action }
     return { phase: 'scan', ...fallbacks.scan }
   }
   if (snapshot.status === 'awaiting_commit' && !snapshot.candidates.some(candidate => candidate.status === 'staged')) {
@@ -52,9 +54,9 @@ export function getSnapshotFailure(snapshot: ImportSnapshot | null): ImportFailu
 
   const phase = snapshot.failurePhase ?? (statisticsFailed ? 'statistics'
     : snapshot.results.some(result => result.status === 'blocked') ? 'parse' : 'save')
-  const issues = [...snapshot.issues, ...(snapshot.discovery?.issues ?? []), ...snapshot.results.flatMap(result => result.issues)]
-    .filter(issue => issue.severity === 'blocking')
-  const issue = issues.find(issue => issue.ordinal !== undefined) ?? issues[0]
+  const issue = currentImportIssue(phase, snapshot.issues) ?? (phase === 'scan'
+    ? currentImportIssue(phase, snapshot.discovery?.issues ?? [])
+    : phase === 'parse' || !snapshot.failurePhase ? currentImportIssue(phase, snapshot.results.flatMap(result => result.issues)) : undefined)
   if ((phase === 'scan' || phase === 'statistics') && issue?.code === fallbacks[phase].code) return { phase, ...fallbacks[phase] }
   return { phase, ...(issue ? { code: issue.code, action: issue.action } : fallbacks[phase]) }
 }
@@ -74,17 +76,25 @@ function remember(id: string | null) {
   try { if (id) localStorage.setItem(storageKey, id); else localStorage.removeItem(storageKey) } catch { /* 存储不可用时仍允许当前导入。 */ }
 }
 
-export function useImport(api?: DesktopApi) {
+type ImportCallbacks = {
+  onSaved?: (conversationIds: string[]) => void
+  onCancelled?: () => void
+}
+
+export function useImport(api?: DesktopApi, { onSaved, onCancelled }: ImportCallbacks = {}) {
   const [snapshot, setSnapshot] = useState<ImportSnapshot | null>(null)
   const [error, setError] = useState<DesktopError | null>(null)
   const [operationFailure, setOperationFailure] = useState<ImportFailure | null>(null)
+  const [backgroundFailure, setBackgroundFailure] = useState<{ jobId: string; failure: ImportFailure } | null>(null)
   const [busy, setBusy] = useState(false)
   const [pickerOpen, setPickerOpen] = useState(false)
   const [cancelling, setCancelling] = useState(false)
   const [openingLog, setOpeningLog] = useState(false)
   const [logError, setLogError] = useState('')
   const picker = useRef(false)
+  const restoring = useRef<Promise<void> | null>(null)
   const opening = useRef(false)
+  const lastResult = useRef<{ saved?: string; cancelled?: string }>({})
   const report = useRef<{ key: string; done: Promise<boolean> } | null>(null)
   const session = useRef({
     alive: false, generation: 0, jobId: null as string | null, snapshot: null as ImportSnapshot | null,
@@ -95,14 +105,51 @@ export function useImport(api?: DesktopApi) {
   const failureCode = failure?.code
   const failedJobId = snapshot?.jobId ?? session.current.jobId ?? undefined
   const failureKey = failure && JSON.stringify([failedJobId, failurePhase, failureCode])
+  const notice = importFailureNotice(failure, failedJobId, logError) ?? (backgroundFailure && backgroundFailure.jobId !== failedJobId
+    ? importFailureNotice(backgroundFailure.failure, backgroundFailure.jobId) : null)
+
+  useEffect(() => {
+    if (!snapshot || failure || cancelling) return
+    if (onSaved && hasConfirmedImport(snapshot) && lastResult.current.saved !== snapshot.jobId) {
+      lastResult.current.saved = snapshot.jobId
+      onSaved([...new Set(snapshot.results.map(result => result.conversationId!))])
+    } else if (onCancelled && snapshot.status === 'cancelled' && !snapshot.results.some(isPersistedResult) &&
+      lastResult.current.cancelled !== snapshot.jobId) {
+      lastResult.current.cancelled = snapshot.jobId
+      onCancelled()
+    }
+  }, [snapshot, failure, cancelling, onSaved, onCancelled])
+
+  const reset = useCallback(() => {
+    const current = session.current
+    current.generation++
+    current.jobId = null
+    current.snapshot = null
+    current.busy = false
+    current.cancelling = false
+    current.preparing = false
+    current.events.clear()
+    report.current = null
+    opening.current = false
+    setSnapshot(null)
+    setError(null)
+    setOperationFailure(null)
+    setBackgroundFailure(null)
+    setLogError('')
+    setOpeningLog(false)
+    setBusy(false)
+    setCancelling(false)
+    remember(null)
+  }, [])
 
   const accept = useCallback((value: ImportSnapshot) => {
     const current = session.current
     if (!current.alive || current.jobId !== value.jobId) return
+    if (value.status === 'removed') { reset(); return }
     if (current.snapshot?.status === 'cancelled' && value.status !== 'cancelled') return
     // 查询和节流通知可能交错，活动任务不能退回较早阶段。
     if (current.snapshot?.jobId === value.jobId && isImportActive(value) &&
-      importJobStates.indexOf(value.status) < importJobStates.indexOf(current.snapshot.status)) return
+      importSnapshotStates.indexOf(value.status) < importSnapshotStates.indexOf(current.snapshot.status)) return
     current.snapshot = value
     setSnapshot(value)
     if (value.status === 'cancelled' || hasConfirmedImport(value)) {
@@ -110,7 +157,7 @@ export function useImport(api?: DesktopApi) {
       setLogError('')
     }
     if (value.status === 'cancelled') remember(null)
-  }, [])
+  }, [reset])
 
   useEffect(() => {
     const current = session.current
@@ -123,24 +170,45 @@ export function useImport(api?: DesktopApi) {
       current.preparing = false
       current.events.clear()
     }
-    if (!api) return dispose
+    if (!api?.onImport) return dispose
     const stop = api.onImport(value => {
       if (!current.alive) return
       if (current.jobId === value.jobId) { current.eventVersion++; accept(value) }
       else if (current.preparing) current.events.set(value.jobId, value)
+      else {
+        const failure = getSnapshotFailure(value)
+        setBackgroundFailure(previous => failure ? { jobId: value.jobId, failure } : previous?.jobId === value.jobId ? null : previous)
+      }
     })
     let stored: string | null = null
-    try { stored = localStorage.getItem(storageKey) } catch { /* 无存储时无需恢复。 */ }
-    if (stored) {
+    try { stored = localStorage.getItem(storageKey) } catch { /* 仍可从数据库恢复中断的任务。 */ }
+    if (stored || api.getInterruptedImport) {
       const generation = ++current.generation
-      const version = current.eventVersion
       current.jobId = stored
-      current.busy = true
-      setBusy(true)
+      current.busy = !!stored
+      setBusy(!!stored)
       const valid = () => current.alive && generation === current.generation
-      void api.getImport(stored).then(value => {
-        if (valid() && version === current.eventVersion) accept(value)
-      }).catch(value => {
+      let version = current.eventVersion
+      const restore = async () => {
+        // 扫描可能已写库，但窗口退出前还没收到任务编号。
+        const interrupted = await api.getInterruptedImport?.().catch(() => undefined)
+        if (!valid()) return
+        const jobId = interrupted ?? stored
+        if (!jobId) return
+        if (jobId !== stored) {
+          version = current.eventVersion
+          current.jobId = jobId
+          remember(jobId)
+        }
+        const value = await api.getImport(jobId)
+        if (!valid() || version !== current.eventVersion) return
+        if (interrupted === null && getSnapshotFailure(value)?.code === 'INTERRUPTED') {
+          reset()
+          return
+        }
+        accept(value)
+      }
+      const pending = restore().catch(value => {
         if (!valid() || version !== current.eventVersion) return
         const error = phaseError('confirm', value)
         if (['UNKNOWN_JOB', 'INVALID_JOB', 'IMPORT_NOT_FOUND', 'IMPORT_RESULT_REMOVED', 'INVALID_ARGUMENT'].includes(error.code)) {
@@ -149,11 +217,13 @@ export function useImport(api?: DesktopApi) {
         }
         if (error.code !== 'IMPORT_RESULT_REMOVED') setOperationFailure(error)
       }).finally(() => {
+        if (restoring.current === pending) restoring.current = null
         if (valid()) { current.busy = false; setBusy(false) }
       })
+      restoring.current = pending
     }
     return () => { dispose(); stop() }
-  }, [api, accept])
+  }, [api, accept, reset])
 
   const reportFailure = useCallback(() => {
     if (!api?.importDiagnostics || !failureKey || !failurePhase || !failureCode) return
@@ -178,8 +248,13 @@ export function useImport(api?: DesktopApi) {
 
   async function refresh(jobId: string, valid: () => boolean) {
     const current = session.current, version = current.eventVersion
-    const value = await api!.getImport(jobId)
-    if (valid() && version === current.eventVersion) accept(value)
+    try {
+      const value = await api!.getImport(jobId)
+      if (valid() && version === current.eventVersion) accept(value)
+    } catch (cause) {
+      if (importError(cause).code !== 'IMPORT_RESULT_REMOVED') throw cause
+      if (valid() && current.jobId === jobId) reset()
+    }
     return current.snapshot
   }
 
@@ -189,20 +264,57 @@ export function useImport(api?: DesktopApi) {
       (!current.jobId || current.snapshot?.status === 'cancelled')
   }
 
-  async function select(obtain: () => Promise<SourceHandle[]>) {
-    if (!api || !canSelect()) return
-    const current = session.current, generation = ++current.generation
-    const valid = () => current.alive && generation === current.generation
-    current.busy = true
+  async function startNew() {
+    if (restoring.current) await restoring.current
+    const current = session.current
+    const { jobId, generation, operation } = current
+    if (picker.current || current.preparing || current.cancelling) return false
+    if (!jobId) return !current.busy && !failure
+    if (current.busy && current.snapshot) return false
+    const valid = () => current.alive && current.jobId === jobId && current.generation === generation && current.operation === operation
+    try {
+      const latest = await refresh(jobId, valid)
+      if (!valid() || !latest || !(hasConfirmedImport(latest) || latest.status === 'cancelled' || latest.status === 'partially_completed')) return false
+      reset()
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  async function conversationDeleted(id: string) {
+    const current = session.current
+    if (!current.snapshot?.results.some(result => result.conversationId === id)) return
+    const { jobId, generation } = current
+    if (!jobId) return
+    const version = ++current.eventVersion
+    const valid = () => current.alive && current.generation === generation && current.eventVersion === version
+    try { await refresh(jobId, valid) }
+    catch (cause) { if (valid()) setOperationFailure(phaseError('confirm', cause)) }
+  }
+
+  function beginSourceSelection() {
+    const current = session.current
     current.jobId = null
     current.snapshot = null
     current.events.clear()
-    setBusy(true)
     setSnapshot(null)
     setError(null)
     setOperationFailure(null)
     setLogError('')
     report.current = null
+    opening.current = false
+    setOpeningLog(false)
+    return ++current.generation
+  }
+
+  async function select(obtain: () => Promise<SourceHandle[]>, pickerGeneration?: number) {
+    if (restoring.current) await restoring.current
+    if (!api || !canSelect()) return
+    const current = session.current, generation = pickerGeneration ?? beginSourceSelection()
+    const valid = () => current.alive && generation === current.generation
+    current.busy = true
+    setBusy(true)
     try {
       const handles = await obtain()
       if (!valid() || !handles.length) return
@@ -224,8 +336,9 @@ export function useImport(api?: DesktopApi) {
   }
 
   async function choose(kind: 'files' | 'directory') {
+    if (restoring.current) await restoring.current
     if (!api || picker.current || !canSelect()) return
-    const current = session.current, generation = current.generation
+    const current = session.current, generation = beginSourceSelection()
     const valid = () => current.alive && generation === current.generation
     picker.current = true
     setPickerOpen(true)
@@ -243,7 +356,7 @@ export function useImport(api?: DesktopApi) {
       picker.current = false
       if (current.alive) setPickerOpen(false)
     }
-    if (valid() && handles.length) await select(async () => handles)
+    if (valid() && handles.length) await select(async () => handles, generation)
   }
 
   async function run(phase: 'parse' | 'save', operation: (jobId: string) => Promise<unknown>) {
@@ -277,27 +390,6 @@ export function useImport(api?: DesktopApi) {
     }
   }
 
-  const reset = useCallback(() => {
-    const current = session.current
-    current.generation++
-    current.jobId = null
-    current.snapshot = null
-    current.busy = false
-    current.cancelling = false
-    current.preparing = false
-    current.events.clear()
-    report.current = null
-    opening.current = false
-    setSnapshot(null)
-    setError(null)
-    setOperationFailure(null)
-    setLogError('')
-    setOpeningLog(false)
-    setBusy(false)
-    setCancelling(false)
-    remember(null)
-  }, [])
-
   async function cancel() {
     const current = session.current, jobId = current.jobId
     if (!api || current.cancelling) return
@@ -320,7 +412,7 @@ export function useImport(api?: DesktopApi) {
       const value = await refresh(jobId, valid)
       if (!valid() || settled()) return
       // 旧版部分完成没有整批事务，已提交的历史数据仍可继续使用。
-      if (!requestFailure && value?.status === 'partially_completed' && !value.failurePhase && value.results.some(isPersistedResult)) {
+      if (!requestFailure && value?.status === 'partially_completed' && !value.failurePhase) {
         reset()
         return
       }
@@ -369,11 +461,32 @@ export function useImport(api?: DesktopApi) {
   }
 
   return {
-    snapshot, error: operationFailure ?? error, failure, failedJobId, busy, pickerOpen, cancelling, openingLog, logError,
+    snapshot, error: operationFailure ?? error, failure, failedJobId, notice, busy, pickerOpen, cancelling, openingLog, logError,
+    startNew, conversationDeleted,
     choose, drop: (files: File[]) => select(() => api!.acceptDroppedFiles(files)), cancel, preview, reset, openErrorLog,
     stage: (entryIds: string[]) => run('parse', jobId => api!.startImport({ kind: 'stage', jobId, entryIds })),
     commit: (decisions: ImportPlan['decisions'], candidateIds?: string[]) => run('save', jobId => api!.startImport({
       kind: 'commit', plan: { jobId, decisions, ...(candidateIds && { candidateIds }) },
     })),
   }
+}
+
+export function useImportWorkflow(api?: DesktopApi, callbacks?: ImportCallbacks) {
+  const controller = useImport(api, callbacks)
+  const started = useRef<string | null>(null)
+  const { snapshot, busy, failure } = controller
+  useEffect(() => {
+    if (!snapshot) { started.current = null; return }
+    if (!api || busy || failure) return
+    const key = `${snapshot.jobId}:${snapshot.status}`
+    if (started.current === key) return
+    if (snapshot.status === 'awaiting_confirmation' && snapshot.discovery?.entries.length) {
+      started.current = key
+      void controller.stage(snapshot.discovery.entries.map(entry => entry.entryId))
+    } else if (snapshot.status === 'awaiting_commit' && snapshot.candidates.filter(candidate => candidate.status === 'staged').length === 1) {
+      started.current = key
+      void controller.commit([])
+    }
+  }, [api, snapshot, busy, failure, controller])
+  return controller
 }

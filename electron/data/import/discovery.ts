@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { basename, dirname, extname, isAbsolute, join, resolve, win32 } from 'node:path'
+import { basename, dirname, extname, isAbsolute, join, parse, resolve, sep, win32 } from 'node:path'
 import type { Discovery } from '../../../src/shared/import-contract'
 import type { ImportIssue } from '../../../src/shared/conversation-model'
 import { getParsers } from '../parsers/registry'
@@ -10,8 +10,49 @@ import { identity, inspectFile, readSource, sourceAccess, within, type SourceAcc
 
 /** Issued by the main process; never accept this record from a renderer request. */
 export type GrantedSource = { rootPath: string }
-export type PrivateEntry = { entryId: string; displayName: string; parser: ParserAdapter; files: SourceFile[]; generatedManifest?: Record<string, unknown> }
+export type PrivateEntry = { entryId: string; displayName: string; sourcePath: string; parser: ParserAdapter; files: SourceFile[]; generatedManifest?: Record<string, unknown> }
 const json = (bytes: Uint8Array) => parseJson(new TextDecoder('utf-8', { fatal: true }).decode(bytes).replace(/^\uFEFF/, ''))
+
+function volumeLabel(root: string) {
+  if (/^[a-z]:/i.test(root)) return root[0].toUpperCase() + ' 盘'
+  const [server, share] = root.split('\\').filter(Boolean)
+  return server && share ? share + '（' + server + '）' : ''
+}
+
+function distinguishSourceNames(entries: PrivateEntry[]) {
+  const byName = new Map<string, PrivateEntry[]>()
+  for (const entry of entries) {
+    const group = byName.get(entry.displayName)
+    if (group) group.push(entry)
+    else byName.set(entry.displayName, [entry])
+  }
+  for (const group of byName.values()) {
+    if (group.length < 2) continue
+    // 通常只需相对目录；跨卷同路径时才补充卷名。
+    const paths = group.map(({ sourcePath }) => sourcePath.slice(parse(sourcePath).root.length).split(sep))
+    let common = 0
+    while (paths.every(parts => common < parts.length - 1 && parts[common] === paths[0][common])) common++
+    const suffixCounts = new Map<string, number>(), locationCounts = new Map<string, number>()
+    const choices = paths.map(parts => {
+      const suffixes: string[] = []
+      let suffix = ''
+      for (let i = parts.length - 1; i >= common; i--) {
+        suffix = suffix ? `${parts[i]}/${suffix}` : parts[i]
+        suffixes.push(suffix)
+        suffixCounts.set(suffix, (suffixCounts.get(suffix) ?? 0) + 1)
+      }
+      locationCounts.set(suffix, (locationCounts.get(suffix) ?? 0) + 1)
+      return suffixes
+    })
+    choices.forEach((suffixes, i) => {
+      const full = suffixes[suffixes.length - 1]
+      const count = locationCounts.get(full)!
+      const label = suffixes.find(name => suffixCounts.get(name) === count) ?? full
+      const volume = count > 1 ? volumeLabel(parse(group[i].sourcePath).root) : ''
+      group[i].displayName = volume ? volume + ' · ' + label : label
+    })
+  }
+}
 export function safeRole(name: unknown): string {
   if (typeof name !== 'string' || !name || isAbsolute(name) || win32.isAbsolute(name) || name.includes(':') || name.includes('\0')) throw new ImportFailure('MANIFEST_PATH')
   const parts = name.replaceAll('\\', '/').split('/')
@@ -86,7 +127,8 @@ export function createDiscovery(access: SourceAccess = sourceAccess, parsers: re
       const entryId = randomUUID(), dependencies = [
         { ...users[0], role: 'user_info.json' }, { ...draft.group, role: 'group_info.json' }, { ...draft.messages, role: 'messages.json' },
       ]
-      entries.push({ entryId, displayName: basename(dirname(draft.group.path)), parser: parsers.find(p => p.id === 'google-chat-native')!, files: dependencies,
+      const sourcePath = dirname(draft.group.path)
+      entries.push({ entryId, displayName: basename(sourcePath), sourcePath, parser: parsers.find(p => p.id === 'google-chat-native')!, files: dependencies,
         generatedManifest: { format: 'chatlab-google-chat-takeout', version: 1, chatId: draft.chatId,
           chatType: draft.kind === 'Space' ? 'group' : 'private', chatName: basename(dirname(draft.group.path)),
           userInfoFile: 'user_info.json', groupInfoFile: 'group_info.json', messagesFile: 'messages.json' } })
@@ -124,12 +166,13 @@ export function createDiscovery(access: SourceAccess = sourceAccess, parsers: re
           // Shared dependencies do not prove that two manifests describe the same conversation.
           dependencies.slice(1).forEach(f => consumed.add(identity(f.info)))
         }
-        entries.push({ entryId, displayName: basename(file.path), parser, files: dependencies })
+        entries.push({ entryId, displayName: basename(file.path), sourcePath: file.path, parser, files: dependencies })
         if (matches.length > 1) issues.push(issue('FORMAT_PRIORITY_SELECTED', entryId, 'warning'))
       } catch (error) { issues.push(issue(failureCode(error), entryId)) }
     }
     const result = entries.filter(e => e.generatedManifest || !consumed.has(identity(e.files[0].info)))
     checkSignal(signal)
+    distinguishSourceNames(result)
     return publish(result, unknown, issues)
   }
   return { discover, resolveDiscovery, selectDiscovery }

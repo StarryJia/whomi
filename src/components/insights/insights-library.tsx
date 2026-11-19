@@ -8,7 +8,7 @@ import { ReaderDialog, actionError } from '../ui/managed-row'
 import { ExceptionNotice, ExceptionNoticeScope } from '../ui/exception-notices'
 import { InsightArticle } from './insight-article'
 import { InsightRenameForm, InsightReportRow, type RenameReport } from './insight-report-menu'
-import { formatInsightNumber, insightCompletedAt, insightElapsed, insightPercentage, insightRange, insightSpeed, InsightRing, InsightStatus, insightTaskNumber, insightTaskTitle, InsightTaskDetails, InsightTaskModel } from './insight-task'
+import { formatInsightNumber, insightCompletedAt, insightElapsed, insightPercentage, insightRange, insightSpeed, InsightRing, InsightStatus, insightTaskFailed, insightTaskFailureKey, insightTaskNumber, insightTaskTitle, InsightTaskDetails, InsightTaskModel } from './insight-task'
 import './insights.css'
 
 type CitationTarget = { taskId: string; citationId: string; phrase: string; conversationTitle: string; fragmentCount: number }
@@ -64,9 +64,10 @@ function TaskRow({ task, onOpen, onStop, onContinue }: {
   onContinue?: (taskId: string) => Promise<void>
 }) {
   const [busy, setBusy] = useState<'正在暂停' | '正在继续' | '正在重试'>()
-  const [error, setError] = useState('')
+  const [error, setError] = useState<{ detail: string; attempt: number }>()
   const pending = useRef(false)
-  const status = !task.valid || task.state === 'failed' || task.state === 'interrupted' ? '生成失败'
+  const attempt = useRef(0)
+  const status = insightTaskFailed(task) ? '生成失败'
     : task.state === 'stopped' ? '已暂停' : '生成中'
   const failed = status === '生成失败'
   const number = insightTaskNumber(task)
@@ -74,10 +75,11 @@ function TaskRow({ task, onOpen, onStop, onContinue }: {
   async function run() {
     if (!start || pending.current) return
     pending.current = true
-    setError('')
+    setError(undefined)
+    const currentAttempt = ++attempt.current
     setBusy(status === '生成中' ? '正在暂停' : failed ? '正在重试' : '正在继续')
     try { await start(task.id) }
-    catch (cause) { setError(actionError(cause)) }
+    catch (cause) { setError({ detail: actionError(cause), attempt: currentAttempt }) }
     finally { pending.current = false; setBusy(undefined) }
   }
   return <li className="insight-task-row" data-insight-task={task.id}>
@@ -103,7 +105,7 @@ function TaskRow({ task, onOpen, onStop, onContinue }: {
       <InsightTaskModel task={task} /><InsightTaskDetails usage={task.usage} range={insightRange(task)} />
     </div>
     {(error || (failed && task.error)) && <ExceptionNotice title={`洞察 ${insightTaskNumber(task)} ${error ? '操作失败' : '生成失败'}`}
-      detail={error || task.error || undefined} noticeKey={`insight-task:${task.id}`} className="insight-error" />}
+      detail={error?.detail ?? task.error} noticeKey={error ? `insight-action:${task.id}:${error.attempt}` : insightTaskFailureKey(task)} className="insight-error" />}
   </li>
 }
 

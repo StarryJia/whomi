@@ -104,3 +104,23 @@ test('来源窗口失败时打开本次无任务编号的日志，取消无需�
   expect(screen.getByRole('button', { name: '选择文件' })).toHaveFocus()
   expect(api.cancelImport).not.toHaveBeenCalled()
 })
+
+test('取消有编号的失败任务后直接重新选择文件，选择窗口错误使用本次无编号日志', async () => {
+  const { api, diagnostics, user, onCancelled } = setup(saved('a', '7', { summaryFailed: true }))
+  await user.click(screen.getByRole('button', { name: '选择文件' }))
+  await screen.findByRole('heading', { name: '会话统计更新失败' })
+  expect(diagnostics.report).toHaveBeenCalledWith({ phase: 'statistics', code: 'STATISTICS_FAILED', jobId: 'job' })
+  await user.click(screen.getByRole('button', { name: '取消导入' }))
+  expect(onCancelled).toHaveBeenCalledOnce()
+  vi.mocked(api.chooseSources).mockRejectedValueOnce(new Error('picker unavailable'))
+  await user.click(await screen.findByRole('button', { name: '选择文件' }))
+  expect(await screen.findByRole('heading', { name: '无法打开选择窗口' })).toBeVisible()
+
+  expect(diagnostics.report).toHaveBeenLastCalledWith({ phase: 'source', code: 'PICKER_FAILED' })
+  await user.click(screen.getByRole('button', { name: '查看错误日志' }))
+  expect(diagnostics.open).toHaveBeenCalledExactlyOnceWith(null)
+  await user.click(screen.getByRole('button', { name: '取消导入' }))
+  expect(await screen.findByRole('button', { name: '选择文件' })).toHaveFocus()
+  expect(api.cancelImport).toHaveBeenCalledExactlyOnceWith('job')
+  expect(localStorage.getItem('whomi:import-job')).toBeNull()
+})

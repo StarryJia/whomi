@@ -1,5 +1,6 @@
 import type { SourceHandle } from '../../src/shared/desktop-api'
 import type { ImportSnapshot, StartImportRequest } from '../../src/shared/import-contract'
+import { terminalImportStates } from '../../src/shared/import-contract'
 import { BoundaryError, localId, validateArguments, validateResult, validateSnapshot } from '../../src/shared/desktop-validation'
 import type { SourceGrants } from './source-grants'
 
@@ -36,8 +37,7 @@ export function createDesktopRouter(options: RouterOptions) {
       const snapshot = state.latest; state.latest = undefined; state.last = Date.now()
       if (snapshot) for (const listener of subscribers.get(owner!) ?? []) { try { listener(snapshot) } catch { /* A closed window cannot affect import state. */ } }
     }
-    const terminal = ['completed', 'partially_completed', 'failed', 'cancelled'].includes(value.status)
-    if (terminal || Date.now() - state.last >= 200) deliver()
+    if (terminalImportStates.has(value.status) || Date.now() - state.last >= 200) deliver()
     else if (!state.timer) { state.timer = setTimeout(deliver, 200 - (Date.now() - state.last)); state.timer.unref() }
   }
   return {

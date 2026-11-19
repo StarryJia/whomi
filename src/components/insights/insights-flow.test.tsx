@@ -205,6 +205,47 @@ it('展开洞察异常时保留原会话的进度和恢复操作', async () => {
   expect(screen.getByRole('button', { name: '再次洞察' })).toBeVisible()
 })
 
+it('同一次洞察失败关闭后可折叠和重访列表，任务重试后的失败重新提醒', async () => {
+  const user = userEvent.setup()
+  const failed: AnalysisTask = { ...completed, state: 'failed', report: undefined, error: '连接失败，请重试。' }
+  let publish!: (event: AiEvent) => void
+  const api = { ai: { listAnalyses: async () => [failed],
+    onEvent: (listener: typeof publish) => { publish = listener; return () => {} } } } as unknown as DesktopApi
+  render(<App preview conversations={[]} importApi={api} />)
+  const openLibrary = () => user.click(screen.getByRole('button', { name: '对话洞察' }))
+  const notices = () => screen.queryByRole('region', { name: '异常提醒' })
+  await openLibrary()
+  const first = within(await screen.findByRole('region', { name: '异常提醒' }))
+  expect(first.getByRole('alert')).toHaveTextContent('生成失败')
+  await user.click(first.getByRole('button', { name: '关闭提醒' }))
+  const group = screen.getByRole('button', { name: /小林（1）/ })
+  await user.click(group)
+  await user.click(group)
+  expect(notices()).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: '个人总览' }))
+  await openLibrary()
+  expect(notices()).not.toBeInTheDocument()
+  await act(async () => publish({ kind: 'analysis', snapshot: { ...failed, eventSequence: 4, usage: { inputTokens: 100 } } }))
+  expect(notices()).not.toBeInTheDocument()
+
+  await act(async () => publish({ kind: 'analysis', snapshot: { ...failed, state: 'running', error: undefined, eventSequence: 5 } }))
+  expect(screen.getByRole('status')).toHaveTextContent('生成中')
+  await act(async () => publish({ kind: 'analysis', snapshot: { ...failed, eventSequence: 6 } }))
+  const next = within(await screen.findByRole('region', { name: '异常提醒' }))
+  expect(next.getAllByRole('alert')).toHaveLength(1)
+  await user.click(next.getByRole('button', { name: '展开详情' }))
+  expect(next.getByText('连接失败，请重试。')).toBeVisible()
+  await user.click(next.getByRole('button', { name: '关闭提醒' }))
+  await user.click(screen.getByRole('button', { name: '个人总览' }))
+  await act(async () => {
+    publish({ kind: 'analysis', snapshot: { ...failed, state: 'running', error: undefined, eventSequence: 7 } })
+    publish({ kind: 'analysis', snapshot: { ...failed, eventSequence: 8 } })
+  })
+  expect(notices()).not.toBeInTheDocument()
+  await openLibrary()
+  expect(within(await screen.findByRole('region', { name: '异常提醒' })).getByRole('alert')).toHaveTextContent('生成失败')
+})
+
 it('列表原位改名保存期间阻止取消和打开另一份报告，回执后恢复入口', async () => {
   const user = userEvent.setup()
   let finish!: (value: AnalysisTask) => void

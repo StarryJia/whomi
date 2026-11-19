@@ -82,6 +82,7 @@ export type DesktopMethods = ConversationQueries & {
   prepareImport(handles: SourceHandle[]): Promise<JobId>
   startImport(request: StartImportRequest): Promise<JobId>
   getImport(jobId: JobId): Promise<ImportSnapshot>
+  getInterruptedImport(): Promise<LocalId | null>
   cancelImport(jobId: JobId): Promise<void>
   previewImport(jobId: JobId, candidateId: string, options: PreviewOptions): Promise<ImportPreview>
   listMembers(conversationId: LocalId): Promise<MemberView[]>

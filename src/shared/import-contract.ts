@@ -2,6 +2,10 @@ import type { ImportIssue, LocalId, ParsedMember, SourceIdentity } from './conve
 
 export const importJobStates = ['preparing', 'scanning', 'awaiting_confirmation', 'staging', 'validating', 'awaiting_commit', 'committing', 'completed', 'partially_completed', 'failed', 'cancelled'] as const
 export type ImportJobState = typeof importJobStates[number]
+// 删除最后一个结果只改变可见状态，保留数据库中的提交记录。
+export const importSnapshotStates = [...importJobStates, 'removed'] as const
+export const terminalImportStates: ReadonlySet<typeof importSnapshotStates[number]> =
+  new Set(['completed', 'partially_completed', 'failed', 'cancelled', 'removed'] as const)
 export const importResultStates = ['pending', 'blocked', 'staged', 'committing', 'processed', 'saved', 'duplicate', 'failed', 'cancelled'] as const
 export type ImportResultState = typeof importResultStates[number]
 export const importFailurePhases = ['source', 'scan', 'parse', 'save', 'confirm', 'statistics', 'cancel'] as const
@@ -33,4 +37,4 @@ export type ImportCandidateResult = {
   issues: ImportIssue[]
   summaryFailed: boolean
 }
-export type ImportSnapshot = { jobId: JobId; status: ImportJobState; discovery: Discovery | null; candidates: Candidate[]; results: ImportCandidateResult[]; issues: ImportIssue[]; counts: ImportCounts; inserted: number; duplicates: number; failurePhase?: ImportFailurePhase; progress?: {processed:number;total:number|null} }
+export type ImportSnapshot = { jobId: JobId; jobCreatedAt?: number; status: typeof importSnapshotStates[number]; discovery: Discovery | null; candidates: Candidate[]; results: ImportCandidateResult[]; issues: ImportIssue[]; counts: ImportCounts; inserted: number; duplicates: number; failurePhase?: ImportFailurePhase; progress?: {processed:number;total:number|null} }

@@ -71,6 +71,7 @@ contextBridge.exposeInMainWorld('whomi', Object.freeze({
   },
   chooseSources: expose('chooseSources'), acceptDroppedFiles: expose('acceptDroppedFiles'), prepareImport: expose('prepareImport'),
   startImport: expose('startImport'), getImport: expose('getImport'), cancelImport: expose('cancelImport'), previewImport: expose('previewImport'),
+  getInterruptedImport: expose('getInterruptedImport'),
   listConversations: expose('listConversations'), readMessages: expose('readMessages'), locateSource: expose('locateSource'),
   listMembers: expose('listMembers'), confirmSelf: expose('confirmSelf'), deleteConversation: expose('deleteConversation'), arrangeConversation: expose('arrangeConversation'), retrySummary: expose('retrySummary'), onImport: api.onImport,
   onConversationDeleted: api.onConversationDeleted,

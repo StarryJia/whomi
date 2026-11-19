@@ -80,8 +80,8 @@ it('单个导出中的两段会话可以分别勾选，隐藏未识别文件', a
 it('会话标题相同时显示来源，同一来源的同名会话也可以区分', async () => {
   const { api, emit } = fakeImportApi()
   emit(snapshot({ status: 'awaiting_commit', discovery: { entries: [
-    { entryId: 'first', displayName: '朋友记录.json', formatId: 'chatlab' },
-    { entryId: 'second', displayName: '家庭记录.json', formatId: 'chatlab' },
+    { entryId: 'first', displayName: '十月/result.json', formatId: 'chatlab' },
+    { entryId: 'second', displayName: '十一月/result.json', formatId: 'chatlab' },
   ], unrecognized: [{ displayName: '普通资料.txt' }], issues: [] }, candidates: [
     { ...candidate('a'), title: '聊天', entryId: 'first' }, { ...candidate('b'), title: '聊天', entryId: 'first' },
     { ...candidate('c'), title: '聊天', entryId: 'second' }, { ...candidate('d'), title: '独立标题', entryId: 'second' },
@@ -89,11 +89,14 @@ it('会话标题相同时显示来源，同一来源的同名会话也可以区�
   localStorage.setItem('whomi:import-job', 'job')
   render(<FileImport api={api} />)
 
-  expect(await screen.findByRole('checkbox', { name: '聊天 朋友记录.json · 1 / 2' })).toBeVisible()
-  expect(screen.getByRole('checkbox', { name: '聊天 朋友记录.json · 2 / 2' })).toBeVisible()
-  expect(screen.getByRole('checkbox', { name: '聊天 家庭记录.json' })).toBeVisible()
+  expect(await screen.findByRole('checkbox', { name: '聊天 十月/result.json · 1 / 2' })).toBeVisible()
+  expect(screen.getByRole('checkbox', { name: '聊天 十月/result.json · 2 / 2' })).toBeVisible()
+  const november = screen.getByRole('checkbox', { name: '聊天 十一月/result.json' })
   expect(screen.getByRole('checkbox', { name: '独立标题' })).toBeVisible()
   expect(screen.queryByText('普通资料.txt')).not.toBeInTheDocument()
+  await userEvent.click(november)
+  await userEvent.click(screen.getByRole('button', { name: '导入所选会话' }))
+  expect(api.startImport).toHaveBeenCalledWith({ kind: 'commit', plan: { jobId: 'job', candidateIds: ['c'], decisions: [] } })
 })
 it('等待解析显示不定进度和真实计数，取消立即恢复起点', async () => {
   const { api, emit } = fakeImportApi(), pending = deferred<string>()
@@ -163,6 +166,48 @@ it('结束升级前的部分完成记录，回到选择起点且不宣告撤回�
   expect(await screen.findByRole('button', { name: '选择文件' })).toHaveFocus()
   expect(localStorage.getItem('whomi:import-job')).toBeNull()
   expect(onCancelled).not.toHaveBeenCalled()
+})
+it('升级前部分完成任务的唯一已保存会话被删除后，仍可退出旧结果', async () => {
+  const { api, emit } = fakeImportApi()
+  emit(snapshot({ status: 'partially_completed', candidates: [candidate('a'), candidate('b')],
+    results: [saved('b', '8', { status: 'failed', conversationId: null, committedAt: null, inserted: 0 })] }))
+  // 旧版终态不参与整批回滚。
+  vi.mocked(api.cancelImport).mockResolvedValue(undefined)
+  localStorage.setItem('whomi:import-job', 'job')
+  render(<FileImport api={api} />)
+  await userEvent.click(await screen.findByRole('button', { name: '取消导入' }))
+  expect(await screen.findByRole('button', { name: '选择文件' })).toHaveFocus()
+  expect(localStorage.getItem('whomi:import-job')).toBeNull()
+  expect(api.deleteConversation).not.toHaveBeenCalled()
+})
+
+it('恢复旧版空入口快照时把扫描器已经识别的错误写入日志', async () => {
+  const { api, emit } = fakeImportApi()
+  api.importDiagnostics = { report: vi.fn(async () => {}), open: vi.fn(async () => {}) }
+  emit(snapshot({ status: 'awaiting_confirmation', discovery: { entries: [], unrecognized: [], issues: [
+    { code: 'TAKEOUT_INCOMPLETE', action: '请重新导出完整记录。', severity: 'blocking', candidateId: '' },
+  ] } }))
+  localStorage.setItem('whomi:import-job', 'job')
+  render(<FileImport api={api} />)
+  await waitFor(() => expect(api.importDiagnostics!.report).toHaveBeenCalledExactlyOnceWith({
+    jobId: 'job', phase: 'scan', code: 'TAKEOUT_INCOMPLETE',
+  }))
+})
+
+it('恢复取消失败时展示本次清理错误，日志不复用先前的坏记录原因', async () => {
+  const { api, emit } = fakeImportApi()
+  api.importDiagnostics = { report: vi.fn(async () => {}), open: vi.fn(async () => {}) }
+  const parseIssue = { code: 'invalid-record', severity: 'blocking' as const, candidateId: 'a', ordinal: 0, action: '请检查导出文件。' }
+  const cancelIssue = { code: 'CANCEL_FAILED', severity: 'blocking' as const, candidateId: '', action: '请再次点击取消导入。' }
+  emit(snapshot({ status: 'failed', failurePhase: 'cancel', issues: [cancelIssue],
+    results: [saved('a', '7', { status: 'blocked', issues: [parseIssue], conversationId: null, committedAt: null })] }))
+  localStorage.setItem('whomi:import-job', 'job')
+  render(<ExceptionNoticeProvider><FileImport api={api} /></ExceptionNoticeProvider>)
+  await screen.findByRole('heading', { name: '取消导入失败' })
+  await userEvent.click(screen.getByRole('button', { name: '展开详情' }))
+  expect(screen.getByText(cancelIssue.action)).toBeVisible()
+  expect(screen.queryByText(parseIssue.action)).toBeNull()
+  expect(api.importDiagnostics.report).toHaveBeenCalledExactlyOnceWith({ jobId: 'job', phase: 'cancel', code: cancelIssue.code })
 })
 it('保存进度显示真实处理数但不把未提交记录视为已保存', async () => {
   const { api, emit } = fakeImportApi()

@@ -459,3 +459,208 @@ test('actual large-file parsing shows real counts and can be cancelled', async (
     await page.screenshot({ path: testInfo.outputPath('09-parsing-cancelled.png') })
   }finally{await application?.close();await cleanup(directory)}
 })
+
+function launchImportWindow(directory) {
+  return electron.launch({
+    args: [resolve('out/main/index.cjs'), '--whomi-runtime-test'],
+    env: { ...process.env, WHOMI_RUNTIME_TEST: directory },
+  })
+}
+
+async function captureWindow(application, path) {
+  const png = await application.evaluate(async ({ BrowserWindow }) =>
+    (await BrowserWindow.getAllWindows()[0].webContents.capturePage()).toPNG().toString('base64'))
+  await writeFile(path, Buffer.from(png, 'base64'))
+}
+
+test('same-name conversations can be selected by export folder', async ({}, testInfo) => {
+  const directory = await mkdtemp(join(tmpdir(), 'whomi-runtime-'))
+  let application
+  try {
+    await copyFile('tests/desktop/probe.cjs', join(directory, 'probe.cjs'))
+    const telegram = JSON.parse(await readFile('tests/fixtures/import/telegram-native-single/positive.json', 'utf8'))
+    const sources = join(directory, 'sources')
+    for (const [i, month] of ['十月', '十一月'].entries()) {
+      const folder = join(sources, month)
+      await mkdir(folder, { recursive: true })
+      await writeFile(join(folder, 'result.json'), JSON.stringify({ ...telegram, id: 330 + i, name: '项目组',
+        messages: [{ ...telegram.messages[0], text: month + '的例会' }] }))
+    }
+    application = await launchImportWindow(directory)
+    const page = await application.firstWindow()
+    await page.getByRole('button', { name: '导入会话', exact: true }).click()
+    await drop(page, sources)
+    await page.getByRole('checkbox', { name: '项目组 十一月/result.json' }).check()
+    await expect(page.getByRole('checkbox', { name: '项目组 十月/result.json' })).not.toBeChecked()
+    await page.screenshot({ path: testInfo.outputPath('selected-november.png'), animations: 'disabled' })
+    await page.getByRole('button', { name: '导入所选会话' }).click()
+    await expect(page.getByText('导入完成', { exact: true })).toBeVisible()
+    const messages = await page.evaluate(async () => {
+      const { items: conversations } = await window.whomi.listConversations({})
+      return Promise.all(conversations.map(async ({ id }) =>
+        (await window.whomi.readMessages({ conversationId: id, direction: 'after' })).items.map(message => message.text)))
+    })
+    expect(messages).toEqual([['十一月的例会']])
+  } finally { await application?.close(); await cleanup(directory) }
+})
+
+test('interrupted selection exposes the original log on restart before entering import', async ({}, testInfo) => {
+  test.setTimeout(60000)
+  const directory = await mkdtemp(join(tmpdir(), 'whomi-runtime-'))
+  let application
+  try {
+    await copyFile('tests/desktop/probe.cjs', join(directory, 'probe.cjs'))
+    const folder = join(directory, 'sources')
+    await mkdir(folder)
+    await writeFile(join(folder, 'first.json'), JSON.stringify(documentFor([1, 2], 'First conversation')))
+    await writeFile(join(folder, 'second.json'), JSON.stringify(documentFor([3, 4], 'Second conversation')))
+    application = await launchImportWindow(directory)
+    let page = await application.firstWindow()
+    await page.getByRole('button', { name: '导入会话', exact: true }).click()
+    await drop(page, folder)
+    await expect(page.getByRole('heading', { name: '选择要导入的会话' })).toBeVisible()
+    await application.close()
+
+    application = await launchImportWindow(directory)
+    page = await application.firstWindow()
+    // 记录应用交给系统文本查看器的文件，以便核对原始内容与身份。
+    await application.evaluate(({ shell }) => {
+      globalThis.openedImportLogs = []
+      shell.openPath = async path => { globalThis.openedImportLogs.push(path); return '' }
+    })
+    const button = name => page.getByRole('button', { name, exact: true })
+    const notices = page.getByRole('region', { name: '异常提醒' })
+    await expect(page.locator('.app-shell:not(.startup-running) .hello-cover .greeting')).toBeVisible({ timeout: 15000 })
+    await button('设置').click({ trial: true })
+    await expect(notices.getByRole('alert')).toHaveText('导入遇到问题')
+    await captureWindow(application, testInfo.outputPath('interrupted-home.png'))
+    await button('设置').click()
+    await button('关于 Whomi').click()
+    await button('查看最近一次导入错误日志').click()
+    const opened = () => application.evaluate(() => globalThis.openedImportLogs)
+    await expect.poll(opened).toHaveLength(1)
+    const [first] = await opened()
+    expect(JSON.parse(await readFile(first, 'utf8'))).toMatchObject({
+      phase: 'parse', code: 'INTERRUPTED', counts: { seen: 4, validRecords: 4, invalidRecords: 0 },
+    })
+    await button('返回').click()
+    await button('导入会话').click()
+    await button('查看错误日志').click()
+    await expect.poll(opened).toEqual([first, first])
+    expect((await readdir(dirname(first))).filter(name => name.endsWith('.txt'))).toEqual([basename(first)])
+    await button('取消导入').click()
+    await expect(button('选择文件')).toBeEnabled()
+    await expect(notices).toHaveCount(0)
+  } finally { await application?.close(); await cleanup(directory) }
+})
+
+test('restart recovers a scan when the window never received its job number', async () => {
+  test.setTimeout(60000)
+  const directory = await mkdtemp(join(tmpdir(), 'whomi-runtime-'))
+  let application
+  try {
+    await copyFile('tests/desktop/probe.cjs', join(directory, 'probe.cjs'))
+    const file = join(directory, 'scan.json')
+    await writeFile(file, JSON.stringify(documentFor([1], 'Interrupted scan')))
+    application = await launchImportWindow(directory)
+    let page = await application.firstWindow()
+    await application.evaluate(({ ipcMain }) => {
+      // 模拟扫描请求已经写库，但窗口退出前未收到回复。
+      const original = ipcMain._invokeHandlers.get('whomi:call')
+      ipcMain.removeHandler('whomi:call')
+      ipcMain.handle('whomi:call', async (event, request) => {
+        const result = await original(event, request)
+        if (request.method === 'prepareImport' && result.ok) {
+          globalThis.preparedWithoutReply = true
+          return new Promise(() => {})
+        }
+        return result
+      })
+    })
+    await page.getByRole('button', { name: '导入会话', exact: true }).click()
+    await drop(page, file)
+    await expect.poll(() => application.evaluate(() => globalThis.preparedWithoutReply)).toBe(true)
+    expect(await page.evaluate(() => localStorage.getItem('whomi:import-job'))).toBeNull()
+    await application.close()
+    application = await launchImportWindow(directory)
+    page = await application.firstWindow()
+    const notices = page.getByRole('region', { name: '异常提醒' })
+    await expect(notices.getByRole('alert')).toHaveText('导入遇到问题')
+    await page.getByRole('button', { name: '导入会话', exact: true }).click()
+    await expect(page.getByRole('button', { name: '查看错误日志' })).toBeEnabled()
+    await page.getByRole('button', { name: '取消导入' }).click()
+    await expect(page.getByRole('button', { name: '选择文件', exact: true })).toBeEnabled()
+    await expect(notices).toHaveCount(0)
+  } finally { await application?.close(); await cleanup(directory) }
+})
+
+test('picker failure survives settings and navigation and the next selection stays unique', async ({}, testInfo) => {
+  test.setTimeout(60000)
+  const directory = await mkdtemp(join(tmpdir(), 'whomi-runtime-'))
+  let application
+  try {
+    await copyFile('tests/desktop/probe.cjs', join(directory, 'probe.cjs'))
+    const file = join(directory, 'sample.json')
+    await writeFile(file, JSON.stringify(documentFor([1], 'Selected once')))
+    application = await launchImportWindow(directory)
+    const page = await application.firstWindow()
+    const button = name => page.getByRole('button', { name, exact: true })
+    const notices = page.getByRole('region', { name: '异常提醒' })
+    await application.evaluate(({ dialog }) => {
+      dialog.showOpenDialog = async () => { throw Error('Synthetic picker failure') }
+    })
+    await button('导入会话').click()
+    await button('选择文件').click()
+    await expect(page.getByRole('heading', { name: '无法打开选择窗口' })).toBeVisible()
+    await button('设置').click()
+    await expect(notices.getByRole('alert')).toHaveText('导入遇到问题')
+    await button('个人总览').click()
+    await expect(notices).toBeVisible()
+    await button('导入会话').click()
+    await expect(button('查看错误日志')).toBeEnabled()
+    await page.screenshot({ path: testInfo.outputPath('restored-source-failure.png'), animations: 'disabled' })
+    await button('取消导入').click()
+    await expect(notices).toHaveCount(0)
+    await application.evaluate(({ dialog }) => {
+      globalThis.pendingPickers = []
+      dialog.showOpenDialog = () => new Promise(resolve => globalThis.pendingPickers.push(resolve))
+    })
+    await button('选择文件').click()
+    await button('导入会话').click()
+    await expect(button('选择文件')).toBeDisabled()
+    expect(await application.evaluate(() => globalThis.pendingPickers.length)).toBe(1)
+    await application.evaluate((_, path) => globalThis.pendingPickers[0]({ canceled: false, filePaths: [path] }), file)
+    await expect(page.getByText('导入完成', { exact: true })).toBeVisible()
+    expect((await page.evaluate(() => window.whomi.listConversations({}))).items.map(item => item.title)).toEqual(['Selected once'])
+  } finally { await application?.close(); await cleanup(directory) }
+})
+
+test('compact navigation lets keyboard users expand an import error and return to navigation', async ({}, testInfo) => {
+  const directory = await mkdtemp(join(tmpdir(), 'whomi-runtime-'))
+  let application
+  try {
+    await copyFile('tests/desktop/probe.cjs', join(directory, 'probe.cjs'))
+    const file = join(directory, 'unrecognized.txt')
+    await writeFile(file, 'Synthetic unrecognized export')
+    application = await launchImportWindow(directory)
+    const page = await application.firstWindow()
+    await page.getByRole('button', { name: '导入会话', exact: true }).click()
+    await drop(page, file)
+    await expect(page.getByRole('region', { name: '导入失败' })).toBeVisible()
+    await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.setZoomFactor(2))
+    await expect.poll(() => page.evaluate(() => innerWidth)).toBeLessThanOrEqual(640)
+    const navigation = page.getByRole('dialog', { name: '导航面板' })
+    if (!(await navigation.isVisible())) await page.getByRole('button', { name: '展开侧栏' }).click()
+    await navigation.getByRole('link', { name: 'Whomi 首页' }).focus()
+    const show = page.getByRole('button', { name: '展开详情' })
+    const focused = selector => selector.evaluate(element => element === document.activeElement)
+    for (let i = 0; i < 20 && !await focused(show); i++) await page.keyboard.press('Tab')
+    await expect(show).toBeFocused()
+    await page.keyboard.press('Enter')
+    await expect(page.getByRole('button', { name: '收起详情' })).toBeFocused()
+    await captureWindow(application, testInfo.outputPath('compact-keyboard-notice.png'))
+    await page.keyboard.press('Tab')
+    expect(await navigation.evaluate(panel => panel.contains(document.activeElement) &&
+      !document.activeElement.closest('[data-exception-notices]'))).toBe(true)
+  } finally { await application?.close(); await cleanup(directory) }
+})

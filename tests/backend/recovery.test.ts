@@ -2,7 +2,7 @@ import { expect,test,beforeAll,afterAll } from 'vitest'
 import { fork } from 'node:child_process'
 import { once } from 'node:events'
 import { mkdtemp,writeFile,readFile,rm,symlink,rmdir,unlink } from 'node:fs/promises'
-import { join,resolve } from 'node:path'
+import { dirname,join,resolve } from 'node:path'
 import { tmpdir } from 'node:os'
 import { recoverImports } from '../../electron/data/import/recovery'
 import { openStore } from '../../electron/data/db/open'
@@ -12,6 +12,9 @@ import { commitConversation } from '../../electron/data/import/merge'
 import { resolveTarget } from '../../electron/data/import/identity'
 import { candidate,view } from './import-fixture'
 import { temporaryStore } from './helpers'
+import { createDataService } from '../../electron/data/service'
+import { createDataDispatcher } from '../../electron/data/dispatch'
+import { createDesktopClient } from '../../src/data/desktop-client'
 let childBundle:string,bundleDirectory:string
 beforeAll(async()=> {
   bundleDirectory=await mkdtemp(join(tmpdir(),'whomi-child-'));childBundle=join(bundleDirectory,'child.cjs')
@@ -20,6 +23,55 @@ beforeAll(async()=> {
   await bundle.write({file:childBundle,format:'cjs'});await bundle.close()
 })
 afterAll(async()=> {await rm(bundleDirectory,{recursive:true,force:true})})
+test('the desktop client can recover only the latest interrupted import without a saved job ID', async () => {
+  const temp = temporaryStore()
+  const store = openStore(temp.path)
+  try {
+    const insert = store.writer.prepare('INSERT INTO import_jobs(id,status,phase,created_at_ms) VALUES(?,?,?,0)')
+    insert.run(1, 'running', 'scanning')
+    const service = createDataService({ store, appDataDirectory: dirname(temp.path) })
+    const dispatch = createDataDispatcher(store, service)
+    expect(await dispatch('getInterruptedImport', [])).toBe('1')
+    const client = createDesktopClient({ invoke: async (method, args) => ({ ok: true, value: await dispatch(method, args) }), onImport: () => () => {} })
+    expect(await client.getInterruptedImport()).toBe('1')
+    expect(await client.getImport('1')).toMatchObject({ failurePhase: 'scan', issues: [{ code: 'INTERRUPTED' }] })
+
+    insert.run(2, 'running', 'scanning')
+    expect(await client.getInterruptedImport()).toBeNull()
+    for (const status of ['completed', 'cancelled']) {
+      store.writer.prepare('UPDATE import_jobs SET status=?,phase=? WHERE id=2').run(status, status)
+      expect(await client.getInterruptedImport()).toBeNull()
+    }
+    const oldIssue = { code: 'INTERRUPTED', severity: 'blocking', candidateId: '', action: '导入已中断。' }
+    store.writer.prepare("UPDATE import_jobs SET status='failed',phase='failed',metadata=? WHERE id=2").run(JSON.stringify({
+      failurePhase: 'cancel', issues: [{ ...oldIssue, code: 'CANCEL_FAILED' }], discovery: { issues: [oldIssue] },
+    }))
+    expect(await client.getInterruptedImport()).toBeNull()
+    await expect(dispatch('getInterruptedImport', ['1'])).rejects.toMatchObject({ code: 'INVALID_ARGUMENT' })
+  } finally { store.close(); temp.cleanup() }
+})
+
+test('startup provides counted diagnostics for an interrupted import before the renderer opens a page', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'whomi-startup-import-'))
+  const store = openStore(join(directory, 'whomi.db'))
+  try {
+    const counts = { seen: 4, validRecords: 4, invalidRecords: 0 }
+    store.writer.prepare("INSERT INTO import_jobs(id,status,phase,created_at_ms,metadata) VALUES(1,'running','awaiting_commit',0,?)")
+      .run(JSON.stringify({ counts }))
+    const service = createDataService({ store, appDataDirectory: directory })
+    const dispatch = createDataDispatcher(store, service)
+    const expected = [{ diagnostic: { jobId: '1', phase: 'parse', code: 'INTERRUPTED' }, counts, jobCreatedAt: 0 }]
+    expect(await dispatch('unresolvedImportDiagnostics', null)).toEqual(expected)
+
+    const restarted = createDataDispatcher(store, createDataService({ store, appDataDirectory: directory }))
+    expect(await restarted('unresolvedImportDiagnostics', null)).toEqual(expected)
+    await service.cancelImport('1')
+    expect(await restarted('unresolvedImportDiagnostics', null)).toEqual([])
+  } finally {
+    store.close()
+    await rm(directory, { recursive: true, force: true })
+  }
+})
 test.each(['beforeCommit','afterCommit','afterFirstTarget'])('recovers an actual child killed at %s without losing committed state',async boundary=> {
   const temp=temporaryStore()
   let store:ReturnType<typeof openStore>|undefined

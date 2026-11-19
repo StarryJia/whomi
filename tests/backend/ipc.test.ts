@@ -119,7 +119,7 @@ describe('desktop boundary', () => {
     await expect(client.getImport('1')).rejects.toMatchObject({ code: 'INVALID_RESPONSE' })
     const events: unknown[] = []; client.onImport(value => events.push(value)); listener?.({ ...snapshot, jobId: 1 }); expect(events).toHaveLength(0)
   })
-  it('throttles public progress while delivering the last state and terminal state immediately', async () => {
+  it.each(['completed', 'removed'])('delivers %s immediately and discards previously queued public progress', async terminal => {
     vi.useFakeTimers()
     try {
       const router = createDesktopRouter({ grants: createSourceGrants(), request: async () => undefined })
@@ -128,8 +128,8 @@ describe('desktop boundary', () => {
       router.publish({ ...snapshot, status: 'staging' }); router.publish({ ...snapshot, status: 'validating' }); router.publish(snapshot)
       expect(events).toEqual(['staging'])
       await vi.advanceTimersByTimeAsync(200); expect(events).toEqual(['staging', 'awaiting_commit'])
-      router.publish({ ...snapshot, status: 'committing' }); router.publish({ ...snapshot, status: 'completed' })
-      expect(events).toEqual(['staging', 'awaiting_commit', 'completed'])
+      router.publish({ ...snapshot, status: 'committing' }); router.publish({ ...snapshot, status: terminal })
+      expect(events).toEqual(['staging', 'awaiting_commit', terminal])
       await vi.advanceTimersByTimeAsync(500); expect(events).toHaveLength(3)
       router.releaseWindow(1)
     } finally { vi.useRealTimers() }
