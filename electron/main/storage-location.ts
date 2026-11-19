@@ -267,7 +267,7 @@ export function createStorageLocationService(options: StorageLocationOptions) {
   const snapshot = async (): Promise<StorageLocation> => {
     const { path, retainedErrorLogDirectories } = await currentSelection()
     return { path, defaultPath: resolve(options.userDataPath), restartRequired,
-      ...(retainedErrorLogDirectories.length && { retainedErrorLogDirectories, retainedErrorLogDirectory: retainedErrorLogDirectories.at(-1) }) }
+      ...(retainedErrorLogDirectories.length && { retainedErrorLogDirectories }) }
   }
   function requireAvailable() {
     if (restartRequired) throw new BoundaryError('STORAGE_RESTART_REQUIRED', '请重启应用后继续。')

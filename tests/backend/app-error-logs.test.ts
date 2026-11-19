@@ -30,7 +30,7 @@ test('opens an empty log folder and keeps model, insight and import diagnostics 
   const first = appLogs()
   first.setDataArchives(data)
   const path = join(install, 'logs')
-  await expect(first.open('current')).resolves.toEqual({ path })
+  await expect(first.open()).resolves.toEqual({ path })
   expect(await readdir(path)).toEqual([])
   const imports = createImportDiagnostics(profile, '0.1.test', openPath, undefined, first)
   await Promise.all([
@@ -41,7 +41,7 @@ test('opens an empty log folder and keeps model, insight and import diagnostics 
   ])
   const reopened = appLogs()
   reopened.setDataArchives(data)
-  await expect(reopened.open('current')).resolves.toEqual({ path })
+  await expect(reopened.open()).resolves.toEqual({ path })
   const names = await readdir(path)
   const model = await readFile(join(path, names.find(name => name.includes('-model-'))!), 'utf8')
   expect(model).not.toMatch(/private chat|sk-synthetic/)
@@ -52,27 +52,23 @@ test('opens an empty log folder and keeps model, insight and import diagnostics 
   expect(dirname(openPath.mock.lastCall![0])).toBe(join(path, 'import-errors'))
 })
 
-test('opens installation logs before a data location is selected and keeps previous data and profile logs accessible', async () => {
+test('opens only the installation directory while import tasks can still find their original files', async () => {
   const { install, data, profile, openPath, appLogs } = await fixture()
   const logs = appLogs()
-  await expect(logs.open('current')).resolves.toEqual({ path: join(install, 'logs') })
+  await expect(logs.open()).resolves.toEqual({ path: join(install, 'logs') })
   await mkdir(join(profile, 'logs'))
   await mkdir(join(data, 'logs'))
   await writeFile(join(profile, 'logs', 'older-model.json'), '{}')
   await createImportDiagnostics(join(data, 'logs'), 'old', openPath).report({ phase: 'parse', code: 'INVALID_RECORD', jobId: '7' })
   await createImportDiagnostics(profile, 'old', openPath).report({ phase: 'parse', code: 'INVALID_RECORD', jobId: '8' })
   logs.setDataArchives(data)
-  expect(new Set(await logs.getArchives())).toEqual(new Set(['profile', 'data', 'legacy-import']))
-  await logs.open('profile')
-  expect(openPath.mock.lastCall![0]).toBe(join(profile, 'logs'))
-  await logs.open('data')
-  expect(openPath.mock.lastCall![0]).toBe(join(data, 'logs'))
+  await logs.open()
+  expect(openPath.mock.lastCall![0]).toBe(join(install, 'logs'))
   const imports = createImportDiagnostics(profile, 'new', openPath, undefined, logs)
   await imports.open('7')
   expect(dirname(openPath.mock.lastCall![0])).toBe(join(data, 'logs', 'import-errors'))
   await imports.open('8')
   expect(dirname(openPath.mock.lastCall![0])).toBe(join(profile, 'import-errors'))
-  await expect(logs.open('D:/arbitrary' as 'current')).rejects.toMatchObject({ code: 'INVALID_ARGUMENT' })
 })
 
 test('reports the installation path when writing fails and resumes there after access returns', async () => {
@@ -84,14 +80,14 @@ test('reports the installation path when writing fails and resumes there after a
   await logs.record({ area: 'model', phase: 'generate', error: new BoundaryError('CHATGPT_LIMIT') })
   const imports = createImportDiagnostics(profile, 'test', openPath, undefined, logs)
   await expect(imports.report({ phase: 'parse', code: 'INVALID_RECORD' })).rejects.toMatchObject({ action: expect.stringContaining(path) })
-  await expect(logs.open('current')).rejects.toMatchObject({ code: 'ERROR_LOG_UNWRITABLE', action: expect.stringContaining(path) })
+  await expect(logs.open()).rejects.toMatchObject({ code: 'ERROR_LOG_UNWRITABLE', action: expect.stringContaining(path) })
   expect(openPath).not.toHaveBeenCalled()
   expect(onWriteFailure).toHaveBeenCalledWith(expect.stringContaining(path))
   expect(await readdir(data)).toEqual([])
   expect(await readdir(profile)).toEqual([])
   await unlink(path)
   await imports.report({ phase: 'parse', code: 'INVALID_RECORD' })
-  await expect(logs.open('current')).resolves.toEqual({ path, missedRecords: 2 })
+  await expect(logs.open()).resolves.toEqual({ path, missedRecords: 2 })
   expect(await readdir(join(path, 'import-errors'))).toHaveLength(1)
 })
 
@@ -139,7 +135,7 @@ test('opens an enriched installation copy ahead of its original historical recor
 test('preserves local failure categories and omits provider text and unknown codes', async () => {
   const { appLogs } = await fixture()
   const logs = appLogs()
-  const location = await logs.open('current')
+  const location = await logs.open()
   const codes = ['INVALID_INSIGHT_OUTPUT', 'INVALID_INSIGHT_CHECKPOINT', 'CHATGPT_LIMIT', 'CHATGPT_ACCESS',
     'CHATGPT_UNAVAILABLE', 'CHATGPT_REQUEST', 'CHATGPT_INCOMPLETE', 'ACCOUNT_INCOMPLETE']
   for (const code of codes) await logs.record({ area: 'insight', phase: 'reading', error: new BoundaryError(code, 'fixture-private') })

@@ -345,7 +345,7 @@ test('actual import can hide a failure, reopen its log and recover after cancel'
     await expect(page.getByRole('button', { name: '选择文件', exact: true })).toBeVisible()
     await application.evaluate((_, useNative) => { globalThis.useNativeLogOpen = useNative; globalThis.openedImportLog = undefined }, process.env.WHOMI_DESKTOP_OPEN_LOG === '1')
     await page.getByRole('button', { name: '设置', exact: true }).click()
-    await page.getByRole('button', { name: '关于 Whomi', exact: true }).click()
+    await page.getByRole('button', { name: '数据存储', exact: true }).click()
     await page.getByRole('button', { name: '打开错误日志目录' }).click()
     await expect.poll(() => application.evaluate(() => globalThis.openedImportLog)).toBe(join(directory, 'logs'))
     if (process.env.WHOMI_DESKTOP_OPEN_LOG === '1') {
@@ -560,7 +560,7 @@ test('interrupted selection exposes the original log on restart before entering 
     await expect(notices.getByRole('alert')).toHaveText('导入遇到问题')
     await captureWindow(application, testInfo.outputPath('interrupted-home.png'))
     await button('设置').click()
-    await button('关于 Whomi').click()
+    await button('数据存储').click()
     await button('打开错误日志目录').click()
     const opened = () => application.evaluate(() => globalThis.openedImportLogs)
     await expect.poll(opened).toHaveLength(1)

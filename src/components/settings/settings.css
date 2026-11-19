@@ -107,6 +107,7 @@
 }
 .settings-directory-link:hover { text-decoration-thickness: 2px; }
 .settings-storage .mp-content-section>.ms-button { margin-top:20px; }
+.settings-log-action { margin-top:16px; }
 .settings-diagnostics { padding-left:20px; line-height:1.75; overflow-wrap:anywhere; }
 .settings-diagnostics p { margin:4px 0 12px; }
 .ms-modal-footer { flex-wrap:wrap; }

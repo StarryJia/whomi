@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto'
 import { lstatSync, mkdirSync, realpathSync, writeFileSync } from 'node:fs'
-import { lstat, mkdir, readdir, realpath, rename, unlink, writeFile } from 'node:fs/promises'
+import { lstat, mkdir, realpath, rename, unlink, writeFile } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import { BoundaryError, localId } from '../../src/shared/desktop-validation'
-import type { ErrorLogArchive, ErrorLogLocation, ErrorLogTarget } from '../../src/shared/settings-contract'
+import type { ErrorLogLocation } from '../../src/shared/settings-contract'
 import type { InsightBudgetLimit } from './insight-checkpoint'
 
 export type AppError = {
@@ -101,15 +101,6 @@ export function createAppErrorLogs(installDirectory: string, userDataPath: strin
     })
   }
 
-  function archivePath(archive: ErrorLogArchive) {
-    if (archive === 'legacy-import') return legacyImport
-    if (archive === 'data') return dataLogs
-    if (archive === 'profile') return profileLogs
-    const retained = retainedDirectories.find(path => archive === `retained:${path}`)
-    if (!retained) throw new BoundaryError('INVALID_ARGUMENT')
-    return retained
-  }
-
   return {
     writeFailureAction,
     setDataArchives(dataDirectory: string, retained: string[] = []) {
@@ -142,26 +133,8 @@ export function createAppErrorLogs(installDirectory: string, userDataPath: strin
         return root
       }).catch(() => undefined)
     },
-    async getArchives(): Promise<ErrorLogArchive[]> {
-      await pending
-      const available: ErrorLogArchive[] = []
-      const seen = new Set([logPathKey(directory)])
-      const archives: ErrorLogArchive[] = ['legacy-import', 'profile', 'data', ...retainedDirectories.map(path => `retained:${path}` as const)]
-      for (const archive of archives) {
-        const directory = archivePath(archive)
-        const key = logPathKey(directory)
-        if (seen.has(key)) continue
-        seen.add(key)
-        try {
-          if ((await readdir(await localLogDirectory(directory))).length) available.push(archive)
-        } catch { /* 尚无归档目录。 */ }
-      }
-      return available
-    },
-    async open(target: ErrorLogTarget): Promise<ErrorLogLocation> {
-      const location = target === 'current'
-        ? await withWritableRoot(async path => ({ path, ...(missedRecords > 0 && { missedRecords }) }), false)
-        : { path: archivePath(target) }
+    async open(): Promise<ErrorLogLocation> {
+      const location = await withWritableRoot(async path => ({ path, ...(missedRecords > 0 && { missedRecords }) }), false)
       try {
         await localLogDirectory(location.path)
         if (await openPath(location.path)) throw new Error('Native open failed')

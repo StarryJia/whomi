@@ -202,7 +202,6 @@ else {
       },
       async restart() { if (!suspended || !(await locations.getStorage()).restartRequired) throw new BoundaryError('INVALID_STATE'); app.relaunch(); app.quit() },
       async getDiagnostics() { const current = await settingsService.get(); return { version: appVersion, platform: process.platform, entries: current.debug ? [...diagnostics] : [] } },
-      getErrorLogArchives: appErrorLogs.getArchives,
       openErrorLogDirectory: appErrorLogs.open,
     }
     ipcMain.handle(settingsChannel, async (event, value: unknown) => {
@@ -212,12 +211,12 @@ else {
         if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).length !== 2 || !('method' in value) || !('args' in value) || typeof value.method !== 'string' || !Object.hasOwn(settingsMethods, value.method) || !Array.isArray(value.args)) throw new BoundaryError('INVALID_ARGUMENT')
         method = value.method as keyof SettingsApi
         if (value.args.length !== settingsMethods[method]) throw new BoundaryError('INVALID_ARGUMENT')
-        if (suspended && !['getStorage', 'openStorageDirectory', 'getErrorLogArchives', 'openErrorLogDirectory', 'restart'].includes(method)) throw new BoundaryError('STORAGE_RESTART_REQUIRED', '数据目录正在切换，请重启应用。')
+        if (suspended && !['getStorage', 'openStorageDirectory', 'openErrorLogDirectory', 'restart'].includes(method)) throw new BoundaryError('STORAGE_RESTART_REQUIRED', '数据目录正在切换，请重启应用。')
         requests++
         try { return { ok: true, value: await (settingsApi[method] as (...args: unknown[]) => Promise<unknown>)(...value.args) } } finally { requests-- }
       } catch (error) {
         const failure = serializableError(error)
-        if (method && method !== 'testModel' && method !== 'getErrorLogArchives' && method !== 'openErrorLogDirectory') {
+        if (method && method !== 'testModel' && method !== 'openErrorLogDirectory') {
           void appErrorLogs.record({ area: method === 'syncModels' || method === 'signInAccount' ? 'model' : 'main', phase: method, error })
         }
         diagnostics.push({ code: failure.code, action: '操作失败，请重试。' }); if (diagnostics.length > 20) diagnostics.shift()

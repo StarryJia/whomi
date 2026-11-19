@@ -12,7 +12,7 @@ const invoke = promisify(execFile)
 const explorerScript = fileURLToPath(new URL('./fixtures/windows-explorer.ps1', import.meta.url))
 const accessScript = fileURLToPath(new URL('./fixtures/windows-log-access.ps1', import.meta.url))
 
-test('Windows settings and import use installation logs across data changes and write permission failures', async ({}, info) => {
+test('Windows data storage and import use installation logs across data changes and write permission failures', async ({}, info) => {
   test.skip(process.platform !== 'win32', 'Requires Windows file permissions.')
   test.setTimeout(120_000)
   const profile = await realpath(await mkdtemp(join(tmpdir(), 'whomi-runtime-error-logs-')))
@@ -61,9 +61,14 @@ test('Windows settings and import use installation logs across data changes and 
       dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [file] })
     }, { file: source, nativeFolder: nativeFolderPending ? logs : null })
   }
-  async function openAbout() {
+  async function openStorage() {
     await button('设置').click()
     await button('关于 Whomi').click()
+    await expect(page.getByRole('region', { name: '关于 Whomi', exact: true }).getByRole('button', { name: /日志/ })).toHaveCount(0)
+    await button('数据存储').click()
+    const storage = page.getByRole('region', { name: '数据存储', exact: true })
+    await expect(storage.getByRole('button', { name: /日志/ })).toHaveCount(1)
+    await expect(storage.getByRole('button', { name: '打开错误日志目录', exact: true })).toBeVisible()
   }
   const lastOpen = () => app.evaluate(() => globalThis.logOpens.at(-1))
   async function confirmFolder(expected) {
@@ -97,7 +102,7 @@ test('Windows settings and import use installation logs across data changes and 
     await writeFile(source, '{"incomplete":')
     nativeFolderPending = process.env.WHOMI_DESKTOP_VERIFY_EXPLORER === '1'
     await launch()
-    await openAbout()
+    await openStorage()
     await button('打开错误日志目录').click()
     await confirmFolder(logs)
     expect(await readdir(logs)).toEqual([])
@@ -140,7 +145,7 @@ test('Windows settings and import use installation logs across data changes and 
     expect(basename(directLog)).toMatch(new RegExp('-' + importJob + '\\.txt$'))
     await app.close(); app = undefined
     await launch()
-    await openAbout()
+    await openStorage()
     await button('打开错误日志目录').click()
     await confirmFolder(logs)
     const names = await readdir(logs)
@@ -152,10 +157,8 @@ test('Windows settings and import use installation logs across data changes and 
       analyzedMessages: 1, budget: { name: 'maxOutputTokens', limit: 32_768 } })
     expect(JSON.parse(importLog)).toHaveProperty('code')
     expect(model + insight + importLog).not.toContain(privateMarker)
-    await button('打开旧版导入日志目录').click()
-    await confirmFolder(join(profile, 'import-errors'))
-    await button('打开数据目录中的日志').click()
-    await confirmFolder(previousDataLogs)
+    await expect(page.getByText(previousDataLogs, { exact: false })).toHaveCount(0)
+    await page.screenshot({ path: info.outputPath('storage-install-logs.png') })
     await access('Block')
     restoreAccess = true
     await expect(writeFile(join(logs, 'blocked-probe.tmp'), '')).rejects.toMatchObject({ code: expect.stringMatching(/^(EACCES|EPERM)$/) })
@@ -168,12 +171,25 @@ test('Windows settings and import use installation logs across data changes and 
     expect(await opens()).toBe(before)
     expect(await readdir(previousDataLogs)).toEqual(['older-model.json'])
     if (install !== profile) expect(await readdir(profile)).not.toContain('logs')
-    await page.screenshot({ path: info.outputPath('about-install-permission.png') })
+    await page.screenshot({ path: info.outputPath('storage-install-permission.png') })
     await access('Restore')
     restoreAccess = false
     await button('打开错误日志目录').click()
     await confirmFolder(logs)
     await expect(page.getByRole('status').filter({ hasText: /[1-9]\d* 条错误日志未保存/ })).toBeVisible()
+    await app.evaluate(({ BrowserWindow }) => {
+      const window = BrowserWindow.getAllWindows()[0]
+      window.setMinimumSize(320, 320)
+      window.setSize(400, 760)
+    })
+    const logButton = button('打开错误日志目录')
+    await expect.poll(() => page.evaluate(() => window.innerWidth)).toBeLessThanOrEqual(400)
+    await logButton.scrollIntoViewIfNeeded()
+    expect(await logButton.evaluate(node => {
+      const bounds = node.getBoundingClientRect()
+      return bounds.left >= 0 && bounds.right <= window.innerWidth
+    })).toBe(true)
+    await page.screenshot({ path: info.outputPath('storage-install-narrow.png') })
     await page.evaluate(() => window.whomi.importDiagnostics.report({ phase: 'parse', code: 'INVALID_RECORD' }))
     expect(await readdir(join(logs, 'import-errors'))).toContainEqual(expect.stringMatching(/-none\.txt$/))
   } catch (error) {
@@ -241,7 +257,7 @@ test('startup reports where to find logs when the selected data disk is unavaila
   }
 })
 
-test('the About page opens logs with the data service offline', async ({}, info) => {
+test('data storage opens installation logs with the data service offline', async ({}, info) => {
   const profile = await realpath(await mkdtemp(join(tmpdir(), 'whomi-runtime-offline-data-')))
   let app, page
   try {
@@ -256,7 +272,7 @@ test('the About page opens logs with the data service offline', async ({}, info)
       await globalThis.__whomiRuntimeProbe.close()
     })
     await button('设置').click()
-    await button('关于 Whomi').click()
+    await button('数据存储').click()
     await expect(button('重新读取设置')).toBeVisible()
     await button('打开错误日志目录').click()
     await expect.poll(() => app.evaluate(() => globalThis.openedLogFolder)).toBe(join(profile, 'logs'))
@@ -266,7 +282,7 @@ test('the About page opens logs with the data service offline', async ({}, info)
     expect(JSON.parse(main)).toMatchObject({ area: 'main', phase: 'uncaughtException', code: 'MAIN_PROCESS_ERROR' })
     expect(main).not.toContain('PRIVATE_RUNTIME_FIXTURE')
     await expect(button('打开错误日志目录')).toBeEnabled()
-    await page.screenshot({ path: info.outputPath('about-without-data.png') })
+    await page.screenshot({ path: info.outputPath('storage-without-data.png') })
   } catch (error) {
     await page?.screenshot({ path: info.outputPath('failure.png') }).catch(() => {})
     throw error

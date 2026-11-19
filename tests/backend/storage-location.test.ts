@@ -106,14 +106,14 @@ describe('data location authorization', () => {
     const saved = await resolveStorageSelection(source)
     const reopened = createAppErrorLogs(install, source, 'test', openPath)
     reopened.setDataArchives(saved.path, saved.retainedErrorLogDirectories)
-    expect(await reopened.open('current')).toEqual({ path: logs })
+    expect(await reopened.open()).toEqual({ path: logs })
     expect(await readdir(logs)).toEqual(names)
     await createImportDiagnostics(source, 'test', openPath, undefined, reopened).open('11')
     expect(openPath.mock.lastCall![0]).toContain(join(logs, 'import-errors'))
     for (const path of [source, first, second]) expect(await readdir(path)).not.toContain('logs')
   })
 
-  it('reopens retained archives and their per-job logs after migrating between two custom directories and restarting', async () => {
+  it('opens the installation directory and keeps per-job log files readable after migrating twice and restarting', async () => {
     const { root, source, target: first, service } = await fixture()
     const second = join(root, 'second')
     await mkdir(second)
@@ -130,10 +130,7 @@ describe('data location authorization', () => {
     await mkdir(install)
     const reopened = createAppErrorLogs(install, source, 'test', openPath)
     reopened.setDataArchives(selection.path, selection.retainedErrorLogDirectories)
-    const archive = `retained:${retained}` as const
-    expect(await reopened.getArchives()).toContain(archive)
-    await expect(reopened.open(archive)).resolves.toMatchObject({ path: retained })
-    await expect(reopened.open(`retained:${root}`)).rejects.toMatchObject({ code: 'INVALID_ARGUMENT' })
+    await expect(reopened.open()).resolves.toEqual({ path: join(install, 'logs') })
     await createImportDiagnostics(source, 'test', openPath, undefined, reopened).open('11')
     expect(openPath.mock.lastCall![0]).toContain(join(retained, 'import-errors'))
   })
@@ -147,7 +144,7 @@ describe('data location authorization', () => {
     await symlink(outside, join(source, 'logs'), process.platform === 'win32' ? 'junction' : 'dir')
     const choice = await service.issueChoice(1, target)
     await expect(service.relocateStorage(1, choice.token)).resolves.toMatchObject({
-      path: target, restartRequired: true, retainedErrorLogDirectory: join(source, 'logs'),
+      path: target, restartRequired: true, retainedErrorLogDirectories: [join(source, 'logs')],
     })
     expect(await resolveStorageLocation(source)).toBe(target)
     expect(await readdir(target)).toContain('whomi.db')
