@@ -11,13 +11,15 @@ export function createSourceGrants(now = Date.now) {
   return {
     async issue(owner: number, paths: readonly string[]): Promise<SourceHandle[]> {
       if (!paths.length || paths.length > 10000) invalid()
+      const issuedAt = now()
+      for (const [token, entry] of records) if (entry.expires <= issuedAt) records.delete(token)
       const entries = await Promise.all(paths.map(async rootPath => {
         if (typeof rootPath !== 'string' || !isAbsolute(rootPath) || rootPath.includes('\0')) invalid()
         try {
           const info = await stat(rootPath)
           if (!info.isFile() && !info.isDirectory()) invalid()
           const handle: SourceHandle = { token: randomUUID(), displayName: basename(rootPath), kind: info.isDirectory() ? 'directory' : 'file' }
-          return { owner, rootPath, handle, expires: now() + 30 * 60 * 1000 }
+          return { owner, rootPath, handle, expires: issuedAt + 30 * 60 * 1000 }
         } catch { return invalid() }
       }))
       for (const entry of entries) records.set(entry.handle.token, entry)

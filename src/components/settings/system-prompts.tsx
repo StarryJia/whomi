@@ -4,6 +4,7 @@ import { CircleAlert } from 'lucide-react'
 import type { SettingsApi } from '../../shared/settings-contract'
 import { defaultPrompts, maxPromptLength, promptCatalog, validatePrompt, type PromptId, type PromptValues } from '../../shared/system-prompts'
 import { errorText, LeaveDialog, Modal, type LeaveGuard } from './common'
+import { ExceptionNotice } from '../ui/exception-notices'
 import './system-prompts.css'
 
 type Props = { api: Pick<SettingsApi, 'getPrompts' | 'savePrompt'>; registerGuard: (guard: LeaveGuard | null) => void; onBusy: (busy: boolean) => void }
@@ -22,7 +23,7 @@ export function SystemPrompts({ api, registerGuard, onBusy }: Props) {
   return <div className="prompt-settings">
     <div className="prompt-content">
       <h2 tabIndex={-1}>系统提示词</h2>
-      {!values ? <div className="prompt-load">{loadError ? <><p role="alert">{loadError}</p><button className="ms-button" onClick={() => setAttempt(value => value + 1)}>重新读取</button></> : <p role="status">正在读取提示词…</p>}</div> :
+      {!values ? <div className="prompt-load">{loadError ? <><ExceptionNotice title="无法读取提示词" detail={loadError} /><button className="ms-button" onClick={() => setAttempt(value => value + 1)}>重新读取</button></> : <p role="status">正在读取提示词…</p>}</div> :
         <ul className="prompt-list">{promptCatalog.map(item => <li key={item.id} className={active === item.id ? 'is-editing' : undefined}>
           <div className="prompt-name"><span>{item.name}</span>
             <Popover.Root open={help === item.id} onOpenChange={open => setHelp(open ? item.id : null)}>
@@ -46,6 +47,7 @@ function PromptEditor({ id, value, api, onSaved, onClose, registerGuard, onBusy 
 }) {
   const [draft, setDraft] = useState(value)
   const [error, setError] = useState('')
+  const [invalid, setInvalid] = useState(false)
   const [busy, setBusy] = useState(false)
   const [leaving, setLeaving] = useState(false)
   const pending = useRef<(() => void) | null>(null)
@@ -60,8 +62,8 @@ function PromptEditor({ id, value, api, onSaved, onClose, registerGuard, onBusy 
   useEffect(() => { registerGuard(requestLeave); return () => registerGuard(null) }, [registerGuard, requestLeave])
   async function save(after: () => void = onClose) {
     if (saving.current) return
-    try { validatePrompt(id, draft) } catch (cause) { setError(errorText(cause, '请检查提示词后重试。')); field.current?.focus(); return }
-    saving.current = true; setBusy(true); onBusy(true); setError('')
+    try { validatePrompt(id, draft) } catch (cause) { setInvalid(true); setError(errorText(cause, '请检查提示词后重试。')); field.current?.focus(); return }
+    saving.current = true; setBusy(true); onBusy(true); setInvalid(false); setError('')
     try { const saved = await api.savePrompt(id, draft); onSaved(saved); after() }
     catch (cause) { setError(errorText(cause, '提示词保存失败，请重试。')) }
     finally { saving.current = false; setBusy(false); onBusy(false) }
@@ -69,10 +71,11 @@ function PromptEditor({ id, value, api, onSaved, onClose, registerGuard, onBusy 
   return <>
     <Modal title={`编辑提示词 · ${name}`} className="prompt-drawer" busy={busy} onClose={() => requestLeave(onClose)}>
       <div className="prompt-editor-body">
-        <textarea ref={field} aria-label="提示词内容" aria-invalid={!!error} aria-describedby={error && !leaving ? 'prompt-save-error' : undefined}
+        <textarea ref={field} aria-label="提示词内容" aria-invalid={!!error && invalid} aria-describedby={error && !leaving && invalid ? 'prompt-save-error' : undefined}
           data-initial-focus value={draft} maxLength={maxPromptLength} disabled={busy} spellCheck={false}
           onChange={event => { setDraft(event.target.value); setError('') }} />
-        {error && !leaving && <p id="prompt-save-error" className="ms-error" role="alert">{error}</p>}
+        {error && !leaving && (invalid ? <p id="prompt-save-error" className="ms-error" role="alert">{error}</p>
+          : <ExceptionNotice title="无法保存提示词" detail={error} className="ms-error" />)}
       </div>
       <footer className="ms-modal-footer prompt-editor-footer">
         <button className="prompt-restore" disabled={busy || draft === defaultPrompts[id]} onClick={() => { setDraft(defaultPrompts[id]); setError(''); field.current?.focus() }}>恢复默认</button>

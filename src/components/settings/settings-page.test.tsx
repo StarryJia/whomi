@@ -4,8 +4,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { defaultProcessing, type SettingsApi, type SettingsSnapshot } from '../../shared/settings-contract'
 import { SettingsPage } from './settings-page'
 import { defaultPrompts } from '../../shared/system-prompts'
+import { ExceptionNoticeProvider } from '../ui/exception-notices'
+import type { ImportDiagnosticsApi } from '../../shared/import-diagnostics'
 
-function setup(withProvider = true, withModel = false) {
+function setup(withProvider = true, withModel = false, showExceptionNotices = false, importDiagnostics?: ImportDiagnosticsApi) {
   let state: SettingsSnapshot = { providers: withProvider ? [{ id: 'p1', name: '本地服务', baseUrl: 'http://127.0.0.1:1234/v1', enabled: true, hasCredential: true }] : [], models: withModel ? [{ id: 'm1', providerId: 'p1', label: '测试模型', model: 'alpha', baseUrl: 'http://127.0.0.1:1234/v1', enabled: true, hasCredential: true, contextWindow: 8192, maxTokens: 1024, version: 1 }] : [], processing: structuredClone(defaultProcessing), selectedModels: {}, debug: false }
   const api: SettingsApi = {
     getPrompts: async () => ({ ...defaultPrompts }), savePrompt: async (id, text) => ({ ...defaultPrompts, [id]: text }),
@@ -26,7 +28,8 @@ function setup(withProvider = true, withModel = false) {
     relocateStorage: vi.fn(async () => ({ path: 'D:\\新的目录', defaultPath: 'D:\\Whomi', restartRequired: true })), restart: vi.fn(async () => {}),
   }
   const onClose = vi.fn()
-  render(<SettingsPage api={api} onClose={onClose} />)
+  const page = <SettingsPage api={api} importDiagnostics={importDiagnostics} onClose={onClose} />
+  render(showExceptionNotices ? <ExceptionNoticeProvider>{page}</ExceptionNoticeProvider> : page)
   return { api, onClose, user: userEvent.setup() }
 }
 
@@ -275,10 +278,13 @@ describe('正式设置', () => {
   })
 
   it('检测失败可重试，运行中模型移除需明确停止', async () => {
-    const { api, user } = setup(true, true)
+    const { api, user } = setup(true, true, true)
     vi.mocked(api.testModel).mockRejectedValueOnce(new Error('请检查模型标识后重试。'))
     await user.click(await screen.findByRole('button', { name: '检测测试模型' }))
-    await screen.findByText('请检查模型标识后重试。')
+    const notices = await screen.findByRole('region', { name: '异常提醒' })
+    expect(within(notices).getByRole('alert')).toHaveTextContent('模型操作失败')
+    await user.click(within(notices).getByRole('button', { name: '展开详情' }))
+    expect(within(notices).getByText('请检查模型标识后重试。')).toBeVisible()
     await user.click(screen.getByRole('button', { name: '检测测试模型' }))
     await screen.findByText('连接成功')
     vi.mocked(api.removeModel).mockRejectedValueOnce(Object.assign(new Error('任务运行中'), { code: 'MODEL_BUSY' }))
@@ -286,6 +292,7 @@ describe('正式设置', () => {
     const catalog = screen.getByRole('dialog', { name: '本地服务 模型' })
     await user.click(await within(catalog).findByRole('button', { name: '移除alpha' }))
     const retry = await within(catalog).findByRole('button', { name: '停止任务并重试' })
+    expect(within(within(catalog).getByRole('region', { name: '异常提醒' })).getByRole('alert')).toHaveTextContent('无法移除模型')
     expect(api.stopModelTasks).not.toHaveBeenCalled()
     await user.click(retry)
     await waitFor(() => expect(api.removeModel).toHaveBeenCalledTimes(2))
@@ -331,6 +338,20 @@ describe('正式设置', () => {
     expect(copy).toHaveBeenCalledWith(JSON.stringify({ version: '0.1.2', platform: 'win32', entries: [] }, null, 2))
     expect(screen.getByRole('link', { name: /项目仓库/ })).toHaveAttribute('href', 'https://github.com/StarryJia/whomi')
     expect(screen.queryByRole('button', { name: '第三方声明' })).not.toBeInTheDocument()
+  })
+
+  it('调试模式关闭时仍能从关于页打开最近的导入日志', async () => {
+    const open = vi.fn(async () => {}).mockRejectedValueOnce({ code: 'IMPORT_LOG_MISSING', action: '找不到错误日志。' })
+    const { api, user } = setup(false, false, true, { report: vi.fn(), open })
+    await screen.findByRole('button', { name: '添加服务商' })
+    await user.click(screen.getByRole('button', { name: '关于 Whomi' }))
+    const logs = screen.getByRole('button', { name: '查看最近一次导入错误日志' })
+    await user.click(logs)
+    expect(await screen.findByRole('alert')).toHaveTextContent('找不到错误日志。')
+    await user.click(logs)
+    expect(open).toHaveBeenCalledTimes(2)
+    expect(api.getDiagnostics).not.toHaveBeenCalled()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it('服务商编辑图片失败保留表单，正确图片随显式保存提交', async () => {

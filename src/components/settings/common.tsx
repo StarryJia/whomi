@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react'
 import { X } from 'lucide-react'
+import { ExceptionNotice, useExceptionNoticeLayer } from '../ui/exception-notices'
 
 export type LeaveGuard = (action: () => void) => void
 export type RegisterGuard = (guard: LeaveGuard | null) => void
@@ -15,6 +16,7 @@ export function isModelBusy(error: unknown) {
 export function Modal({ title, children, onClose, busy = false, className = '' }: { title: string; children: ReactNode; onClose: () => void; busy?: boolean; className?: string }) {
   const dialog = useRef<HTMLDialogElement>(null)
   const titleId = useId()
+  useExceptionNoticeLayer(dialog)
   useEffect(() => {
     const element = dialog.current
     const opener = document.activeElement
@@ -52,7 +54,7 @@ export function Switch({ label, checked, onChange, disabled = false }: { label: 
 
 export function LeaveDialog({ onSave, onDiscard, onContinue, busy, error }: { onSave: () => void; onDiscard: () => void; onContinue: () => void; busy: boolean; error?: string }) {
   return <Modal title="保存修改？" onClose={onContinue} busy={busy}>
-    <div className="ms-modal-body"><p>有尚未保存的修改。</p>{error && <p className="ms-error" role="alert">{error}</p>}</div>
+    <div className="ms-modal-body"><p>有尚未保存的修改。</p>{error && <ExceptionNotice title="无法保存修改" detail={error} className="ms-error" />}</div>
     <footer className="ms-modal-footer"><button className="ms-button" disabled={busy} onClick={onContinue}>继续编辑</button><button className="ms-button" disabled={busy} onClick={onDiscard}>放弃修改</button><button className="ms-button ms-primary" disabled={busy} onClick={onSave}>{busy ? '保存中…' : '保存并离开'}</button></footer>
   </Modal>
 }

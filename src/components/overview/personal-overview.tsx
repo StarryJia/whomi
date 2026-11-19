@@ -4,11 +4,13 @@ import type { OverviewData, PreferenceEstimate, SourceReference, SparkDiscovery,
 import type { useOverviewFeedback } from './use-overview-feedback'
 import { dimensionKeys, type MemoryDimensions } from '../../shared/memory'
 import { personalityDimensions } from '../personality-dimensions'
+import { ExceptionNotice } from '../ui/exception-notices'
 import './personal-overview.css'
 
 interface PersonalOverviewProps {
   concealed?: boolean
   status?: 'loading' | 'error' | 'ready'
+  readingError?: { title: string; detail?: string; noticeKey: string } | null
   retry?: () => void
   data?: OverviewData
   headingRef: RefObject<HTMLHeadingElement | null>
@@ -114,7 +116,7 @@ function SparkArticle({ discovery, scenes, feedback, onOpenSource, isSourceAvail
         <div className="overview-feedback-state" role="status" aria-live="polite">
           {!feedback.canSave && <span>暂时无法保存，草稿仅保留在本次浏览中。</span>}
           {entry.submitting && <span>正在提交…</span>}
-          {!entry.submitting && entry.error && <span>提交失败。请重试上次内容，或提交当前草稿。</span>}
+          {!entry.submitting && entry.error && <ExceptionNotice title="反馈提交失败。" detail="请重试上次内容，或提交当前草稿。" />}
           {!entry.submitting && !entry.error && entry.receiptMatchesDraft &&
             <span>{entry.receipt?.persistence === 'saved' ? '已保存' : '模拟完成 · 未保存'}</span>}
           {!entry.submitting && !entry.error && !entry.receiptMatchesDraft && feedback.canSave && entry.isDirty &&
@@ -131,7 +133,7 @@ function SparkArticle({ discovery, scenes, feedback, onOpenSource, isSourceAvail
   </article>
 }
 
-export function PersonalOverview({ data, concealed = false, status = 'ready', retry, headingRef, onReturnToCover, onImport, onOpenConversation, conversationTitle, hasRelationshipObservations, children, onOpenMemory, onOpenSource, isSourceAvailable, feedback }: PersonalOverviewProps) {
+export function PersonalOverview({ data, concealed = false, status = 'ready', readingError, retry, headingRef, onReturnToCover, onImport, onOpenConversation, conversationTitle, hasRelationshipObservations, children, onOpenMemory, onOpenSource, isSourceAvailable, feedback }: PersonalOverviewProps) {
   const discoveries = data?.discoveries ?? noDiscoveries
   const initialize = feedback.initialize
   useEffect(() => { initialize(discoveries) }, [discoveries, initialize])
@@ -158,8 +160,8 @@ export function PersonalOverview({ data, concealed = false, status = 'ready', re
       </div>
       {concealed ? <div className="overview-preferences">{dimensionKeys.map(axis => <div key={axis} className="overview-preference-row">
         <strong>{personalityDimensions[axis].name}</strong><span className="overview-masked-value" aria-hidden="true" /></div>)}</div>
-      : status !== 'ready' ? <div className="overview-start" role={status === 'loading' ? 'status' : 'alert'}>
-        {status === 'loading' ? '正在读取个人总览…' : <>读取总览失败。 <button className="page-secondary" type="button" onClick={retry}>重试</button></>}
+      : status !== 'ready' ? <div className="overview-start" role={status === 'loading' ? 'status' : undefined}>
+        {status === 'loading' ? '正在读取个人总览…' : <>{readingError !== null && <ExceptionNotice {...(readingError ?? { title: '读取总览失败。' })} />} <button className="page-secondary" type="button" onClick={retry}>重试</button></>}
       </div> : <>{noRecords || noAnalysis ? <div className="overview-start">
         <p>{noRecords ? '导入一段聊天，回看自己在不同关系里的习惯。' : conversationTitle ? <>从「{conversationTitle}」开始，整理你们的第一份记忆。</> : '选择一段聊天，整理你们的第一份记忆。'}</p>
         {(noRecords || onOpenConversation) && <button type="button" className="page-primary" onClick={noRecords ? onImport : onOpenConversation}>

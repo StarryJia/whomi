@@ -1,15 +1,14 @@
 import { dismissIdentity } from './fixtures/identity.mjs'
 import { test, expect, _electron as electron } from '@playwright/test'
-import { mkdtemp, writeFile, readFile, rm, mkdir, copyFile } from 'node:fs/promises'
+import { mkdtemp, writeFile, rm, mkdir, copyFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 
-test('capture comprehensive evidence for import flow, unified top bar, conversation management, and message bubbles', async () => {
+test('capture comprehensive evidence for import flow, unified top bar, conversation management, and message bubbles', async ({}, testInfo) => {
   test.setTimeout(90000)
   const directory = await mkdtemp(join(tmpdir(), 'whomi-runtime-'))
   await copyFile('tests/desktop/probe.cjs', join(directory, 'probe.cjs'))
-  const version = JSON.parse(await readFile('package.json', 'utf8')).version
-  const evidence = resolve(`release/validation-${version}`)
+  const evidence = testInfo.outputPath('screenshots')
   await mkdir(evidence, { recursive: true })
 
   const sampleData = {
@@ -94,10 +93,10 @@ test('capture comprehensive evidence for import flow, unified top bar, conversat
     await cdp.send('Input.dispatchDragEvent', { type: 'drop', ...point })
     await cdp.detach()
 
-    const discovery = page.getByRole('region', { name: '发现的文件入口' })
+    const discovery = page.getByRole('region', { name: '选择要导入的会话' })
     await expect(discovery).toBeVisible()
     await expect(page.getByRole('button', { name: '选择文件', exact: true })).toHaveCount(0)
-    await expect(discovery.getByRole('button', { name: '解析所选入口' })).toBeVisible()
+    await expect(discovery.getByRole('button', { name: '导入所选会话' })).toBeDisabled()
     await expect(discovery.getByRole('button', { name: '取消导入' })).toBeVisible()
     await discovery.getByRole('checkbox').first().check()
     await page.screenshot({ path: join(evidence, '05-import-discovery.png') })
@@ -183,7 +182,7 @@ test('capture comprehensive evidence for import flow, unified top bar, conversat
     await page.getByRole('menuitem', { name: '删除', exact: true }).click()
     const deleteModal = page.getByRole('dialog', { name: '删除会话' })
     await expect(deleteModal).toBeVisible()
-    await expect(deleteModal.getByText(/原文、成员、本人设置、关联 AI 对话和记忆成稿。此操作无法撤销。/)).toBeVisible()
+    await expect(deleteModal.getByText(/原文、成员、本人设置、关联 AI 对话、记忆成稿和此会话的全部洞察报告。此操作无法撤销。/)).toBeVisible()
     await page.screenshot({ path: join(evidence, '14-conversation-delete-confirm-modal.png') })
 
     // 点击确认删除

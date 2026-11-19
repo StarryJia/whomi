@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react'
+import { ExceptionNotice } from '../ui/exception-notices'
 import { Check, ChevronDown, Eye, EyeOff, ImagePlus, RotateCcw } from 'lucide-react'
 import * as Select from '@radix-ui/react-select'
 import type { Provider, ProviderEndpoints, ProviderInput } from '../../shared/settings-contract'
@@ -79,7 +80,7 @@ export function ProviderForm({ draft, provider, preset, errors, onChange, busy }
   latestDraft.current = draft
   useEffect(() => () => { fileGeneration.current++ }, [])
   const [showKey, setShowKey] = useState(false)
-  const [imageError, setImageError] = useState('')
+  const [imageError, setImageError] = useState<{ message: string; invalid?: boolean }>()
   const [picking, setPicking] = useState(false)
   const upload = useRef<HTMLInputElement>(null)
   const avatarSection = useRef<HTMLDivElement>(null)
@@ -97,11 +98,11 @@ export function ProviderForm({ draft, provider, preset, errors, onChange, busy }
   function imageSelected(file?: File) {
     const generation = ++fileGeneration.current
     if (!file) return
-    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) { setImageError('请选择 PNG、JPEG 或 WebP 图片。'); return }
-    if (file.size > 1024 * 1024) { setImageError('请选择不超过 1 MB 的图片。'); return }
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) { setImageError({ message: '请选择 PNG、JPEG 或 WebP 图片。', invalid: true }); return }
+    if (file.size > 1024 * 1024) { setImageError({ message: '请选择不超过 1 MB 的图片。', invalid: true }); return }
     const reader = new FileReader()
-    reader.onload = () => { if (generation === fileGeneration.current) { onChange({ ...latestDraft.current, avatarId: undefined, image: String(reader.result) }); setImageError('') } }
-    reader.onerror = () => { if (generation === fileGeneration.current) setImageError('图片读取失败，请重新选择。') }
+    reader.onload = () => { if (generation === fileGeneration.current) { onChange({ ...latestDraft.current, avatarId: undefined, image: String(reader.result) }); setImageError(undefined) } }
+    reader.onerror = () => { if (generation === fileGeneration.current) setImageError({ message: '图片读取失败，请重新选择。' }) }
     reader.readAsDataURL(file)
   }
   return <fieldset className="ms-form ms-connection settings-fieldset" disabled={busy}>
@@ -113,14 +114,15 @@ export function ProviderForm({ draft, provider, preset, errors, onChange, busy }
         <button type="button" className="ms-button" onClick={() => { setPicking(false); upload.current?.click() }}><ImagePlus size={15} />图片上传</button>
         <button type="button" ref={pickButton} className="ms-button" aria-expanded={picking} aria-controls={prefix + '-avatars'} onClick={() => setPicking(show => !show)}>内置头像</button>
         <button type="button" className="ms-button" disabled={!draft.image && !draft.avatarId} onClick={() => {
-          fileGeneration.current++; setImageError(''); setPicking(false); onChange({ ...draft, image: undefined, avatarId: undefined })
+          fileGeneration.current++; setImageError(undefined); setPicking(false); onChange({ ...draft, image: undefined, avatarId: undefined })
         }}><RotateCcw size={14} />重置头像</button>
       </div>
       {picking && <div className="custom-avatar-library" id={prefix + '-avatars'} role="group" aria-label="选择内置头像">{cherryProviderPresets.map(item => <button type="button" key={item.id} title={item.name} aria-label={`使用 ${item.name} 头像`} onClick={() => {
-        fileGeneration.current++; setImageError(''); setPicking(false); onChange({ ...draft, image: undefined, avatarId: item.id }); pickButton.current?.focus()
+        fileGeneration.current++; setImageError(undefined); setPicking(false); onChange({ ...draft, image: undefined, avatarId: item.id }); pickButton.current?.focus()
       }}><img src={cherryProviderIcon(item.id)} alt="" /></button>)}</div>}
       <input ref={upload} hidden type="file" aria-label="服务商图片" accept="image/png,image/jpeg,image/webp" onChange={event => { imageSelected(event.target.files?.[0]); event.target.value = '' }} />
-      {imageError && <p className="ms-error" role="alert">{imageError}</p>}
+      {imageError?.invalid ? <p className="ms-error" role="alert">{imageError.message}</p>
+        : imageError && <ExceptionNotice title={imageError.message} className="ms-error" />}
     </div>
     <div className="ms-field"><label htmlFor={`${prefix}-name`}>服务商名称<span aria-hidden="true" className="custom-required"> *</span></label><input id={`${prefix}-name`} aria-label="服务商名称" name="name" required placeholder="例如 OpenAI" value={draft.name} maxLength={100} onChange={event => edit('name', event.target.value)} aria-invalid={!!errors.name} aria-describedby={errors.name ? `${prefix}-name-error` : undefined} />{errors.name && <p id={`${prefix}-name-error`} className="ms-error" role="alert">{errors.name}</p>}</div>
     {preset && <><div className="ms-field"><label htmlFor={`${prefix}-protocol`}>连接协议</label><ProtocolSelect id={`${prefix}-protocol`} value={draft.protocol} disabled={busy} onChange={value => onChange(changePresetProtocol(draft, value, preset))} />{errors.protocol && <p className="ms-error" role="alert">{errors.protocol}</p>}</div>

@@ -5,9 +5,10 @@ import { isInsightReport, type InsightReport } from '../../shared/conversation-i
 import type { ListArrangement } from '../../shared/desktop-api'
 import { MemoryArticle } from '../memory-article'
 import { ReaderDialog, actionError } from '../ui/managed-row'
+import { ExceptionNotice, ExceptionNoticeScope } from '../ui/exception-notices'
 import { InsightArticle } from './insight-article'
 import { InsightRenameForm, InsightReportRow, type RenameReport } from './insight-report-menu'
-import { formatInsightNumber, insightCompletedAt, insightElapsed, insightPercentage, insightRange, insightSpeed, InsightRing, InsightStatus, insightTaskNumber, insightTaskTitle, InsightTaskDetails, InsightTaskModel } from './insight-task'
+import { formatInsightNumber, insightCompletedAt, insightElapsed, insightPercentage, insightRange, insightSpeed, InsightRing, InsightStatus, insightTaskFailed, insightTaskFailureKey, insightTaskNumber, insightTaskTitle, InsightTaskDetails, InsightTaskModel } from './insight-task'
 import './insights.css'
 
 type CitationTarget = { taskId: string; citationId: string; phrase: string; conversationTitle: string; fragmentCount: number }
@@ -63,9 +64,10 @@ function TaskRow({ task, onOpen, onStop, onContinue }: {
   onContinue?: (taskId: string) => Promise<void>
 }) {
   const [busy, setBusy] = useState<'正在暂停' | '正在继续' | '正在重试'>()
-  const [error, setError] = useState('')
+  const [error, setError] = useState<{ detail: string; attempt: number }>()
   const pending = useRef(false)
-  const status = !task.valid || task.state === 'failed' || task.state === 'interrupted' ? '生成失败'
+  const attempt = useRef(0)
+  const status = insightTaskFailed(task) ? '生成失败'
     : task.state === 'stopped' ? '已暂停' : '生成中'
   const failed = status === '生成失败'
   const number = insightTaskNumber(task)
@@ -73,10 +75,11 @@ function TaskRow({ task, onOpen, onStop, onContinue }: {
   async function run() {
     if (!start || pending.current) return
     pending.current = true
-    setError('')
+    setError(undefined)
+    const currentAttempt = ++attempt.current
     setBusy(status === '生成中' ? '正在暂停' : failed ? '正在重试' : '正在继续')
     try { await start(task.id) }
-    catch (cause) { setError(actionError(cause)) }
+    catch (cause) { setError({ detail: actionError(cause), attempt: currentAttempt }) }
     finally { pending.current = false; setBusy(undefined) }
   }
   return <li className="insight-task-row" data-insight-task={task.id}>
@@ -101,7 +104,8 @@ function TaskRow({ task, onOpen, onStop, onContinue }: {
     <div className="insight-task-row-details">
       <InsightTaskModel task={task} /><InsightTaskDetails usage={task.usage} range={insightRange(task)} />
     </div>
-    {(error || (failed && task.error)) && <p className="insight-error" role="alert">{error || task.error}</p>}
+    {(error || (failed && task.error)) && <ExceptionNotice title={`洞察 ${insightTaskNumber(task)} ${error ? '操作失败' : '生成失败'}`}
+      detail={error?.detail ?? task.error} noticeKey={error ? `insight-action:${task.id}:${error.attempt}` : insightTaskFailureKey(task)} className="insight-error" />}
   </li>
 }
 
@@ -217,19 +221,19 @@ export function InsightsLibrary({ tasks, conversations, selectedId, onSelect, on
     }}>重试</button>
 
   return <>
-    <section className="insights-list" ref={list} hidden={readingNew}>
+    <ExceptionNoticeScope active={!readingNew}><section className="insights-list" ref={list} hidden={readingNew}>
       <h1 ref={heading} tabIndex={-1}>对话洞察</h1>
       {empty && loading ? <div className="insight-list-loading" aria-busy="true">
         <p role="status"><LoaderCircle aria-hidden="true" />正在读取报告列表…</p>
         <div className="insight-skeleton" aria-hidden="true"><span /><span /></div>
         <div className="insight-skeleton" aria-hidden="true"><span /><span /></div>
-      </div> : empty && error ? <div className="insight-list-empty" role="alert">
-        <FileText aria-hidden="true" /><h2>报告列表读取失败</h2>{retryButton}
+      </div> : empty && error ? <div className="insight-list-empty">
+        <FileText aria-hidden="true" /><ExceptionNotice title="报告列表读取失败" detail={error} noticeKey="reports-list" />{retryButton}
       </div> : empty ? <div className="insight-list-empty">
         <FileText aria-hidden="true" /><h2>暂无洞察报告</h2><p>在会话中点击会话洞察。</p>
         <button type="button" className="analysis-primary" onClick={onConversations}>前往会话</button>
       </div> : <>
-        {error && <p role="alert" className="insight-list-error">{error} {retryButton}</p>}
+        {error && <p className="insight-list-error"><ExceptionNotice title="报告列表读取失败" detail={error} noticeKey="reports-list" /> {retryButton}</p>}
         {orderedGroups.map(([groupId, group]) => {
           const open = !collapsed.has(groupId)
           const listId = id + '-' + groupId
@@ -237,15 +241,15 @@ export function InsightsLibrary({ tasks, conversations, selectedId, onSelect, on
             <h2><button type="button" className="insight-group-toggle" aria-expanded={open} aria-controls={listId} onClick={() => toggle(groupId)}>
               <ChevronDown aria-hidden="true" />{group.title}（{formatInsightNumber(group.tasks.length)}）
             </button></h2>
-            <ul id={listId} hidden={!open}>{group.tasks.map(task => task.state === 'completed' && task.report
+            <ExceptionNoticeScope active={open}><ul id={listId} hidden={!open}>{group.tasks.map(task => task.state === 'completed' && task.report
               ? <InsightReportRow key={task.id} task={task} conversationTitle={group.title} onOpen={() => locate(task.id)}
                 onRename={rename} onRenameBusy={busy => { setSavingTitle(busy); onRenameBusy(busy) }}
                 disabled={savingTitle} arrange={arrange} remove={remove && (() => removeTask(task))} />
-              : <TaskRow key={task.id} task={task} onOpen={() => { if (!savingTitle) onTask(task.conversationId, task.id) }} onContinue={onContinue} onStop={onStop} />)}</ul>
+              : <TaskRow key={task.id} task={task} onOpen={() => { if (!savingTitle) onTask(task.conversationId, task.id) }} onContinue={onContinue} onStop={onStop} />)}</ul></ExceptionNoticeScope>
           </section>
         })}
       </>}
-    </section>
+    </section></ExceptionNoticeScope>
     {selected && selectedReport && (isInsightReport(selectedReport)
       ? <ReportPage key={selected.id} task={selected} report={selectedReport} onBack={onReturn} rename={rename}
         onRenameBusy={onRenameBusy} renderSource={renderSource} />

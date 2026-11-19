@@ -26,6 +26,7 @@ export function fakeImportApi() {
     chooseSources: vi.fn(async () => [{ token: 'token', displayName: '导出目录', kind: 'directory' as const }]),
     acceptDroppedFiles: vi.fn(async () => [{ token: 'drop', displayName: '记录.json', kind: 'file' as const }]),
     prepareImport: vi.fn(async () => { emit(snapshot()); return 'job' }),
+    getInterruptedImport: vi.fn(async () => current.status === 'failed' && current.issues.some(issue => issue.code === 'INTERRUPTED') ? current.jobId : null),
     getImport: vi.fn(async () => current),
     startImport: vi.fn(async request => {
       if (request.kind === 'stage') emit(snapshot({ status: 'awaiting_commit', candidates: [candidate()] }))

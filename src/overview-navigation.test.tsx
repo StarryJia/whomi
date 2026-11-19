@@ -5,6 +5,7 @@ import App from './App'
 import { ConversationReader, resolveSourceRange } from './components/conversations'
 import type { Conversation } from './components/conversations'
 import type { OverviewData, SourceReference } from './components/overview/types'
+import { ExceptionNoticeProvider } from './components/ui/exception-notices'
 import { createPreviewClient } from './data/preview-client'
 
 const conversations: Conversation[] = [{ id: 'friends', title: '朋友近况', messages: [
@@ -105,10 +106,16 @@ describe('总览导航与原文范围', () => {
     expect(resolveSourceRange(conversations, { ...source, unavailable: true })).toBeNull()
   })
 
-  it('阅读器收到失效范围时不标记错误消息，并提供查找提示', () => {
-    render(<ConversationReader conversation={{ id: 'friends', title: '朋友近况', messages: [] }} sourceStatus="unavailable" />)
-    expect(screen.getByRole('status')).toHaveTextContent('原文不可用，请返回后重试。')
-    expect(screen.getByRole('region', { name: '聊天记录' }).querySelector('.message-source')).toBeNull()
+  it('阅读器收到失效范围时在统一提醒中提示，并保留原有消息', async () => {
+    const page = await createPreviewClient(conversations).readMessages({ conversationId: 'friends', direction: 'after' })
+    render(<ExceptionNoticeProvider>
+      <ConversationReader conversation={{ ...conversations[0], messages: page.items }} sourceStatus="unavailable" />
+    </ExceptionNoticeProvider>)
+    const notices = await screen.findByRole('region', { name: '异常提醒' })
+    expect(within(notices).getByRole('alert')).toHaveTextContent('原文不可用，请返回后重试。')
+    const reader = screen.getByRole('region', { name: '聊天记录' })
+    expect(within(reader).getByText('好，周三见。')).toBeVisible()
+    expect(reader.querySelector('.message-source')).toBeNull()
   })
 
   it('窄屏键盘进入问一问后收起导航面板，并聚焦页面标题', async () => {

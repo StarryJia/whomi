@@ -24,6 +24,65 @@ it('discovers nested conversations, ignores media and unrelated manifests, expos
   expect(JSON.stringify(result)).not.toContain(source)
   expect(JSON.stringify(result)).not.toContain('message 1')
 })
+it.runIf(process.platform === 'win32')('distinguishes identical export paths across selected Windows drives and shares', async () => {
+  const { root, source, signal } = await setup()
+  const selections = ['D:\\聊天备份\\result.json', 'E:\\聊天备份\\result.json',
+    '\\\\资料机\\备份甲\\聊天备份\\result.json', '\\\\资料机\\备份乙\\聊天备份\\result.json']
+  // 将虚构的卷和共享映射到各自的本机样本，无需访问网络或额外磁盘。
+  const local = new Map<string, string>()
+  for (const [index, path] of selections.entries()) {
+    const sample = join(source, index + '.json')
+    await fs.copyFile(fixture('telegram-native-single'), sample)
+    local.set(path, sample)
+  }
+  const service = createStagingService({ appDataDirectory: join(root, 'app'), access: {
+    realpath: async path => path,
+    stat: path => fs.stat(local.get(path)!, { bigint: true }),
+    open: (path, flags) => fs.open(local.get(path)!, flags),
+  } })
+  const discovery = await service.discover(selections.map(rootPath => ({ rootPath })), signal)
+  const names = discovery.entries.map(entry => entry.displayName)
+  expect(new Set(names).size).toBe(4)
+  for (const label of ['D 盘', 'E 盘', '备份甲', '备份乙']) expect(names.some(name => name.includes(label))).toBe(true)
+  expect(names.every(name => !name.includes('\\') && !name.includes('聊天备份'))).toBe(true)
+})
+it.each(['folder', 'files'])('identifies same-named exports with the shortest distinguishing folders from selected %s', async selection => {
+  const { source, service, signal } = await setup()
+  const example = JSON.parse(await fs.readFile(fixture('telegram-native-single'), 'utf8'))
+  const folders = ['十月', '十一月', '归档/甲/导出', '归档/乙/导出']
+  const paths: string[] = []
+  for (const [index, folder] of folders.entries()) {
+    const directory = join(source, folder)
+    await fs.mkdir(directory, { recursive: true })
+    const path = join(directory, 'result.json')
+    await fs.writeFile(path, JSON.stringify({ ...example, id: 330 + index, name: '项目组' }))
+    paths.push(path)
+  }
+  const unique = join(source, '归档', '独立.json')
+  await fs.copyFile(fixture('chatlab'), unique)
+  paths.push(unique)
+  const discovery = await service.discover((selection === 'folder' ? [source] : paths).map(rootPath => ({ rootPath })), signal)
+  expect(discovery.entries.map(entry => entry.displayName).sort()).toEqual(
+    ['十月/result.json', '十一月/result.json', '甲/导出/result.json', '乙/导出/result.json', '独立.json'].sort(),
+  )
+  const november = discovery.entries.find(entry => entry.displayName === '十一月/result.json')!
+  const onlyNovember = service.selectDiscovery(discovery, [november.entryId])
+  expect(onlyNovember.entries).toEqual([november])
+  const staged = await service.stageInputs('1', onlyNovember, signal)
+  try {
+    expect(staged.candidates).toMatchObject([{ entryId: november.entryId, title: '项目组', identity: { conversationKey: '331' } }])
+  } finally { await staged.cleanup() }
+})
+it('keeps the shorter relative location recognizable when a backup repeats its whole folder name', async () => {
+  const { source, service, signal } = await setup()
+  for (const folder of ['十月', '归档/十月']) {
+    const directory = join(source, folder)
+    await fs.mkdir(directory, { recursive: true })
+    await fs.copyFile(fixture('chatlab'), join(directory, 'result.json'))
+  }
+  const discovery = await service.discover([{ rootPath: source }], signal)
+  expect(discovery.entries.map(entry => entry.displayName).sort()).toEqual(['十月/result.json', '归档/十月/result.json'].sort())
+})
 it('deduplicates physical files through selected roots and declared wrapper dependencies', async () => {
   const { source, service, signal } = await setup()
   await fs.cp(resolve('tests/fixtures/import/qq-shuakami-chunked'), source, { recursive: true })

@@ -11,11 +11,12 @@ import { useAnalysisTask } from './use-analysis-task'
 import { ConversationPopoverOwner, ModelSelector, ThinkingSelector, type ThinkingLevel } from './model-selector'
 import { usePaneDivider } from '../ui/pane-divider'
 import { ManagedRow } from '../ui/managed-row'
+import { ExceptionNotice, ExceptionNoticeScope, useExceptionNotice } from '../ui/exception-notices'
 import { MemoryArticle } from '../memory-article'
 import { isMemoryReport } from '../../shared/memory'
 import { isInsightReport, isInsightScope, type InsightScope, type InsightScopePreview } from '../../shared/conversation-insights'
 import { InsightScopeFields } from '../insights/insight-scope-fields'
-import { formatInsightNumber, insightElapsed, insightPercentage, insightRange, insightSpeed, InsightRing, InsightStatus, InsightTaskDetails, InsightTaskModel } from '../insights/insight-task'
+import { formatInsightNumber, insightElapsed, insightPercentage, insightRange, insightSpeed, InsightRing, InsightStatus, insightTaskFailureKey, InsightTaskDetails, InsightTaskModel } from '../insights/insight-task'
 import { CherryComposer, clearComposerDraft, clearComposerInputHistory, moveComposerInputHistory, readComposerDraft, useComposerDraft, writeComposerDraft, type CherryComposerHandle } from './cherry/composer'
 import { CherryMessages, type CherryMessagesHandle, type CherryMessageTurn } from './cherry/messages'
 import { forgetScrollPosition } from '../../vendor/cherry-chat/messages/list/useScrollPositionMemory'
@@ -58,13 +59,15 @@ function Popover({ anchor, label, children, onClose, above = false, alignStart =
     window.addEventListener('scroll', place, true)
     const resize = new ResizeObserver(place)
     if (body.current) resize.observe(body.current)
+    const insideOverlay = (event: Event) => event.composedPath().some(node => node instanceof HTMLElement &&
+      (node.matches('dialog[open], [data-exception-notices]') || node.dataset.conversationPopoverOwner === ownerId))
     const outside = (event: PointerEvent) => {
-      if (event.composedPath().some(node => node instanceof HTMLElement && (node.matches('dialog[open]') || node.dataset.conversationPopoverOwner === ownerId))) return
+      if (insideOverlay(event)) return
       if (!body.current?.contains(event.target as Node) && !anchor.current?.contains(event.target as Node)) close.current()
     }
     const escape = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return
-      if (event.composedPath().some(node => node instanceof HTMLElement && (node.matches('dialog[open]') || node.dataset.conversationPopoverOwner === ownerId))) return
+      if (insideOverlay(event)) return
       event.preventDefault()
       event.stopPropagation()
       close.current()
@@ -195,6 +198,7 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
   const submittingRef = useRef(false)
   const scopeTransfer = useRef<{ from: string; to: string } | undefined>(undefined)
   const [sendError, setSendError] = useState('')
+  const [replyFailure, setReplyFailure] = useState<{ key: string; requestId: string; attempt?: number }>()
   const [pendingAcceptance, setPendingAcceptance] = useState<{ request: ConversationRequest; stopRequested: boolean; accept: (turn?: RestoredConversationTurn) => void; confirm?: () => Promise<void>; reject: () => void }>()
   const [confirmingAcceptance, setConfirmingAcceptance] = useState(false)
   const submissionReceiver = useRef<{ requestId?: string; accept: (turn: RestoredConversationTurn) => void } | undefined>(undefined)
@@ -222,6 +226,8 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
   const [modelSaving, setModelSaving] = useState<Partial<Record<'analysis' | 'conversation', boolean>>>({})
   const [skillId, setSkillId] = useState('')
   const [turns, setTurns] = useState<Turn[]>([])
+  const failedReply = replyFailure && turns.find(turn => turn.status === 'failed' && turn.request.requestId === replyFailure.requestId && turn.attempt === replyFailure.attempt)
+  useExceptionNotice(failedReply && replyFailure ? { key: replyFailure.key, title: '回答生成失败', detail: failedReply.error ?? '请重试回答。' } : null)
   const latestTurns = useRef(turns)
   const latestReferences = useRef(references)
   latestTurns.current = turns
@@ -256,6 +262,11 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
   const historyAnchor = useRef<HTMLButtonElement>(null)
   const chatRun = useRef<AbortController | undefined>(undefined)
   const sequence = useRef(0)
+  function reportReplyFailure(turn: RestoredConversationTurn) {
+    if (turn.state !== 'failed' && turn.state !== 'interrupted') return
+    const key = `chat-reply:${turn.requestId}:${turn.attempt ?? sequence.current}`
+    setReplyFailure(current => current?.key === key ? current : { key, requestId: turn.requestId, attempt: turn.attempt })
+  }
   const alive = useRef(true)
   const selectionGeneration = useRef({ analysis: 0, conversation: 0 })
   const panelId = useId()
@@ -299,6 +310,7 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
     chatRun.current = undefined
     activeThread.current = id
     setThreadId(id)
+    setReplyFailure(undefined)
     const nextScope = draftScope(conversationId, id)
     if (keepDraft && submittingRef.current) scopeTransfer.current = { from: composerScope, to: nextScope }
     else {
@@ -368,6 +380,7 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
 
   useEffect(() => {
     alive.current = true
+    setReplyFailure(undefined)
     setModelId(initialModel('conversation'))
     setAnalysisModelId(initialModel('analysis'))
     setModelErrors({})
@@ -389,12 +402,18 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
     if (adapter.listThreads && !threadId) return
     const controller = new AbortController()
     const stoppingReadbacks = new Set<string>()
+    const runningTurns = new Map<string, RestoredConversationTurn>()
     setRestoring(true)
     setRestoreError('')
     const receive: Parameters<NonNullable<ConversationAiAdapter['watchThread']>>[1] = values => {
       if (controller.signal.aborted || (threadId && activeThread.current !== threadId)) return
       setRestoring(false)
       for (const value of values) {
+        // 首次读到的终态属于历史；只有观察到进行中的轮次才报告随后的失败。
+        const running = runningTurns.get(value.id)
+        if (running && (value.eventSequence ?? 0) < (running.eventSequence ?? 0)) continue
+        if (['queued', 'running', 'summarizing'].includes(value.state)) runningTurns.set(value.id, value)
+        else if (runningTurns.delete(value.id)) reportReplyFailure(value)
         const pending = unconfirmedSubmissions.get(value.requestId)
         if (!pending || !matchesConversationRequest(value, pending.request) ||
           (pending.retry && !retryAdvanced(value, pending))) continue
@@ -411,6 +430,7 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
         }
         if (submissionReceiver.current?.requestId === value.requestId) submissionReceiver.current.accept(value)
         else {
+          reportReplyFailure(value)
           writeSubmission(value.requestId)
           if (!pending.retry) { clearComposerDraft(pending.draftScope); clearComposerDraft(draftScope(conversationId, threadId)); onClearReferences() }
           setSendError('')
@@ -542,6 +562,7 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
   async function send(text: string, retry?: Turn, recovery?: UnconfirmedSubmission): Promise<boolean> {
     if (!adapter || chatRun.current || (!recovery && (busy || heldSubmission || pendingAcceptance || (!retry && !canSend)))) return false
     setSendError('')
+    setReplyFailure(undefined)
     retry ??= recovery?.retry
     const request: ConversationRequest = recovery?.request ?? (retry ? { ...retry.request, turnId: String(retry.id) } : {
       requestId: crypto.randomUUID(), conversationId, threadId, prompt: text,
@@ -555,7 +576,8 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
     })
     const submission: UnconfirmedSubmission = recovery ?? { request, draftScope: composerScope, stopRequested: false, retry }
     writeSubmission(request.requestId!, submission)
-    const id = retry?.id ?? ++sequence.current
+    const currentAttempt = ++sequence.current
+    const id = retry?.id ?? currentAttempt
     const modelIdentity = retry ? retry.modelIdentity : (selectedModel ? { id: selectedModel.id, label: selectedModel.label, model: selectedModel.model, version: selectedModel.version } : undefined)
     try {
       request.threadId ??= adapter.createThread ? await newThread(true) : undefined
@@ -579,14 +601,18 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
         resolve(value)
       }
       const current = () => alive.current && generation === threadGeneration.current
+      const receiveTurn = (value: RestoredConversationTurn) => {
+        replaceTurn(restoredTurn(value, request))
+        reportReplyFailure(value)
+      }
       const onAccepted = (value?: RestoredConversationTurn) => {
         if (!current()) { settle(false); return }
-        if (accepted) { if (value) replaceTurn(restoredTurn(value, request)); return }
+        if (value) receiveTurn(value)
+        if (accepted) return
         accepted = true
         messages.current?.scrollToBottom()
         writeSubmission(request.requestId!)
         submissionReceiver.current = undefined
-        if (value) replaceTurn(restoredTurn(value, request))
         if (!retry) {
           if (recovery) { clearComposerDraft(recovery.draftScope); clearComposerDraft(composerScope) }
           onClearReferences()
@@ -607,13 +633,13 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
         const active = () => current() && chatRun.current === controller
         try {
           const result = await adapter.respond(request, { signal: controller.signal, onAccepted,
-            onSnapshot: value => { if (active()) replaceTurn(restoredTurn(value, request)) }, onText: value => {
+            onSnapshot: value => { if (active()) receiveTurn(value) }, onText: value => {
             if (active()) setTurns(items => items.map(item => item.request.requestId === request.requestId && item.eventSequence === undefined ? { ...item, text: value } : item))
           } })
           if (!active()) { settle(false); return }
           if (!accepted) onAccepted(result.turn)
-          if (result.turn) replaceTurn(restoredTurn(result.turn, request))
-          else setTurns(items => items.map(item => item.request.requestId === request.requestId
+          else if (result.turn) receiveTurn(result.turn)
+          if (!result.turn) setTurns(items => items.map(item => item.request.requestId === request.requestId
             ? { ...item, modelIdentity: result.modelIdentity ?? item.modelIdentity, text: result.text, usage: result.usage, status: 'done' } : item))
         } catch (error) {
           if (error instanceof ConversationAcceptancePendingError && !accepted && unconfirmedSubmissions.get(request.requestId!) === submission) {
@@ -652,7 +678,7 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
           } else if (accepted || error instanceof ConversationTurnError) {
             if (error instanceof ConversationTurnError) {
               if (!accepted) onAccepted(error.turn)
-              replaceTurn(restoredTurn(error.turn, request))
+              else receiveTurn(error.turn)
             } else if (!(error instanceof DOMException && error.name === 'AbortError')) {
               setRestoreError(errorText(error))
             }
@@ -693,6 +719,7 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
             onClearReferences()
           }
           replaceTurn(restoredTurn(value, heldSubmission.request))
+          reportReplyFailure(value)
           setSendError('')
         },
       })
@@ -807,13 +834,13 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
           }} count={rangeCount} start={sourceStartTimeMs ?? (analysisScope.kind === 'all' ? currentScope?.sourceStartTimeMs : undefined)}
             end={sourceEndTimeMs ?? (analysisScope.kind === 'all' ? currentScope?.sourceEndTimeMs : undefined)}
             loading={scopeLoading} available={!!adapter} />
-          {scopeError && <p role="alert" className="conversation-error">{scopeError}{' '}
+          {scopeError && <p className="conversation-error"><ExceptionNotice title="无法读取对话范围" detail={scopeError} />{' '}
             <button className="analysis-secondary" type="button" onClick={() => setScopeAttempt(value => value + 1)}>重试</button>
           </p>}
           <div className="analysis-model-row">
             <span>分析模型</span>
             {adapter?.models.length ? <div className="analysis-model-options"><ModelSelector label="分析模型" models={adapter.models} value={selectedAnalysisModel?.id ?? ''}
-              disabled={modelSaving.analysis} describedBy={modelErrors.analysis ? `${panelId}-analysis-model-error` : undefined}
+              disabled={modelSaving.analysis}
               onSelect={id => { void chooseModel('analysis', id) }} />
             {selectedAnalysisModel?.thinkingLevels?.length ? <ThinkingSelector levels={selectedAnalysisModel.thinkingLevels} value={analysisThinkingLevel} onSelect={setAnalysisThinkingLevel} disabled={modelSaving.analysis} /> : null}</div>
               : <div className="analysis-model-unavailable"><span>暂无可用模型</span>
@@ -821,8 +848,8 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
               </div>}
           </div>
           <p className="analysis-notice">所选内容将发送至所选模型服务。</p>
-          {modelErrors.analysis && <p id={`${panelId}-analysis-model-error`} role="alert" className="conversation-error">{modelErrors.analysis}</p>}
-          {analysisError && <p role="alert" className="conversation-error">{analysisError}</p>}
+          {modelErrors.analysis && <ExceptionNotice title="无法切换分析模型" detail={modelErrors.analysis} className="conversation-error" />}
+          {analysisError && <ExceptionNotice title="无法开始会话洞察" detail={analysisError} className="conversation-error" />}
           <footer>
             <button type="button" className="analysis-secondary" onClick={closeAnalysis}>取消</button>
             {analysisError && selectedAnalysisModel && adapter?.prepareAnalysis && !preparing && !preparation &&
@@ -845,7 +872,8 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
           </dl>
           <InsightTaskModel task={activeTask} model={selectedAnalysisModel?.label} />
           <InsightTaskDetails usage={analysisUsage} range={activeTask ? insightRange(activeTask) : undefined} outputSpeed={progress?.outputTokensPerSecond} />
-          {analysisError && <p role="alert" className="conversation-error">{analysisError}</p>}
+            {analysisError && <ExceptionNotice title="会话洞察异常" detail={analysisError}
+              noticeKey={activeTask?.error === analysisError ? insightTaskFailureKey(activeTask) : undefined} className="conversation-error" />}
           <footer>{analysisState === 'running'
             ? <button type="button" disabled={analysis.stopping || waitingForStart} className="analysis-secondary" onClick={() => { void analysis.stop() }}>
                 {pauseSupported ? <Pause aria-hidden="true" /> : <Square aria-hidden="true" />}{pauseSupported ? '暂停生成' : '停止生成'}</button> : null}
@@ -882,7 +910,7 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
   const composerToolbar = <>
     {!adapter?.models.length && onConfigureModels ? <button className="cherry-model-trigger" type="button" onClick={() => configureModels(false)}><Box aria-hidden="true" />配置模型</button>
       : <ModelSelector label="对话模型" models={adapter?.models ?? []} value={selectedModel?.id ?? ''} disabled={submissionLocked || modelSaving.conversation}
-        describedBy={modelErrors.conversation ? `${panelId}-conversation-model-error` : undefined} onSelect={id => { void chooseModel('conversation', id) }} />}
+        onSelect={id => { void chooseModel('conversation', id) }} />}
     {selectedModel && <ThinkingSelector levels={selectedModel.thinkingLevels} value={thinkingLevel} onSelect={setThinkingLevel} disabled={submissionLocked || modelSaving.conversation} />}
     {references.length > 0 && !!adapter?.skills.length && <Select.Root value={skillId || 'default'} onValueChange={value => setSkillId(value === 'default' ? '' : value)} disabled={submissionLocked}>
       <Select.Trigger aria-label="对话技能" className="cherry-model-trigger cherry-skill-trigger"><FileText aria-hidden="true" /><Select.Value /><Select.Icon><ChevronDown /></Select.Icon></Select.Trigger>
@@ -936,13 +964,14 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
             setThreadListOpen(false)
             historyAnchor.current?.focus()
           }}><MessageCircle aria-hidden="true" /><span>{thread.title}</span></ManagedRow>)}
-        {threadListError && <p role="alert" className="conversation-error">{threadListError} <button type="button" className="conversation-text-button" onClick={() => setThreadListAttempt(value => value + 1)}>重新加载对话</button></p>}
+        {threadListError && <p className="conversation-error"><ExceptionNotice title="对话列表操作失败" detail={threadListError} noticeKey={`chat-list:${conversationId}`} /> <button type="button" className="conversation-text-button" onClick={() => setThreadListAttempt(value => value + 1)}>重新加载对话</button></p>}
         {!threads.length && !threadListLoading && adapter?.createThread && <button className="first-conversation" type="button" disabled={threadCreating} onClick={() => void newThread(true).catch(cause => { if (alive.current) setThreadListError(errorText(cause)) })}>
           <SquarePen aria-hidden="true" />开始新对话
         </button>}
       </nav>}
       <div className="conversation-thread-content" data-composer-stage="" inert={threadListOpen}>
-      {!threadListOpen && threadListError && <div className="conversation-thread-error" role="alert"><p>{threadListError}</p><button type="button" className="conversation-text-button" onClick={() => setThreadListAttempt(value => value + 1)}>重新加载对话</button></div>}
+      <ExceptionNoticeScope active={threadContentActive}>
+      {!threadListOpen && threadListError && <div className="conversation-thread-error"><ExceptionNotice title="对话列表操作失败" detail={threadListError} noticeKey={`chat-list:${conversationId}`} /><button type="button" className="conversation-text-button" onClick={() => setThreadListAttempt(value => value + 1)}>重新加载对话</button></div>}
       <CherryMessages ref={messages} turns={turns} scopeKey={draftScope(conversationId, threadId)} running={busy || submissionLocked}
         active={threadContentActive} loading={restoring || threadListLoading} error={restoreError}
         onRetry={id => {
@@ -951,11 +980,12 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
         }}
         renderReferences={turn => <References references={turn.request.references} savedIds={turn.referenceIds} onJump={jump} />} />
       <div className="conversation-panel-composer">
-        {(sendError || (heldSubmission && !submitting && !chatRun.current && !restoring)) && <p role="alert" className="conversation-error">{sendError || '发送状态待确认，请再次确认。'}{(pendingAcceptance || heldSubmission) && <button type="button" className="conversation-text-button"
+        {(sendError || (heldSubmission && !submitting && !chatRun.current && !restoring)) && <p className="conversation-error"><ExceptionNotice title={sendError ? '发送对话时出错' : '发送状态待确认，请再次确认。'} detail={sendError || undefined} />{(pendingAcceptance || heldSubmission) && <button type="button" className="conversation-text-button"
           disabled={confirmingAcceptance} onClick={() => { void confirmPendingAcceptance() }}>确认发送状态</button>}</p>}
-        {modelErrors.conversation && <p id={`${panelId}-conversation-model-error`} role="alert" className="conversation-error">{modelErrors.conversation}</p>}
+        {modelErrors.conversation && <ExceptionNotice title="无法切换对话模型" detail={modelErrors.conversation} className="conversation-error" />}
         {editor}
       </div>
+      </ExceptionNoticeScope>
       </div></div>
     </aside>
   </div>

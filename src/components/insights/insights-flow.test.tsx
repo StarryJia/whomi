@@ -8,6 +8,7 @@ import { ConversationWorkspace } from '../conversation-ai/workspace'
 import type { ConversationAiAdapter } from '../conversation-ai/types'
 import { ConversationReader } from '../conversations'
 import { InsightArticle } from './insight-article'
+import { ExceptionNoticeProvider } from '../ui/exception-notices'
 
 const report = {
   format: 'conversation-insights-v1' as const,
@@ -53,7 +54,10 @@ it('管理正常读取后可浏览同名报告并在原位改名，失败保留�
   await user.clear(title)
   await user.type(title, '  那次合作  ')
   await user.click(screen.getByRole('button', { name: '保存' }))
-  expect(await screen.findByRole('alert')).toHaveTextContent('保存失败，请重试')
+  const notice = within(screen.getByRole('region', { name: '异常提醒' }))
+  expect(await notice.findByRole('alert')).toHaveTextContent('无法保存报告名称')
+  await user.click(notice.getByRole('button', { name: '展开详情' }))
+  expect(notice.getByText('保存失败，请重试。')).toBeVisible()
   expect(title).toHaveValue('  那次合作  ')
   await user.click(screen.getByRole('button', { name: '保存' }))
   expect(await screen.findByRole('heading', { name: '那次合作', level: 1 })).toBeVisible()
@@ -77,7 +81,7 @@ it('列表从无数据读取失败后重试，只有成功返回空结果才显�
   const error = await screen.findByRole('alert')
   expect(error).toHaveTextContent('报告列表读取失败')
   expect(error).not.toHaveTextContent('网络')
-  await user.click(within(error).getByRole('button', { name: '重试' }))
+  await user.click(screen.getByRole('button', { name: '重试' }))
   expect(await screen.findByRole('button', { name: '前往会话' })).toBeVisible()
   expect(listAnalyses).toHaveBeenCalledTimes(2)
 })
@@ -184,6 +188,62 @@ it('预算耗尽时仍可在原会话选择新范围，重新选择不会续跑�
   expect(screen.getByRole('radio', { name: '日期范围' })).toBeInTheDocument()
   expect(continueAnalysis).not.toHaveBeenCalled()
   expect(adapter.analyze).not.toHaveBeenCalled()
+})
+
+it('展开洞察异常时保留原会话的进度和恢复操作', async () => {
+  const user = userEvent.setup()
+  const expired: AnalysisTask = { ...completed, state: 'failed', report: undefined, error: '分析已达用量上限，请缩小范围。' }
+  const adapter = { ...baseAdapter, watchAnalysis: async (_id, update) => update(expired) } satisfies ConversationAiAdapter
+  render(<ExceptionNoticeProvider><ConversationWorkspace conversationId="1" title="小林" messageCount={12} references={[]}
+    onClearReferences={() => {}} onJumpReference={() => {}} adapter={adapter} openAnalysisOnEntry initialAnalysisTaskId={expired.id}>
+    {({ analysisControl }) => analysisControl}
+  </ConversationWorkspace></ExceptionNoticeProvider>)
+
+  const notices = await screen.findByRole('region', { name: '异常提醒' })
+  await user.click(within(notices).getByRole('button', { name: '展开详情' }))
+  expect(within(notices).getByText(expired.error!)).toBeVisible()
+  expect(screen.getByRole('button', { name: '再次洞察' })).toBeVisible()
+})
+
+it('同一次洞察失败关闭后可折叠和重访列表，任务重试后的失败重新提醒', async () => {
+  const user = userEvent.setup()
+  const failed: AnalysisTask = { ...completed, state: 'failed', report: undefined, error: '连接失败，请重试。' }
+  let publish!: (event: AiEvent) => void
+  const api = { ai: { listAnalyses: async () => [failed],
+    onEvent: (listener: typeof publish) => { publish = listener; return () => {} } } } as unknown as DesktopApi
+  render(<App preview conversations={[]} importApi={api} />)
+  const openLibrary = () => user.click(screen.getByRole('button', { name: '对话洞察' }))
+  const notices = () => screen.queryByRole('region', { name: '异常提醒' })
+  await openLibrary()
+  const first = within(await screen.findByRole('region', { name: '异常提醒' }))
+  expect(first.getByRole('alert')).toHaveTextContent('生成失败')
+  await user.click(first.getByRole('button', { name: '关闭提醒' }))
+  const group = screen.getByRole('button', { name: /小林（1）/ })
+  await user.click(group)
+  await user.click(group)
+  expect(notices()).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: '个人总览' }))
+  await openLibrary()
+  expect(notices()).not.toBeInTheDocument()
+  await act(async () => publish({ kind: 'analysis', snapshot: { ...failed, eventSequence: 4, usage: { inputTokens: 100 } } }))
+  expect(notices()).not.toBeInTheDocument()
+
+  await act(async () => publish({ kind: 'analysis', snapshot: { ...failed, state: 'running', error: undefined, eventSequence: 5 } }))
+  expect(screen.getByRole('status')).toHaveTextContent('生成中')
+  await act(async () => publish({ kind: 'analysis', snapshot: { ...failed, eventSequence: 6 } }))
+  const next = within(await screen.findByRole('region', { name: '异常提醒' }))
+  expect(next.getAllByRole('alert')).toHaveLength(1)
+  await user.click(next.getByRole('button', { name: '展开详情' }))
+  expect(next.getByText('连接失败，请重试。')).toBeVisible()
+  await user.click(next.getByRole('button', { name: '关闭提醒' }))
+  await user.click(screen.getByRole('button', { name: '个人总览' }))
+  await act(async () => {
+    publish({ kind: 'analysis', snapshot: { ...failed, state: 'running', error: undefined, eventSequence: 7 } })
+    publish({ kind: 'analysis', snapshot: { ...failed, eventSequence: 8 } })
+  })
+  expect(notices()).not.toBeInTheDocument()
+  await openLibrary()
+  expect(within(await screen.findByRole('region', { name: '异常提醒' })).getByRole('alert')).toHaveTextContent('生成失败')
 })
 
 it('列表原位改名保存期间阻止取消和打开另一份报告，回执后恢复入口', async () => {

@@ -9,12 +9,22 @@ module.exports = (writer, reader, backend) => {
   }
   return async method => {
     if(method==='probe.crashBefore' || method==='probe.crashAfter') {
-      const hook=method==='probe.crashBefore' ? 'beforeCommit':'afterCommit'
-      const service=backend.createDataService({store:backend.store,appDataDirectory:backend.directory,runner:{commit:backend.createCommitter({[hook](){process.exit(77)}})}})
-      const id=await staged(service)
-      await service.startImport({kind:'commit',plan:{jobId:id,decisions:[]}})
-      await service.idle()
-      throw Error('Expected process exit')
+      const id = await staged(backend.service)
+      const exec = writer.exec
+      // 单个会话只释放保存点。整批写入由外层 COMMIT 持久化。
+      writer.exec = function (sql) {
+        if (sql !== 'COMMIT' || !this.inTransaction) return exec.call(this, sql)
+        if (method === 'probe.crashBefore') process.exit(77)
+        exec.call(this, sql)
+        process.exit(77)
+      }
+      try {
+        await backend.service.startImport({ kind: 'commit', plan: { jobId: id, decisions: [] } })
+        await backend.service.idle()
+        throw Error('Expected process exit')
+      } finally {
+        writer.exec = exec
+      }
     }
     if(method==='probe.recovered')return {snapshot:await backend.service.getImport('1'),count:Number(reader.prepare('SELECT count(*) n FROM messages').get().n),integrity:writer.pragma('integrity_check',{simple:true})}
     if(method==='probe.reimport') {

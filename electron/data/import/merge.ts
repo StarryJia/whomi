@@ -21,8 +21,9 @@ export function createCommitter(dependencies: CommitDependencies = {}) {
     if (!staged.candidateIds.length || new Set(staged.candidateIds).size !== staged.candidateIds.length || staged.candidates.length !== staged.candidateIds.length) throw new ImportFailure('INVALID_SELECTION')
     let committed = false, inserted = 0, duplicates = 0, membershipChanged = false
     const repliesToResolve = new Set<bigint>()
-    prepareFallbackLedger(store)
-    db.exec('BEGIN IMMEDIATE')
+    const insideBatch = db.inTransaction
+    if (!insideBatch) prepareFallbackLedger(store)
+    db.exec(insideBatch ? 'SAVEPOINT import_target' : 'BEGIN IMMEDIATE')
     try {
       if (!db.prepare('SELECT id FROM import_jobs WHERE id=?').get(BigInt(staged.jobId))) throw new ImportFailure('INVALID_JOB')
       const originals = new Map(staged.candidates.map(c => [c.candidateId,c]))
@@ -156,10 +157,14 @@ export function createCommitter(dependencies: CommitDependencies = {}) {
       }
       const summaryChanged = inserted > 0 || membershipChanged
       if (summaryChanged) db.prepare("INSERT INTO conversation_summaries(conversation_id,status) VALUES (?,'pending') ON CONFLICT(conversation_id) DO UPDATE SET status='pending'").run(conversation)
-      checkSignal(signal); dependencies.beforeCommit?.(); db.exec('COMMIT'); committed = true
+      checkSignal(signal); dependencies.beforeCommit?.()
+      db.exec(insideBatch ? 'RELEASE import_target' : 'COMMIT'); committed = true
       dependencies.afterCommit?.()
       return {conversationId,inserted,duplicates,summaryChanged,committedAt,candidates:[...results.values()].map(({candidateId,inserted,duplicates}) => ({candidateId,inserted,duplicates}))}
-    } catch (error) { if (!committed && db.inTransaction) db.exec('ROLLBACK'); throw error }
+    } catch (error) {
+      if (!committed && db.inTransaction) db.exec(insideBatch ? 'ROLLBACK TO import_target; RELEASE import_target' : 'ROLLBACK')
+      throw error
+    }
   }
 }
 export const commitConversation = createCommitter()

@@ -1,11 +1,29 @@
-import { useId, useState } from 'react'
+import { useEffectEvent, useId, useMemo, useState } from 'react'
 import { Check, ChevronDown, CircleAlert, Pause } from 'lucide-react'
 import type { AnalysisTask, AiUsage } from '../../shared/ai-contract'
 import { defaultInsightTitle, isInsightReport } from '../../shared/conversation-insights'
 import { isMemoryReport } from '../../shared/memory'
 import { thinkingLevelLabel } from '../conversation-ai/model-selector'
+import { useUnresolvedExceptionNotices } from '../ui/exception-notices'
 
 export const formatInsightNumber = (value: number) => new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 1 }).format(value)
+
+export function insightTaskFailed(task: AnalysisTask) {
+  return !task.valid || task.state === 'failed' || task.state === 'interrupted'
+}
+
+export function insightTaskFailureKey(task: AnalysisTask) { return `insight-task:${task.id}` }
+
+export function useInsightTaskFailureNotices(tasks: readonly AnalysisTask[]) {
+  const unresolved = useMemo(() => new Set(tasks.filter(insightTaskFailed).map(insightTaskFailureKey)), [tasks])
+  const resolve = useUnresolvedExceptionNotices(unresolved)
+  return useEffectEvent((snapshot: AnalysisTask) => {
+    if (insightTaskFailed(snapshot)) return
+    const previous = tasks.find(task => task.id === snapshot.id)
+    // 恢复与下一次失败可能在同一次渲染前到达。
+    if (previous && insightTaskFailed(previous) && snapshot.eventSequence > previous.eventSequence) resolve?.(insightTaskFailureKey(snapshot))
+  })
+}
 
 export function formatInsightDate(value: number, timezone?: string) {
   return new Intl.DateTimeFormat('sv-SE', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: timezone }).format(value).replaceAll('-', '.')

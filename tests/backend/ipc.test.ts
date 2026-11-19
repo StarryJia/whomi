@@ -4,6 +4,7 @@ import { createSourceGrants } from '../../electron/main/source-grants'
 import { validateArguments, validateResult, validateSnapshot } from '../../src/shared/desktop-validation'
 import { createDesktopClient } from '../../src/data/desktop-client'
 import type { Candidate, ImportSnapshot } from '../../src/shared/import-contract'
+import { resolve } from 'node:path'
 
 const snapshot = { jobId: '1', status: 'awaiting_commit', discovery: null, candidates: [], results: [], issues: [], counts: { seen: 0, validRecords: 0, invalidRecords: 0 }, inserted: 0, duplicates: 0 }
 describe('desktop boundary', () => {
@@ -61,15 +62,31 @@ describe('desktop boundary', () => {
     }
     expect(requests).toHaveLength(0)
   })
-  it('binds active jobs to the issuing window and permits read only recovery after restart', async () => {
+  it('binds active jobs to their window and allows cancelling a failed batch after restart', async () => {
     const router = createDesktopRouter({ grants: createSourceGrants(), request: async (method) => method === 'getImport' ? snapshot : '1' })
     router.ownJob(1, '1')
     await expect(router.invoke(2, 'getImport', ['1'])).rejects.toMatchObject({ code: 'INVALID_JOB' })
+    await expect(router.invoke(2, 'cancelImport', ['1'])).rejects.toMatchObject({ code: 'INVALID_JOB' })
     await expect(router.invoke(1, 'getImport', ['1'])).resolves.toMatchObject({ jobId: '1' })
     await expect(router.invoke(1, 'startImport', [{ kind: 'stage', jobId: '2', entryIds: ['entry'] }])).rejects.toMatchObject({ code: 'INVALID_JOB' })
-    const restarted = createDesktopRouter({ grants: createSourceGrants(), request: async () => snapshot })
+    let recovered = snapshot
+    const restarted = createDesktopRouter({ grants: createSourceGrants(), request: async method => method === 'getImport' ? recovered : undefined })
     await expect(restarted.invoke(7, 'getImport', ['1'])).resolves.toMatchObject({ jobId: '1' })
     await expect(restarted.invoke(7, 'cancelImport', ['1'])).rejects.toMatchObject({ code: 'INVALID_JOB' })
+    recovered = { ...snapshot, status: 'failed' }
+    await expect(restarted.invoke(7, 'cancelImport', ['1'])).resolves.toBeUndefined()
+  })
+  it('returns the accepted job when its first progress read fails', async () => {
+    const grants = createSourceGrants()
+    const handles = await grants.issue(1, [resolve('tests/fixtures/import/chatlab/positive.json')])
+    const request = vi.fn(async (method: string) => {
+      if (method === 'prepareImport') return snapshot.jobId
+      if (method === 'getImport') throw new Error('Synthetic interrupted progress read')
+    })
+    const router = createDesktopRouter({ grants, request })
+    await expect(router.invoke(1, 'prepareImport', [handles])).resolves.toBe(snapshot.jobId)
+    await expect(router.invoke(1, 'cancelImport', [snapshot.jobId])).resolves.toBeUndefined()
+    expect(request).toHaveBeenLastCalledWith('cancelImport', [snapshot.jobId])
   })
   it('checks return values and events and stops delivering after unsubscribe', async () => {
     const router = createDesktopRouter({ grants: createSourceGrants(), request: async () => ({ ...snapshot, jobId: 1 }) })
@@ -102,7 +119,7 @@ describe('desktop boundary', () => {
     await expect(client.getImport('1')).rejects.toMatchObject({ code: 'INVALID_RESPONSE' })
     const events: unknown[] = []; client.onImport(value => events.push(value)); listener?.({ ...snapshot, jobId: 1 }); expect(events).toHaveLength(0)
   })
-  it('throttles public progress while delivering the last state and terminal state immediately', async () => {
+  it.each(['completed', 'removed'])('delivers %s immediately and discards previously queued public progress', async terminal => {
     vi.useFakeTimers()
     try {
       const router = createDesktopRouter({ grants: createSourceGrants(), request: async () => undefined })
@@ -111,8 +128,8 @@ describe('desktop boundary', () => {
       router.publish({ ...snapshot, status: 'staging' }); router.publish({ ...snapshot, status: 'validating' }); router.publish(snapshot)
       expect(events).toEqual(['staging'])
       await vi.advanceTimersByTimeAsync(200); expect(events).toEqual(['staging', 'awaiting_commit'])
-      router.publish({ ...snapshot, status: 'committing' }); router.publish({ ...snapshot, status: 'completed' })
-      expect(events).toEqual(['staging', 'awaiting_commit', 'completed'])
+      router.publish({ ...snapshot, status: 'committing' }); router.publish({ ...snapshot, status: terminal })
+      expect(events).toEqual(['staging', 'awaiting_commit', terminal])
       await vi.advanceTimersByTimeAsync(500); expect(events).toHaveLength(3)
       router.releaseWindow(1)
     } finally { vi.useRealTimers() }

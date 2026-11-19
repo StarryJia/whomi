@@ -82,6 +82,7 @@ export type DesktopMethods = ConversationQueries & {
   prepareImport(handles: SourceHandle[]): Promise<JobId>
   startImport(request: StartImportRequest): Promise<JobId>
   getImport(jobId: JobId): Promise<ImportSnapshot>
+  getInterruptedImport(): Promise<LocalId | null>
   cancelImport(jobId: JobId): Promise<void>
   previewImport(jobId: JobId, candidateId: string, options: PreviewOptions): Promise<ImportPreview>
   listMembers(conversationId: LocalId): Promise<MemberView[]>
@@ -93,6 +94,8 @@ export type DesktopMethods = ConversationQueries & {
 export type DesktopApi = DesktopMethods & {
   ai?: AiApi
   settings?: import('./settings-contract').SettingsApi
+  importDiagnostics?: import('./import-diagnostics').ImportDiagnosticsApi
+  onAppException?(listener: (notice: { title: string; detail: string }) => void): () => void
   acceptDroppedFiles(files: File[]): Promise<SourceHandle[]>
   onImport(listener: (snapshot: ImportSnapshot) => void): () => void
   onConversationDeleted?(listener: (id: LocalId) => void): () => void

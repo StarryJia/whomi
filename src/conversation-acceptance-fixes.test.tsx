@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { createRef, useState } from 'react'
 import userEvent from '@testing-library/user-event'
 import { expect, test, vi } from 'vitest'
@@ -24,23 +24,58 @@ test.each(['partial', 'ready'] as const)('%s with no usable observations retains
   expect(screen.getAllByText('尚待了解')).toHaveLength(4)
 })
 
-test.each(['awaiting_commit', 'committing', 'partially_completed', 'failed'] as const)('import plus preserves a %s task and its recovery entry', async status => {
+test.each(['awaiting_commit', 'committing', 'failed'] as const)('import plus restores a %s batch and its available actions', async status => {
   const user = userEvent.setup()
   const { api, emit } = fakeImportApi()
-  vi.mocked(api.startImport).mockResolvedValue('job')
+  const candidates = [candidate(), candidate('b')]
+  vi.mocked(api.startImport).mockImplementation(async request => {
+    if (request.kind === 'stage') emit(snapshot({ status: 'awaiting_commit', candidates }))
+    else if (status === 'failed') emit(snapshot({ status, candidates, failurePhase: 'save', issues: [
+      { code: 'DISK_SPACE', severity: 'blocking', candidateId: 'a', action: '请释放磁盘空间后重试。' },
+    ] }))
+    else emit(snapshot({ status: 'committing', candidates, progress: { processed: 120, total: 500 } }))
+    return 'job'
+  })
   render(<App importApi={api} />)
   await user.click(screen.getByRole('button', { name: '导入会话' }))
   await user.click(screen.getByRole('button', { name: '选择文件' }))
-  await screen.findByText('两层目录中的记录.json')
-  const results = status === 'partially_completed' ? [saved('a', '7'), saved('b', '8', { status: 'failed', conversationId: null, committedAt: null })] : []
-  act(() => emit(snapshot({ status, candidates: [candidate()], results })))
+  const first = await screen.findByRole('checkbox', { name: '会话 a' })
+  if (status !== 'awaiting_commit') {
+    await user.click(first)
+    await user.click(screen.getByRole('button', { name: '导入所选会话' }))
+  }
   await user.click(screen.getByRole('button', { name: '个人总览' }))
   await user.click(screen.getByRole('button', { name: '导入会话' }))
   await waitFor(() => expect(localStorage.getItem('whomi:import-job')).toBe('job'))
-  if (status === 'awaiting_commit' || status === 'committing') expect(await screen.findByText('正在保存')).toBeInTheDocument()
-  else if (status === 'partially_completed') expect(await screen.findByText('已保存 500 条消息。')).toBeInTheDocument()
-  else expect(await screen.findByText('导入失败')).toBeInTheDocument()
+  if (status === 'awaiting_commit') {
+    expect(await screen.findByRole('heading', { name: '选择要导入的会话' })).toBeVisible()
+    expect(screen.getByRole('checkbox', { name: '会话 b' })).toBeVisible()
+    expect(screen.getByRole('button', { name: '导入所选会话' })).toBeDisabled()
+  } else if (status === 'committing') {
+    expect(await screen.findByRole('heading', { name: '正在保存' })).toBeVisible()
+    expect(screen.getByRole('progressbar', { name: '保存进度' })).toHaveAttribute('value', '120')
+  } else {
+    expect(await screen.findByRole('heading', { name: '保存失败' })).toBeVisible()
+    expect(screen.getByRole('button', { name: '查看错误日志' })).toBeVisible()
+  }
+  expect(screen.getByRole('button', { name: '取消导入' })).toBeVisible()
+  expect(api.startImport).toHaveBeenCalledTimes(status === 'awaiting_commit' ? 1 : 2)
   expect(api.cancelImport).not.toHaveBeenCalled()
+})
+
+test('import plus starts a new selection when the previous version left a partially completed batch', async () => {
+  const user = userEvent.setup()
+  const { api, emit } = fakeImportApi()
+  localStorage.setItem('whomi:import-job', 'job')
+  emit(snapshot({ status: 'partially_completed', candidates: [candidate(), candidate('b')], inserted: 500,
+    results: [saved('a', '7'), saved('b', '8', { status: 'failed', conversationId: null, committedAt: null, inserted: 0 })],
+  }))
+  render(<App importApi={api} />)
+  await user.click(screen.getByRole('button', { name: '导入会话' }))
+  expect(await screen.findByRole('button', { name: '选择文件' })).toBeEnabled()
+  expect(localStorage.getItem('whomi:import-job')).toBeNull()
+  expect(api.cancelImport).not.toHaveBeenCalled()
+  expect(api.deleteConversation).not.toHaveBeenCalled()
 })
 
 async function messages() {

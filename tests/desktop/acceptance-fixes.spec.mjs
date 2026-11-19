@@ -5,11 +5,11 @@ import { copyFile, mkdir, mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 
-test('active import remains recoverable and compact reply navigation preserves the draft across pages', async () => {
+test('active import remains recoverable and compact reply navigation preserves the draft across pages', async ({}, testInfo) => {
   test.setTimeout(90000)
   const directory = await mkdtemp(join(tmpdir(), 'whomi-runtime-acceptance-fixes-'))
   await copyFile('tests/desktop/probe.cjs', join(directory, 'probe.cjs'))
-  const evidence = resolve('release/acceptance-fixes-20261030')
+  const evidence = testInfo.outputPath('screenshots')
   await mkdir(evidence, { recursive: true })
   const sources = join(directory, 'sources')
   await mkdir(sources)
@@ -25,7 +25,12 @@ test('active import remains recoverable and compact reply navigation preserves t
       platformMessageId: `m${index + 1}`, ...(index === 699 ? { replyToMessageId: 'm1' } : {}),
     })),
   }))
-  await copyFile(source, join(sources, 'other-entry.json'))
+  await writeFile(join(sources, 'other-entry.json'), JSON.stringify({
+    chatlab: { version: '0.0.2' },
+    meta: { name: '另一段合成会话', platform: 'discord', type: 'direct', groupId: 'acceptance-other', ownerId: 'a' },
+    members: [{ platformId: 'a', accountName: '示例甲' }],
+    messages: [{ sender: 'a', accountName: '示例甲', timestamp: 1700000000, type: 0, content: '示例消息', platformMessageId: 'm1' }],
+  }))
   const app = await electron.launch({ args: [resolve('out/main/index.cjs'), '--whomi-runtime-test'], env: { ...process.env, WHOMI_RUNTIME_TEST: directory } })
   try {
     const page = await app.firstWindow()
@@ -34,7 +39,7 @@ test('active import remains recoverable and compact reply navigation preserves t
     await app.evaluate(({ dialog }, path) => { dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [path] }) }, sources)
     await page.getByRole('button', { name: '导入会话', exact: true }).click()
     await page.getByRole('button', { name: '选择文件', exact: true }).click()
-    const discovery = page.getByRole('region', { name: '发现的文件入口' })
+    const discovery = page.getByRole('region', { name: '选择要导入的会话' })
     await expect(discovery.getByRole('checkbox')).toHaveCount(2)
     const jobId = await page.evaluate(() => localStorage.getItem('whomi:import-job'))
     await page.getByRole('button', { name: '个人总览', exact: true }).click()
@@ -42,8 +47,8 @@ test('active import remains recoverable and compact reply navigation preserves t
     await expect(discovery.getByRole('checkbox')).toHaveCount(2)
     expect(await page.evaluate(() => localStorage.getItem('whomi:import-job'))).toBe(jobId)
     await page.screenshot({ path: join(evidence, '01-active-import-restored.png'), animations: 'disabled' })
-    await discovery.getByRole('checkbox', { name: /example.json$/ }).check()
-    await page.getByRole('button', { name: '解析所选入口' }).click()
+    await discovery.getByRole('checkbox', { name: /紧凑阅读与引用/ }).check()
+    await page.getByRole('button', { name: '导入所选会话' }).click()
     await expect(page.getByText('导入完成', { exact: true })).toBeVisible()
     await expect(page.getByLabel('导入目标', { exact: true })).toHaveCount(0)
     await page.getByRole('button', { name: '打开会话', exact: true }).click()

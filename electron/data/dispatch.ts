@@ -8,6 +8,7 @@ import type { ListArrangement, MemberView, PreviewOptions, ReadMessagesInput, Li
 import type { StartImportRequest } from '../../src/shared/import-contract'
 import { BoundaryError, validateArguments, validateResult } from '../../src/shared/desktop-validation'
 import type { GrantedSource } from './import/discovery'
+import { getInterruptedImport, unresolvedImportDiagnostics } from './import/recovery'
 import type { AiRepository } from './ai/repository'
 import type { SettingsRepository } from './settings/repository'
 
@@ -30,6 +31,7 @@ export function createDataDispatcher(store: Store, service: ReturnType<typeof cr
   return async (method: unknown, input: unknown): Promise<unknown> => {
     await service.ready
     if (method === 'storageState') return { importActive: service.importActive() }
+    if (method === 'unresolvedImportDiagnostics') return unresolvedImportDiagnostics(store)
     if (method === 'settingsStorage') {
       if (!settings || !Array.isArray(input) || input.length !== 2 || typeof input[0] !== 'string' || !Object.hasOwn(settingsStorageArity, input[0]) || !Array.isArray(input[1])) throw new BoundaryError('INVALID_METHOD')
       const operation = input[0] as keyof typeof settingsStorageArity, args = input[1] as unknown[], [minimum, maximum] = settingsStorageArity[operation]
@@ -52,6 +54,7 @@ export function createDataDispatcher(store: Store, service: ReturnType<typeof cr
     switch (method) {
       case 'chooseSources': throw new BoundaryError('INVALID_METHOD')
       case 'getImport': result = await service.getImport(args[0] as string); break
+      case 'getInterruptedImport': result = getInterruptedImport(store); break
       case 'startImport': result = await service.startImport(args[0] as StartImportRequest); break
       case 'cancelImport': await service.cancelImport(args[0] as string); break
       case 'previewImport': result = await service.previewImport(args[0] as string, args[1] as string, args[2] as PreviewOptions); break

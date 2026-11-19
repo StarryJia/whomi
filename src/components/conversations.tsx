@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { actionError, ManagedRow, ReaderDialog } from './ui/managed-row'
+import { ExceptionNotice } from './ui/exception-notices'
 import { ArrowLeft, ChevronRight, MousePointer2, Plus, UserRound } from 'lucide-react'
 import clsx from 'clsx'
 import { Tooltip } from './ui/tooltip'
@@ -93,7 +94,9 @@ export function ConversationNavigation({ wide, conversations, activeId, onSelect
             </li>)}
           </ul>}
           {hasMore && <button className="conversation-load" type="button" disabled={loading} onClick={onLoadMore}>加载更多会话</button>}
-          {error && <div className="conversation-list-error" role="alert"><p>{error}</p><button type="button" onClick={onRefresh}>重试会话列表</button></div>}
+          {error && <div className="conversation-list-error">
+            <button type="button" onClick={onRefresh}>重试会话列表</button>
+          </div>}
         </div>
       </div>
     </section>
@@ -449,11 +452,11 @@ export function ConversationReader({ conversation, initialAnalysisTaskId, openAn
       </div>
       {quoteReturnId && <button className="reader-return reader-quote-return" type="button" disabled={quoteBusy}
         onClick={() => { void navigateQuote({ targetId: quoteReturnId }) }}><ArrowLeft aria-hidden="true" />返回引用位置</button>}
-      {quoteFailure && (!quoteFailure.pending || selection.selectedIds.has(quoteFailure.targetId)) && <p className="reader-source-note" role="alert">未找到原消息，请重试。{' '}
+      {quoteFailure && (!quoteFailure.pending || selection.selectedIds.has(quoteFailure.targetId)) && <p className="reader-source-note"><ExceptionNotice title="未找到原消息，请重试。" />{' '}
         <button type="button" onClick={() => { void navigateQuote(quoteFailure) }}>重试定位</button></p>}
-      {sourceStatus && <p className="reader-source-note" role="status">{sourceStatus === 'available'
-        ? '已定位相关交流，可继续阅读前后文。' : sourceStatus === 'loading' ? '正在定位原文…' : '原文不可用，请返回后重试。'}</p>}
-      {error && <p className="reader-source-note" role="alert">{error} <button type="button" onClick={onRetry}>重新打开会话</button></p>}
+      {sourceStatus === 'unavailable' && !error ? <ExceptionNotice className="reader-source-note" title="原文不可用，请返回后重试。" /> : sourceStatus && sourceStatus !== 'unavailable' && <p className="reader-source-note" role="status">{sourceStatus === 'available'
+        ? '已定位相关交流，可继续阅读前后文。' : '正在定位原文…'}</p>}
+      {error && <p className="reader-source-note"><ExceptionNotice title={sourceStatus === 'unavailable' ? '无法定位原文' : '会话读取失败'} detail={error} /> <button type="button" onClick={onRetry}>重新打开会话</button></p>}
     </header>
     <div ref={scroll} className={clsx('reader-scroll', selectionMode && 'reader-selecting')} role="region" aria-label="聊天记录" tabIndex={0} aria-busy={loading} onScroll={rememberPosition}>
       {beforeCursor && <button className="reader-load" type="button" disabled={loading} onClick={() => { void load('before') }}>加载前文</button>}
@@ -507,7 +510,10 @@ export function ConversationReader({ conversation, initialAnalysisTaskId, openAn
         <div className="reader-modal-card" ref={selfCard}>
           <h2 id="self-modal-title">选择本人</h2>
           <p className="reader-modal-description">{selfOrigin === 'insight' ? '请先选择本人，再开始会话洞察。' : '这段聊天里，哪位是你？'}</p>
-          {selfError && <p className="import-error" role="alert">{selfError} {selfReadFailed && <button type="button" className="reader-modal-btn" onClick={() => void readMembers(false)}>重新读取成员</button>}</p>}
+          {selfError && <>
+            <ExceptionNotice title={selfReadFailed ? '无法读取成员' : '无法保存本人设置'} detail={selfError} className="import-error" />
+            {selfReadFailed && <button type="button" className="reader-modal-btn" onClick={() => void readMembers(false)}>重新读取成员</button>}
+          </>}
           <div className="reader-modal-body" role="radiogroup" aria-label="成员列表">
             {selfLoading ? <p className="reader-modal-empty">正在读取成员…</p> : selfReadFailed ? null : !members.length ? <p className="reader-modal-empty">该会话暂无成员。</p> : (
               members.map(member => {

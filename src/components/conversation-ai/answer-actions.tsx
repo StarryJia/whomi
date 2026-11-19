@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Check, Copy } from 'lucide-react'
+import { ExceptionNotice } from '../ui/exception-notices'
 
 // Cherry useCopyToClipboard 的成功反馈流程；本地回答只写入原始 Markdown。
 export function AnswerActions({ text, available }: { text: string; available: boolean }) {
@@ -26,6 +27,6 @@ export function AnswerActions({ text, available }: { text: string; available: bo
     <button type="button" aria-label={state === 'copied' ? '已复制' : '复制回答'} title={state === 'copied' ? '已复制' : '复制回答'}
       disabled={state === 'copying'} onClick={() => { void copy() }}>{state === 'copied' ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}</button>
     {state === 'copied' && <span role="status" className="visually-hidden">已复制</span>}
-    {state === 'failed' && <span role="alert">复制失败，请重试。</span>}
+    {state === 'failed' && <ExceptionNotice title="复制失败，请重试。" />}
   </div>
 }

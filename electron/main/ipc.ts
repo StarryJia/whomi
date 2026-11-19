@@ -1,5 +1,6 @@
 import type { SourceHandle } from '../../src/shared/desktop-api'
 import type { ImportSnapshot, StartImportRequest } from '../../src/shared/import-contract'
+import { terminalImportStates } from '../../src/shared/import-contract'
 import { BoundaryError, localId, validateArguments, validateResult, validateSnapshot } from '../../src/shared/desktop-validation'
 import type { SourceGrants } from './source-grants'
 
@@ -36,8 +37,7 @@ export function createDesktopRouter(options: RouterOptions) {
       const snapshot = state.latest; state.latest = undefined; state.last = Date.now()
       if (snapshot) for (const listener of subscribers.get(owner!) ?? []) { try { listener(snapshot) } catch { /* A closed window cannot affect import state. */ } }
     }
-    const terminal = ['completed', 'partially_completed', 'failed', 'cancelled'].includes(value.status)
-    if (terminal || Date.now() - state.last >= 200) deliver()
+    if (terminalImportStates.has(value.status) || Date.now() - state.last >= 200) deliver()
     else if (!state.timer) { state.timer = setTimeout(deliver, 200 - (Date.now() - state.last)); state.timer.unref() }
   }
   return {
@@ -50,10 +50,17 @@ export function createDesktopRouter(options: RouterOptions) {
       else if (method === 'prepareImport') {
         const grants = options.grants.consume(owner, args[0])
         value = await options.request(method, [grants]); validateResult(method, value); ownJob(owner, value as string)
-        const snapshot = await options.request('getImport', [value]); validateSnapshot(snapshot)
-        publish(snapshot)
+        try { publish(await options.request('getImport', [value])) }
+        catch { /* 已受理的导入仍需返回任务编号，以便查询或取消。 */ }
       } else {
-        if (method === 'getImport' || method === 'cancelImport' || method === 'previewImport') requireJob(owner, args[0] as string, method === 'getImport' || method === 'previewImport')
+        if (method === 'getImport' || method === 'cancelImport' || method === 'previewImport') {
+          const id = args[0] as string
+          requireJob(owner, id, true)
+          if (method === 'cancelImport' && !owners.has(id)) {
+            const snapshot = await options.request('getImport', [id]); validateSnapshot(snapshot)
+            if (!['failed', 'cancelled', 'partially_completed'].includes(snapshot.status)) throw new BoundaryError('INVALID_JOB', '请重新选择导入来源。')
+          }
+        }
         if (method === 'startImport') {
           const request = args[0] as StartImportRequest
           requireJob(owner, request.kind === 'stage' ? request.jobId : request.plan.jobId)

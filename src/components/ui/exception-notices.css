@@ -1,0 +1,82 @@
+.exception-notices {
+  position: fixed;
+  inset: calc(var(--desktop-titlebar-height, 0px) + 12px) 0 auto;
+  z-index: 90;
+  width: min(420px, calc(100% - 24px));
+  max-height: 45dvh;
+  margin: 0 auto;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  pointer-events: none;
+  -webkit-app-region: no-drag;
+}
+
+.exception-notice-list {
+  display: grid;
+  gap: 8px;
+  max-height: inherit;
+  margin: -6px -12px -18px;
+  padding: 6px 12px 18px;
+  overflow: auto;
+  list-style: none;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+.exception-notice {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 5px 14px color-mix(in srgb, var(--text) 14%, transparent);
+  pointer-events: auto;
+}
+
+.exception-notice-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 2px 8px 2px 14px;
+}
+
+.exception-notice-symbol { flex: none; color: var(--focus); }
+.exception-notice-title { flex: auto; min-width: 0; overflow-wrap: anywhere; font-size: 14px; font-weight: 600; line-height: 1.5; }
+.exception-notice-control {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.exception-notice-control:hover { background: var(--hover); color: var(--text); }
+.exception-notice-control:active { background: var(--pressed); }
+.exception-notice-control:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.exception-notice-disclosure {
+  width: 44px;
+  height: 24px;
+  margin: 0 auto 4px;
+}
+.exception-notice-disclosure[aria-expanded='true'] svg { transform: rotate(180deg); }
+.exception-notice-detail {
+  margin: 0 14px 6px 40px;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+
+@media (pointer: coarse) {
+  .exception-notice-control { width: 44px; height: 44px; }
+  .exception-notice-disclosure { height: 32px; }
+}

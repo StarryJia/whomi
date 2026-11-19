@@ -27,6 +27,7 @@ export function createDesktopClient(transport: DesktopTransport): DesktopApi {
   return Object.freeze({
     chooseSources: kind => call('chooseSources', [kind]), prepareImport: handles => call('prepareImport', [handles]),
     startImport: request => call('startImport', [request]), getImport: jobId => call('getImport', [jobId]), cancelImport: jobId => call('cancelImport', [jobId]),
+    getInterruptedImport: () => call('getInterruptedImport', []),
     previewImport: (jobId, candidateId, options) => call('previewImport', [jobId, candidateId, options]),
     listConversations: input => call('listConversations', [input]), readMessages: input => call('readMessages', [input]), locateSource: input => call('locateSource', [input]),
     listMembers: id => call('listMembers', [id]), confirmSelf: (id, member) => call('confirmSelf', [id, member]),
