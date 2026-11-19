@@ -48,12 +48,7 @@ let quitting = false
 if (!app.requestSingleInstanceLock()) app.quit()
 else {
   const installDirectory = app.isPackaged ? dirname(process.execPath) : testDirectory ?? app.getAppPath()
-  const appErrorLogs = createAppErrorLogs(installDirectory, app.getPath('userData'), appVersion, path => shell.openPath(path), action => {
-    if (!app.isReady() || quitting) return
-    for (const window of BrowserWindow.getAllWindows()) window.webContents.send(appExceptionChannel, {
-      title: '未能保存错误日志', detail: action,
-    })
-  })
+  const appErrorLogs = createAppErrorLogs(installDirectory, app.getPath('userData'), appVersion, path => shell.openPath(path))
   process.on('uncaughtExceptionMonitor', (_error, origin) => appErrorLogs.recordMainException(origin))
   let stoppingWorkers = false
   app.on('child-process-gone', (_event, details) => {
@@ -160,6 +155,18 @@ else {
     const devUrl = !app.isPackaged ? process.env.ELECTRON_RENDERER_URL : undefined
     const pagePath = join(__dirname, '../renderer/index.html')
     const appUrl = devUrl ? new URL(devUrl).href : pathToFileURL(pagePath).href
+    const reportLogFailure = (action: string) => {
+      if (!quitting && !window.isDestroyed()) window.webContents.send(appExceptionChannel, { title: '未能保存错误日志', detail: action })
+    }
+    const onExceptionListenerReady = (event: Electron.IpcMainEvent) => {
+      if (!window.isDestroyed() && isTrustedCaller(event, window, appUrl)) appErrorLogs.setWriteFailureListener(reportLogFailure)
+    }
+    ipcMain.on(appExceptionChannel, onExceptionListenerReady)
+    window.webContents.on('did-navigate', () => appErrorLogs.setWriteFailureListener(undefined))
+    window.once('closed', () => {
+      ipcMain.removeListener(appExceptionChannel, onExceptionListenerReady)
+      appErrorLogs.setWriteFailureListener(undefined)
+    })
     const windowId = window.webContents.id
     const grants = createSourceGrants()
     const router = createDesktopRouter({ grants, request: (method, args) => method === 'deleteConversation'

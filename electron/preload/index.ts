@@ -67,6 +67,7 @@ contextBridge.exposeInMainWorld('whomi', Object.freeze({
   onAppException(listener) {
     const receive = (_event: Electron.IpcRendererEvent, notice: { title: string; detail: string }) => listener(notice)
     ipcRenderer.on(appExceptionChannel, receive)
+    ipcRenderer.send(appExceptionChannel)
     return () => { ipcRenderer.removeListener(appExceptionChannel, receive) }
   },
   chooseSources: expose('chooseSources'), acceptDroppedFiles: expose('acceptDroppedFiles'), prepareImport: expose('prepareImport'),

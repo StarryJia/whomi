@@ -15,7 +15,6 @@
 .aw-link-value { display: inline-flex; align-items: center; gap: 6px; color: var(--focus); font-size: 13px; }
 .aw-link-value svg { flex-shrink: 0; }
 .aw-information-static { cursor: default; }
-.aw-muted { color: var(--text-muted); font-size: 13px; }
 .aw-debug { margin-top:32px; }
 .aw-debug h2 { margin:0 0 8px; font-size:14px; line-height:1.6; font-weight:600; }
 .aw-debug-control { display:flex; align-items:center; justify-content:space-between; gap:20px; min-height:48px; }

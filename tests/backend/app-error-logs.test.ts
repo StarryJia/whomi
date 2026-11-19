@@ -91,6 +91,24 @@ test('reports the installation path when writing fails and resumes there after a
   expect(await readdir(join(path, 'import-errors'))).toHaveLength(1)
 })
 
+test('delivers a pre-window write failure once to the first listener and clears it after recovery', async () => {
+  const { install, profile, openPath } = await fixture()
+  const logs = createAppErrorLogs(install, profile, 'test', openPath)
+  const path = join(install, 'logs')
+  await writeFile(path, 'read-only fixture')
+  await logs.record({ area: 'main', phase: 'startup', error: new Error() })
+  const report = vi.fn()
+  logs.setWriteFailureListener(report)
+  logs.setWriteFailureListener(report)
+  await logs.record({ area: 'model', phase: 'testModel', error: new Error() })
+  expect(report).toHaveBeenCalledExactlyOnceWith(expect.stringContaining(path))
+  await unlink(path)
+  await logs.record({ area: 'main', phase: 'retry', error: new Error() })
+  const next = vi.fn()
+  logs.setWriteFailureListener(next)
+  expect(next).not.toHaveBeenCalled()
+})
+
 test('replaying an unresolved import after upgrade preserves the original file with its time and counts', async () => {
   const { install, data, profile, openPath, appLogs } = await fixture()
   const job = { phase: 'parse', code: 'INVALID_RECORD', jobId: '4' }

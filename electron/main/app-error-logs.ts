@@ -69,7 +69,7 @@ export function createAppErrorLogs(installDirectory: string, userDataPath: strin
   let dataLogs = profileLogs
   let retainedDirectories: string[] = []
   let missedRecords = 0
-  let notified = false
+  let writeFailed = false
   let pending = Promise.resolve()
 
   function schedule<T>(action: () => Promise<T>): Promise<T> {
@@ -86,13 +86,13 @@ export function createAppErrorLogs(installDirectory: string, userDataPath: strin
         await writeFile(probe, '', { flag: 'wx', mode: 0o600 })
         await unlink(probe)
         const value = await action(root)
-        notified = false
+        writeFailed = false
         return value
       } catch {
         if (recording) {
           missedRecords += 1
-          if (!notified) {
-            notified = true
+          if (!writeFailed) {
+            writeFailed = true
             onWriteFailure?.(writeFailureAction)
           }
         }
@@ -103,6 +103,11 @@ export function createAppErrorLogs(installDirectory: string, userDataPath: strin
 
   return {
     writeFailureAction,
+    setWriteFailureListener(listener?: (action: string) => void) {
+      if (onWriteFailure === listener) return
+      onWriteFailure = listener
+      if (writeFailed) listener?.(writeFailureAction)
+    },
     setDataArchives(dataDirectory: string, retained: string[] = []) {
       dataLogs = join(resolve(dataDirectory), 'logs')
       retainedDirectories = retained
