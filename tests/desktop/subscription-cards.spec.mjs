@@ -82,7 +82,7 @@ for (const width of [1920, 360]) test(`订阅服务商在 ${width} 像素下可�
     await expect(page.getByText('登录后可同步账户模型。', { exact: true })).toBeVisible()
     async function verifyDetailAlignment() {
       const { contentLeft, contentRight, boxes } = await page.evaluate(() => {
-        const detail = document.querySelector('.ms-detail')
+        const detail = document.querySelector('.ms-detail-body')
         const bounds = detail.getBoundingClientRect()
         const style = getComputedStyle(detail)
         return {
@@ -139,7 +139,10 @@ for (const width of [1920, 360]) test(`订阅服务商在 ${width} 像素下可�
     await shot('04-codex-connected')
     await app.evaluate(() => { globalThis.localUsageFixture = null })
     await button('刷新本机用量').click()
-    await expect(usage.getByRole('alert')).toHaveText('读取本机用量失败，请重试。')
+    const notices = page.getByRole('region', { name: '异常提醒' })
+    await expect(notices.getByRole('alert')).toHaveText('无法读取本机用量')
+    await notices.getByRole('button', { name: '展开详情' }).click()
+    await expect(notices.getByText('读取本机用量失败，请重试。')).toBeVisible()
     await app.evaluate(() => { globalThis.localUsageFixture = { requests:1, inputTokens:0, outputTokens:null, partial:true } })
     await button('重读本机用量').click()
     await expect(usage.getByText('0',{exact:true})).toBeVisible()
@@ -174,13 +177,20 @@ for (const width of [1920, 360]) test(`订阅服务商在 ${width} 像素下可�
     await button('取消登录').click()
     await select('grok-cli', 'Grok CLI')
     await button('使用 Grok 登录').click()
-    await expect(page.getByRole('alert')).toHaveText('请配置 Grok 客户端标识后重试。')
+    await expect(notices.getByRole('alert')).toHaveText('账号操作失败')
+    await notices.getByRole('button', { name: '展开详情' }).click()
+    await expect(notices.getByText('请配置 Grok 客户端标识后重试。')).toBeVisible()
     await shot('06-grok-recovery')
     expect(await page.locator('.account-login-card').evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
+    await notices.getByRole('button', { name: '关闭提醒' }).click()
+    await expect(notices.getByRole('alert')).toHaveCount(0)
     if (await button('分类').isVisible()) await button('分类').click()
     await button('关于 Whomi').click()
     await expect(page.getByText('从对话中找出你不曾注意的细节')).toBeVisible()
     await shot('07-about')
+  } catch (error) {
+    await app?.windows()[0]?.screenshot({ path: info.outputPath('failure.png') }).catch(() => {})
+    throw error
   } finally {
     await app?.close()
     if (dirname(resolve(directory)) === resolve(tmpdir())) await rm(directory, { recursive: true, force: true })
