@@ -107,6 +107,31 @@ describe('持久会话分页状态', () => {
     expect(result.current.current!.messages).toHaveLength(100)
   })
 
+  it.each(['refresh', 'loadMore'] as const)('删除后保留其他会话，并过滤 %s 晚返回的已删项', async operation => {
+    const api = client()
+    const [first] = (await api.listConversations({})).items
+    const kept = { ...first, id: '2', pinned: true }
+    const last = { ...first, id: '3' }
+    const list = vi.mocked(api.listConversations)
+    list.mockClear().mockResolvedValueOnce({ items: [kept, first], nextCursor: 'next' })
+    const { result } = renderHook(() => useConversations(api))
+    await waitFor(() => expect(result.current.listCursor).toBe('next'))
+    const slow = deferred<Awaited<ReturnType<ConversationClient['listConversations']>>>()
+    list.mockReturnValueOnce(slow.promise)
+    let pending!: Promise<void>
+    act(() => { pending = result.current[operation]() })
+    act(() => { void result.current.forgetConversation(first.id) })
+    expect(result.current.conversations).toEqual([kept])
+    expect(list).toHaveBeenCalledTimes(2)
+    await act(async () => {
+      slow.resolve({ items: operation === 'refresh' ? [kept, first, last] : [first, last], nextCursor: null })
+      await pending
+    })
+    expect(result.current.conversations).toEqual([kept, last])
+    expect(result.current.listCursor).toBeNull()
+    expect(result.current.listError).toBeUndefined()
+  })
+
   it('引用跨页成功只替换消息页，失败保留原页，不增加来源范围与常驻提示', async () => {
     const api = client()
     const { result } = renderHook(() => useConversations(api))

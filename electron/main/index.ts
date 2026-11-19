@@ -134,7 +134,12 @@ else {
     const settingsApi: SettingsApi = { ...settingsService,
       async stopModelTasks(ids) { if (!Array.isArray(ids) || ids.length > 1000 || ids.some(id => typeof id !== 'string' || id.length > 128)) throw new BoundaryError('INVALID_ARGUMENT'); await aiService!.stopModelTasks(ids) },
       getStorage: () => locations.getStorage(),
-      async chooseStorage() { const selected = await dialog.showOpenDialog(window, { properties: ['openDirectory', 'createDirectory'] }); return selected.canceled || !selected.filePaths[0] ? null : locations.issueChoice(windowId, selected.filePaths[0]) },
+      openStorageDirectory: () => locations.openDirectory(path => shell.openPath(path)),
+      async chooseStorage() {
+        const { path } = await locations.getStorage()
+        const selected = await dialog.showOpenDialog(window, { defaultPath: path, properties: ['openDirectory', 'createDirectory'] })
+        return selected.canceled || !selected.filePaths[0] ? null : locations.issueChoice(windowId, selected.filePaths[0])
+      },
       relocateStorage: token => locations.relocateStorage(windowId, token),
       async restart() { if (!suspended || !(await locations.getStorage()).restartRequired) throw new BoundaryError('INVALID_STATE'); app.relaunch(); app.quit() },
       async getDiagnostics() { const current = await settingsService.get(); return { version: appVersion, platform: process.platform, entries: current.debug ? [...diagnostics] : [] } },
@@ -145,7 +150,7 @@ else {
         if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).length !== 2 || !('method' in value) || !('args' in value) || typeof value.method !== 'string' || !Object.hasOwn(settingsMethods, value.method) || !Array.isArray(value.args)) throw new BoundaryError('INVALID_ARGUMENT')
         const method = value.method as keyof SettingsApi
         if (value.args.length !== settingsMethods[method]) throw new BoundaryError('INVALID_ARGUMENT')
-        if (suspended && !['getStorage', 'restart'].includes(method)) throw new BoundaryError('STORAGE_RESTART_REQUIRED', '数据目录正在切换，请重启应用。')
+        if (suspended && !['getStorage', 'openStorageDirectory', 'restart'].includes(method)) throw new BoundaryError('STORAGE_RESTART_REQUIRED', '数据目录正在切换，请重启应用。')
         requests++
         try { return { ok: true, value: await (settingsApi[method] as (...args: unknown[]) => Promise<unknown>)(...value.args) } } finally { requests-- }
       } catch (error) {

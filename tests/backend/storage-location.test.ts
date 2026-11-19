@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { link, mkdtemp, mkdir, readFile, readdir, rename, rm, stat, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -51,6 +51,18 @@ describe('data location startup', () => {
     expect(await resolveStorageLocation(source)).toBe(source)
     expect(await service.getStorage()).toEqual({ path: source, defaultPath: source, restartRequired: false })
     expect(await readdir(source)).toEqual(['window-state.json'])
+  })
+
+  it('opens only the current directory and lets the caller retry a file manager failure', async () => {
+    const { source, root, service } = await fixture()
+    const openPath = vi.fn(async (_directory: string) => '').mockResolvedValueOnce('unavailable')
+    await expect(service.openDirectory(openPath)).rejects.toMatchObject({ code: 'STORAGE_OPEN_FAILED' })
+    await service.openDirectory(openPath)
+    expect(openPath.mock.calls).toEqual([[source], [source]])
+    await rename(source, join(root, 'backup'))
+    await writeFile(source, 'synthetic regular file')
+    await expect(service.openDirectory(openPath)).rejects.toMatchObject({ code: 'STORAGE_OPEN_FAILED' })
+    expect(openPath).toHaveBeenCalledTimes(2)
   })
 
   it('rejects a corrupt or missing saved destination instead of opening an empty database', async () => {

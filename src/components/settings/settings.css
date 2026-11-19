@@ -101,6 +101,11 @@
 .settings-page .mp-content-section { margin-top:28px; }
 .settings-page .mp-setting .ms-toggle { margin-top:0; }
 .settings-path { overflow-wrap:anywhere; line-height:1.75; }
+.settings-directory-link {
+  max-width: 100%; padding: 0; border: 0; background: transparent; color: var(--focus);
+  text-align: left; overflow-wrap: anywhere; text-decoration: underline; text-underline-offset: 3px; cursor: pointer;
+}
+.settings-directory-link:hover { text-decoration-thickness: 2px; }
 .settings-storage .mp-content-section>.ms-button { margin-top:20px; }
 .settings-diagnostics { padding-left:20px; line-height:1.75; overflow-wrap:anywhere; }
 .settings-diagnostics p { margin:4px 0 12px; }

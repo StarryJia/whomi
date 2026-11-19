@@ -118,7 +118,10 @@ export function InsightSourceDialog({ taskId, citationId, phrase, conversationTi
         </div>
         {error && <div className="insight-source-error" role="alert">
           <CircleAlert size={18} aria-hidden="true" /><span>{error}</span>
-          <button type="button" disabled={busy} onClick={() => retry.current()}>重试</button>
+          <button type="button" disabled={busy} onClick={() => {
+            scroll.current?.focus({ preventScroll: true })
+            retry.current()
+          }}>重试</button>
         </div>}
         <footer className="insight-source-footer">
           {away && <button type="button" className="insight-source-return" onClick={returnToCitation}>回到引用</button>}

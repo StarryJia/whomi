@@ -309,13 +309,13 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
   async function handleDeleteConversation(id: string) {
     if (!api) return
     await api.deleteConversation(id)
-    if (!api.onConversationDeleted) await forgetConversation(id)
+    if (!api.onConversationDeleted) forgetConversation(id)
   }
 
-  const onConversationDeleted = useEffectEvent((id: string) => { void forgetConversation(id) })
+  const onConversationDeleted = useEffectEvent((id: string) => forgetConversation(id))
   useEffect(() => api?.onConversationDeleted?.(id => onConversationDeleted(id)), [api])
 
-  async function forgetConversation(id: string) {
+  function forgetConversation(id: string) {
     removedConversations.current.add(id)
     if (tasks.some(task => task.id === selectedMemory && task.conversationId === id)) setSelectedMemory(undefined)
     setTasks(entries => entries.filter(task => task.conversationId !== id))
@@ -326,7 +326,7 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
       setSource(undefined)
       if (view === 'conversation') enterOverview()
     }
-    await reader.forgetConversation(id)
+    reader.forgetConversation(id)
   }
 
   function openConversation(id: string, entry?: { origin:'overview'|'library'; taskId?:string }) {

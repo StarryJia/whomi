@@ -36,6 +36,7 @@ test('only exact evidence is highlighted, and a failed next fragment keeps the c
   expect(screen.getByText('原文10')).toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: '重试' }))
   expect(await screen.findByText('原文30')).toBeInTheDocument()
+  expect(screen.getByRole('region', { name: '引用聊天记录' })).toHaveFocus()
   expect(screen.getByText('2 / 2')).toBeInTheDocument()
   expect(read.mock.calls.map(call => call[0].fragmentIndex)).toEqual([0, 1, 1])
   expect(screen.getByRole('button', { name: '下一段' })).toBeDisabled()
