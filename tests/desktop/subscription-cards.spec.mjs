@@ -3,10 +3,10 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 
-for (const width of [1920, 360]) test(`订阅服务商在 ${width} 像素下可登录、取消、退出和切换账号（模拟授权）`, async () => {
+for (const width of [1920, 360]) test(`订阅服务商在 ${width} 像素下可登录、取消、退出和切换账号（模拟授权）`, async ({}, info) => {
   test.setTimeout(90000)
   const directory = await mkdtemp(join(tmpdir(), 'whomi-runtime-subscriptions-'))
-  const evidence = resolve('artifacts/validation-0.1.8/settings')
+  const evidence = info.outputPath('screenshots')
   let app
   try {
     await mkdir(evidence, { recursive: true })
@@ -25,11 +25,16 @@ for (const width of [1920, 360]) test(`订阅服务商在 ${width} 像素下可�
       win.setSize(width, 800)
       const disconnected = { state: 'disconnected' }
       const statuses = new Map(), pending = new Map()
+      const legacy = [
+        { id: 'cherry:copilot', name: 'GitHub Copilot', enabled: false, hasCredential: false, baseUrl: 'https://api.githubcopilot.com' },
+        { id: 'cherry:grok-cli', name: 'Grok CLI', enabled: false, hasCredential: false, baseUrl: 'https://api.x.ai' },
+      ]
+      snapshot.providers = [...legacy]
       globalThis.localUsageFixture = { requests:2, inputTokens:98, outputTokens:12, partial:true }
       globalThis.completeSubscriptionFixture = id => {
         const connected = { state: 'connected', accountId: 'fixture', email: '演示账号' }
         statuses.set(id, connected)
-        snapshot.providers = [{ id: 'cherry:' + id, name: 'OpenAI Codex', enabled: true, hasCredential: true, planAccount: 'fixture', baseUrl: 'https://api.openai.com/v1', protocol: 'openai-responses' }]
+        snapshot.providers = [...legacy, { id: 'cherry:' + id, name: 'OpenAI Codex', enabled: true, hasCredential: true, planAccount: 'fixture', baseUrl: 'https://api.openai.com/v1', protocol: 'openai-responses' }]
         pending.get(id)(connected)
         pending.delete(id)
       }
@@ -37,6 +42,7 @@ for (const width of [1920, 360]) test(`订阅服务商在 ${width} 像素下可�
       ipcMain.handle('whomi:settings-call', async (_event, { method, args: [id, next] }) => {
         let value
         if (method === 'get') value = snapshot
+        else if (method === 'getErrorLogArchives') value = []
         else if (method === 'getAccountStatus') value = statuses.get(id) ?? disconnected
         else if (method === 'getCodexQuota') value = disconnected
         else if (method === 'getAccountUsage') {
@@ -54,7 +60,7 @@ for (const width of [1920, 360]) test(`订阅服务商在 ${width} 像素下可�
         } else if (method === 'cancelAccountSignIn' || method === 'signOutAccount') {
           statuses.set(id, disconnected)
           if (pending.has(id)) { pending.get(id)(disconnected); pending.delete(id) }
-          snapshot.providers = snapshot.providers.filter(item => item.id !== 'cherry:' + id)
+          if (method === 'signOutAccount') snapshot.providers = snapshot.providers.filter(item => item.id !== 'cherry:' + id)
         } else throw Error('Unexpected fixture call: ' + method)
         return { ok: true, value }
       })
@@ -76,7 +82,7 @@ for (const width of [1920, 360]) test(`订阅服务商在 ${width} 像素下可�
     await expect(page.getByText('登录后可同步账户模型。', { exact: true })).toBeVisible()
     async function verifyDetailAlignment() {
       const { contentLeft, contentRight, boxes } = await page.evaluate(() => {
-        const detail = document.querySelector('.ms-detail')
+        const detail = document.querySelector('.ms-detail-body')
         const bounds = detail.getBoundingClientRect()
         const style = getComputedStyle(detail)
         return {
@@ -133,7 +139,10 @@ for (const width of [1920, 360]) test(`订阅服务商在 ${width} 像素下可�
     await shot('04-codex-connected')
     await app.evaluate(() => { globalThis.localUsageFixture = null })
     await button('刷新本机用量').click()
-    await expect(usage.getByRole('alert')).toHaveText('读取本机用量失败，请重试。')
+    const notices = page.getByRole('region', { name: '异常提醒' })
+    await expect(notices.getByRole('alert')).toHaveText('无法读取本机用量')
+    await notices.getByRole('button', { name: '展开详情' }).click()
+    await expect(notices.getByText('读取本机用量失败，请重试。')).toBeVisible()
     await app.evaluate(() => { globalThis.localUsageFixture = { requests:1, inputTokens:0, outputTokens:null, partial:true } })
     await button('重读本机用量').click()
     await expect(usage.getByText('0',{exact:true})).toBeVisible()
@@ -168,13 +177,20 @@ for (const width of [1920, 360]) test(`订阅服务商在 ${width} 像素下可�
     await button('取消登录').click()
     await select('grok-cli', 'Grok CLI')
     await button('使用 Grok 登录').click()
-    await expect(page.getByRole('alert')).toHaveText('请配置 Grok 客户端标识后重试。')
+    await expect(notices.getByRole('alert')).toHaveText('账号操作失败')
+    await notices.getByRole('button', { name: '展开详情' }).click()
+    await expect(notices.getByText('请配置 Grok 客户端标识后重试。')).toBeVisible()
     await shot('06-grok-recovery')
     expect(await page.locator('.account-login-card').evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
+    await notices.getByRole('button', { name: '关闭提醒' }).click()
+    await expect(notices.getByRole('alert')).toHaveCount(0)
     if (await button('分类').isVisible()) await button('分类').click()
     await button('关于 Whomi').click()
     await expect(page.getByText('从对话中找出你不曾注意的细节')).toBeVisible()
     await shot('07-about')
+  } catch (error) {
+    await app?.windows()[0]?.screenshot({ path: info.outputPath('failure.png') }).catch(() => {})
+    throw error
   } finally {
     await app?.close()
     if (dirname(resolve(directory)) === resolve(tmpdir())) await rm(directory, { recursive: true, force: true })

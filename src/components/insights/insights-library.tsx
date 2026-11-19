@@ -82,7 +82,10 @@ function TaskRow({ task, onOpen, onStop, onContinue }: {
     catch (cause) { setError({ detail: actionError(cause), attempt: currentAttempt }) }
     finally { pending.current = false; setBusy(undefined) }
   }
-  return <li className="insight-task-row" data-insight-task={task.id}>
+  return <li className="insight-task-row" data-insight-task={task.id} onClick={event => {
+    const target = event.target
+    if (target instanceof Element && event.currentTarget.contains(target) && !target.closest('button, a')) onOpen()
+  }}>
     <div className="insight-task-row-main">
       <button className="insight-task-link" type="button" data-list-id={task.id} onClick={onOpen} aria-label={`${insightTaskTitle(task)} ${number}`}>
         <FileText aria-hidden="true" /><span><strong>{insightTaskTitle(task)}</strong><span>{number}</span></span>
@@ -239,7 +242,7 @@ export function InsightsLibrary({ tasks, conversations, selectedId, onSelect, on
           const listId = id + '-' + groupId
           return <section key={groupId} className="insight-group">
             <h2><button type="button" className="insight-group-toggle" aria-expanded={open} aria-controls={listId} onClick={() => toggle(groupId)}>
-              <ChevronDown aria-hidden="true" />{group.title}（{formatInsightNumber(group.tasks.length)}）
+              <ChevronDown aria-hidden="true" /><span title={group.title}>{group.title}（{formatInsightNumber(group.tasks.length)}）</span>
             </button></h2>
             <ExceptionNoticeScope active={open}><ul id={listId} hidden={!open}>{group.tasks.map(task => task.state === 'completed' && task.report
               ? <InsightReportRow key={task.id} task={task} conversationTitle={group.title} onOpen={() => locate(task.id)}
@@ -257,10 +260,12 @@ export function InsightsLibrary({ tasks, conversations, selectedId, onSelect, on
         <div className="reader-modal-overlay" onClick={event => { if (event.target === event.currentTarget) onReturn() }}>
           <section className="reader-modal-card insight-history-card">
             <header><div><h2 id={id + '-legacy-title'}>{insightTaskTitle(selected)}</h2>
-              <small>{selected.conversationTitle} · {insightTaskNumber(selected)}</small></div>
+              <small><span className="history-conversation-name" title={selected.conversationTitle}>{selected.conversationTitle}</span> · {insightTaskNumber(selected)}</small></div>
               <button type="button" className="insight-close" aria-label="关闭记忆" onClick={onReturn}><X aria-hidden="true" /></button>
             </header>
-            <MemoryArticle report={selectedReport} />
+            <div className="insight-history-body" role="region" aria-label="报告正文" tabIndex={0}>
+              <MemoryArticle report={selectedReport} />
+            </div>
           </section>
         </div>
       </ReaderDialog>)}

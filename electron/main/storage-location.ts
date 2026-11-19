@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { constants, type BigIntStats } from 'node:fs'
 import * as fs from 'node:fs/promises'
-import { dirname, isAbsolute, join, parse, relative, resolve, sep } from 'node:path'
+import { basename, dirname, isAbsolute, join, parse, relative, resolve, sep } from 'node:path'
 import Database from 'better-sqlite3'
 import { BoundaryError } from '../../src/shared/desktop-validation'
 import type { StorageChoice, StorageLocation } from '../../src/shared/settings-contract'
@@ -47,16 +47,23 @@ async function checkedDirectory(path: string) {
   return info
 }
 
-export async function resolveStorageLocation(userDataPath: string): Promise<string> {
+type StorageSelection = { path: string; retainedErrorLogDirectories: string[] }
+
+function retainedDirectory(value: unknown): value is string {
+  return typeof value === 'string' && isAbsolute(value) && !value.includes('\0') && !/^[\\/]{2}/.test(value)
+    && resolve(value) === value && basename(value) === 'logs'
+}
+
+export async function resolveStorageSelection(userDataPath: string): Promise<StorageSelection> {
   try {
     await checkedPath(userDataPath, true)
     await fs.mkdir(userDataPath, { recursive: true })
     await checkedDirectory(userDataPath)
     const pointer = join(userDataPath, pointerName)
     const info = await checkedPath(pointer, true)
-    if (!info) return resolve(userDataPath)
+    if (!info) return { path: resolve(userDataPath), retainedErrorLogDirectories: [] }
     if (!info.isFile() || info.size > 16_384n) throw new Error('Invalid storage pointer')
-    const data = JSON.parse(await fs.readFile(pointer, 'utf8')) as { version?: unknown; path?: unknown; hasDatabase?: unknown }
+    const data = JSON.parse(await fs.readFile(pointer, 'utf8')) as { version?: unknown; path?: unknown; hasDatabase?: unknown; retainedErrorLogDirectories?: unknown }
     if (data.version !== 1 || typeof data.path !== 'string' || typeof data.hasDatabase !== 'boolean') throw new Error('Invalid storage pointer')
     await checkedDirectory(data.path)
     if (data.hasDatabase) {
@@ -70,11 +77,16 @@ export async function resolveStorageLocation(userDataPath: string): Promise<stri
         if (header.toString('ascii') !== 'SQLite format 3\0') throw new Error('Invalid database')
       } finally { await handle.close() }
     }
-    return resolve(data.path)
+    const retained = Array.isArray(data.retainedErrorLogDirectories) ? data.retainedErrorLogDirectories.filter(retainedDirectory) : []
+    return { path: resolve(data.path), retainedErrorLogDirectories: retained }
   } catch { throw new BoundaryError('STORAGE_UNAVAILABLE', '无法打开保存目录，请恢复目录访问权限后重新打开应用。') }
 }
 
-async function manifest(root: string): Promise<Entry[]> {
+export async function resolveStorageLocation(userDataPath: string): Promise<string> {
+  return (await resolveStorageSelection(userDataPath)).path
+}
+
+async function manifest(root: string, names = managedNames): Promise<Entry[]> {
   await checkedDirectory(root)
   const entries: Entry[] = []
   async function walk(path: string) {
@@ -83,15 +95,21 @@ async function manifest(root: string): Promise<Entry[]> {
     entries.push({ path: relative(root, path), info })
     if (info.isDirectory()) for (const name of (await fs.readdir(path)).sort()) await walk(join(path, name))
   }
-  for (const name of managedNames) {
+  for (const name of names) {
     const path = join(root, name)
-    if (await checkedPath(path, true)) await walk(path)
+    const info = await checkedPath(path, true)
+    if (info && (name !== 'logs' || info.isDirectory())) await walk(path)
   }
   return entries
 }
 
 function unchanged(expected: BigIntStats, actual: BigIntStats) {
   return identity(expected) === identity(actual) && expected.size === actual.size && expected.mtimeNs === actual.mtimeNs && expected.ctimeNs === actual.ctimeNs
+}
+
+function sameManifest(before: Entry[], after: Entry[]) {
+  return before.length === after.length && before.every((entry, index) =>
+    entry.path === after[index].path && unchanged(entry.info, after[index].info))
 }
 
 async function digest(handle: fs.FileHandle) {
@@ -158,6 +176,22 @@ async function cleanupCreated(target: string, targetIdentity: string, created: E
   }
 }
 
+async function copyErrorLogs(source: string, target: string, targetIdentity: string, created: Entry[]) {
+  const copied: Entry[] = []
+  try {
+    const logs = await manifest(source, ['logs'])
+    if (!logs.length) return 'absent'
+    for (const entry of logs) await copyEntry(source, target, entry, copied)
+    if (!sameManifest(logs, await manifest(source, ['logs']))) throw new Error('Source logs changed')
+    for (const entry of copied) created.push(entry)
+    return 'copied'
+  } catch {
+    // 无法读取或校验的诊断文件留在原目录，健康的数据仍可迁移。
+    await cleanupCreated(target, targetIdentity, copied)
+    return 'retained'
+  }
+}
+
 async function verifyCreated(target: string, targetIdentity: string, created: Entry[], databaseUpdated = false) {
   if (identity(await checkedDirectory(target)) !== targetIdentity) invalidPath()
   for (const entry of created) {
@@ -221,14 +255,17 @@ function rebaseCheckpoint(value: string, source: string, target: string, depth =
   return changed ? JSON.stringify(checkpoint) : value
 }
 
-async function publishPointer(userDataPath: string, target: string) {
+async function publishPointer(userDataPath: string, target: string, retainedErrorLogDirectories: string[]) {
   await checkedDirectory(userDataPath)
   const pointer = join(userDataPath, pointerName), temporary = join(userDataPath, `.storage-location-${randomUUID()}.tmp`)
   try {
     const hasDatabase = Boolean((await checkedPath(join(target, 'whomi.db'), true))?.isFile())
+    const contents = JSON.stringify({ version: 1, path: target, hasDatabase,
+      ...(retainedErrorLogDirectories.length && { retainedErrorLogDirectories }) }) + '\n'
+    if (Buffer.byteLength(contents) > 16_384) throw new Error('Storage pointer too large')
     const handle = await fs.open(temporary, 'wx', 0o600)
     try {
-      await handle.writeFile(`${JSON.stringify({ version: 1, path: target, hasDatabase })}\n`)
+      await handle.writeFile(contents)
       await handle.sync()
     } finally { await handle.close() }
     await checkedDirectory(userDataPath)
@@ -240,9 +277,14 @@ async function publishPointer(userDataPath: string, target: string) {
 
 export function createStorageLocationService(options: StorageLocationOptions) {
   const grants = new Map<string, Grant>(), now = options.now ?? Date.now
-  let location: string | undefined, busy = false, restartRequired = false
-  const current = async () => location ??= await resolveStorageLocation(options.userDataPath)
-  const snapshot = async (): Promise<StorageLocation> => ({ path: await current(), defaultPath: resolve(options.userDataPath), restartRequired })
+  let selection: StorageSelection | undefined, busy = false, restartRequired = false
+  const currentSelection = async () => selection ??= await resolveStorageSelection(options.userDataPath)
+  const current = async () => (await currentSelection()).path
+  const snapshot = async (): Promise<StorageLocation> => {
+    const { path, retainedErrorLogDirectories } = await currentSelection()
+    return { path, defaultPath: resolve(options.userDataPath), restartRequired,
+      ...(retainedErrorLogDirectories.length && { retainedErrorLogDirectories, retainedErrorLogDirectory: retainedErrorLogDirectories.at(-1) }) }
+  }
   function requireAvailable() {
     if (restartRequired) throw new BoundaryError('STORAGE_RESTART_REQUIRED', '请重启应用后继续。')
     if (busy) throw new BoundaryError('STORAGE_BUSY', '请等待目录迁移完成。')
@@ -294,15 +336,20 @@ export function createStorageLocationService(options: StorageLocationOptions) {
         await destination(grant.path, source, grant.identity)
         const entries = await manifest(source)
         for (const entry of entries) await copyEntry(source, grant.path, entry, created)
+        const logArchive = await copyErrorLogs(source, grant.path, grant.identity, created)
         const remaining = await manifest(source)
-        if (entries.length !== remaining.length || entries.some((entry, index) => entry.path !== remaining[index].path || !unchanged(entry.info, remaining[index].info))) throw new Error('Source changed')
+        if (!sameManifest(entries, remaining)) throw new Error('Source changed')
         await verifyCreated(grant.path, grant.identity, created)
         await rebaseDatabase(source, grant.path)
         await verifyCreated(grant.path, grant.identity, created, true)
         const copiedNames = new Set(entries.map(entry => entry.path.split(sep)[0]))
+        if (logArchive === 'copied') copiedNames.add('logs')
         if ((await fs.readdir(grant.path)).some(name => !copiedNames.has(name))) invalidPath()
-        await publishPointer(options.userDataPath, grant.path)
-        location = grant.path
+        const retained = [...(await currentSelection()).retainedErrorLogDirectories]
+        const oldLogs = join(source, 'logs')
+        if (logArchive === 'retained' && !retained.some(path => pathKey(path) === pathKey(oldLogs))) retained.push(oldLogs)
+        await publishPointer(options.userDataPath, grant.path, retained)
+        selection = { path: grant.path, retainedErrorLogDirectories: retained }
         restartRequired = true
         grants.clear()
         return await snapshot()

@@ -4,10 +4,10 @@ import { mkdtemp, mkdir, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 
-test('系统提示词保存、取消、失败重试、重启及实际请求', async () => {
+test('系统提示词保存、取消、失败重试、重启及实际请求', async ({}, info) => {
   test.setTimeout(120000)
   const directory = await mkdtemp(join(tmpdir(), 'whomi-runtime-prompts-'))
-  const evidence = resolve('docs/designs/assets/system-prompts')
+  const evidence = info.outputPath('screenshots')
   await mkdir(evidence, { recursive: true })
   const requests = []
   const server = createServer((request, response) => {
@@ -36,7 +36,8 @@ test('系统提示词保存、取消、失败重试、重启及实际请求', as
     const category = page.getByRole('button', { name: '分类', exact: true })
     if (await category.isVisible()) await category.click()
     await page.getByRole('button', { name: '系统提示词', exact: true }).click()
-    await expect(page.getByRole('button', { name: '编辑记忆成稿' })).toBeVisible()
+    await expect(page.getByRole('button', { name: /^编辑/ })).toHaveCount(4)
+    await expect(page.getByRole('button', { name: /记忆(取材|归并|成稿)/ })).toHaveCount(0)
   }
   try {
     app = await launch()
@@ -45,15 +46,16 @@ test('系统提示词保存、取消、失败重试、重启及实际请求', as
     await expect(page.getByRole('button', { name: '设置', exact: true })).toBeVisible()
     await app.evaluate(async () => globalThis.__whomiRuntimeProbe.request('probe.seed', null))
     await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1280, 900))
+    await page.evaluate(() => window.whomi.settings.savePrompt('memorySource', '历史取材示例'))
     await openSettings(page)
     await page.screenshot({ path: join(evidence, 'desktop-list.png') })
-    await page.getByRole('button', { name: '记忆成稿说明' }).focus()
+    await page.getByRole('button', { name: '洞察成稿说明' }).focus()
     await page.keyboard.press('Enter')
-    await expect(page.getByRole('dialog', { name: '记忆成稿说明' })).toContainText('对应功能')
+    await expect(page.getByRole('dialog', { name: '洞察成稿说明' })).toContainText('对应功能')
     await page.screenshot({ path: join(evidence, 'desktop-help.png') })
     await page.keyboard.press('Escape')
-    await expect(page.getByRole('button', { name: '记忆成稿说明' })).toBeFocused()
-    await page.getByRole('button', { name: '编辑记忆成稿' }).focus()
+    await expect(page.getByRole('button', { name: '洞察成稿说明' })).toBeFocused()
+    await page.getByRole('button', { name: '编辑洞察成稿' }).focus()
     await page.keyboard.press('Enter')
     await expect(page.getByRole('textbox', { name: '提示词内容' })).toBeFocused()
     const original = await page.getByRole('textbox', { name: '提示词内容' }).inputValue()
@@ -62,8 +64,8 @@ test('系统提示词保存、取消、失败重试、重启及实际请求', as
     await expect(page.getByRole('textbox')).not.toHaveValue(original)
     await page.getByRole('button', { name: '取消', exact: true }).click()
     await page.getByRole('button', { name: '放弃修改' }).click()
-    await expect(page.getByRole('button', { name: '编辑记忆成稿' })).toBeFocused()
-    await page.getByRole('button', { name: '编辑记忆成稿' }).click()
+    await expect(page.getByRole('button', { name: '编辑洞察成稿' })).toBeFocused()
+    await page.getByRole('button', { name: '编辑洞察成稿' }).click()
     await expect(page.getByRole('textbox')).toHaveValue(original)
     await page.getByRole('button', { name: '取消', exact: true }).click()
     await page.getByRole('button', { name: '编辑AI 对话' }).click()
@@ -84,6 +86,7 @@ test('系统提示词保存、取消、失败重试、重启及实际请求', as
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await expect(page.getByRole('button', { name: '设置', exact: true })).toBeVisible()
     await openSettings(page)
+    expect((await page.evaluate(() => window.whomi.settings.getPrompts())).memorySource).toBe('历史取材示例')
     await page.getByRole('button', { name: '编辑AI 对话' }).click()
     await expect(page.getByRole('textbox')).toHaveValue('先回应用户提到的具体经历。')
     await page.getByRole('button', { name: '取消', exact: true }).click()
@@ -98,21 +101,25 @@ test('系统提示词保存、取消、失败重试、重启及实际请求', as
     expect(JSON.stringify(requests)).toContain('先回应用户提到的具体经历。')
     await app.evaluate(({ BrowserWindow }) => { const window = BrowserWindow.getAllWindows()[0]; window.setMinimumSize(320, 320); window.setSize(360, 800) })
     await page.emulateMedia({ reducedMotion: 'reduce' })
-    await page.getByRole('button', { name: '记忆取材说明' }).click()
-    const popup = page.getByRole('dialog', { name: '记忆取材说明' })
+    await page.getByRole('button', { name: '洞察阅读说明' }).click()
+    const popup = page.getByRole('dialog', { name: '洞察阅读说明' })
     await expect(popup).toBeVisible()
     const box = await popup.boundingBox()
     expect(box.x).toBeGreaterThanOrEqual(0)
     expect(box.x + box.width).toBeLessThanOrEqual(361)
     await page.screenshot({ path: join(evidence, 'narrow-help.png') })
     await page.keyboard.press('Escape')
-    await page.getByRole('button', { name: '编辑记忆成稿' }).click()
+    await page.getByRole('button', { name: '编辑洞察成稿' }).click()
     await expect(page.getByRole('textbox')).toBeVisible()
     await page.screenshot({ path: join(evidence, 'narrow-editor.png') })
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-    const close = page.getByRole('button', { name: '关闭编辑提示词 · 记忆成稿' })
+    const close = page.getByRole('button', { name: '关闭编辑提示词 · 洞察成稿' })
     expect((await close.boundingBox()).y).toBeGreaterThanOrEqual(36)
     await close.click()
     await expect(page.getByRole('textbox')).toHaveCount(0)
+  } catch (error) {
+    const page = app?.windows()[0]
+    await page?.screenshot({ path: info.outputPath('failure.png') }).catch(() => {})
+    throw error
   } finally { await app?.close(); await new Promise(resolve => server.close(resolve)) }
 })

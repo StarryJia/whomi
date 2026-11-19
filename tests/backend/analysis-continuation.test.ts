@@ -3,6 +3,7 @@ import { setImmediate } from 'node:timers/promises'
 import { openStore } from '../../electron/data/db/open'
 import { createAiRepository } from '../../electron/data/ai/repository'
 import { createSettingsRepository } from '../../electron/data/settings/repository'
+import type { AppError } from '../../electron/main/app-error-logs'
 import { createAiService, type RuntimeRunner } from '../../electron/main/ai-service'
 import { temporaryStore, useLegacyAnalysisFixture } from './helpers'
 import { currentMemoryContributions } from '../../src/shared/memory'
@@ -32,11 +33,11 @@ async function fixture(version: Parameters<typeof useLegacyAnalysisFixture>[1] =
   return { data, path: temp.path }
 }
 
-function analysisService(data: ReturnType<typeof connection>, run: RuntimeRunner['run']) {
+function analysisService(data: ReturnType<typeof connection>, run: RuntimeRunner['run'], logError?: (entry: AppError) => void) {
   return createAiService({
     storage: (method, args) => Reflect.apply(Reflect.get(data.repository, method), data.repository, args),
     processing: async () => ({ settings: data.settings.get().processing, members: [{ id: '1', displayName: '本人' }] }),
-    claimProcessing: data.settings.claimProcessing,
+    claimProcessing: data.settings.claimProcessing, logError,
     runtime: { run }, secrets: { encrypt: value => value, decrypt: value => value },
   })
 }
@@ -79,6 +80,9 @@ async function start(service: ReturnType<typeof analysisService>) {
 
 test.each(['conversation-memory-v2', 'conversation-memory-v3', 'conversation-memory-v4'] as const)('a saved %s source batch resumes with its own writing instructions after upgrade', async version => {
   const { data, path } = await fixture(version)
+  const legacySource = '按旧版提示词记录每个安排。', legacyFinal = '按旧版提示词描述来龙去脉。'
+  await data.settings.savePrompt('memorySource', legacySource)
+  await data.settings.savePrompt('memoryFinal', legacyFinal)
   const notes = (id: string) => ({ events: [{ key: '搬家', text: '事先安排', evidenceMessageIds: [id], signals: [{ direction: 'J', messageId: id }] }] })
   const waiting = Promise.withResolvers<void>()
   const first = analysisService(data, async (input, { signal }) => {
@@ -94,9 +98,11 @@ test.each(['conversation-memory-v2', 'conversation-memory-v3', 'conversation-mem
   await first.close()
   data.store.close()
   const reopened = connection(path), seen: string[] = []
+  await reopened.settings.savePrompt('insightReading', '升级后为新洞察保存的阅读规则。')
   const resumed = analysisService(reopened, async input => {
     const payload = JSON.parse(input.prompt)
     if (version !== 'conversation-memory-v4') expect(input.systemPrompt).not.toContain('dimensionExplanations')
+    else expect(input.systemPrompt).toContain(payload.messages ? legacySource : legacyFinal)
     if (payload.messages) {
       const id = payload.messages[0].id
       seen.push(id)
@@ -279,4 +285,19 @@ test('a large adaptive checkpoint persists beyond 32 KiB and can continue after 
   const after = readMemoryCheckpoint(reopened.repository.analysisContext(task.id).checkpoint)!
   expect(after.nodes['source:1299'].split).toBe(true)
   expect(after.nodes['source:0'].index).toBe(0)
+})
+
+test.each(['conversation-analysis-v1', 'conversation-memory-v4'] as const)('%s logs the last committed coverage when the next batch fails', async version => {
+  const { data } = await fixture(version)
+  const failures: AppError[] = []
+  const service = analysisService(data, async input => {
+    const id = JSON.parse(input.prompt).messages[0].id
+    if (id !== '1') throw new Error('synthetic model failure')
+    if (version === 'conversation-analysis-v1') return response
+    return { ...response, text: JSON.stringify({ events: [{ key: 'visit', text: '安排见面', evidenceMessageIds: [id], signals: [] }] }) }
+  }, entry => failures.push(entry))
+  const task = await start(service)
+  await service.idle()
+  expect(data.repository.getAnalysis(task.id)).toMatchObject({ state: 'failed', analyzedMessages: 1 })
+  expect(failures).toMatchObject([{ taskId: task.id, analyzedMessages: 1 }])
 })

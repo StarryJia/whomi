@@ -936,6 +936,7 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
         }
       }}>
       {panelOpen && !narrow && chatPane.divider}
+      {panelOpen && <div className="conversation-ai-drag-strip" aria-hidden="true" />}
       <header className="conversation-ai-header"><button ref={historyAnchor} type="button" className="conversation-icon-button" aria-label={threadListOpen ? '收起对话列表' : '显示对话列表'} aria-expanded={threadListOpen} onClick={() => setThreadListOpen(value => !value)}><PanelLeft aria-hidden="true" /></button>
         <h2>AI 对话</h2><button type="button" className="conversation-icon-button" aria-label="新建 AI 对话" title="新建 AI 对话" disabled={!adapter?.createThread || threadCreating || threadListLoading || restoring || submissionLocked} onClick={() => { void newThread() }}><SquarePen aria-hidden="true" /></button>
         <button type="button" className="conversation-icon-button" aria-label="关闭 AI 对话" onClick={closePanel}><X aria-hidden="true" /></button></header>

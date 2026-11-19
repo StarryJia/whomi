@@ -13,7 +13,15 @@
 .conversation-source { min-width: 0; flex: 1 1 0; height: 100%; container-type: inline-size; }
 .conversation-ai-panel { display: flex; flex-direction: column; flex: 0 0 0; width: 0; min-width: 0; height: 100%; overflow: hidden; visibility: hidden; border-left: 0 solid var(--line); background: var(--canvas); transition: flex-basis 280ms var(--ease-sidebar), visibility 280ms; }
 .has-ai-panel .conversation-ai-panel { flex-basis: clamp(304px,var(--pane-assistant,62%),calc(100% - 268px)); visibility: visible; border-left-width: 1px; position: relative; z-index: 25; }
-.conversation-ai-header { display: flex; flex: 0 0 auto; align-items: center; gap: 4px; padding: calc(var(--desktop-titlebar-height, 0px) + 10px) 12px 10px; border-bottom: 1px solid var(--line); -webkit-app-region: no-drag; }
+.conversation-ai-drag-strip { display: none; }
+.desktop-shell .conversation-ai-drag-strip {
+  display: block;
+  flex: 0 0 var(--desktop-titlebar-height);
+  margin-inline-end: var(--desktop-caption-width);
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+.conversation-ai-header { display: flex; flex: 0 0 auto; align-items: center; gap: 4px; padding: 10px 12px; border-bottom: 1px solid var(--line); -webkit-app-region: no-drag; app-region: no-drag; }
 .conversation-ai-header h2 { flex: 1; }
 .conversation-ai-body { display: flex; flex: 1; min-height: 0; position: relative; }
 .conversation-thread-list { position: absolute; inset: 0 auto 0 0; z-index: 2; width: min(260px, 80%); min-width: 0; padding: 8px; border-right: 1px solid var(--line); box-shadow: 6px 0 18px rgb(38 48 61 / 8%); overflow-y: auto; background: var(--surface); scrollbar-width: thin; }

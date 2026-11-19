@@ -7,7 +7,7 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { ArrowLeft, Eye, EyeOff, Filter, Inbox, MoreVertical, Pencil, Plus, RefreshCw, Search, Trash2, UserPen, X } from 'lucide-react'
 import type { Provider, ProviderInput, SettingsApi, SettingsModel, SettingsSnapshot } from '../../shared/settings-contract'
 import { presetAccountId } from '../../shared/settings-contract'
-import { cherryProviderPresets, type CherryProviderPreset } from '../../vendor/cherry-providers'
+import { listedCherryProviderPresets, type CherryProviderPreset } from '../../vendor/cherry-providers'
 import { changePresetProtocol, PresetDetail, PresetLinks, ProviderAvatar, presetAccounts } from './provider-presets'
 import { defaultModelProtocol, modelProtocols } from '../../shared/model-protocol'
 import { errorText, isModelBusy, Modal, Switch, type LeaveGuard, type RegisterGuard } from './common'
@@ -21,6 +21,8 @@ import { useAutoSave } from './use-auto-save'
 
 export const providerInput = (provider: Provider): ProviderInput => ({ id: provider.id, name: provider.name, baseUrl: provider.baseUrl, protocol: provider.protocol ?? defaultModelProtocol, enabled: provider.enabled, ...(provider.image ? { image: provider.image } : {}), ...(provider.avatarId ? { avatarId: provider.avatarId } : {}), ...(provider.endpointUrls ? { endpointUrls: provider.endpointUrls } : {}), ...(provider.notes === undefined ? {} : { notes: provider.notes }) })
 type Props = { api: SettingsApi; snapshot: SettingsSnapshot; setSnapshot: Dispatch<SetStateAction<SettingsSnapshot | null>>; onChanged: () => void; registerGuard: RegisterGuard; onBusy: (busy: boolean) => void }
+const listedPresetAccounts = new Map(listedCherryProviderPresets.map(preset => [presetAccountId(preset.id), preset]))
+const firstListedAccount = presetAccountId(listedCherryProviderPresets[0].id)
 
 function ProviderListItem({ provider, selected, onSelect, onEdit, onNotes, onDelete }: { provider: Provider; selected: boolean; onSelect: () => void; onEdit: () => void; onNotes: () => void; onDelete: () => void }) {
   const openingPointerUp = useRef(false), openingTimer = useRef<number | null>(null), openingListener = useRef<(() => void) | null>(null)
@@ -76,11 +78,12 @@ function ProviderNotes({ api, provider, onSaved, onClose }: { api: SettingsApi; 
 export function ModelServices({ api, snapshot, setSnapshot, onChanged, registerGuard, onBusy }: Props) {
   const listPane = usePaneDivider('providers')
   const configuredAccounts = [...snapshot.providers].sort((a, b) => Number(presetAccounts.has(a.id)) - Number(presetAccounts.has(b.id)))
-  const [selectedId, setSelectedId] = useState(configuredAccounts[0]?.id ?? presetAccountId(cherryProviderPresets[0].id)), [showDetail, setShowDetail] = useState(false), [query, setQuery] = useState(''), [filter, setFilter] = useState('all')
+  const [selectedId, setSelectedId] = useState(configuredAccounts[0]?.id ?? firstListedAccount), [showDetail, setShowDetail] = useState(false), [query, setQuery] = useState(''), [filter, setFilter] = useState('all')
   const [editor, setEditor] = useState<Provider | 'new' | 'preset' | null>(null), [notes, setNotes] = useState<Provider | null>(null), [removal, setRemoval] = useState<Provider | null>(null), [busy, setBusy] = useState(false), [error, setError] = useState(''), [stopRequired, setStopRequired] = useState(false)
   const detailGuard = useRef<LeaveGuard | null>(null), filterId = useId()
+  const selectedPreset = listedPresetAccounts.get(selectedId)
   const selectedAccount = getSubscriptionId(selectedId)
-  const provider = snapshot.providers.find(item => item.id === selectedId) ?? (selectedAccount ? unconfiguredAccount(selectedAccount) : undefined)
+  const provider = snapshot.providers.find(item => item.id === selectedId) ?? (selectedAccount && selectedPreset ? unconfiguredAccount(selectedAccount) : undefined)
   async function refreshAccount(isCurrent: () => boolean) {
     const next = await api.get()
     if (!isCurrent()) return
@@ -95,10 +98,9 @@ export function ModelServices({ api, snapshot, setSnapshot, onChanged, registerG
   useEffect(() => { registerGuard(navigate); return () => registerGuard(null) })
   useEffect(() => { onBusy(busy); return () => onBusy(false) }, [busy, onBusy])
   function savedProvider(saved: Provider) { setSnapshot(current => current && { ...current, providers: current.providers.some(item => item.id === saved.id) ? current.providers.map(item => item.id === saved.id ? saved : item) : [...current.providers, saved] }); onChanged() }
-  const selectedPreset = presetAccounts.get(selectedId)
   const configuredIds = new Set(snapshot.providers.map(item => item.id))
   const keywords = query.toLowerCase().split(/\s+/).filter(Boolean)
-  const visiblePresets = (filter === 'all' || filter === 'unconfigured' ? cherryProviderPresets : []).filter(preset => {
+  const visiblePresets = (filter === 'all' || filter === 'unconfigured' ? listedCherryProviderPresets : []).filter(preset => {
     if (configuredIds.has(presetAccountId(preset.id))) return false
     const searchable = [preset.id, preset.name, preset.sourceName].join(' ').toLowerCase()
     return keywords.every(word => searchable.includes(word))
@@ -118,7 +120,7 @@ export function ModelServices({ api, snapshot, setSnapshot, onChanged, registerG
       if (stopRequired) await api.stopModelTasks(snapshot.models.filter(model => model.providerId === removal.id).map(model => model.id))
       await api.removeProvider(removal.id)
       setSnapshot(current => current && { ...current, providers: current.providers.filter(item => item.id !== removal.id), models: current.models.filter(model => model.providerId !== removal.id) })
-      if (selectedId === removal.id) setSelectedId(presetAccounts.has(removal.id) ? removal.id : snapshot.providers.find(item => item.id !== removal.id)?.id ?? presetAccountId(cherryProviderPresets[0].id))
+      if (selectedId === removal.id) setSelectedId(listedPresetAccounts.has(removal.id) ? removal.id : snapshot.providers.find(item => item.id !== removal.id)?.id ?? firstListedAccount)
       setRemoval(null); onChanged()
     } catch (cause) { setError(errorText(cause)); setStopRequired(isModelBusy(cause)) } finally { setBusy(false) }
   }

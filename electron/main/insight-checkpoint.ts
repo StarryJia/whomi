@@ -98,8 +98,12 @@ export function createInsightCheckpoint(
   }
 }
 
-export function insightBudgetError(): BoundaryError {
-  return new BoundaryError('INSIGHT_BUDGET_EXHAUSTED', '已达到洞察预算。请缩短日期范围后重新生成。')
+export type InsightBudgetLimit = { name: keyof InsightRunLimits; limit: number }
+
+export class InsightBudgetError extends BoundaryError {
+  constructor(readonly budget: InsightBudgetLimit) {
+    super('INSIGHT_BUDGET_EXHAUSTED', '已达到洞察预算。请缩短日期范围后重新生成。')
+  }
 }
 
 export function remainingInsightBudget(state: InsightCheckpoint) {

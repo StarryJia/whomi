@@ -7,7 +7,7 @@ import { dimensionKeys } from '../../src/shared/memory'
 import { buildInsightPrompt, INSIGHT_PROMPT_VERSION, type InsightPrompts } from '../data/ai/insight-prompts'
 import type { RuntimeInput, RuntimeResult, RuntimeRunner } from './ai-service'
 import {
-  createInsightCheckpoint, insightBudgetError, remainingInsightBudget, startingInsightCursor,
+  createInsightCheckpoint, InsightBudgetError, remainingInsightBudget, startingInsightCursor,
   type InsightAttempt, type InsightCandidate, type InsightCheck, type InsightCheckpoint, type InsightEvidenceNote,
   type InsightFinding, type InsightMemoryFact, type InsightNavigation, type InsightNavigationRequest, type InsightNote, type InsightRunLimits, type InsightStage,
 } from './insight-checkpoint'
@@ -455,6 +455,7 @@ export async function generateInsight(input: InsightGenerationInput, deps: Insig
   const covered = new Set(state.coveredMessageIds)
   const capacity = resolveInsightCapacity(model)
   const ordinaryOutput = Math.min(capacity.maxOutputTokens, Math.max(1, Math.floor(state.limits.maxOutputTokens / 4)))
+  const budgetError = (name: keyof InsightRunLimits) => new InsightBudgetError({ name, limit: state.limits[name] })
   const prompts = {
     reading: buildInsightPrompt(state.prompts, 'reading'),
     checking: buildInsightPrompt(state.prompts, 'checking'),
@@ -478,7 +479,7 @@ export async function generateInsight(input: InsightGenerationInput, deps: Insig
     if (deps.signal.aborted || state.elapsedMs >= state.limits.maxElapsedMs) {
       await save()
       deps.signal.throwIfAborted()
-      throw insightBudgetError()
+      throw budgetError('maxElapsedMs')
     }
   }
 
@@ -533,11 +534,12 @@ export async function generateInsight(input: InsightGenerationInput, deps: Insig
     await checkActive()
     const remaining = remainingInsightBudget(state)
     const writing = stage === 'writing'
-    if (remaining.calls <= (writing ? 0 : 1)) throw insightBudgetError()
+    if (remaining.calls <= (writing ? 0 : 1)) throw budgetError('maxCalls')
     const reservedOutput = writing ? Math.min(capacity.maxOutputTokens, remaining.outputTokens)
       : Math.min(ordinaryOutput, remaining.outputTokens - ordinaryOutput)
     const remainingInput = writing ? remaining.inputTokens : remaining.inputTokens - await minimumWritingInput()
-    if (reservedOutput < 1 || remainingInput < 1) throw insightBudgetError()
+    if (reservedOutput < 1) throw budgetError('maxOutputTokens')
+    if (remainingInput < 1) throw budgetError('maxInputTokens')
     const contextInput = computeInsightInputBudget({
       contextWindow: capacity.contextWindow, maxInputTokens: capacity.maxInputTokens, reservedOutput, occupiedInput: 0, margin: capacity.margin,
     })
@@ -550,7 +552,7 @@ export async function generateInsight(input: InsightGenerationInput, deps: Insig
     const request = runtimeInput(stage, payload, available.reservedOutput)
     const inputCount = await count(request)
     if (inputCount.tokens > available.contextInput) throw insightCapacityError()
-    if (inputCount.tokens > available.availableTokens) throw insightBudgetError()
+    if (inputCount.tokens > available.availableTokens) throw budgetError('maxInputTokens')
     await checkActive()
     if (check) check.rounds++
     const attempt: InsightAttempt = {
@@ -569,20 +571,21 @@ export async function generateInsight(input: InsightGenerationInput, deps: Insig
       result = await deps.run(request, { signal, onText: stage === 'writing' ? deps.onText : () => {} })
       attempt.usage = result.usage
       deps.signal.throwIfAborted()
-      if (timeout.aborted) throw insightBudgetError()
+      if (timeout.aborted) throw budgetError('maxElapsedMs')
     } catch (error) {
       attempt.status = 'failed'
       attempt.usage ??= (error as { usage?: AiUsage })?.usage
       await save()
       deps.signal.throwIfAborted()
-      if (timeout.aborted) throw insightBudgetError()
+      if (timeout.aborted) throw budgetError('maxElapsedMs')
       throw error
     }
     attempt.status = 'returned'
     await save()
     await checkActive()
     const remaining = remainingInsightBudget(state)
-    if (remaining.inputTokens < 0 || remaining.outputTokens < 0) throw insightBudgetError()
+    if (remaining.inputTokens < 0) throw budgetError('maxInputTokens')
+    if (remaining.outputTokens < 0) throw budgetError('maxOutputTokens')
     return result
   }
 
@@ -832,7 +835,7 @@ export async function generateInsight(input: InsightGenerationInput, deps: Insig
   for (const check of state.checks) {
     let evidence: InsightSourceMessage[] = []
     while (check.state === 'pending') {
-      if (check.rounds >= state.limits.maxRoundsPerCheck) throw insightBudgetError()
+      if (check.rounds >= state.limits.maxRoundsPerCheck) throw budgetError('maxRoundsPerCheck')
       const budget = await requestCapacity('checking')
       const noted = new Set(check.evidenceNotes.map(note => note.sourceId))
       const earlierEvidence = check.seenEvidenceIds.filter(id => !noted.has(id)).map(id => byId.get(id)!)

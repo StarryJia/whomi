@@ -6,9 +6,6 @@ export type PromptValues = Record<PromptId, string>
 export const maxPromptLength = 20000
 export const promptCatalog: readonly { id: PromptId; name: string; purpose: string; feature: string }[] = [
   { id: 'dialogue', name: 'AI 对话', purpose: '引导回答的语气、交流方式和理解经历的角度。', feature: 'AI 对话' },
-  { id: 'memorySource', name: '记忆取材', purpose: '从聊天中提取共同经历，保留本人的具体行为和原文依据。', feature: '整理成记忆' },
-  { id: 'memoryMerge', name: '记忆归并', purpose: '材料较长时合并重复经历，压缩内容并保留事件经过。', feature: '整理成记忆' },
-  { id: 'memoryFinal', name: '记忆成稿', purpose: '撰写共同经历、相处印象与有依据的人格倾向解释。', feature: '整理成记忆' },
   { id: 'insightReading', name: '洞察阅读', purpose: '保留具体行为、日期、来源和未结束事项。', feature: '对话洞察' },
   { id: 'insightChecking', name: '洞察核查', purpose: '核对支持、反例、替代解释和适用边界。', feature: '对话洞察' },
   { id: 'insightWriting', name: '洞察成稿', purpose: '将有原文依据的分析写入关于你和你们的相处。', feature: '对话洞察' },
