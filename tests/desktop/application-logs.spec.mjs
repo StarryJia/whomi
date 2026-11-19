@@ -1,7 +1,8 @@
 import { _electron as electron, expect, test } from '@playwright/test'
 import { execFile } from 'node:child_process'
 import { createServer } from 'node:http'
-import { copyFile, mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from 'node:fs/promises'
+import { createRequire } from 'node:module'
+import { copyFile, mkdir, mkdtemp, readFile, readdir, realpath, rm, rmdir, unlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, dirname, join, parse, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -137,20 +138,27 @@ test('Windows Explorer opens the app log folder, job files and legacy and fallba
     await confirmExplorer(join(profile, 'import-errors'), '03-legacy-import')
     await access('Block')
     restoreAccess = true
+    await expect(writeFile(join(logs, 'blocked-probe.tmp'), '')).rejects.toMatchObject({ code: expect.stringMatching(/^(EACCES|EPERM)$/) })
+    await page.evaluate(() => window.whomi.importDiagnostics.report({ phase: 'parse', code: 'INVALID_RECORD' }))
     await expect(page.evaluate(id => window.whomi.settings.testModel(id), modelId)).rejects.toThrow()
     await button('打开错误日志目录').click()
     await expect(page.getByRole('status').filter({ hasText: '备用目录' })).toContainText(join(profile, 'logs'))
     await confirmExplorer(join(profile, 'logs'), '04-fallback-explorer')
     expect(await readdir(join(profile, 'logs'))).toEqual(expect.arrayContaining([expect.stringContaining('-model-')]))
+    expect(await readdir(join(profile, 'logs', 'import-errors'))).toEqual([expect.stringMatching(/-none\.txt$/)])
     await page.screenshot({ path: info.outputPath('05-about-fallback.png') })
+    await button('打开数据目录中的日志').click()
+    await confirmExplorer(logs, '06-readable-d-archive')
   } catch (error) {
     await page?.screenshot({ path: info.outputPath('failure.png') }).catch(() => {})
     throw error
   } finally {
-    if (restoreAccess) await access('Restore')
-    await app?.close()
-    server.closeAllConnections()
-    await new Promise(resolve => server.close(resolve))
+    try { if (restoreAccess) await access('Restore') }
+    finally {
+      await app?.close()
+      server.closeAllConnections()
+      await new Promise(resolve => server.close(resolve))
+    }
     async function clean(path) {
       try { await rm(path, { recursive: true, force: true }) }
       catch (error) {
@@ -161,6 +169,37 @@ test('Windows Explorer opens the app log folder, job files and legacy and fallba
     if (dirname(data) === dataRoot && basename(data).startsWith('feedback-')) await clean(data)
     if (dirname(profile) === await realpath(tmpdir()) && basename(profile).startsWith('whomi-runtime-error-logs-')) {
       await clean(profile)
+    }
+  }
+})
+
+test('startup reports where to find logs when the selected data disk is unavailable', async ({}, info) => {
+  const electronExecutable = createRequire(import.meta.url)('electron')
+  const profile = await realpath(await mkdtemp(join(tmpdir(), 'whomi-runtime-startup-logs-')))
+  const logs = join(profile, 'logs')
+  try {
+    await writeFile(join(profile, 'storage-location.json'), JSON.stringify({ version: 1, path: join(profile, 'offline-drive'), hasDatabase: true }))
+    const launch = () => invoke(electronExecutable, [resolve('out/main/index.cjs'), '--whomi-runtime-test'], {
+      env: { ...process.env, WHOMI_RUNTIME_TEST: profile }, windowsHide: true, timeout: 12_000,
+    })
+    const capture = async label => {
+      const result = await launch().then(value => ({ ...value, code: 0 }), error => error)
+      await writeFile(info.outputPath(label + '-stdout.log'), result.stdout ?? '')
+      await writeFile(info.outputPath(label + '-stderr.log'), result.stderr ?? '')
+      expect(result.code).toBe(1)
+      return result.stderr
+    }
+    expect(await capture('profile-fallback')).toContain('Whomi test startup failed: STORAGE_UNAVAILABLE ' + logs)
+    const entries = await readdir(logs)
+    const entry = entries.find(name => name.includes('-startup-'))
+    expect(JSON.parse(await readFile(join(logs, entry), 'utf8'))).toMatchObject({ area: 'startup', phase: 'initialize', code: 'STORAGE_UNAVAILABLE' })
+    await unlink(join(logs, entry))
+    await rmdir(logs)
+    await writeFile(logs, 'fixture blocks log directory creation')
+    expect(await capture('log-directory-unavailable')).toContain('Whomi test startup failed: STORAGE_UNAVAILABLE ERROR_LOG_UNWRITABLE')
+  } finally {
+    if (dirname(profile) === await realpath(tmpdir()) && basename(profile).startsWith('whomi-runtime-startup-logs-')) {
+      await rm(profile, { recursive: true, force: true })
     }
   }
 })

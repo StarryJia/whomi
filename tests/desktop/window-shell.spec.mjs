@@ -77,6 +77,11 @@ test('desktop shell preserves bounds and the right conversation strip moves the 
     if (process.platform === 'win32') {
       await expect(panel).toBeVisible()
       await expect.poll(async () => (await panelBounds()).width).toBeGreaterThan(300)
+      const nativeClick = async locator => {
+        await expect(locator).toBeEnabled()
+        const { x, y, width, height } = await locator.boundingBox()
+        await windowsMouse(application, x + width / 2, y + height / 2)
+      }
       const snapshots = []
       const dragStrip = async (label, ratio, dx) => {
         const before = await windowBounds()
@@ -94,9 +99,9 @@ test('desktop shell preserves bounds and the right conversation strip moves the 
       await dragStrip('left', 0, 34)
       await dragStrip('center', 0.5, -34)
       await dragStrip('right', 1, 34)
-      await panel.getByRole('button', { name: '显示对话列表' }).click()
+      await nativeClick(panel.getByRole('button', { name: '显示对话列表' }))
       await expect(page.getByRole('navigation', { name: 'AI 对话列表' })).toBeVisible()
-      await panel.getByRole('button', { name: '新建 AI 对话' }).click()
+      await nativeClick(panel.getByRole('button', { name: '新建 AI 对话' }))
       await expect.poll(async () => (await page.evaluate(() => window.whomi.ai.listThreads('1'))).length).toBe(1)
       const divider = page.getByRole('separator', { name: '调整原文与对话宽度' })
       const { x, y, width, height } = await divider.boundingBox()
@@ -105,7 +110,7 @@ test('desktop shell preserves bounds and the right conversation strip moves the 
       await windowsMouse(application, x + width / 2, y + height / 2, x + width / 2 + 52, y + height / 2)
       await expect.poll(async () => (await panelBounds()).width).toBeLessThan(panelBeforeDivider.width)
       expect(await windowBounds()).toEqual(windowBeforeDivider)
-      await panel.getByRole('button', { name: '关闭 AI 对话' }).click()
+      await nativeClick(panel.getByRole('button', { name: '关闭 AI 对话' }))
       await page.getByRole('button', { name: 'AI 对话', exact: true }).click()
       await expect(panel).toBeVisible()
       await dragStrip('reopened', 0.5, -34)
@@ -136,6 +141,8 @@ test('desktop shell preserves bounds and the right conversation strip moves the 
     await page.screenshot({ path: join(evidence, 'analysis-confirmation.png') })
     if (process.platform === 'win32') {
       await page.getByRole('button', { name: '取消', exact: true }).click()
+      await page.getByRole('button', { name: 'AI 对话', exact: true }).click()
+      await expect(panel).toBeVisible()
       const beforeClose = await windowBounds()
       const closed = page.waitForEvent('close')
       await windowsMouse(application, beforeClose.width - 22, 18)

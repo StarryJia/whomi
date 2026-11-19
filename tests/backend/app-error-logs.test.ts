@@ -1,5 +1,5 @@
 import { afterEach, expect, test, vi } from 'vitest'
-import { mkdir, mkdtemp, readFile, readdir, rm, rmdir, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, readdir, rm, rmdir, unlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, dirname, join, resolve } from 'node:path'
 import { createAppErrorLogs } from '../../electron/main/app-error-logs'
@@ -85,4 +85,48 @@ test('uses the user profile without a separate data drive and reports a location
   await expect(app.open('current')).rejects.toMatchObject({ code: 'ERROR_LOG_UNWRITABLE', action: expect.stringContaining('目录权限') })
   expect(openPath).toHaveBeenCalledTimes(1)
   await expect(app.open('D:/arbitrary' as 'current')).rejects.toMatchObject({ code: 'INVALID_ARGUMENT' })
+})
+
+test('replaying an unresolved import after upgrade preserves the original file with its time and counts', async () => {
+  const { data, profile, openPath, appLogs } = await fixture()
+  const job = { phase: 'parse', code: 'INVALID_RECORD', jobId: '4' }
+  const counts = { seen: 9, validRecords: 8, invalidRecords: 1 }
+  const created = Date.now() - 1000
+  const legacy = createImportDiagnostics(profile, '0.1.10', openPath)
+  await legacy.report(job, counts, created)
+  await legacy.open('4')
+  const original = openPath.mock.lastCall![0]
+  const first = await readFile(original, 'utf8')
+  const app = appLogs()
+  await app.setStorageDirectory(data)
+  const current = createImportDiagnostics(profile, '0.1.11', openPath, undefined, app)
+  await current.report(job, counts, created)
+  expect(await readdir(join(data, 'logs', 'import-errors'))).toEqual([])
+  await current.open('4')
+  expect(openPath.mock.lastCall![0]).toBe(original)
+  expect(await readFile(original, 'utf8')).toBe(first)
+  expect(JSON.parse(first)).toMatchObject({ version: '0.1.10', counts, recordedAt: expect.any(String) })
+})
+
+test('opens the enriched copy when the original and the copy share a filename across fallback locations', async () => {
+  const { data, profile, openPath, appLogs } = await fixture()
+  const job = { phase: 'parse', code: 'IMPORT_FAILED', jobId: '4' }
+  const counts = { seen: 9, validRecords: 8, invalidRecords: 1 }
+  const date = Date.now() - 1000
+  const logs = join(data, 'logs')
+  await writeFile(logs, 'fixture blocks the directory')
+  const first = appLogs()
+  await first.setStorageDirectory(data)
+  await createImportDiagnostics(profile, '0.1.10', openPath, undefined, first).report(job, undefined, date)
+  const [original] = await readdir(join(profile, 'logs', 'import-errors'))
+  await unlink(logs)
+  const second = appLogs()
+  await second.setStorageDirectory(data)
+  const current = createImportDiagnostics(profile, '0.1.11', openPath, undefined, second)
+  await current.report({ ...job, code: 'INVALID_RECORD' }, counts, date)
+  await second.withWritableRoot(async path => { if (path === logs) throw new Error('fixture write failure') })
+  await current.open('4')
+  const file = join(logs, 'import-errors', original)
+  expect(openPath.mock.lastCall![0]).toBe(file)
+  expect(JSON.parse(await readFile(file, 'utf8'))).toMatchObject({ counts, code: 'INVALID_RECORD', version: '0.1.10' })
 })

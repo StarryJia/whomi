@@ -4,7 +4,7 @@ import { join, resolve } from 'node:path'
 import { importFailurePhases, type ImportCounts, type ImportSnapshot } from '../../src/shared/import-contract'
 import { currentImportIssue, type ImportDiagnostic } from '../../src/shared/import-diagnostics'
 import { BoundaryError, localId } from '../../src/shared/desktop-validation'
-import { localLogDirectory, writeLocalLog, type createAppErrorLogs } from './app-error-logs'
+import { localLogDirectory, logPathKey, writeLocalLog, type createAppErrorLogs } from './app-error-logs'
 
 const parserCodes = new Set([
   'CANCELLED', 'DECLARED_COUNT_MISMATCH', 'FILE_LIMIT', 'INCOMPLETE_PARSE', 'INVALID_DECLARED_COUNT',
@@ -29,7 +29,7 @@ const importCodes = new Set([
 ])
 const filenamePattern = /^(\d{13})-[a-f\d-]{36}-(?:(\d{1,16})-)?(none|[1-9]\d{0,18})\.txt$/
 type LogRecord = { recordedAt: string; version: string; phase: ImportDiagnostic['phase']; code: string; counts?: ImportCounts }
-type LogFile = { name: string; recordedAt: number; jobId: string; jobCreatedAt?: number }
+type LogFile = { root: string; name: string; recordedAt: number; jobId: string; jobCreatedAt?: number }
 type LogIndex = { files: LogFile[]; byJob: Map<string, LogFile[]> }
 
 function readDiagnostic(value: unknown): ImportDiagnostic {
@@ -64,21 +64,24 @@ function isDifferentLegacyJob(file: LogFile, stored?: ImportCounts, counts?: Imp
     (stored.seen !== counts.seen || stored.validRecords !== counts.validRecords || stored.invalidRecords !== counts.invalidRecords)
 }
 
-function addFile(index: LogIndex, name: string) {
+function indexFile(index: LogIndex, file: LogFile) {
+  index.files.push(file)
+  const job = index.byJob.get(file.jobId)
+  if (job) job.push(file)
+  else index.byJob.set(file.jobId, [file])
+}
+
+function addFile(index: LogIndex, root: string, name: string) {
   const match = filenamePattern.exec(name)
   if (!match) return
   const [, recordedAt, createdAt, jobId] = match
-  const file: LogFile = { name, jobId, recordedAt: Number(recordedAt), jobCreatedAt: createdAt === undefined ? undefined : Number(createdAt) }
-  index.files.push(file)
-  const job = index.byJob.get(jobId)
-  if (job) job.push(file)
-  else index.byJob.set(jobId, [file])
+  indexFile(index, { root, name, jobId, recordedAt: Number(recordedAt), jobCreatedAt: createdAt === undefined ? undefined : Number(createdAt) })
 }
 
 async function indexLogs(root: string): Promise<LogIndex> {
   const index: LogIndex = { files: [], byJob: new Map() }
   const names = (await readdir(root, { withFileTypes: true })).filter(entry => entry.isFile()).map(entry => entry.name).sort()
-  for (const name of names) addFile(index, name)
+  for (const name of names) addFile(index, root, name)
   return index
 }
 
@@ -92,8 +95,7 @@ async function checkedFile(root: string, filename: string) {
   const path = join(root, filename)
   const info = await lstat(path)
   const canonical = await realpath(path)
-  const samePath = process.platform === 'win32' ? canonical.toLowerCase() === path.toLowerCase() : canonical === path
-  if (!info.isFile() || info.nlink !== 1 || !samePath) throw new Error('Invalid diagnostics file')
+  if (!info.isFile() || info.nlink !== 1 || logPathKey(canonical) !== logPathKey(path)) throw new Error('Invalid diagnostics file')
   return { path, size: info.size }
 }
 
@@ -108,29 +110,35 @@ async function readRecord(root: string, filename: string): Promise<LogRecord | u
   } catch { return }
 }
 
-async function originalRecord(root: string, index: LogIndex, jobId: string, jobCreatedAt: number | undefined, phase: ImportDiagnostic['phase'], code: string, counts?: ImportCounts) {
+async function originalRecord(index: LogIndex, jobId: string, jobCreatedAt: number | undefined, phase: ImportDiagnostic['phase'], code: string, counts?: ImportCounts) {
+  let original: { file: LogFile; record: LogRecord } | undefined
+  const quality = (record: LogRecord) => Number(record.code !== 'IMPORT_FAILED') * 2 + Number(!!record.counts)
   for (const file of index.byJob.get(jobId) ?? []) {
+    if (original && file.name !== original.file.name) break
     if (!belongsToJob(file, jobCreatedAt)) continue
-    const record = await readRecord(root, file.name)
+    const record = await readRecord(file.root, file.name)
     if (!record || record.phase !== phase || isDifferentLegacyJob(file, record.counts, counts)) continue
     // 旧版用通用代码保存过这些导入错误。
     const legacy = (record.code === 'IMPORT_FAILED' && legacyGenericCodes.has(code))
       || (code === 'IMPORT_FAILED' && legacyGenericCodes.has(record.code))
-    if (record.code === code || legacy) return { filename: file.name, record }
+    if ((record.code === code || legacy) && (!original || quality(record) > quality(original.record))) original = { file, record }
   }
+  return original
 }
 
-async function latestLog(root: string, index: LogIndex, jobId?: unknown, job?: ImportSnapshot) {
+async function latestLog(index: LogIndex, jobId?: unknown, job?: ImportSnapshot) {
   const jobCreatedAt = job?.jobCreatedAt
   const files = jobId === undefined ? index.files : index.byJob.get(String(jobId ?? 'none')) ?? []
   for (let i = files.length - 1; i >= 0; i--) {
     const file = files[i]
     if (jobCreatedAt !== undefined && !belongsToJob(file, jobCreatedAt)) continue
-    if (file.jobId === 'none') return file.name
-    const record = await readRecord(root, file.name)
+    const entry = await checkedFile(file.root, file.name).catch(() => undefined)
+    if (!entry) continue
+    if (file.jobId === 'none') return entry
+    const record = await readRecord(file.root, file.name)
     if (record && isDifferentLegacyJob(file, record.counts, job?.counts)) continue
-    const original = record && await originalRecord(root, index, file.jobId, file.jobCreatedAt ?? jobCreatedAt, record.phase, record.code, record.counts)
-    if (!original || original.filename === file.name) return file.name
+    const original = record && await originalRecord(index, file.jobId, file.jobCreatedAt ?? jobCreatedAt, record.phase, record.code, record.counts)
+    if (!original || original.file === file) return entry
   }
 }
 
@@ -145,6 +153,26 @@ export function createImportDiagnostics(userData: string, version: string, openP
     const next = queue.then(operation)
     queue = next.catch(() => {})
     return next
+  }
+
+  const readDirectories = () => logs?.importDirectories() ?? [directory]
+  async function combinedIndex(locations: string[], jobId: string | undefined, fresh: boolean) {
+    const files: LogFile[] = []
+    const seen = new Set<string>()
+    for (const location of locations) {
+      const key = logPathKey(location)
+      if (seen.has(key)) continue
+      seen.add(key)
+      try {
+        const root = await localLogDirectory(location)
+        const index = (!fresh && indexes.get(root)) || await indexLogs(root)
+        indexes.set(root, index)
+        for (const file of jobId === undefined ? index.files : index.byJob.get(jobId) ?? []) files.push(file)
+      } catch { /* 目录不可读时继续查找其他位置。 */ }
+    }
+    const index: LogIndex = { files: [], byJob: new Map() }
+    for (const file of files.sort((a, b) => a.name.localeCompare(b.name))) indexFile(index, file)
+    return index
   }
 
   return {
@@ -165,18 +193,21 @@ export function createImportDiagnostics(userData: string, version: string, openP
         const write = async (root: string) => {
           const index = indexes.get(root) ?? await indexLogs(root)
           indexes.set(root, index)
-          const original = jobId ? await originalRecord(root, index, jobId, jobCreatedAt, phase, code, counts) : undefined
+          // 升级回放或更换保存目录后，同一失败仍沿用最早的记录。
+          const original = jobId ? await originalRecord(await combinedIndex([root, ...readDirectories()], jobId, false),
+            jobId, jobCreatedAt, phase, code, counts) : undefined
           const existing = original?.record
           const recordedCounts = existing?.counts ?? safeCounts(counts)
           const recordedCode = existing && existing.code !== 'IMPORT_FAILED' ? existing.code : code
           if (existing && existing.code === recordedCode && (existing.counts || !recordedCounts)) return
           const timestamp = Math.max(Date.now(), (index.files.at(-1)?.recordedAt ?? 0) + 1)
           const scope = jobId && jobCreatedAt !== undefined ? `${jobCreatedAt}-` : ''
-          const filename = original?.filename ?? `${timestamp}-${randomUUID()}-${scope}${jobId ?? 'none'}.txt`
+          const filename = original?.file.name ?? `${timestamp}-${randomUUID()}-${scope}${jobId ?? 'none'}.txt`
           const record: LogRecord = { recordedAt: existing?.recordedAt ?? new Date(timestamp).toISOString(),
             version: existing?.version ?? version, phase, code: recordedCode, counts: recordedCounts }
           await writeLocalLog(root, filename, record)
-          if (!original) addFile(index, filename)
+          if (!original) addFile(index, root, filename)
+          else if (original.file.root !== root) indexes.delete(root)
         }
         try {
           if (logs) await logs.withWritableRoot(async root => write(await localLogDirectory(join(root, 'import-errors'), true)))
@@ -190,25 +221,16 @@ export function createImportDiagnostics(userData: string, version: string, openP
       if (jobId !== undefined && jobId !== null && !localId(jobId)) throw new BoundaryError('INVALID_ARGUMENT')
       return schedule(async () => {
         const job = typeof jobId === 'string' && getImport ? await getImport(jobId).catch(() => undefined) : undefined
-        let match: { path: string; timestamp: number } | undefined
-        for (const location of logs?.importDirectories() ?? [directory]) {
-          try {
-            const root = await localLogDirectory(location)
-            const index = await indexLogs(root)
-            indexes.set(root, index)
-            const filename = await latestLog(root, index, jobId, job)
-            if (!filename) continue
-            const timestamp = Number(filename.slice(0, 13))
-            if (!match || timestamp > match.timestamp) match = { path: (await checkedFile(root, filename)).path, timestamp }
-          } catch { /* 当前目录不可用时，仍可找到备用或旧版日志。 */ }
-        }
-        if (!match) throw new BoundaryError('IMPORT_LOG_MISSING', '找不到错误日志。')
+        const index = await combinedIndex(readDirectories(), jobId === undefined ? undefined : String(jobId ?? 'none'), true)
+        const file = await latestLog(index, jobId, job)
+        if (!file) throw new BoundaryError('IMPORT_LOG_MISSING', '找不到错误日志。')
         try {
-          if (await openPath(match.path)) throw new Error('Native open failed')
+          if (await openPath(file.path)) throw new Error('Native open failed')
         } catch {
           throw new BoundaryError('IMPORT_LOG_OPEN_FAILED', '无法打开错误日志。请检查默认文本查看应用后重试。')
         }
       })
     },
+    flush: () => queue,
   }
 }

@@ -119,7 +119,7 @@ test('task row opens its progress from mouse and keyboard while actions stay on 
   test.setTimeout(90_000)
   const h = await harness(), { app, page, btn, shot } = h
   const task = page.locator('.insight-task-row')
-  const progress = page.getByRole('dialog', { name: '会话洞察状态' })
+  const progress = page.getByRole('region', { name: '会话洞察状态' })
   const resize = width => app.evaluate(({ BrowserWindow }, width) => {
     const window = BrowserWindow.getAllWindows()[0]
     window.setMinimumSize(320, 320)

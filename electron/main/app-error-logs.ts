@@ -25,16 +25,16 @@ const knownCodes = new Set([
   'STORAGE_OPEN_FAILED', 'STORAGE_UNAVAILABLE', 'STORAGE_UNWRITABLE',
 ])
 
-function pathKey(path: string) { return process.platform === 'win32' ? path.toLowerCase() : path }
+export function logPathKey(path: string) { return process.platform === 'win32' ? path.toLowerCase() : path }
 
 export async function localLogDirectory(directory: string, create = false) {
   const parent = dirname(directory)
-  if (pathKey(await realpath(parent)) !== pathKey(parent)) throw new Error('Invalid log directory')
+  if (logPathKey(await realpath(parent)) !== logPathKey(parent)) throw new Error('Invalid log directory')
   if (create) {
     try { await mkdir(directory, { mode: 0o700 }) }
     catch (error) { if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error }
   }
-  if (!(await lstat(directory)).isDirectory() || pathKey(await realpath(directory)) !== pathKey(directory)) {
+  if (!(await lstat(directory)).isDirectory() || logPathKey(await realpath(directory)) !== logPathKey(directory)) {
     throw new Error('Invalid log directory')
   }
   return directory
@@ -65,13 +65,20 @@ export function createAppErrorLogs(userDataPath: string, version: string, openPa
     return next
   }
 
-  const directories = () => [...new Set([activeDirectory ?? preferred, preferred, fallbackDirectory])]
+  const directories = () => {
+    const candidates = [activeDirectory ?? preferred, preferred, fallbackDirectory]
+    return candidates.filter((path, index) => candidates.findIndex(other => logPathKey(other) === logPathKey(path)) === index)
+  }
 
   function withWritableRoot<T>(action: (directory: string) => Promise<T>) {
     return schedule(async () => {
       for (const path of directories()) {
         try {
           const root = await localLogDirectory(path, true)
+          // 导入日志和应用日志共用根目录，子目录的权限可能与根目录不同。
+          const probe = join(root, `.${randomUUID()}.tmp`)
+          await writeFile(probe, '', { flag: 'wx', mode: 0o600 })
+          await unlink(probe)
           const value = await action(root)
           activeDirectory = root
           return value
@@ -81,13 +88,25 @@ export function createAppErrorLogs(userDataPath: string, version: string, openPa
     })
   }
 
-  function archivePath(archive: ErrorLogArchive) { return archive === 'legacy-import' ? legacyImport : fallbackDirectory }
+  function archivePath(archive: ErrorLogArchive) {
+    if (archive === 'legacy-import') return legacyImport
+    return archive === 'data' ? preferred : fallbackDirectory
+  }
+  function selectStorageDirectory(directory: string) {
+    preferred = join(resolve(directory), 'logs')
+    activeDirectory = undefined
+  }
 
   return {
     async setStorageDirectory(directory: string) {
-      await schedule(async () => {
-        preferred = join(resolve(directory), 'logs')
-        activeDirectory = undefined
+      await schedule(async () => selectStorageDirectory(directory))
+    },
+    withStorageRelocation<T extends { path: string }>(relocate: () => Promise<T>) {
+      // 迁移校验期间，错误记录排队，切换成功后再写入新目录。
+      return schedule(async () => {
+        const result = await relocate()
+        selectStorageDirectory(result.path)
+        return result
       })
     },
     withWritableRoot,
@@ -98,15 +117,18 @@ export function createAppErrorLogs(userDataPath: string, version: string, openPa
       const now = new Date()
       const filename = [now.getTime(), area, id, randomUUID()].filter(Boolean).join('-') + '.json'
       const record = { recordedAt: now.toISOString(), version, area, phase, code, taskId: id, analyzedMessages, budget }
-      await withWritableRoot(root => writeLocalLog(root, filename, record))
-        .catch(() => { /* 日志目录故障不能取代原操作的结果。 */ })
+      return withWritableRoot(async root => {
+        await writeLocalLog(root, filename, record)
+        return root
+      }).catch(() => undefined)
     },
     async getArchives(): Promise<ErrorLogArchive[]> {
       await pending
       const available: ErrorLogArchive[] = []
-      for (const archive of ['legacy-import', 'fallback'] as const) {
+      for (const archive of ['legacy-import', 'fallback', 'data'] as const) {
+        if (archive === 'data' && logPathKey(preferred) === logPathKey(fallbackDirectory)) continue
         const directory = archivePath(archive)
-        if (directory === (activeDirectory ?? preferred)) continue
+        if (logPathKey(directory) === logPathKey(activeDirectory ?? preferred)) continue
         try {
           if ((await readdir(await localLogDirectory(directory))).length) available.push(archive)
         } catch { /* 尚无归档目录。 */ }
@@ -114,15 +136,9 @@ export function createAppErrorLogs(userDataPath: string, version: string, openPa
       return available
     },
     async open(target: ErrorLogTarget): Promise<ErrorLogLocation> {
-      if (target !== 'current' && target !== 'legacy-import' && target !== 'fallback') throw new BoundaryError('INVALID_ARGUMENT')
+      if (target !== 'current' && target !== 'legacy-import' && target !== 'fallback' && target !== 'data') throw new BoundaryError('INVALID_ARGUMENT')
       const location = target === 'current'
-        ? await withWritableRoot(async path => {
-          // 打开时也核实写入位置，确保空目录和备用目录的行为一致。
-          const probe = join(path, `.${randomUUID()}.tmp`)
-          await writeFile(probe, '', { flag: 'wx', mode: 0o600 })
-          await unlink(probe)
-          return { path, fallback: path !== preferred }
-        })
+        ? await withWritableRoot(async path => ({ path, fallback: logPathKey(path) !== logPathKey(preferred) }))
         : { path: archivePath(target), fallback: false }
       try {
         await localLogDirectory(location.path)

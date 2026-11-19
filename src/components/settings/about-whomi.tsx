@@ -24,7 +24,7 @@ export function AboutWhomi({ api, debug, onDebug, onBusy }: { api: SettingsApi; 
     let active = true
     void api.getErrorLogArchives().then(value => { if (active) setArchives(value) }, () => {})
     return () => { active = false }
-  }, [api])
+  }, [api, fallbackLocation])
   useEffect(() => {
     if (!debug) return
     let active = true
@@ -61,6 +61,7 @@ export function AboutWhomi({ api, debug, onDebug, onBusy }: { api: SettingsApi; 
       {fallbackLocation && <p className="aw-muted aw-log-location" role="status">日志存放在备用目录 {fallbackLocation}</p>}
       {archives.includes('legacy-import') && <button type="button" className="aw-information-row" disabled={logOpening} onClick={() => void openLog('legacy-import')}>打开旧版导入日志目录<FolderOpen size={16} aria-hidden="true" /></button>}
       {!fallbackLocation && archives.includes('fallback') && <button type="button" className="aw-information-row" disabled={logOpening} onClick={() => void openLog('fallback')}>打开用户目录中的日志<FolderOpen size={16} aria-hidden="true" /></button>}
+      {fallbackLocation && archives.includes('data') && <button type="button" className="aw-information-row" disabled={logOpening} onClick={() => void openLog('data')}>打开数据目录中的日志<FolderOpen size={16} aria-hidden="true" /></button>}
       {logError && <ExceptionNotice title={logError} noticeKey="error-log-open" className="ms-error" />}
     </section>
     <section className="aw-debug" aria-labelledby="settings-debug-title"><h2 id="settings-debug-title">调试面板</h2><div className="aw-debug-control"><span>调试模式</span><Switch label="调试模式" checked={debug} disabled={busy} onChange={() => void changeDebug(!debug)} /></div>

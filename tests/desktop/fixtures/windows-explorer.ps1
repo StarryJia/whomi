@@ -17,6 +17,8 @@ public static class WhomiExplorer {
     public static extern bool SetProcessDpiAwarenessContext(IntPtr context);
     [DllImport("user32.dll")]
     public static extern bool GetWindowRect(IntPtr window, out Rect bounds);
+    [DllImport("user32.dll")]
+    public static extern bool PrintWindow(IntPtr window, IntPtr destination, uint flags);
 }
 '@
 
@@ -26,12 +28,16 @@ for ($attempt = 0; $attempt -lt 40; $attempt++) {
   foreach ($window in $shell.Windows()) {
     try { $path = $window.Document.Folder.Self.Path } catch { continue }
     if ($path -ne $Directory) { continue }
+    $target = [IntPtr]([long]$window.HWND)
     $bounds = New-Object WhomiExplorer+Rect
-    if (![WhomiExplorer]::GetWindowRect([IntPtr]([long]$window.HWND), [ref]$bounds)) { throw 'Explorer bounds unavailable.' }
+    if (![WhomiExplorer]::GetWindowRect($target, [ref]$bounds)) { throw 'Explorer bounds unavailable.' }
     $bitmap = New-Object Drawing.Bitmap ($bounds.Right - $bounds.Left), ($bounds.Bottom - $bounds.Top)
     $graphics = [Drawing.Graphics]::FromImage($bitmap)
     try {
-      $graphics.CopyFromScreen($bounds.Left, $bounds.Top, 0, 0, $bitmap.Size)
+      $destination = $graphics.GetHdc()
+      try {
+        if (![WhomiExplorer]::PrintWindow($target, $destination, 2)) { continue }
+      } finally { $graphics.ReleaseHdc($destination) }
       $bitmap.Save($Screenshot, [Drawing.Imaging.ImageFormat]::Png)
     } finally { $graphics.Dispose(); $bitmap.Dispose() }
     Write-Output $path

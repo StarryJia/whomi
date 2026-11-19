@@ -78,11 +78,10 @@ else {
     const accountRunners = { 'openai-codex': createChatgptRunner((id, signal) => chatgpt.accessToken(id, signal)), 'grok-cli': grok.runner, copilot: copilot.runner }
     app.once('before-quit', () => { codexQuota.close(); for (const account of Object.values(accounts)) account.close() })
     async function startServices(directory: string) {
-      await appErrorLogs.setStorageDirectory(directory)
       dataHost = startDataHost(directory)
       if (probeEnabled) (globalThis as typeof globalThis & { __whomiRuntimeProbe?: DataHost }).__whomiRuntimeProbe = dataHost
       const failures = await requestData<StoredImportDiagnostic[]>('unresolvedImportDiagnostics', null)
-      for (const { diagnostic, counts, jobCreatedAt } of failures) await importDiagnostics.report(diagnostic, counts, jobCreatedAt).catch(() => {})
+      for (const { diagnostic, counts, jobCreatedAt } of failures) void importDiagnostics.report(diagnostic, counts, jobCreatedAt).catch(() => {})
       dataHost.onEvent(snapshot => publishImport(snapshot))
       agentHost = startAgentHost(directory)
       aiService = createAiService({ storage: (method, args) => requestData('aiStorage', [method, args]), runtime: { run: (input, options) => {
@@ -98,7 +97,10 @@ else {
         }, claimProcessing: (id, signature) => requestData('settingsStorage', ['claimProcessing', [id, signature]]) })
       servicesClosed = false
     }
-    await startServices(await resolveStorageLocation(userDataPath))
+    const storageDirectory = await resolveStorageLocation(userDataPath)
+    await appErrorLogs.setStorageDirectory(storageDirectory)
+    await startServices(storageDirectory)
+    await importDiagnostics.flush()
     const aiRouter = createAiRouter(new Proxy({} as AiMethods, { get: (_target, method: keyof AiMethods) => (...args: unknown[]) => (aiService![method] as (...values: unknown[]) => Promise<unknown>)(...args) }))
     publishAi = event => aiRouter.publish(event)
     const locations = createStorageLocationService({ userDataPath, blockedDirectories: app.isPackaged ? [dirname(process.execPath)] : [],
@@ -186,11 +188,7 @@ else {
         const selected = await dialog.showOpenDialog(window, { defaultPath: path, properties: ['openDirectory', 'createDirectory'] })
         return selected.canceled || !selected.filePaths[0] ? null : locations.issueChoice(windowId, selected.filePaths[0])
       },
-      async relocateStorage(token) {
-        const storage = await locations.relocateStorage(windowId, token)
-        await appErrorLogs.setStorageDirectory(storage.path)
-        return storage
-      },
+      relocateStorage: token => appErrorLogs.withStorageRelocation(() => locations.relocateStorage(windowId, token)),
       async restart() { if (!suspended || !(await locations.getStorage()).restartRequired) throw new BoundaryError('INVALID_STATE'); app.relaunch(); app.quit() },
       async getDiagnostics() { const current = await settingsService.get(); return { version: appVersion, platform: process.platform, entries: current.debug ? [...diagnostics] : [] } },
       getErrorLogArchives: appErrorLogs.getArchives,
@@ -271,12 +269,14 @@ else {
     else await window.loadFile(pagePath)
   }).catch(async error => {
     if (quitting) return
-    await appErrorLogs.record({ area: 'startup', phase: 'initialize', error: error instanceof BoundaryError ? error : new BoundaryError('STARTUP_FAILED') })
+    const logDirectory = await appErrorLogs.record({ area: 'startup', phase: 'initialize', error: error instanceof BoundaryError ? error : new BoundaryError('STARTUP_FAILED') })
     const detail = error instanceof BoundaryError && error.code.startsWith('STORAGE_')
       ? `${error.message}\n连接保存会话的磁盘或恢复原保存目录后，重新打开 Whomi。`
       : '无法打开本地数据。请检查保存目录是否可访问，然后重新打开 Whomi。'
-    if (probeEnabled) console.error('Whomi test startup failed:', serializableError(error).code)
-    else dialog.showErrorBox('Whomi 无法启动', detail)
+    if (probeEnabled) console.error('Whomi test startup failed:', serializableError(error).code, logDirectory ?? 'ERROR_LOG_UNWRITABLE')
+    else dialog.showErrorBox('Whomi 无法启动', detail + (logDirectory
+      ? `\n打开 ${logDirectory} 查看错误日志。`
+      : '\n无法保存错误日志。请检查用户目录权限和磁盘空间。'))
     await Promise.allSettled([agentHost?.close(), dataHost?.close()])
     app.exit(1)
   })

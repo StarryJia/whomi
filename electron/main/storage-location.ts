@@ -74,7 +74,7 @@ export async function resolveStorageLocation(userDataPath: string): Promise<stri
   } catch { throw new BoundaryError('STORAGE_UNAVAILABLE', '无法打开保存目录，请恢复目录访问权限后重新打开应用。') }
 }
 
-async function manifest(root: string): Promise<Entry[]> {
+async function manifest(root: string, names = managedNames): Promise<Entry[]> {
   await checkedDirectory(root)
   const entries: Entry[] = []
   async function walk(path: string) {
@@ -83,15 +83,21 @@ async function manifest(root: string): Promise<Entry[]> {
     entries.push({ path: relative(root, path), info })
     if (info.isDirectory()) for (const name of (await fs.readdir(path)).sort()) await walk(join(path, name))
   }
-  for (const name of managedNames) {
+  for (const name of names) {
     const path = join(root, name)
-    if (await checkedPath(path, true)) await walk(path)
+    const info = await checkedPath(path, true)
+    if (info && (name !== 'logs' || info.isDirectory())) await walk(path)
   }
   return entries
 }
 
 function unchanged(expected: BigIntStats, actual: BigIntStats) {
   return identity(expected) === identity(actual) && expected.size === actual.size && expected.mtimeNs === actual.mtimeNs && expected.ctimeNs === actual.ctimeNs
+}
+
+function sameManifest(before: Entry[], after: Entry[]) {
+  return before.length === after.length && before.every((entry, index) =>
+    entry.path === after[index].path && unchanged(entry.info, after[index].info))
 }
 
 async function digest(handle: fs.FileHandle) {
@@ -155,6 +161,22 @@ async function cleanupCreated(target: string, targetIdentity: string, created: E
       if (current.isDirectory()) await fs.rmdir(entry.path)
       else await fs.unlink(entry.path)
     } catch { /* 保留无法确认所有权或仍含文件的目录。 */ }
+  }
+}
+
+async function copyErrorLogs(source: string, target: string, targetIdentity: string, created: Entry[]) {
+  const copied: Entry[] = []
+  try {
+    const logs = await manifest(source, ['logs'])
+    if (!logs.length) return 'absent'
+    for (const entry of logs) await copyEntry(source, target, entry, copied)
+    if (!sameManifest(logs, await manifest(source, ['logs']))) throw new Error('Source logs changed')
+    for (const entry of copied) created.push(entry)
+    return 'copied'
+  } catch {
+    // 无法读取或校验的诊断文件留在原目录，健康的数据仍可迁移。
+    await cleanupCreated(target, targetIdentity, copied)
+    return 'retained'
   }
 }
 
@@ -241,8 +263,10 @@ async function publishPointer(userDataPath: string, target: string) {
 export function createStorageLocationService(options: StorageLocationOptions) {
   const grants = new Map<string, Grant>(), now = options.now ?? Date.now
   let location: string | undefined, busy = false, restartRequired = false
+  let retainedErrorLogDirectory: string | undefined
   const current = async () => location ??= await resolveStorageLocation(options.userDataPath)
-  const snapshot = async (): Promise<StorageLocation> => ({ path: await current(), defaultPath: resolve(options.userDataPath), restartRequired })
+  const snapshot = async (): Promise<StorageLocation> => ({ path: await current(), defaultPath: resolve(options.userDataPath), restartRequired,
+    ...(retainedErrorLogDirectory && { retainedErrorLogDirectory }) })
   function requireAvailable() {
     if (restartRequired) throw new BoundaryError('STORAGE_RESTART_REQUIRED', '请重启应用后继续。')
     if (busy) throw new BoundaryError('STORAGE_BUSY', '请等待目录迁移完成。')
@@ -294,15 +318,18 @@ export function createStorageLocationService(options: StorageLocationOptions) {
         await destination(grant.path, source, grant.identity)
         const entries = await manifest(source)
         for (const entry of entries) await copyEntry(source, grant.path, entry, created)
+        const logArchive = await copyErrorLogs(source, grant.path, grant.identity, created)
         const remaining = await manifest(source)
-        if (entries.length !== remaining.length || entries.some((entry, index) => entry.path !== remaining[index].path || !unchanged(entry.info, remaining[index].info))) throw new Error('Source changed')
+        if (!sameManifest(entries, remaining)) throw new Error('Source changed')
         await verifyCreated(grant.path, grant.identity, created)
         await rebaseDatabase(source, grant.path)
         await verifyCreated(grant.path, grant.identity, created, true)
         const copiedNames = new Set(entries.map(entry => entry.path.split(sep)[0]))
+        if (logArchive === 'copied') copiedNames.add('logs')
         if ((await fs.readdir(grant.path)).some(name => !copiedNames.has(name))) invalidPath()
         await publishPointer(options.userDataPath, grant.path)
         location = grant.path
+        if (logArchive === 'retained') retainedErrorLogDirectory = join(source, 'logs')
         restartRequired = true
         grants.clear()
         return await snapshot()

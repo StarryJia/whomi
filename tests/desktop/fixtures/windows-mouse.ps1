@@ -41,6 +41,9 @@ if ([WhomiMouse]::GetForegroundWindow() -ne $target -or ![WhomiMouse]::IsOverWin
 }
 if (![WhomiMouse]::SetCursorPos($X, $Y)) { throw 'Could not move the Windows pointer.' }
 Start-Sleep -Milliseconds 80
+if ([WhomiMouse]::GetForegroundWindow() -ne $target -or ![WhomiMouse]::IsOverWindow($X, $Y, $target)) {
+  throw 'The test window changed before the mouse press.'
+}
 [WhomiMouse]::mouse_event(2, 0, 0, 0, [UIntPtr]::Zero)
 try {
   Start-Sleep -Milliseconds 100
