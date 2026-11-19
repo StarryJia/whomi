@@ -25,6 +25,7 @@ import { settingsMethods } from '../../src/data/settings-client'
 import type { ProcessingMember } from './message-processing'
 import { loadWindowState, rememberWindowState } from './window-state'
 import { createImportDiagnostics, snapshotDiagnostic } from './import-diagnostics'
+import { createAppErrorLogs } from './app-error-logs'
 import { appExceptionChannel, importDiagnosticsChannel, type StoredImportDiagnostic } from '../../src/shared/import-diagnostics'
 import { version as appVersion } from '../../package.json'
 
@@ -46,11 +47,24 @@ let aiService: ReturnType<typeof createAiService> | undefined
 let quitting = false
 if (!app.requestSingleInstanceLock()) app.quit()
 else {
+  const appErrorLogs = createAppErrorLogs(app.getPath('userData'), appVersion, path => shell.openPath(path))
+  let stoppingWorkers = false
+  app.on('child-process-gone', (_event, details) => {
+    if (quitting || details.reason === 'clean-exit') return
+    const area = details.name === 'Whomi Data' ? 'data' : details.name === 'Whomi Agent' ? 'model' : 'main'
+    if (stoppingWorkers && details.reason === 'killed' && area !== 'main') return
+    const code = area === 'data' ? 'DATA_PROCESS_GONE' : area === 'model' ? 'AGENT_UNAVAILABLE' : 'MAIN_PROCESS_ERROR'
+    void appErrorLogs.record({ area, phase: 'child-process-exit', error: new BoundaryError(code) })
+  })
   app.on('second-instance', () => { const window = BrowserWindow.getAllWindows()[0]; window?.show(); window?.focus() })
   app.whenReady().then(async () => {
     const userDataPath = app.getPath('userData')
+    const requestData: DataHost['request'] = async <T>(method: string, args: unknown) => {
+      try { return await dataHost!.request<T>(method, args) }
+      catch (error) { void appErrorLogs.record({ area: 'data', phase: method, error }); throw error }
+    }
     const importDiagnostics = createImportDiagnostics(userDataPath, appVersion, path => shell.openPath(path),
-      jobId => dataHost!.request('getImport', [jobId]))
+      jobId => requestData('getImport', [jobId]), appErrorLogs)
     let suspended = false, servicesClosed = false, requests = 0
     let publishImport: Parameters<DataHost['onEvent']>[0] = () => {}
     let publishAi: Parameters<NonNullable<typeof aiService>['subscribe']>[0] = () => {}
@@ -64,22 +78,24 @@ else {
     const accountRunners = { 'openai-codex': createChatgptRunner((id, signal) => chatgpt.accessToken(id, signal)), 'grok-cli': grok.runner, copilot: copilot.runner }
     app.once('before-quit', () => { codexQuota.close(); for (const account of Object.values(accounts)) account.close() })
     async function startServices(directory: string) {
+      await appErrorLogs.setStorageDirectory(directory)
       dataHost = startDataHost(directory)
       if (probeEnabled) (globalThis as typeof globalThis & { __whomiRuntimeProbe?: DataHost }).__whomiRuntimeProbe = dataHost
-      const failures = await dataHost.request<StoredImportDiagnostic[]>('unresolvedImportDiagnostics', null)
+      const failures = await requestData<StoredImportDiagnostic[]>('unresolvedImportDiagnostics', null)
       for (const { diagnostic, counts, jobCreatedAt } of failures) await importDiagnostics.report(diagnostic, counts, jobCreatedAt).catch(() => {})
       dataHost.onEvent(snapshot => publishImport(snapshot))
       agentHost = startAgentHost(directory)
-      aiService = createAiService({ storage: (method, args) => dataHost!.request('aiStorage', [method, args]), runtime: { run: (input, options) => {
+      aiService = createAiService({ storage: (method, args) => requestData('aiStorage', [method, args]), runtime: { run: (input, options) => {
           if (!input.model.planAccount) return agentHost!.run(input, options)
           const provider: SubscriptionProviderId = input.model.planProvider ?? 'openai-codex'
           return accountRunners[provider].run(input, options)
         } }, secrets,
         changed: event => publishAi(event),
+        logError: appErrorLogs.record,
         processing: async conversationId => {
-          const [settings, members] = await Promise.all([dataHost!.request<SettingsSnapshot>('settingsStorage', ['get', []]), dataHost!.request<ProcessingMember[]>('listMembers', [conversationId])])
+          const [settings, members] = await Promise.all([requestData<SettingsSnapshot>('settingsStorage', ['get', []]), requestData<ProcessingMember[]>('listMembers', [conversationId])])
           return { settings: settings.processing, members }
-        }, claimProcessing: (id, signature) => dataHost!.request('settingsStorage', ['claimProcessing', [id, signature]]) })
+        }, claimProcessing: (id, signature) => requestData('settingsStorage', ['claimProcessing', [id, signature]]) })
       servicesClosed = false
     }
     await startServices(await resolveStorageLocation(userDataPath))
@@ -88,15 +104,20 @@ else {
     const locations = createStorageLocationService({ userDataPath, blockedDirectories: app.isPackaged ? [dirname(process.execPath)] : [],
       async stopServices() {
         suspended = true
-        const state = await dataHost!.request<{ importActive: boolean }>('storageState', null)
+        const state = await requestData<{ importActive: boolean }>('storageState', null)
         if (requests > 1 || state.importActive || aiService!.isBusy()) { suspended = false; throw new BoundaryError('STORAGE_BUSY', '请先完成或取消导入，并停止模型任务后重试。') }
         servicesClosed = true
-        try { await aiService!.close() } finally { await Promise.allSettled([agentHost!.close(), dataHost!.close()]) }
+        stoppingWorkers = true
+        try { await aiService!.close() }
+        finally {
+          await Promise.allSettled([agentHost!.close(), dataHost!.close()])
+          stoppingWorkers = false
+        }
       }, async resumeServices(directory) {
         if (servicesClosed) await startServices(directory)
         suspended = false
       } })
-    const settingsService = createSettingsService({ accounts, codexQuota, storage: (method, args) => dataHost!.request('settingsStorage', [method, args]), secrets,
+    const settingsService = createSettingsService({ accounts, codexQuota, storage: (method, args) => requestData('settingsStorage', [method, args]), secrets,
       testModel: id => aiService!.testModel(id), beforeModelChange: async ids => { if (aiService!.hasModelWork(ids)) throw new BoundaryError('MODEL_BUSY', '请先停止使用此模型的任务后重试。') } })
     const diagnostics: { code: string; action: string }[] = []
     const credential = randomUUID()
@@ -111,6 +132,21 @@ else {
       webPreferences: { preload: join(__dirname, '../preload/index.cjs'), contextIsolation: true, sandbox: true, nodeIntegration: false, additionalArguments: [`--whomi-drop-key=${credential}`] },
     })
     rememberWindowState(window, app.getPath('userData'))
+    const rendererFailure = (phase: string, code: string) => { void appErrorLogs.record({ area: 'renderer', phase, error: new BoundaryError(code) }) }
+    window.webContents.on('preload-error', () => rendererFailure('preload', 'PRELOAD_ERROR'))
+    window.webContents.on('render-process-gone', (_event, details) => {
+      if (!quitting && details.reason !== 'clean-exit') rendererFailure('process-exit', 'RENDERER_PROCESS_GONE')
+    })
+    window.webContents.on('did-fail-load', (_event, code, _reason, _url, isMainFrame) => {
+      if (isMainFrame && code !== -3) rendererFailure('load', 'RENDERER_LOAD_FAILED')
+    })
+    let lastRendererError = 0
+    window.webContents.on('console-message', ({ level }) => {
+      const now = Date.now()
+      if (level !== 'error' || now - lastRendererError < 5_000) return
+      lastRendererError = now
+      rendererFailure('console', 'RENDERER_ERROR')
+    })
     window.once('ready-to-show', () => { if (state.maximized) window.maximize(); window.show() })
     const devUrl = !app.isPackaged ? process.env.ELECTRON_RENDERER_URL : undefined
     const pagePath = join(__dirname, '../renderer/index.html')
@@ -118,8 +154,8 @@ else {
     const windowId = window.webContents.id
     const grants = createSourceGrants()
     const router = createDesktopRouter({ grants, request: (method, args) => method === 'deleteConversation'
-      ? aiService!.deleteConversation((args as [string])[0], async () => { await dataHost!.request(method, args) })
-      : dataHost!.request(method, args), async chooseSources(_owner, kind) {
+      ? aiService!.deleteConversation((args as [string])[0], async () => { await requestData(method, args) })
+      : requestData(method, args), async chooseSources(_owner, kind) {
       const result = await dialog.showOpenDialog({ properties: kind === 'files' ? ['openFile', 'multiSelections'] : ['openDirectory'] })
         .catch(() => { throw new BoundaryError('PICKER_FAILED', '无法打开来源选择窗口。') })
       return result.canceled || !result.filePaths.length ? [] : grants.issue(window.webContents.id, result.filePaths)
@@ -150,21 +186,31 @@ else {
         const selected = await dialog.showOpenDialog(window, { defaultPath: path, properties: ['openDirectory', 'createDirectory'] })
         return selected.canceled || !selected.filePaths[0] ? null : locations.issueChoice(windowId, selected.filePaths[0])
       },
-      relocateStorage: token => locations.relocateStorage(windowId, token),
+      async relocateStorage(token) {
+        const storage = await locations.relocateStorage(windowId, token)
+        await appErrorLogs.setStorageDirectory(storage.path)
+        return storage
+      },
       async restart() { if (!suspended || !(await locations.getStorage()).restartRequired) throw new BoundaryError('INVALID_STATE'); app.relaunch(); app.quit() },
       async getDiagnostics() { const current = await settingsService.get(); return { version: appVersion, platform: process.platform, entries: current.debug ? [...diagnostics] : [] } },
+      getErrorLogArchives: appErrorLogs.getArchives,
+      openErrorLogDirectory: appErrorLogs.open,
     }
     ipcMain.handle(settingsChannel, async (event, value: unknown) => {
+      let method: keyof SettingsApi | undefined
       try {
         if (window.isDestroyed() || !isTrustedCaller(event, window, appUrl)) throw new BoundaryError('UNTRUSTED_CALLER', '请在应用窗口中操作。')
         if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).length !== 2 || !('method' in value) || !('args' in value) || typeof value.method !== 'string' || !Object.hasOwn(settingsMethods, value.method) || !Array.isArray(value.args)) throw new BoundaryError('INVALID_ARGUMENT')
-        const method = value.method as keyof SettingsApi
+        method = value.method as keyof SettingsApi
         if (value.args.length !== settingsMethods[method]) throw new BoundaryError('INVALID_ARGUMENT')
-        if (suspended && !['getStorage', 'openStorageDirectory', 'restart'].includes(method)) throw new BoundaryError('STORAGE_RESTART_REQUIRED', '数据目录正在切换，请重启应用。')
+        if (suspended && !['getStorage', 'openStorageDirectory', 'getErrorLogArchives', 'openErrorLogDirectory', 'restart'].includes(method)) throw new BoundaryError('STORAGE_RESTART_REQUIRED', '数据目录正在切换，请重启应用。')
         requests++
         try { return { ok: true, value: await (settingsApi[method] as (...args: unknown[]) => Promise<unknown>)(...value.args) } } finally { requests-- }
       } catch (error) {
         const failure = serializableError(error)
+        if (method && method !== 'testModel' && method !== 'getErrorLogArchives' && method !== 'openErrorLogDirectory') {
+          void appErrorLogs.record({ area: method === 'syncModels' || method === 'signInAccount' ? 'model' : 'main', phase: method, error })
+        }
         diagnostics.push({ code: failure.code, action: '操作失败，请重试。' }); if (diagnostics.length > 20) diagnostics.shift()
         return { ok: false, error: failure }
       }
@@ -203,7 +249,8 @@ else {
       try {
         const link = new URL(url)
         if (['https:', 'http:'].includes(link.protocol) && link.hostname && !link.username && !link.password && url.length <= 8192 && !/[\u0000-\u001f\u007f]/.test(url)) {
-          void shell.openExternal(link.href).catch(() => {
+          void shell.openExternal(link.href).catch(error => {
+            void appErrorLogs.record({ area: 'main', phase: 'openExternal', error })
             if (!window.isDestroyed()) window.webContents.send(appExceptionChannel, { title: '无法打开链接', detail: '请将链接复制到浏览器中打开。' })
           })
         }
@@ -224,6 +271,7 @@ else {
     else await window.loadFile(pagePath)
   }).catch(async error => {
     if (quitting) return
+    await appErrorLogs.record({ area: 'startup', phase: 'initialize', error: error instanceof BoundaryError ? error : new BoundaryError('STARTUP_FAILED') })
     const detail = error instanceof BoundaryError && error.code.startsWith('STORAGE_')
       ? `${error.message}\n连接保存会话的磁盘或恢复原保存目录后，重新打开 Whomi。`
       : '无法打开本地数据。请检查保存目录是否可访问，然后重新打开 Whomi。'
@@ -240,6 +288,7 @@ else {
       void (async () => {
         try { await aiService?.close() } catch { /* 数据进程退出时仍需回收Agent进程。 */ }
         await Promise.allSettled([agentHost?.close(), dataHost!.close()])
+        await appErrorLogs.flush()
       })().finally(() => app.quit())
     }
   })

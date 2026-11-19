@@ -2,12 +2,13 @@ import { test, expect, _electron as electron } from '@playwright/test'
 import { mkdtemp, writeFile, readFile, rm, mkdir } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { windowsMouse } from './fixtures/windows-mouse.mjs'
 
-test('desktop shell opens at a readable size, preserves bounds, and shows the refined conversation UI', async () => {
-  test.setTimeout(60000)
+test('desktop shell preserves bounds and the right conversation strip moves the native window', async ({}, info) => {
+  test.setTimeout(90000)
   const directory = await mkdtemp(join(tmpdir(), 'whomi-runtime-'))
   const version = JSON.parse(await readFile('package.json', 'utf8')).version
-  const evidence = resolve(`release/validation-${version}`)
+  const evidence = info.outputPath('screenshots')
   await mkdir(evidence, { recursive: true })
   const launch = () => electron.launch({
     ...(process.env.WHOMI_PACKAGED_EXECUTABLE
@@ -70,6 +71,59 @@ test('desktop shell opens at a readable size, preserves bounds, and shows the re
     await page.getByRole('button', { name: '展开会话列表' }).click()
     await page.getByRole('button', { name: '界面验证 · 虚构会话', exact: true }).click()
     await page.getByRole('button', { name: 'AI 对话', exact: true }).click()
+    const panel = page.getByRole('complementary', { name: 'AI 对话' })
+    const panelBounds = () => panel.boundingBox()
+    const windowBounds = () => application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].getBounds())
+    if (process.platform === 'win32') {
+      await expect(panel).toBeVisible()
+      await expect.poll(async () => (await panelBounds()).width).toBeGreaterThan(300)
+      const snapshots = []
+      const dragStrip = async (label, ratio, dx) => {
+        const before = await windowBounds()
+        const { x: left } = await panelBounds()
+        const x = left + 7 + (before.width - 140 - left - 14) * ratio
+        await windowsMouse(application, x, 18, x + dx, 18)
+        await expect.poll(async () => {
+          const after = await windowBounds()
+          snapshots.push({ label, before, after })
+          await writeFile(info.outputPath('window-coordinates.json'), JSON.stringify(snapshots, null, 2))
+          return after.x
+        }, { timeout: 1800 }).not.toBe(before.x)
+      }
+      await page.screenshot({ path: join(evidence, 'open-ai-panel.png'), animations: 'disabled' })
+      await dragStrip('left', 0, 34)
+      await dragStrip('center', 0.5, -34)
+      await dragStrip('right', 1, 34)
+      await panel.getByRole('button', { name: '显示对话列表' }).click()
+      await expect(page.getByRole('navigation', { name: 'AI 对话列表' })).toBeVisible()
+      await panel.getByRole('button', { name: '新建 AI 对话' }).click()
+      await expect.poll(async () => (await page.evaluate(() => window.whomi.ai.listThreads('1'))).length).toBe(1)
+      const divider = page.getByRole('separator', { name: '调整原文与对话宽度' })
+      const { x, y, width, height } = await divider.boundingBox()
+      const windowBeforeDivider = await windowBounds()
+      const panelBeforeDivider = await panelBounds()
+      await windowsMouse(application, x + width / 2, y + height / 2, x + width / 2 + 52, y + height / 2)
+      await expect.poll(async () => (await panelBounds()).width).toBeLessThan(panelBeforeDivider.width)
+      expect(await windowBounds()).toEqual(windowBeforeDivider)
+      await panel.getByRole('button', { name: '关闭 AI 对话' }).click()
+      await page.getByRole('button', { name: 'AI 对话', exact: true }).click()
+      await expect(panel).toBeVisible()
+      await dragStrip('reopened', 0.5, -34)
+      await page.screenshot({ path: join(evidence, 'dragged-and-reopened.png'), animations: 'disabled' })
+      const state = () => application.evaluate(({ BrowserWindow }) => {
+        const window = BrowserWindow.getAllWindows()[0]
+        return { maximized: window.isMaximized(), minimized: window.isMinimized() }
+      })
+      const caption = async offset => windowsMouse(application, (await windowBounds()).width - offset, 18)
+      await caption(68)
+      await expect.poll(state).toEqual({ maximized: true, minimized: false })
+      await caption(68)
+      await expect.poll(state).toEqual({ maximized: false, minimized: false })
+      await caption(116)
+      await expect.poll(state).toEqual({ maximized: false, minimized: true })
+      await application.evaluate(({ BrowserWindow }) => { const window = BrowserWindow.getAllWindows()[0]; window.restore(); window.focus() })
+      await expect.poll(state).toEqual({ maximized: false, minimized: false })
+    }
     const model = page.getByRole('combobox', { name: '对话模型' })
     await expect(model).toContainText(configuredModel.label)
     expect(await model.evaluate(element => element.tagName)).toBe('BUTTON')
@@ -77,10 +131,19 @@ test('desktop shell opens at a readable size, preserves bounds, and shows the re
     await page.screenshot({ path: join(evidence, 'model-menu.png') })
     await page.keyboard.press('Escape')
     await page.getByRole('button', { name: '关闭 AI 对话' }).click()
-    await page.getByRole('button', { name: '整理成记忆', exact: true }).click()
-    await expect(page.getByRole('button', { name: '生成记忆' })).toBeEnabled()
-    await expect(page.locator('.analysis-description').filter({ hasText: '界面验证 · 虚构会话' })).toBeVisible()
+    await page.getByRole('button', { name: '会话洞察', exact: true }).click()
+    await expect(page.getByRole('button', { name: '开始洞察' })).toBeEnabled()
     await page.screenshot({ path: join(evidence, 'analysis-confirmation.png') })
+    if (process.platform === 'win32') {
+      await page.getByRole('button', { name: '取消', exact: true }).click()
+      const beforeClose = await windowBounds()
+      const closed = page.waitForEvent('close')
+      await windowsMouse(application, beforeClose.width - 22, 18)
+      await closed
+    }
+  } catch (error) {
+    await application?.windows()[0]?.screenshot({ path: info.outputPath('failure.png') }).catch(() => {})
+    throw error
   } finally {
     await application?.close()
     await rm(directory, { recursive: true, force: true })

@@ -554,7 +554,7 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
         </ExceptionNoticeScope>
       </main>
       {settingsOpen && api?.settings && <main id="main-content" className="settings-home" tabIndex={-1} inert={mobileDialog}>
-        <SettingsPage api={api.settings} importDiagnostics={api.importDiagnostics} leaveRef={settingsLeave} onLockChange={setSettingsLocked}
+        <SettingsPage api={api.settings} leaveRef={settingsLeave} onLockChange={setSettingsLocked}
           onChanged={() => { settingsChanged.current = true }} onClose={() => closeSettings()} />
       </main>}
       {introActive && <StartupIntro targetRef={brandImageRef} onComplete={finishIntro} />}

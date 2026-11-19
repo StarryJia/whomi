@@ -8,6 +8,7 @@ import { ConversationWorkspace } from '../conversation-ai/workspace'
 import type { ConversationAiAdapter } from '../conversation-ai/types'
 import { ConversationReader } from '../conversations'
 import { InsightArticle } from './insight-article'
+import { InsightsLibrary } from './insights-library'
 import { ExceptionNoticeProvider } from '../ui/exception-notices'
 
 const report = {
@@ -24,6 +25,42 @@ const completed: AnalysisTask = {
   sourceStartTimeMs: Date.UTC(2026, 9, 3), sourceEndTimeMs: Date.UTC(2026, 9, 3),
 }
 const baseAdapter: ConversationAiAdapter = { models: [{ id: 'm', label: '本机模型' }], skills: [], analyze: vi.fn(), respond: vi.fn() }
+
+it('从任务行任意内容打开指定任务，详情和任务控制按钮单独操作', async () => {
+  const user = userEvent.setup()
+  const onTask = vi.fn()
+  const onStop = vi.fn(async () => {})
+  const onContinue = vi.fn(async () => {})
+  const { report: _report, ...base } = completed
+  const running: AnalysisTask = { ...base, state: 'running', analyzedMessages: 6, elapsedMs: 2500, modelId: '示例模型' }
+  render(<InsightsLibrary tasks={[running, { ...running, id: '25', state: 'stopped' }, { ...running, id: '26', state: 'failed' }]}
+    conversations={[]} loading={false} error="" retry={() => {}} onSelect={() => {}} onReturn={() => {}}
+    onTask={onTask} onStop={onStop} onContinue={onContinue} onConversations={() => {}} onRenameBusy={() => {}} />)
+  const [runningRow, pausedRow, failedRow] = screen.getAllByRole('listitem')
+  const row = within(runningRow)
+  const title = row.getByRole('button', { name: /会话洞察 #24/ })
+  for (const target of [title, row.getByRole('status'), row.getByText(/已运行 00:02/), row.getByText('示例模型'), runningRow]) {
+    await user.click(target)
+    expect(onTask).toHaveBeenLastCalledWith('1', '24')
+  }
+  expect(onTask).toHaveBeenCalledTimes(5)
+
+  title.focus()
+  await user.keyboard('{Enter}')
+  expect(onTask).toHaveBeenCalledTimes(6)
+  await user.tab()
+  expect(row.getByRole('button', { name: '暂停' })).toHaveFocus()
+  await user.keyboard(' ')
+  expect(onStop).toHaveBeenCalledExactlyOnceWith('24')
+  await user.click(row.getByRole('button', { name: '详情' }))
+  expect(row.getByRole('group', { name: '分析用量' })).toBeVisible()
+  await user.click(within(pausedRow).getByRole('button', { name: '继续洞察' }))
+  await user.click(within(failedRow).getByRole('button', { name: '重试' }))
+  expect(onContinue.mock.calls).toEqual([['25'], ['26']])
+  expect(onTask).toHaveBeenCalledTimes(6)
+  await user.click(within(pausedRow).getByRole('status'))
+  expect(onTask).toHaveBeenLastCalledWith('1', '25')
+})
 
 it('报告只有材料不足说明时保留模型的限定并沿用两节阅读结构', () => {
   render(<InsightArticle report={{ ...report, aboutYou: [], relationship: [], limitations: ['只有一次改期，暂时不能判断相处习惯。'] }} />)

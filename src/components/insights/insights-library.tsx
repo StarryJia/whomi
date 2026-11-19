@@ -82,7 +82,10 @@ function TaskRow({ task, onOpen, onStop, onContinue }: {
     catch (cause) { setError({ detail: actionError(cause), attempt: currentAttempt }) }
     finally { pending.current = false; setBusy(undefined) }
   }
-  return <li className="insight-task-row" data-insight-task={task.id}>
+  return <li className="insight-task-row" data-insight-task={task.id} onClick={event => {
+    const target = event.target
+    if (target instanceof Element && event.currentTarget.contains(target) && !target.closest('button, a')) onOpen()
+  }}>
     <div className="insight-task-row-main">
       <button className="insight-task-link" type="button" data-list-id={task.id} onClick={onOpen} aria-label={`${insightTaskTitle(task)} ${number}`}>
         <FileText aria-hidden="true" /><span><strong>{insightTaskTitle(task)}</strong><span>{number}</span></span>
@@ -260,7 +263,9 @@ export function InsightsLibrary({ tasks, conversations, selectedId, onSelect, on
               <small>{selected.conversationTitle} · {insightTaskNumber(selected)}</small></div>
               <button type="button" className="insight-close" aria-label="关闭记忆" onClick={onReturn}><X aria-hidden="true" /></button>
             </header>
-            <MemoryArticle report={selectedReport} />
+            <div className="insight-history-body" role="region" aria-label="报告正文" tabIndex={0}>
+              <MemoryArticle report={selectedReport} />
+            </div>
           </section>
         </div>
       </ReaderDialog>)}

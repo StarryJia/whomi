@@ -70,3 +70,12 @@ function toPreset(source: SourceProvider): CherryProviderPreset {
 export const cherryProviderPresets: readonly CherryProviderPreset[] = registry.providers.map(toPreset)
 const presetsById = new Map(cherryProviderPresets.map(preset => [preset.id, preset]))
 export const getCherryProviderPreset = (id: string) => presetsById.get(id)
+
+// 旧预置资料仍用于显示和编辑已配置的服务商。
+const listedProviderIds = new Set([
+  'openai', 'openai-codex', 'anthropic', 'gemini', 'deepseek', 'zhipu', 'zai',
+  'moonshot', 'moonshot-global', 'baichuan', 'dashscope', 'qwencloud', 'stepfun',
+  'doubao', 'minimax', 'minimax-global', 'grok', 'mistral', 'perplexity',
+  'tokenhub', 'baidu-cloud', 'longcat', 'mimo', 'nvidia', 'ollama', 'lmstudio',
+])
+export const listedCherryProviderPresets = cherryProviderPresets.filter(preset => listedProviderIds.has(preset.id))

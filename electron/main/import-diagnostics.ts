@@ -1,9 +1,10 @@
 import { randomUUID } from 'node:crypto'
-import { lstat, mkdir, readdir, readFile, realpath, rename, unlink, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { lstat, readdir, readFile, realpath } from 'node:fs/promises'
+import { join, resolve } from 'node:path'
 import { importFailurePhases, type ImportCounts, type ImportSnapshot } from '../../src/shared/import-contract'
 import { currentImportIssue, type ImportDiagnostic } from '../../src/shared/import-diagnostics'
 import { BoundaryError, localId } from '../../src/shared/desktop-validation'
+import { localLogDirectory, writeLocalLog, type createAppErrorLogs } from './app-error-logs'
 
 const parserCodes = new Set([
   'CANCELLED', 'DECLARED_COUNT_MISMATCH', 'FILE_LIMIT', 'INCOMPLETE_PARSE', 'INVALID_DECLARED_COUNT',
@@ -90,7 +91,9 @@ function belongsToJob(file: LogFile, jobCreatedAt?: number) {
 async function checkedFile(root: string, filename: string) {
   const path = join(root, filename)
   const info = await lstat(path)
-  if (!info.isFile() || await realpath(path) !== path) throw new Error('Invalid diagnostics file')
+  const canonical = await realpath(path)
+  const samePath = process.platform === 'win32' ? canonical.toLowerCase() === path.toLowerCase() : canonical === path
+  if (!info.isFile() || info.nlink !== 1 || !samePath) throw new Error('Invalid diagnostics file')
   return { path, size: info.size }
 }
 
@@ -132,24 +135,16 @@ async function latestLog(root: string, index: LogIndex, jobId?: unknown, job?: I
 }
 
 export function createImportDiagnostics(userData: string, version: string, openPath: (path: string) => Promise<string>,
-  getImport?: (jobId: string) => Promise<ImportSnapshot>) {
-  const directory = join(userData, 'import-errors')
+  getImport?: (jobId: string) => Promise<ImportSnapshot>,
+  logs?: Pick<ReturnType<typeof createAppErrorLogs>, 'withWritableRoot' | 'importDirectories'>) {
+  const directory = join(resolve(userData), 'import-errors')
   let queue: Promise<unknown> = Promise.resolve()
-  let reportIndex: LogIndex | undefined
+  const indexes = new Map<string, LogIndex>()
 
   function schedule<T>(operation: () => Promise<T>) {
     const next = queue.then(operation)
     queue = next.catch(() => {})
     return next
-  }
-
-  async function localDirectory(create: boolean) {
-    if (create) await mkdir(directory, { recursive: true })
-    const root = await realpath(directory)
-    if (!(await lstat(directory)).isDirectory() || root !== join(await realpath(userData), 'import-errors')) {
-      throw new Error('Invalid diagnostics directory')
-    }
-    return root
   }
 
   return {
@@ -167,26 +162,26 @@ export function createImportDiagnostics(userData: string, version: string, openP
             if (failure?.phase === phase) code = readDiagnostic(failure).code
           }
         }
-        let pending: string | undefined
-        try {
-          const root = await localDirectory(true)
-          const index = reportIndex ??= await indexLogs(root)
+        const write = async (root: string) => {
+          const index = indexes.get(root) ?? await indexLogs(root)
+          indexes.set(root, index)
           const original = jobId ? await originalRecord(root, index, jobId, jobCreatedAt, phase, code, counts) : undefined
           const existing = original?.record
           const recordedCounts = existing?.counts ?? safeCounts(counts)
-          if (existing && existing.code !== 'IMPORT_FAILED') code = existing.code
-          if (existing && existing.code === code && (existing.counts || !recordedCounts)) return
+          const recordedCode = existing && existing.code !== 'IMPORT_FAILED' ? existing.code : code
+          if (existing && existing.code === recordedCode && (existing.counts || !recordedCounts)) return
           const timestamp = Math.max(Date.now(), (index.files.at(-1)?.recordedAt ?? 0) + 1)
           const scope = jobId && jobCreatedAt !== undefined ? `${jobCreatedAt}-` : ''
           const filename = original?.filename ?? `${timestamp}-${randomUUID()}-${scope}${jobId ?? 'none'}.txt`
-          pending = join(root, `${filename}.${randomUUID()}.tmp`)
           const record: LogRecord = { recordedAt: existing?.recordedAt ?? new Date(timestamp).toISOString(),
-            version: existing?.version ?? version, phase, code, counts: recordedCounts }
-          await writeFile(pending, `${JSON.stringify(record, null, 2)}\n`, { flag: 'wx', mode: 0o600 })
-          await rename(pending, join(root, filename))
+            version: existing?.version ?? version, phase, code: recordedCode, counts: recordedCounts }
+          await writeLocalLog(root, filename, record)
           if (!original) addFile(index, filename)
+        }
+        try {
+          if (logs) await logs.withWritableRoot(async root => write(await localLogDirectory(join(root, 'import-errors'), true)))
+          else await write(await localLogDirectory(directory, true))
         } catch {
-          if (pending) await unlink(pending).catch(() => {})
           throw new BoundaryError('IMPORT_LOG_WRITE_FAILED', '无法保存错误日志。请检查应用数据目录是否可写。')
         }
       })
@@ -194,19 +189,22 @@ export function createImportDiagnostics(userData: string, version: string, openP
     async open(jobId?: unknown) {
       if (jobId !== undefined && jobId !== null && !localId(jobId)) throw new BoundaryError('INVALID_ARGUMENT')
       return schedule(async () => {
-        let path: string
-        try {
-          const root = await localDirectory(false)
-          const job = typeof jobId === 'string' && getImport ? await getImport(jobId).catch(() => undefined) : undefined
-          reportIndex = await indexLogs(root)
-          const filename = await latestLog(root, reportIndex, jobId, job)
-          if (!filename) throw new Error('Missing diagnostics')
-          path = (await checkedFile(root, filename)).path
-        } catch {
-          throw new BoundaryError('IMPORT_LOG_MISSING', '找不到错误日志。')
+        const job = typeof jobId === 'string' && getImport ? await getImport(jobId).catch(() => undefined) : undefined
+        let match: { path: string; timestamp: number } | undefined
+        for (const location of logs?.importDirectories() ?? [directory]) {
+          try {
+            const root = await localLogDirectory(location)
+            const index = await indexLogs(root)
+            indexes.set(root, index)
+            const filename = await latestLog(root, index, jobId, job)
+            if (!filename) continue
+            const timestamp = Number(filename.slice(0, 13))
+            if (!match || timestamp > match.timestamp) match = { path: (await checkedFile(root, filename)).path, timestamp }
+          } catch { /* 当前目录不可用时，仍可找到备用或旧版日志。 */ }
         }
+        if (!match) throw new BoundaryError('IMPORT_LOG_MISSING', '找不到错误日志。')
         try {
-          if (await openPath(path)) throw new Error('Native open failed')
+          if (await openPath(match.path)) throw new Error('Native open failed')
         } catch {
           throw new BoundaryError('IMPORT_LOG_OPEN_FAILED', '无法打开错误日志。请检查默认文本查看应用后重试。')
         }

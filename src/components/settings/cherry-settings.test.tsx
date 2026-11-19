@@ -2,12 +2,16 @@ import { useState } from 'react'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, expect, test, vi } from 'vitest'
-import { defaultProcessing, type SettingsApi, type SettingsSnapshot } from '../../shared/settings-contract'
+import { defaultProcessing, type Provider, type SettingsApi, type SettingsSnapshot } from '../../shared/settings-contract'
 import { ModelServices } from './model-services'
 
 const model = { id: 'm1', providerId: 'p1', label: '示例模型', model: 'alpha', baseUrl: 'http://localhost:1234/v1', enabled: true, hasCredential: true, contextWindow: 128000, maxTokens: 16384, version: 1 }
-function setup(withModel = true, accountApi: Partial<SettingsApi> = {}) {
-  let data: SettingsSnapshot = { providers: [{ id: 'p1', name: '示例服务', baseUrl: 'http://localhost:1234/v1', enabled: true, hasCredential: true }], models: withModel ? [model] : [], processing: defaultProcessing, selectedModels: {}, debug: false }
+const legacyProvider = (id: string, name: string, baseUrl = 'https://example.invalid'): Provider =>
+  ({ id: 'cherry:' + id, name, baseUrl, enabled: false, hasCredential: false })
+const grokAccount = legacyProvider('grok-cli', 'Grok CLI')
+const copilotAccount = legacyProvider('copilot', 'GitHub Copilot')
+function setup(withModel = true, accountApi: Partial<SettingsApi> = {}, storedProviders: Provider[] = []) {
+  let data: SettingsSnapshot = { providers: [{ id: 'p1', name: '示例服务', baseUrl: 'http://localhost:1234/v1', enabled: true, hasCredential: true }, ...storedProviders], models: withModel ? [model] : [], processing: defaultProcessing, selectedModels: {}, debug: false }
   const api = {
     get: async () => structuredClone(data),
     getCodexQuota: async () => ({ state: 'disconnected' }),
@@ -29,9 +33,9 @@ beforeEach(() => {
 })
 
 test('切换 New API 协议时更新预置路径，保留用户修改的服务器地址', async () => {
-  const { user, api } = setup()
-  await user.click(screen.getByRole('button', { name: 'New API' }))
-  await user.click(screen.getByRole('button', { name: '配置服务商' }))
+  const { user, api } = setup(true, {}, [legacyProvider('new-api', 'New API', 'http://localhost:3000/v1')])
+  await user.click(screen.getByRole('button', { name: 'New API更多操作' }))
+  await user.click(screen.getByRole('menuitem', { name: '编辑' }))
   const form = within(screen.getByRole('dialog'))
   const address = form.getByLabelText('接口地址')
   expect(address).toHaveValue('http://localhost:3000/v1')
@@ -45,14 +49,16 @@ test('切换 New API 协议时更新预置路径，保留用户修改的服务�
   expect(api.saveProvider).not.toHaveBeenCalled()
 })
 
-test('未配置目录可按平台英文标识搜索，专用认证平台不提供普通密钥配置入口', async () => {
+test('按英文标识搜索可配置预置，已移出的专用认证平台不出现在目录', async () => {
   const { user, api } = setup()
   const search = screen.getByRole('textbox', { name: '搜索服务商' })
   await user.type(search, 'aws-bedrock')
-  await user.click(screen.getByRole('button', { name: 'AWS Bedrock' }))
+  expect(screen.getByText('未找到服务商')).toBeVisible()
+  await user.clear(search)
+  await user.type(search, 'zhipu')
+  await user.click(screen.getByRole('button', { name: '智谱开放平台' }))
   const details = screen.getByRole('region', { name: '预置服务商详情' })
-  expect(within(details).getByText(/AWS.*身份认证/)).toBeVisible()
-  expect(within(details).queryByRole('button', { name: '配置服务商' })).toBeNull()
+  expect(within(details).getByRole('button', { name: '配置服务商' })).toBeVisible()
   expect(api.saveProvider).not.toHaveBeenCalled()
   expect(api.syncModels).not.toHaveBeenCalled()
 })
@@ -250,7 +256,7 @@ test('Grok 展示主进程的恢复操作并支持换一个账号登录', async 
   const signInAccount = vi.fn().mockRejectedValue({ code: 'CLIENT_REQUIRED', action: '配置 Grok 客户端标识后重试。' })
   const signOutAccount = vi.fn(async () => { connected = false })
   let connected = true
-  const { user } = setup(false, { getAccountStatus: async () => connected ? { state: 'connected', email: '合成账户' } : { state: 'disconnected' }, signInAccount, signOutAccount })
+  const { user } = setup(false, { getAccountStatus: async () => connected ? { state: 'connected', email: '合成账户' } : { state: 'disconnected' }, signInAccount, signOutAccount }, [grokAccount])
   await user.click(screen.getByRole('button', { name: 'Grok CLI' }))
   expect(await screen.findByText('合成账户')).toBeVisible()
   expect(screen.queryByRole('link', { name: '在 ChatGPT 查看套餐用量' })).toBeNull()
@@ -265,7 +271,7 @@ test.each([
   ['https://github.com/login/device',true],
   ['https://github.com.invalid/login/device',false],
 ])('Copilot 授权期间展示设备码，只打开可信的 GitHub 验证地址 %s', async (verificationUrl, valid) => {
-  const { user } = setup(false, { getAccountStatus: async () => ({ state: 'pending', userCode: 'ABCD-EFGH', verificationUrl }), cancelAccountSignIn: async () => {} })
+  const { user } = setup(false, { getAccountStatus: async () => ({ state: 'pending', userCode: 'ABCD-EFGH', verificationUrl }), cancelAccountSignIn: async () => {} }, [copilotAccount])
   await user.click(screen.getByRole('button', { name: 'GitHub Copilot' }))
   expect(await screen.findByText('ABCD-EFGH')).toBeVisible()
   const link = screen.queryByRole('link', { name: '打开 GitHub 验证页面' })
@@ -277,7 +283,7 @@ test.each([
 test('迟到的 Grok 登录结果不会改动当前选中的 Copilot', async () => {
   let complete!: (value: { state: 'connected'; email: string }) => void
   const signInAccount = vi.fn(() => new Promise<{ state: 'connected'; email: string }>(resolve => { complete = resolve }))
-  const { user } = setup(false, { getAccountStatus: async () => ({ state: 'disconnected' }), signInAccount, cancelAccountSignIn: async () => {} })
+  const { user } = setup(false, { getAccountStatus: async () => ({ state: 'disconnected' }), signInAccount, cancelAccountSignIn: async () => {} }, [grokAccount, copilotAccount])
   await user.click(screen.getByRole('button', { name: 'Grok CLI' }))
   await user.click(await screen.findByRole('button', { name: '使用 Grok 登录' }))
   await user.click(screen.getByRole('button', { name: 'GitHub Copilot' }))
@@ -292,7 +298,7 @@ test('Copilot 在发起登录后从主进程读取设备码，取消后不保留
     getAccountStatus: async () => waiting ? { state: 'pending', userCode: 'XYZ1-XYZ2', verificationUrl: 'https://github.com/login/device' } : { state: 'disconnected' },
     signInAccount: async () => { waiting = true; return new Promise<never>(() => {}) },
     cancelAccountSignIn: async () => { waiting = false },
-  })
+  }, [copilotAccount])
   await user.click(screen.getByRole('button', { name: 'GitHub Copilot' }))
   await user.click(await screen.findByRole('button', { name: '使用 GitHub 登录' }))
   expect(await screen.findByText('XYZ1-XYZ2', {}, { timeout: 3000 })).toBeVisible()

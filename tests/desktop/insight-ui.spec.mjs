@@ -115,6 +115,80 @@ async function harness({ model = true, self = true, hold = true, reject = true, 
   } catch (error) { await close(); throw error }
 }
 
+test('task row opens its progress from mouse and keyboard while actions stay on the list', async ({}, info) => {
+  test.setTimeout(90_000)
+  const h = await harness(), { app, page, btn, shot } = h
+  const task = page.locator('.insight-task-row')
+  const progress = page.getByRole('dialog', { name: '会话洞察状态' })
+  const resize = width => app.evaluate(({ BrowserWindow }, width) => {
+    const window = BrowserWindow.getAllWindows()[0]
+    window.setMinimumSize(320, 320)
+    window.setSize(width, 750)
+  }, width)
+  async function showList() {
+    await expect(progress.getByRole('progressbar', { name: '消息处理进度' })).toBeVisible()
+    await expect(progress.getByText('当前会话：' + syntheticInsightConversation)).toBeVisible()
+    await btn('关闭会话洞察').click()
+    await btn('对话洞察').click()
+    await expect(task).toBeVisible()
+  }
+  try {
+    await btn('会话洞察').click()
+    await page.getByRole('combobox', { name: '分析模型', exact: true }).click()
+    await page.getByRole('option', { name: /合成洞察模型/ }).click()
+    await page.getByRole('radio', { name: '日期范围', exact: true }).check()
+    await page.getByLabel('开始日期', { exact: true }).fill(syntheticInsightScope.startDate)
+    await page.getByLabel('结束日期', { exact: true }).fill(syntheticInsightScope.endDate)
+    await btn('开始洞察').click()
+    await expect.poll(() => h.requests.map(request => request.stage), { timeout: 20_000 }).toEqual(['reading', 'checking'])
+    await showList()
+    const id = await task.getAttribute('data-insight-task')
+    const title = task.getByRole('button', { name: new RegExp('会话洞察') })
+    for (const locator of [
+      title, task.locator('.memory-coverage-ring'), task.getByRole('status'),
+      task.getByText(/^已运行 /), task.getByText('合成洞察模型', { exact: true }),
+    ]) {
+      await locator.click()
+      await showList()
+      await expect(task).toHaveAttribute('data-insight-task', id)
+    }
+    await task.getByRole('button', { name: '详情' }).click()
+    await expect(task.getByRole('group', { name: '分析用量' })).toBeVisible()
+    await expect(progress).toHaveCount(0)
+    await task.getByRole('button', { name: '详情' }).click()
+    await title.press('Enter')
+    await showList()
+    await title.focus()
+    await page.keyboard.press('Tab')
+    const pause = task.getByRole('button', { name: '暂停', exact: true })
+    await expect(pause).toBeFocused()
+    await page.keyboard.press('Space')
+    await expect(task.getByRole('status')).toHaveText('已暂停')
+    await expect(progress).toHaveCount(0)
+    await resize(480)
+    await expect.poll(() => page.evaluate(() => innerWidth)).toBe(480)
+    const wrapped = await task.locator('.insight-task-row-actions').boundingBox()
+    const top = await title.boundingBox()
+    expect(wrapped.y).toBeGreaterThan(top.y + top.height)
+    await shot('row-paused-wrapped')
+    await task.click({ position: { x: 4, y: 4 } })
+    await expect(progress.getByRole('status')).toHaveText('已暂停')
+    await resize(1280)
+    await showList()
+    await task.getByRole('button', { name: '继续洞察' }).click()
+    await expect(task.getByRole('status')).toHaveText('生成失败')
+    await expect(progress).toHaveCount(0)
+    await task.getByRole('button', { name: '重试' }).click()
+    await expect(page.getByRole('button', { name: /会话洞察.*#1/ })).toBeVisible()
+    await expect(task).toHaveCount(0)
+    await expect(progress).toHaveCount(0)
+    await shot('row-finished-after-retry')
+  } catch (error) {
+    await page.screenshot({ path: info.outputPath('failure.png') }).catch(() => {})
+    throw error
+  } finally { await h.close() }
+})
+
 test('real Electron insight UI validates scope, pauses and retries, reads exact sources, renames and deletes', async () => {
   test.setTimeout(90_000)
   const h = await harness(), { page, app, btn, shot, evidence } = h

@@ -9,7 +9,7 @@
   display: flex; align-items: center; gap: 12px; min-height: 42px; max-width: 100%;
   padding: 0 6px; border: 0; border-radius: 6px; background: transparent; font: inherit; font-size: 17px; text-align: left; cursor: pointer;
 }
-.insight-group-toggle:hover, .insight-task-link:hover { background: var(--hover); }
+.insight-group-toggle:hover { background: var(--hover); }
 .insight-group-toggle svg { width: 18px; flex-shrink: 0; }
 .insight-group-toggle[aria-expanded="false"] svg { transform: rotate(-90deg); }
 .insight-group ul { padding: 0; margin: 10px 0 0; list-style: none; }
@@ -38,7 +38,8 @@ button.insight-report-row:active { background: var(--pressed); }
 .insight-rename-controls input[aria-invalid="true"] { border-color: #a62328; }
 .insight-rename-controls :is(.analysis-primary, .analysis-secondary) { min-height: 36px; }
 .insight-error { margin: 6px 0 0; color: #a62328; font-size: 13px; }
-.insight-task-row { padding: 12px 15px; border-radius: 8px; background: var(--canvas); }
+.insight-task-row { padding: 12px 15px; border-radius: 8px; background: var(--canvas); cursor: pointer; }
+.insight-task-row:hover:not(:has(button:not(.insight-task-link):hover)) { background: var(--hover); }
 .insight-task-row-main { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 .insight-task-link {
   display: flex; align-items: center; gap: 12px; flex: 1 1 135px; min-width: 0; min-height: 44px; padding: 4px;
@@ -93,9 +94,13 @@ button.insight-report-row:active { background: var(--pressed); }
   text-align: inherit; text-decoration: underline; text-underline-offset: .16em; cursor: pointer;
 }
 .insight-citation:hover { text-decoration-thickness: 2px; }
-.insight-history-card { width: min(720px, calc(100% - 32px)); max-height: min(82svh, 840px); overflow-y: auto; }
-.insight-history-card > header { display: flex; gap: 12px; align-items: start; justify-content: space-between; }
+.reader-modal-card.insight-history-card { width: min(100%, 75vw); max-width: 960px; max-height: min(82svh, 840px); overflow: hidden; }
+.insight-history-card > header { display: flex; flex: none; gap: 12px; align-items: start; justify-content: space-between; overflow-wrap: anywhere; }
 .insight-history-card > header h2 { margin: 0; }
+.insight-history-card > header button { flex: none; }
+.insight-history-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.insight-history-body:focus-visible { outline-offset: -2px; }
+.insight-history-body > .memory-prose { max-width: 790px; margin-inline: auto; padding: 0; overflow: visible; }
 .insight-delete-details > p { line-height: 1.65; }
 @keyframes insight-loading { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .insight-list-loading svg { animation: none; } }

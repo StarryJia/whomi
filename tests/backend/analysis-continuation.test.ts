@@ -79,6 +79,9 @@ async function start(service: ReturnType<typeof analysisService>) {
 
 test.each(['conversation-memory-v2', 'conversation-memory-v3', 'conversation-memory-v4'] as const)('a saved %s source batch resumes with its own writing instructions after upgrade', async version => {
   const { data, path } = await fixture(version)
+  const legacySource = '按旧版提示词记录每个安排。', legacyFinal = '按旧版提示词描述来龙去脉。'
+  await data.settings.savePrompt('memorySource', legacySource)
+  await data.settings.savePrompt('memoryFinal', legacyFinal)
   const notes = (id: string) => ({ events: [{ key: '搬家', text: '事先安排', evidenceMessageIds: [id], signals: [{ direction: 'J', messageId: id }] }] })
   const waiting = Promise.withResolvers<void>()
   const first = analysisService(data, async (input, { signal }) => {
@@ -94,9 +97,11 @@ test.each(['conversation-memory-v2', 'conversation-memory-v3', 'conversation-mem
   await first.close()
   data.store.close()
   const reopened = connection(path), seen: string[] = []
+  await reopened.settings.savePrompt('insightReading', '升级后为新洞察保存的阅读规则。')
   const resumed = analysisService(reopened, async input => {
     const payload = JSON.parse(input.prompt)
     if (version !== 'conversation-memory-v4') expect(input.systemPrompt).not.toContain('dimensionExplanations')
+    else expect(input.systemPrompt).toContain(payload.messages ? legacySource : legacyFinal)
     if (payload.messages) {
       const id = payload.messages[0].id
       seen.push(id)

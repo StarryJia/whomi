@@ -5,9 +5,8 @@ import { defaultProcessing, type SettingsApi, type SettingsSnapshot } from '../.
 import { SettingsPage } from './settings-page'
 import { defaultPrompts } from '../../shared/system-prompts'
 import { ExceptionNoticeProvider } from '../ui/exception-notices'
-import type { ImportDiagnosticsApi } from '../../shared/import-diagnostics'
 
-function setup(withProvider = true, withModel = false, showExceptionNotices = false, importDiagnostics?: ImportDiagnosticsApi) {
+function setup(withProvider = true, withModel = false, showExceptionNotices = false) {
   let state: SettingsSnapshot = { providers: withProvider ? [{ id: 'p1', name: '本地服务', baseUrl: 'http://127.0.0.1:1234/v1', enabled: true, hasCredential: true }] : [], models: withModel ? [{ id: 'm1', providerId: 'p1', label: '测试模型', model: 'alpha', baseUrl: 'http://127.0.0.1:1234/v1', enabled: true, hasCredential: true, contextWindow: 8192, maxTokens: 1024, version: 1 }] : [], processing: structuredClone(defaultProcessing), selectedModels: {}, debug: false }
   const api: SettingsApi = {
     getPrompts: async () => ({ ...defaultPrompts }), savePrompt: async (id, text) => ({ ...defaultPrompts, [id]: text }),
@@ -24,11 +23,13 @@ function setup(withProvider = true, withModel = false, showExceptionNotices = fa
     selectModel: vi.fn(async () => {}), setDebug: vi.fn(async () => {}), getDiagnostics: vi.fn(async () => ({ version: '0.1.2', platform: 'win32', entries: [] })),
     getStorage: vi.fn(async () => ({ path: 'D:\\Whomi', defaultPath: 'D:\\Whomi', restartRequired: false })),
     openStorageDirectory: vi.fn(async () => {}),
+    getErrorLogArchives: vi.fn<SettingsApi['getErrorLogArchives']>(async () => []),
+    openErrorLogDirectory: vi.fn<SettingsApi['openErrorLogDirectory']>(async () => ({ path: 'D:\\Whomi\\logs', fallback: false })),
     chooseStorage: vi.fn(async () => ({ token: 'choice', path: 'D:\\新的目录' })),
     relocateStorage: vi.fn(async () => ({ path: 'D:\\新的目录', defaultPath: 'D:\\Whomi', restartRequired: true })), restart: vi.fn(async () => {}),
   }
   const onClose = vi.fn()
-  const page = <SettingsPage api={api} importDiagnostics={importDiagnostics} onClose={onClose} />
+  const page = <SettingsPage api={api} onClose={onClose} />
   render(showExceptionNotices ? <ExceptionNoticeProvider>{page}</ExceptionNoticeProvider> : page)
   return { api, onClose, user: userEvent.setup() }
 }
@@ -39,6 +40,16 @@ beforeEach(() => {
 })
 
 describe('正式设置', () => {
+  it('全新配置只显示批准的预置，搜索中转名称仍可手动添加服务商', async () => {
+    const { user } = setup(false)
+    const results = within(await screen.findByRole('complementary', { name: '服务商列表' }))
+    expect(results.getAllByRole('button', { pressed: false })).toHaveLength(25)
+    expect(results.getByRole('button', { name: 'OpenAI' })).toBeVisible()
+    await user.type(results.getByRole('textbox', { name: '搜索服务商' }), 'OpenRouter')
+    expect(results.getByText('未找到服务商')).toBeVisible()
+    await user.click(results.getByRole('button', { name: '添加服务商' }))
+    expect(screen.getByRole('dialog', { name: '添加自定义服务商' })).toBeVisible()
+  })
   it('自定义服务商可选择并重置头像，配置两个地址后用指定默认地址保存', async () => {
     const { api, user } = setup(false)
     await user.click(await screen.findByRole('button', { name: '添加服务商' }))
@@ -340,16 +351,21 @@ describe('正式设置', () => {
     expect(screen.queryByRole('button', { name: '第三方声明' })).not.toBeInTheDocument()
   })
 
-  it('调试模式关闭时仍能从关于页打开最近的导入日志', async () => {
-    const open = vi.fn(async () => {}).mockRejectedValueOnce({ code: 'IMPORT_LOG_MISSING', action: '找不到错误日志。' })
-    const { api, user } = setup(false, false, true, { report: vi.fn(), open })
+  it('调试模式关闭时可打开错误目录，失败后重试并显示备用目录和旧导入日志入口', async () => {
+    const { api, user } = setup(false, false, true)
+    vi.mocked(api.getErrorLogArchives).mockResolvedValue(['legacy-import'])
+    vi.mocked(api.openErrorLogDirectory)
+      .mockRejectedValueOnce({ code: 'ERROR_LOG_UNWRITABLE', action: '请检查日志目录权限后重试。' })
+      .mockResolvedValueOnce({ path: 'C:\\Users\\example\\Whomi\\logs', fallback: true })
     await screen.findByRole('button', { name: '添加服务商' })
     await user.click(screen.getByRole('button', { name: '关于 Whomi' }))
-    const logs = screen.getByRole('button', { name: '查看最近一次导入错误日志' })
+    const logs = screen.getByRole('button', { name: '打开错误日志目录' })
     await user.click(logs)
-    expect(await screen.findByRole('alert')).toHaveTextContent('找不到错误日志。')
+    expect(await screen.findByRole('alert')).toHaveTextContent('请检查日志目录权限后重试。')
     await user.click(logs)
-    expect(open).toHaveBeenCalledTimes(2)
+    expect(await screen.findByRole('status')).toHaveTextContent('C:\\Users\\example\\Whomi\\logs')
+    await user.click(screen.getByRole('button', { name: '打开旧版导入日志目录' }))
+    expect(vi.mocked(api.openErrorLogDirectory).mock.calls).toEqual([['current'], ['current'], ['legacy-import']])
     expect(api.getDiagnostics).not.toHaveBeenCalled()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })

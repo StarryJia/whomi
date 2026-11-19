@@ -20,6 +20,9 @@ export type SettingsSnapshot = { providers: Provider[]; models: SettingsModel[];
 export type StorageLocation = { path: string; defaultPath: string; restartRequired: boolean }
 export type StorageChoice = { token: string; path: string }
 export type Diagnostics = { version: string; platform: string; entries: { code: string; action: string }[] }
+export type ErrorLogArchive = 'legacy-import' | 'fallback'
+export type ErrorLogTarget = 'current' | ErrorLogArchive
+export type ErrorLogLocation = { path: string; fallback: boolean }
 export type AccountUsage = { requests: number; inputTokens: number | null; outputTokens: number | null; partial: boolean }
 export interface SettingsApi {
   getPrompts(): Promise<PromptValues>
@@ -43,6 +46,8 @@ export interface SettingsApi {
   selectModel(feature: ModelFeature, id: string | null): Promise<void>
   setDebug(enabled: boolean): Promise<void>
   getDiagnostics(): Promise<Diagnostics>
+  getErrorLogArchives(): Promise<ErrorLogArchive[]>
+  openErrorLogDirectory(target: ErrorLogTarget): Promise<ErrorLogLocation>
   getStorage(): Promise<StorageLocation>
   openStorageDirectory(): Promise<void>
   chooseStorage(): Promise<StorageChoice | null>

@@ -8,29 +8,33 @@ beforeEach(() => {
   HTMLDialogElement.prototype.showModal = function () { this.setAttribute('open', '') }
   HTMLDialogElement.prototype.close = function () { this.removeAttribute('open') }
 })
-function setup() {
-  const api = { getPrompts: vi.fn(async () => ({ ...defaultPrompts })), savePrompt: vi.fn(async (id: string, text: string) => ({ ...defaultPrompts, [id]: text })) }
+function setup(values = defaultPrompts) {
+  const api = { getPrompts: vi.fn(async () => ({ ...values })), savePrompt: vi.fn(async (id: string, text: string) => ({ ...values, [id]: text })) }
   render(<SystemPrompts api={api} registerGuard={() => {}} onBusy={() => {}} />)
   return { api, user: userEvent.setup() }
 }
-test('说明在外层显示作用和实际功能名，正文只在点击编辑后出现', async () => {
-  const { user } = setup()
-  await user.click(await screen.findByRole('button', { name: '记忆成稿说明' }))
-  const help = screen.getByRole('dialog', { name: '记忆成稿说明' })
+test('含自定义记忆指令的旧设置仅展示对话与洞察入口，各自说明仍可打开', async () => {
+  const { user } = setup({ ...defaultPrompts, memorySource: '历史取材示例', memoryMerge: '历史归并示例', memoryFinal: '历史成稿示例' })
+  await screen.findByRole('button', { name: '编辑AI 对话' })
+  expect(screen.getAllByRole('button', { name: /^编辑/ }).map(button => button.getAttribute('aria-label')))
+    .toEqual(['编辑AI 对话', '编辑洞察阅读', '编辑洞察核查', '编辑洞察成稿'])
+  expect(screen.queryByRole('button', { name: /记忆.*说明/ })).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: '洞察成稿说明' }))
+  const help = screen.getByRole('dialog', { name: '洞察成稿说明' })
   expect(within(help).getByText('作用')).toBeVisible()
   expect(within(help).getByText('对应功能')).toBeVisible()
-  expect(within(help).getByText('整理成记忆')).toBeVisible()
+  expect(within(help).getByText('对话洞察')).toBeVisible()
   expect(screen.queryByText('默认', { exact: true })).not.toBeInTheDocument()
   expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
   await user.keyboard('{Escape}')
-  await user.click(screen.getByRole('button', { name: '编辑记忆成稿' }))
-  const editor = screen.getByRole('dialog', { name: '编辑提示词 · 记忆成稿' })
+  await user.click(screen.getByRole('button', { name: '编辑洞察成稿' }))
+  const editor = screen.getByRole('dialog', { name: '编辑提示词 · 洞察成稿' })
   expect(within(editor).getByRole('textbox')).toHaveFocus()
-  expect(within(editor).getByRole('textbox', { name: '提示词内容' })).toHaveValue(defaultPrompts.memoryFinal)
+  expect(within(editor).getByRole('textbox', { name: '提示词内容' })).toHaveValue(defaultPrompts.insightWriting)
   expect(within(editor).queryByText('对应功能')).not.toBeInTheDocument()
   await user.click(within(editor).getByRole('button', { name: '取消' }))
   expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
-  expect(screen.getByRole('button', { name: '编辑记忆成稿' })).toHaveFocus()
+  expect(screen.getByRole('button', { name: '编辑洞察成稿' })).toHaveFocus()
 })
 test('保存失败保留草稿，重试成功后再次打开为保存值', async () => {
   const { api, user } = setup()
