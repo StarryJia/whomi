@@ -36,11 +36,14 @@ export function useConversations(client?: ConversationClient) {
   const windowRef = useRef<ReaderWindow>(undefined)
   const cursorRef = useRef<string | null>(null)
   const loadedCount = useRef(0)
+  const deletedDuringListRead = useRef(new Set<string>())
   const listBusy = useRef(false)
   const readerBusy = useRef(false)
   const listGeneration = useRef(0)
   const readerGeneration = useRef(0)
   const mounted = useRef(false)
+
+  useEffect(() => { loadedCount.current = conversations.length }, [conversations])
 
   const updateWindow = useCallback((value: ReaderWindow | undefined) => {
     windowRef.current = value
@@ -56,6 +59,7 @@ export function useConversations(client?: ConversationClient) {
       if (windowRef.current?.sourceStatus === 'loading') updateWindow({ ...windowRef.current, sourceStatus: 'unavailable' })
     }
     listBusy.current = true
+    deletedDuringListRead.current.clear()
     setListLoading(!!client)
     setListError(undefined)
     if (!client) { setConversations([]); setListCursor(null); cursorRef.current = null; listBusy.current = false; return }
@@ -66,8 +70,7 @@ export function useConversations(client?: ConversationClient) {
         page = { items: [...page.items, ...next.items], nextCursor: next.nextCursor }
       }
       if (!mounted.current || generation !== listGeneration.current) return
-      loadedCount.current = page.items.length
-      setConversations(page.items)
+      setConversations(page.items.filter(item => !deletedDuringListRead.current.has(item.id)))
       setListCursor(page.nextCursor)
       cursorRef.current = page.nextCursor
     } catch (failure) {
@@ -77,13 +80,25 @@ export function useConversations(client?: ConversationClient) {
     }
   }, [client, updateWindow])
 
+  const forgetConversation = useCallback((id: string) => {
+    // 只过滤删除前已发出的列表读取，后续读取以数据库为准。
+    if (listBusy.current) deletedDuringListRead.current.add(id)
+    setConversations(items => items.filter(item => item.id !== id))
+    if (windowRef.current?.conversationId === id) {
+      ++readerGeneration.current
+      readerBusy.current = false
+      updateWindow(undefined)
+      setLoading(false)
+      setError(undefined)
+    }
+  }, [updateWindow])
+
   useEffect(() => {
     mounted.current = true
     updateWindow(undefined)
     setConversations([])
     setListCursor(null)
     cursorRef.current = null
-    loadedCount.current = 0
     void refresh()
     return () => { mounted.current = false; ++listGeneration.current; ++readerGeneration.current }
   }, [refresh, updateWindow])
@@ -92,13 +107,14 @@ export function useConversations(client?: ConversationClient) {
     if (!client || listBusy.current || !cursorRef.current) return
     const generation = listGeneration.current
     listBusy.current = true
+    deletedDuringListRead.current.clear()
     setListLoading(true)
     setListError(undefined)
     try {
       const page = await client.listConversations({ cursor: cursorRef.current, limit: 100 })
       if (!mounted.current || generation !== listGeneration.current) return
-      loadedCount.current += page.items.length
-      setConversations(previous => [...previous, ...page.items.filter(item => !previous.some(old => old.id === item.id))])
+      const items = page.items.filter(item => !deletedDuringListRead.current.has(item.id))
+      setConversations(previous => [...previous, ...items.filter(item => !previous.some(old => old.id === item.id))])
       setListCursor(page.nextCursor)
       cursorRef.current = page.nextCursor
     } catch (failure) {
@@ -181,5 +197,5 @@ export function useConversations(client?: ConversationClient) {
   const loadBefore = useCallback(() => load('before'), [load])
   const loadAfter = useCallback(() => load('after'), [load])
   return { available: !!client, conversations, listCursor, listLoading, listError, current, loading, error,
-    refresh, loadMore, open, locate, loadBefore, loadAfter }
+    refresh, forgetConversation, loadMore, open, locate, loadBefore, loadAfter }
 }

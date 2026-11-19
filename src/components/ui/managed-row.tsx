@@ -52,7 +52,7 @@ export function DeleteListItem({ title, thread, memory, description, onDelete, o
     <div className="reader-modal-overlay" onClick={e => { if (e.target === e.currentTarget && !busy) onDismiss() }}>
       <div className="reader-modal-card">
         <h2 id="delete-modal-title">{description?.heading ?? (memory ? '删除记忆' : thread ? '删除 AI 对话' : '删除会话')}</h2>
-        {description?.content ?? <p className="reader-modal-description">{memory ? `将删除「${title}」及其整理进度，保留原始聊天和其他记忆。` : thread ? `将删除「${title}」的全部提问与回答。` : `将删除「${title}」的原文、成员、本人设置、关联 AI 对话和记忆成稿。`}此操作无法撤销。</p>}
+        {description?.content ?? <p className="reader-modal-description">{memory ? `将删除「${title}」及其整理进度，保留原始聊天和其他记忆。` : thread ? `将删除「${title}」的全部提问与回答。` : `将删除「${title}」的原文、成员、本人设置、关联 AI 对话、记忆成稿和此会话的全部洞察报告。`}此操作无法撤销。</p>}
         {error && <p className="import-error" role="alert">{error}</p>}
         <div className="reader-modal-footer">
           <button type="button" className="reader-modal-btn" disabled={busy} onClick={onDismiss} autoFocus>取消</button>

@@ -260,6 +260,15 @@ export function createStorageLocationService(options: StorageLocationOptions) {
   function revokeOwner(owner: number) { for (const [token, grant] of grants) if (grant.owner === owner) grants.delete(token) }
   return {
     getStorage: snapshot,
+    async openDirectory(openPath: (directory: string) => Promise<string>) {
+      if (busy) throw new BoundaryError('STORAGE_BUSY', '请等待目录迁移完成。')
+      const directory = await current()
+      try {
+        await checkedDirectory(directory)
+        const error = await openPath(directory)
+        if (error) throw new Error(error)
+      } catch { throw new BoundaryError('STORAGE_OPEN_FAILED', '无法打开保存目录，请检查目录后重试。') }
+    },
     async issueChoice(owner: number, path: string): Promise<StorageChoice> {
       requireAvailable()
       const source = await current(), info = await destination(path, source)

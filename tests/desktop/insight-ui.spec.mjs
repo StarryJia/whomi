@@ -5,11 +5,10 @@ import { tmpdir } from 'node:os'
 import { basename, dirname, join, resolve } from 'node:path'
 import { insightModelPrompt, insightModelReply, syntheticInsightConversation, syntheticInsightScope } from './fixtures/insight-model.mjs'
 
-const evidence = resolve('release/conversation-insights-20261115')
-
-async function failNext(app, method, fragmentIndex) {
+async function failNext(app, method, fragmentIndex, channel = 'whomi:ai-call') {
   await app.evaluate(({ ipcMain }, target) => {
-    const channel = 'whomi:ai-call', original = ipcMain._invokeHandlers.get(channel)
+    const { channel } = target
+    const original = ipcMain._invokeHandlers.get(channel)
     ipcMain.removeHandler(channel)
     ipcMain.handle(channel, async (event, value) => {
       if (value.method === target.method && (target.fragmentIndex === undefined || value.args[0]?.fragmentIndex === target.fragmentIndex)) {
@@ -18,7 +17,7 @@ async function failNext(app, method, fragmentIndex) {
       }
       return original(event, value)
     })
-  }, { method, fragmentIndex })
+  }, { method, fragmentIndex, channel })
 }
 
 function completion(response, result) {
@@ -27,7 +26,8 @@ function completion(response, result) {
   response.end(`data: ${JSON.stringify({ id: 'synthetic-ui', choices: [{ index: 0, delta: {}, finish_reason: 'stop' }], usage: { prompt_tokens: 20, completion_tokens: 10, total_tokens: 30 } })}\n\ndata: [DONE]\n\n`)
 }
 
-async function harness({ model = true, self = true, hold = true, reject = true, longReport = false } = {}) {
+async function harness({ model = true, self = true, hold = true, reject = true, longReport = false, extraConversations = 0 } = {}) {
+  const evidence = test.info().outputPath('screenshots')
   const directory = resolve(await mkdtemp(join(tmpdir(), 'whomi-runtime-insight-ui-')))
   const requests = [], errors = [], fixtureErrors = []
   let app
@@ -73,6 +73,11 @@ async function harness({ model = true, self = true, hold = true, reject = true, 
     const { seedSyntheticInsight } = await import('./insight-model.mjs')
     return writer.transaction(() => {
       seedSyntheticInsight(writer)
+      if (${extraConversations} > 0) {
+        writer.exec('UPDATE conversations SET pinned=1 WHERE id=1')
+        const addChat = writer.prepare("INSERT INTO conversations(title,kind,created_at_ms) VALUES(?,'direct',0)")
+        for (let i = 1; i <= ${extraConversations}; i++) addChat.run('分页合成会话 ' + i)
+      }
       if (!${self}) writer.exec('DELETE FROM self_confirmations')
       const add = writer.prepare("INSERT INTO messages(id,conversation_id,member_id,sender_kind,sender_name,kind,text,ordinal,sent_at_ms,time_precision) VALUES(?,1,?,'member',?,'text',?,?,?,'minute')")
       for (let i = 0; i < 140; i++) {
@@ -103,7 +108,7 @@ async function harness({ model = true, self = true, hold = true, reject = true, 
   if (await btn('展开会话列表').isVisible()) await btn('展开会话列表').click()
   await btn(syntheticInsightConversation).click()
   return {
-    app, page, btn, requests, errors, fixtureErrors,
+    app, page, btn, requests, errors, fixtureErrors, evidence,
     shot: name => page.screenshot({ path: join(evidence, name + '.png'), animations: 'disabled' }),
     close,
   }
@@ -112,7 +117,7 @@ async function harness({ model = true, self = true, hold = true, reject = true, 
 
 test('real Electron insight UI validates scope, pauses and retries, reads exact sources, renames and deletes', async () => {
   test.setTimeout(90_000)
-  const h = await harness(), { page, app, btn, shot } = h
+  const h = await harness(), { page, app, btn, shot, evidence } = h
   const management = async name => {
     await btn('关闭会话洞察').click(); await btn('对话洞察').click()
     await expect(page.locator('.insight-task-row')).toBeVisible()
@@ -233,12 +238,16 @@ test('real Electron insight UI validates scope, pauses and retries, reads exact 
     expect(afterShift).toBeLessThan(2)
     await expect(btn('回到引用')).toBeVisible()
     await shot('14-source-browse-later')
+    const beforeFailure = await source.evaluate(el => ({ top: el.getBoundingClientRect().top, scrollTop: el.scrollTop }))
     await failNext(app, 'readInsightCitation', 1)
     await btn('下一段').click()
-    await expect(page.getByRole('alert')).toContainText('原文读取失败，请重试。')
+    const sourceError = page.getByRole('alert')
+    await expect(sourceError).toContainText('原文读取失败，请重试。')
     await expect(source.locator('[data-citation=true]')).toHaveAttribute('data-message-id', '1')
     await expect(page.locator('.insight-source-footer')).toContainText('1 / 2')
     await shot('simulated-source-next-failed')
+    expect(await source.evaluate(el => ({ top: el.getBoundingClientRect().top, scrollTop: el.scrollTop }))).toEqual(beforeFailure)
+    expect((await sourceError.boundingBox()).y).toBeGreaterThan((await source.boundingBox()).y)
     await btn('重试').click()
     await expect(source.locator('[data-citation=true]')).toHaveAttribute('data-message-id', '3')
     await expect(btn('下一段')).toBeDisabled()
@@ -255,9 +264,18 @@ test('real Electron insight UI validates scope, pauses and retries, reads exact 
     await expect(source.locator('[data-citation=true]')).toHaveAttribute('data-message-id', '1')
     await shot('17-narrow-source')
     expect(await source.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
-    await btn('下一段').click()
+    await failNext(app, 'readInsightCitation', 1)
+    await btn('下一段').press('Enter')
+    await expect(page.locator('.insight-source-footer')).toContainText('1 / 2')
+    await btn('重试').press('Enter')
     await expect(source.locator('[data-citation=true]')).toHaveAttribute('data-message-id', '3')
-    await btn('关闭原文').click()
+    await expect(page.locator('.insight-source-footer')).toContainText('2 / 2')
+    await expect(source).toBeFocused()
+    const topAfterRetry = await source.evaluate(el => el.scrollTop)
+    await page.keyboard.press('ArrowDown')
+    await expect.poll(() => source.evaluate(el => el.scrollTop)).toBeGreaterThan(topAfterRetry)
+    await shot('narrow-source-keyboard-retry')
+    await page.keyboard.press('Escape')
     await expect(citation).toBeFocused()
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     await btn('返回').click()
@@ -403,6 +421,204 @@ test('real Electron preserves long report reading position and fits an 80-charac
     await shot('31-long-report-returned')
     await btn('返回').click()
     await expect(row).toBeFocused()
+    await row.click()
+    await app.evaluate(({ ipcMain }) => {
+      const channel = 'whomi:ai-call'
+      const original = ipcMain._invokeHandlers.get(channel)
+      ipcMain.removeHandler(channel)
+      ipcMain.handle(channel, async (event, value) => {
+        const result = await original(event, value)
+        if (value.method === 'readInsightCitation') {
+          ipcMain.removeHandler(channel)
+          ipcMain.handle(channel, original)
+          await new Promise(resolve => { globalThis.releaseInsightCitation = resolve })
+        }
+        return result
+      })
+    })
+    await citation.click()
+    await expect.poll(() => app.evaluate(() => Boolean(globalThis.releaseInsightCitation))).toBe(true)
+    await shot('33-source-open-during-conversation-deletion')
+    await page.evaluate(() => window.whomi.deleteConversation('1'))
+    try {
+      await expect(page.getByRole('region', { name: '引用聊天记录' })).toHaveCount(0)
+      await expect(page.getByRole('heading', { name: '暂无洞察报告' })).toBeVisible()
+      await expect(page.getByRole('heading', { name: '对话洞察', exact: true })).toBeFocused()
+      await expect(btn(syntheticInsightConversation)).toHaveCount(0)
+    } catch (error) {
+      await shot('failure-conversation-deletion-keeps-source-open')
+      throw error
+    } finally {
+      await app.evaluate(() => globalThis.releaseInsightCitation())
+    }
+    expect(await page.evaluate(() => window.whomi.ai.listAnalyses())).toEqual([])
+    await expect(page.getByRole('region', { name: '引用聊天记录' })).toHaveCount(0)
+    await shot('34-list-after-conversation-deletion')
+    await btn('个人总览').click()
+    await expect(page.getByRole('heading', { name: '你的人格倾向' })).toBeVisible()
+    await expect(page.getByRole('region', { name: '你在不同关系中的表现' })).toHaveCount(0)
+    await shot('35-overview-after-conversation-deletion')
     expect(h.errors).toEqual([])
+  } finally { await h.close() }
+})
+
+test('real Electron keeps existing reports after a refresh failure and updates overview after one report is deleted', async () => {
+  test.setTimeout(90_000)
+  const h = await harness({ hold: false, reject: false }), { app, page, btn, shot } = h
+  async function generateReport(scope, requestId) {
+    const task = await page.evaluate(async ({ scope, requestId }) => {
+      const [model] = await window.whomi.ai.listModels()
+      const prepared = await window.whomi.ai.prepareAnalysis({ conversationId: '1', modelId: model.id, scope })
+      return window.whomi.ai.confirmAnalysis({ token: prepared.token, requestId })
+    }, { scope, requestId })
+    await expect.poll(() => page.evaluate(id => window.whomi.ai.getAnalysis(id), task.id), { timeout: 20_000 })
+      .toMatchObject({ state: 'completed', title: '会话洞察' })
+    return task.id
+  }
+
+  try {
+    const kept = await generateReport(syntheticInsightScope, 'synthetic-overview-kept')
+    await btn('个人总览').click()
+    const keptContribution = btn(`会话洞察 #${kept}`)
+    await expect(keptContribution).toBeVisible()
+    const removed = await generateReport({ ...syntheticInsightScope, endDate: '2026-10-11' }, 'synthetic-overview-removed')
+    expect(removed).not.toBe(kept)
+    await expect(btn(`会话洞察 #${removed}`)).toBeVisible()
+    const requestsAfterGeneration = h.requests.length
+    const renamed = '合成报告 · 扩展日期范围'
+    const keptRow = btn(`${syntheticInsightConversation} · 会话洞察 #${kept}`)
+    const originalRemovedRow = btn(`${syntheticInsightConversation} · 会话洞察 #${removed}`)
+    const removedRow = btn(`${syntheticInsightConversation} · ${renamed} #${removed}`)
+
+    await btn('对话洞察').click()
+    await expect(keptRow).toBeVisible()
+    const conversationRow = btn(syntheticInsightConversation)
+    const deleteConversation = page.getByRole('dialog', { name: '删除会话' })
+    async function requestDelete() {
+      await conversationRow.click({ button: 'right' })
+      await page.getByRole('menuitem', { name: '删除', exact: true }).click()
+      await expect(deleteConversation).toContainText('此会话的全部洞察报告')
+    }
+    await requestDelete()
+    await expect(deleteConversation.getByRole('button', { name: '取消' })).toBeFocused()
+    await shot('conversation-delete-scope')
+    await deleteConversation.getByRole('button', { name: '取消' }).click()
+    for (const report of [keptRow, originalRemovedRow]) {
+      await report.click()
+      await expect(btn('你一开始就给了三个办法')).toBeVisible()
+      await btn('返回').click()
+    }
+    await originalRemovedRow.click({ button: 'right' })
+    await page.getByRole('menuitem', { name: '重命名', exact: true }).click()
+    await page.getByRole('textbox', { name: '报告名称' }).fill(renamed)
+    await failNext(app, 'listAnalyses')
+    await btn('保存').click()
+    const refreshError = page.getByRole('alert').filter({ hasText: '报告列表读取失败。' })
+    await expect(refreshError).toBeVisible()
+    await expect(keptRow).toBeVisible()
+    await expect(removedRow).toBeVisible()
+    await shot('simulated-management-refresh-failed-with-reports')
+    await refreshError.getByRole('button', { name: '重试', exact: true }).click()
+    await expect(page.getByRole('heading', { name: '对话洞察', exact: true })).toBeFocused()
+    await expect(refreshError).toHaveCount(0)
+    await expect(keptRow).toBeVisible()
+    await expect(removedRow).toBeVisible()
+    expect(h.requests).toHaveLength(requestsAfterGeneration)
+
+    await btn('个人总览').click()
+    const removedContribution = btn(`${renamed} #${removed}`)
+    await expect(keptContribution).toBeVisible()
+    await expect(removedContribution).toBeVisible()
+    await removedContribution.scrollIntoViewIfNeeded()
+    await shot('overview-two-report-sources')
+
+    await btn('对话洞察').click()
+    await removedRow.click({ button: 'right' })
+    await page.getByRole('menuitem', { name: '删除', exact: true }).click()
+    const dialog = page.getByRole('dialog', { name: '删除报告' })
+    await expect(dialog).toContainText(`${renamed} · #${removed}`)
+    await dialog.getByRole('button', { name: '确认删除', exact: true }).click()
+    await expect(dialog).toHaveCount(0)
+    await expect(removedRow).toHaveCount(0)
+    await expect(keptRow).toBeFocused()
+
+    await btn('个人总览').click()
+    await expect(removedContribution).toHaveCount(0)
+    await expect(keptContribution).toBeVisible()
+    await keptContribution.scrollIntoViewIfNeeded()
+    await shot('overview-one-report-source-after-deletion')
+    await keptContribution.click()
+    await btn('你一开始就给了三个办法').click()
+    const source = page.getByRole('region', { name: '引用聊天记录' })
+    const evidence = source.locator('[data-citation=true]')
+    await expect(evidence.getByText('我先给你三个办法。', { exact: true })).toBeVisible()
+    await btn('关闭原文').click()
+    await btn(syntheticInsightConversation).click()
+    await expect(page.getByRole('heading', { name: syntheticInsightConversation, exact: true })).toBeVisible()
+
+    await btn('对话洞察').click()
+    await keptRow.click()
+    await requestDelete()
+    await failNext(app, 'deleteConversation', undefined, 'whomi:call')
+    await deleteConversation.getByRole('button', { name: '确认删除', exact: true }).click()
+    await expect(deleteConversation.getByRole('alert')).toBeVisible()
+    expect((await page.evaluate(() => window.whomi.ai.listAnalyses())).map(task => task.id)).toContain(kept)
+    await failNext(app, 'listConversations', undefined, 'whomi:call')
+    await deleteConversation.getByRole('button', { name: '确认删除', exact: true }).click()
+    await expect(deleteConversation).toHaveCount(0)
+    await expect(page.getByRole('heading', { name: '暂无洞察报告' })).toBeVisible()
+    await shot('list-after-confirmed-conversation-deletion')
+    await expect(conversationRow).toHaveCount(0)
+    await expect(btn('导入会话')).toBeVisible()
+    await expect(btn('重试会话列表')).toHaveCount(0)
+    await btn('个人总览').click()
+    await expect(keptContribution).toHaveCount(0)
+    expect(h.requests).toHaveLength(requestsAfterGeneration)
+    expect(h.fixtureErrors).toEqual([])
+    expect(h.errors).toEqual([])
+  } finally { await h.close() }
+})
+
+test('deleting the last visible conversation preserves order and access to the next page', async () => {
+  const h = await harness({ model: false, extraConversations: 100 }), { app, page, btn, shot } = h
+  try {
+    const rows = page.locator('.conversation-item[data-list-id]')
+    const ids = () => rows.evaluateAll(elements => elements.map(el => el.dataset.listId))
+    const all = await page.evaluate(async () => (await window.whomi.listConversations({ limit: 200 })).items.map(item => item.id))
+    expect(all).toHaveLength(101)
+    await expect.poll(ids).toEqual(all.slice(0, 100))
+    const boundary = all[99]
+    await app.evaluate(({ ipcMain }) => {
+      const channel = 'whomi:call', original = ipcMain._invokeHandlers.get(channel)
+      globalThis.sidebarReloads = 0
+      ipcMain.removeHandler(channel)
+      ipcMain.handle(channel, (event, value) => {
+        if (value.method === 'listConversations' && !value.args[0]?.cursor) {
+          globalThis.sidebarReloads++
+          return { ok: false, error: { code: 'OPERATION_FAILED', action: '读取失败，请重试。' } }
+        }
+        return original(event, value)
+      })
+    })
+    async function remove(id) {
+      await page.locator(`.conversation-item[data-list-id="${id}"]`).click({ button: 'right' })
+      await page.getByRole('menuitem', { name: '删除', exact: true }).click()
+      await page.getByRole('dialog', { name: '删除会话' }).getByRole('button', { name: '确认删除' }).click()
+      await expect(page.getByRole('dialog', { name: '删除会话' })).toHaveCount(0)
+    }
+    await remove(boundary)
+    await btn('加载更多会话').click()
+    await expect.poll(ids).toEqual(all.filter(id => id !== boundary))
+    await expect(rows.first()).toHaveAttribute('data-pinned', 'true')
+    await expect(btn('加载更多会话')).toHaveCount(0)
+    await shot('sidebar-after-deleting-page-boundary')
+    const middle = all[50]
+    await remove(middle)
+    await expect.poll(ids).toEqual(all.filter(id => id !== boundary && id !== middle))
+    await expect(btn('重试会话列表')).toHaveCount(0)
+    expect(await app.evaluate(() => globalThis.sidebarReloads)).toBe(0)
+    const lastTitle = await rows.last().getAttribute('aria-label')
+    await rows.last().click()
+    await expect(page.getByRole('heading', { name: lastTitle, exact: true })).toBeVisible()
   } finally { await h.close() }
 })

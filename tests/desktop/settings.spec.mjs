@@ -1,9 +1,64 @@
 import { test, expect, _electron as electron } from '@playwright/test'
 import { chatEditor } from './chat-helpers.mjs'
 import { createServer } from 'node:http'
-import { mkdtemp, mkdir, writeFile, readFile } from 'node:fs/promises'
+import { copyFile, mkdtemp, mkdir, writeFile, readFile, rm, realpath } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { basename, dirname, join, resolve } from 'node:path'
+
+test('storage controls open and choose the displayed directory before and after migration', async ({}, info) => {
+  const directory = await mkdtemp(join(tmpdir(), 'whomi-runtime-storage-controls-'))
+  const destination = await mkdtemp(join(tmpdir(), 'whomi-target-storage-controls-'))
+  let app
+  async function launch() {
+    app = await electron.launch({ args: [resolve('out/main/index.cjs'), '--whomi-runtime-test'], env: { ...process.env, WHOMI_RUNTIME_TEST: directory } })
+    const page = await app.firstWindow()
+    await app.evaluate(({ BrowserWindow, shell, dialog }) => {
+      BrowserWindow.getAllWindows()[0].setSize(960, 640)
+      globalThis.storageCalls = { opened: [], defaults: [] }
+      shell.openPath = async path => { globalThis.storageCalls.opened.push(path); return '' }
+      dialog.showOpenDialog = async (_window, options) => {
+        globalThis.storageCalls.defaults.push(options.defaultPath)
+        return { canceled: !globalThis.storageTarget, filePaths: globalThis.storageTarget ? [globalThis.storageTarget] : [] }
+      }
+    })
+    await page.getByRole('button', { name: '设置', exact: true }).click()
+    await page.getByRole('button', { name: '数据存储', exact: true }).click()
+    return page
+  }
+  const calls = () => app.evaluate(() => globalThis.storageCalls)
+  try {
+    await copyFile(resolve('tests/desktop/probe.cjs'), join(directory, 'probe.cjs'))
+    let page = await launch()
+    const open = path => page.getByRole('button', { name: '打开保存目录 ' + path, exact: true })
+    const choose = () => page.getByRole('button', { name: '选择保存目录', exact: true }).click()
+    await open(directory).press('Enter')
+    await expect.poll(calls).toEqual({ opened: [directory], defaults: [] })
+    await page.screenshot({ path: info.outputPath('storage-current-directory.png') })
+    await choose()
+    await expect.poll(calls).toEqual({ opened: [directory], defaults: [directory] })
+    await expect(page.getByRole('dialog', { name: '迁移数据' })).toHaveCount(0)
+    await app.evaluate((_electron, path) => { globalThis.storageTarget = path }, destination)
+    await choose()
+    await page.getByRole('dialog', { name: '迁移数据' }).getByRole('button', { name: '确认迁移' }).click()
+    await expect(page.getByRole('button', { name: '立即重启' })).toBeEnabled()
+    await open(destination).click()
+    await expect.poll(calls).toEqual({ opened: [directory, destination], defaults: [directory, directory] })
+    await app.close()
+    page = await launch()
+    await open(destination).click()
+    await choose()
+    await expect.poll(calls).toEqual({ opened: [destination], defaults: [destination] })
+    await expect(page.getByRole('dialog', { name: '迁移数据' })).toHaveCount(0)
+    await expect(open(destination)).toBeVisible()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  } finally {
+    await app?.close()
+    for (const [path, prefix] of [[directory, 'whomi-runtime-storage-controls-'], [destination, 'whomi-target-storage-controls-']]) {
+      const actual = await realpath(path)
+      if (dirname(actual) === await realpath(tmpdir()) && basename(actual).startsWith(prefix)) await rm(actual, { recursive: true, force: true })
+    }
+  }
+})
 
 test('settings persist real models, process outbound chat, preserve drafts and migrate conversation storage', async () => {
   test.setTimeout(120000)

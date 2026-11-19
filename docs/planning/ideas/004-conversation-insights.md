@@ -4,7 +4,7 @@
 - 来源与原意：用户希望大模型像第三方连续阅读聊天，主动分析自己和双方关系，随证据修正理解；共同经历融入分析，替代独立回忆散文。
 - 状态：实施中；首期实现已通过拉取请求 #20 合入 main。用户于 2026-11-16 授权从最新 main 新建分支，修复同来源候选误去重、准备快照残留和进度更新打乱置顶顺序三项审查问题；本轮修复与回归已完成，随后获授权提交、推送并创建草稿拉取请求，见[修复验证及工单核对](../../research/conversation-insights-review-fixes-20261116.md)。真实模型语义质量仍仅部分通过，本轮未调用真实模型或发布安装包。
 - 下一步：处理[同容量新旧实现对照](../../research/conversation-insights-paired-capacity-20261116.md)仍暴露的未知范围扩大、成稿前后矛盾与引用语义不足，当前质量仅部分通过。例如改期原文已确认旧位取消，后续新店是否取消仍未定，报告不能把两者合称取消结果未知。结构化事实、完整来源、旧未知轮转和共同协调已实现；原模型及两组120条材料的本轮诊断与配对合计137次请求，全部关闭，未补抽报告。新版两组都完成成稿，分工事实覆盖改善，改期仍有假未知；旧版改期失败，没有同组新旧报告可比。[来源排序轮](../../research/conversation-insights-source-order-20261116.md)曾出现1个自然候选及2次后文解决更新；最终配对新版无候选或主动核查，未证明回读收益。此前[41次长对照](../../research/conversation-insights-long-comparison-20261115.md)、[12次短对照](../../research/conversation-insights-reread-comparison-20261115.md)、[17次质量试验](../../research/conversation-insights-quality-20261115.md)与[14次主动核查验证](../../research/conversation-insights-verification-20261115.md)分别保留。问一问、心事屋按005、006独立推进。
-- 工作分支：本轮按用户指令从最新远端 main b90bf16 建立 codex/fix-insight-review，并获授权推送该分支、向 main 提交草稿拉取请求。原 codex/issue-10-conversation-insights 已通过 #20 合入 main。
+- 工作分支：#11 桌面验收使用从远端 `main` 的 `9b4f6d9` 建立的本地分支 `codex/issue-11-insight-design-baseline`。此前审查修复使用 `codex/fix-insight-review`，首期开发分支 `codex/issue-10-conversation-insights` 已通过 #20 合入 `main`。
 
 ## 已确认方向
 
@@ -29,6 +29,12 @@
 本轮核查 Whomi 容量默认、实际用量与现有超限缩片，并核查 Cherry Studio 固定提交的普通聊天与 Agent 行为，详见草案。用户于 2026-11-13 确认程序按上下文容量分批、模型结合日期理解事件；容量配置仍可选，超长拒绝后有限缩批。旧借书案例不作参考或验收依据。
 
 ## 最近决定
+
+- 2026-11-19，#28 的三项修改已通过本地回归。取消整会话删除后两份报告仍可打开。删除首屏第 100 条后可以打开原第 101 条。用键盘重试第二段原文后，方向键直接滚动聊天区。本次修复已具备合入前复核所需的实机记录。[修改后的验收](../../research/conversation-insights-design-baseline-20261118.md#28-修改后的验收)
+
+- 2026-11-18，#28 的定向设计复核明确三项验收要求。整会话删除前列出全部洞察报告。删除后侧栏保留其余会话且可继续分页，用户无需手动刷新。原文重试成功后可直接按 ↓ 继续阅读。桌面实测中，快速关闭后新打开的引用保持正确。 [桌面复测](../../research/conversation-insights-design-baseline-20261118.md#28-两条路径的定向复测) · [验收方案](../issues/2026-11-13-conversation-insights/01-page-design.md#28-定向复核与验收要求)
+
+- 2026-11-18 完成 GitHub 工单 #11 的设计基线桌面验收。从最新 `main` 的 `9b4f6d9` 建立 `codex/issue-11-insight-design-baseline`。例如下一段原文读取失败时，原聊天和 1 / 2 计数保持，提示出现在聊天区下方。整会话删除成功后，失效报告及弹窗退出，侧栏和总览撤回该会话。最终 6 个桌面用例通过，首次桥接超时的原因仍待确认。真实模型质量及兼容性验收继续由 #17 跟踪。 [实机记录与图稿对照](../../research/conversation-insights-design-baseline-20261118.md)
 
 - 2026-11-16 桌面弹窗复测。按新仓库约定直接在正常用户环境执行。首轮 Electron 正常打开，首项等待本地合成模型请求超时。保留首轮日志后另建目录重跑，5项全部通过。两轮窗口监测和 Windows 应用事件均未发现原生错误弹窗或对应崩溃。首轮请求超时尚未归因。[复测与日志](../../research/conversation-insights-review-fixes-20261116.md#按新约束复测桌面弹窗)
 

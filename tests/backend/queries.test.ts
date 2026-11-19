@@ -132,6 +132,25 @@ test('置顶与手动顺序跨分页读取，失败操作不改变顺序', async
   expect(third.nextCursor).toBeNull()
 })
 
+test('删除分页末项后按原置顶和手动顺序继续读取', async () => {
+  const { store, queries } = fixture()
+  store.writer.exec("INSERT INTO conversations(id,title,kind,created_at_ms) VALUES (3,'三','group',0),(4,'四','group',0),(5,'五','group',0)")
+  arrangeList(store.writer, { id: '2', targetId: '5', placement: 'before' })
+  arrangeList(store.writer, { id: '1', pinned: true })
+  arrangeList(store.writer, { id: '4', pinned: true })
+  const first = await queries.listConversations({ limit: 2 })
+  expect(first.items.map(row => row.id)).toEqual(['4', '1'])
+  const legacy = Buffer.from(JSON.stringify({ version: 1, kind: 'conversations', id: '1', size: 2 })).toString('base64url')
+  expect((await queries.listConversations({ cursor: legacy })).items.map(row => row.id)).toEqual(['2', '5'])
+  store.writer.prepare('DELETE FROM conversations WHERE id=?').run(1)
+  const second = await queries.listConversations({ cursor: first.nextCursor! })
+  expect(second.items.map(row => row.id)).toEqual(['2', '5'])
+  store.writer.prepare('DELETE FROM conversations WHERE id=?').run(5)
+  const third = await queries.listConversations({ cursor: second.nextCursor! })
+  expect(third.items.map(row => row.id)).toEqual(['3'])
+  expect(third.nextCursor).toBeNull()
+})
+
 test('reads sending-time names, confirmed self, replies and inert attachment descriptions', async () => {
   const { store, queries } = fixture(); store.writer.exec("INSERT INTO source_conversations(id,conversation_id,platform,namespace) VALUES (1,1,'test','test'); INSERT INTO memberships(id,conversation_id,source_conversation_id,source_key,display_name) VALUES (1,1,1,'a','新名字'); INSERT INTO self_confirmations(conversation_id,member_id,status,source) VALUES (1,1,'candidate','parser'); INSERT INTO messages(id,conversation_id,member_id,sender_kind,sender_name,kind,text,ordinal) VALUES (1,1,1,'member','发送时名字','reply',' 原文\\n',0); INSERT INTO message_replies(message_id,conversation_id,text,sender_name) VALUES (1,1,'引用摘要','示例对象'); INSERT INTO message_attachments(message_id,kind,locator,name,state) VALUES (1,'image','C:/private/example.png','example.png','unresolved')")
   let page = await queries.readMessages({ conversationId: '1', direction: 'after' })

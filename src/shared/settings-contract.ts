@@ -44,6 +44,7 @@ export interface SettingsApi {
   setDebug(enabled: boolean): Promise<void>
   getDiagnostics(): Promise<Diagnostics>
   getStorage(): Promise<StorageLocation>
+  openStorageDirectory(): Promise<void>
   chooseStorage(): Promise<StorageChoice | null>
   relocateStorage(token: string): Promise<StorageLocation>
   restart(): Promise<void>

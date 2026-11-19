@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type ReactElement } from 'react'
+import { useCallback, useEffect, useEffectEvent, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type ReactElement } from 'react'
 import {
   PanelLeftClose,
   PanelLeftOpen,
@@ -309,16 +309,24 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
   async function handleDeleteConversation(id: string) {
     if (!api) return
     await api.deleteConversation(id)
+    if (!api.onConversationDeleted) forgetConversation(id)
+  }
+
+  const onConversationDeleted = useEffectEvent((id: string) => forgetConversation(id))
+  useEffect(() => api?.onConversationDeleted?.(id => onConversationDeleted(id)), [api])
+
+  function forgetConversation(id: string) {
     removedConversations.current.add(id)
     if (tasks.some(task => task.id === selectedMemory && task.conversationId === id)) setSelectedMemory(undefined)
     setTasks(entries => entries.filter(task => task.conversationId !== id))
     refreshMemories()
-    await reader.refresh({ preserveReader: true })
-    if (activeId === id && view === 'conversation') {
+    if (activeId === id) {
       settingsReturn.current = null
       setActiveId(undefined)
-      enterOverview()
+      setSource(undefined)
+      if (view === 'conversation') enterOverview()
     }
+    reader.forgetConversation(id)
   }
 
   function openConversation(id: string, entry?: { origin:'overview'|'library'; taskId?:string }) {

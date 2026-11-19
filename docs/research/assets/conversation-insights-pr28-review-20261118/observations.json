@@ -1,0 +1,175 @@
+{
+  "commit": "8118b16c9082761ae8ccbf0e135de922be57a541",
+  "desktopRuns": [
+    {
+      "name": "desktop-01",
+      "startedAt": "2026-11-18T23:16:37.6583394+08:00",
+      "exitedAt": "2026-11-18T23:16:51.4983439+08:00",
+      "exitCode": 0,
+      "expected": 1,
+      "unexpected": 0,
+      "mainBuildSha256": "96B87B549D189E441485240DBF923E2824510A28592E88D8D9DD03157ABA1637"
+    },
+    {
+      "name": "desktop-02",
+      "startedAt": "2026-11-18T23:26:47.5107649+08:00",
+      "exitedAt": "2026-11-18T23:27:15.0555664+08:00",
+      "exitCode": 0,
+      "expected": 3,
+      "unexpected": 0,
+      "mainBuildSha256": "96B87B549D189E441485240DBF923E2824510A28592E88D8D9DD03157ABA1637"
+    }
+  ],
+  "scenarios": {
+    "deleteAndReadAt960x640": {
+      "beforeJump": {
+        "focus": {
+          "tag": "BUTTON",
+          "name": "下一段",
+          "insideDialog": true
+        },
+        "metrics": {
+          "top": 181,
+          "scrollTop": 1598
+        }
+      },
+      "failedJump": {
+        "focus": {
+          "tag": "BUTTON",
+          "name": "下一段",
+          "insideDialog": true
+        },
+        "metrics": {
+          "top": 181,
+          "scrollTop": 1598
+        },
+        "fragment": "1 / 2"
+      },
+      "tabsToRetry": [
+        {
+          "tag": "BUTTON",
+          "name": "关闭原文",
+          "insideDialog": true
+        },
+        {
+          "tag": "DIV",
+          "name": "引用聊天记录",
+          "insideDialog": true
+        },
+        {
+          "tag": "BUTTON",
+          "name": "重试",
+          "insideDialog": true
+        }
+      ],
+      "recoveredJump": {
+        "focus": {
+          "tag": "BODY",
+          "name": null,
+          "insideDialog": false
+        },
+        "fragment": "2 / 2"
+      },
+      "afterOldRead": {
+        "fragment": "1 / 1",
+        "target": "3"
+      },
+      "confirmation": {
+        "text": "删除会话\n\n将删除「合成会话 · 建议和倾听」的原文、成员、本人设置、关联 AI 对话和记忆成稿。此操作无法撤销。\n\n取消\n确认删除",
+        "focus": {
+          "tag": "BUTTON",
+          "name": "取消",
+          "insideDialog": true
+        }
+      },
+      "afterCancel": {
+        "focus": {
+          "tag": "BUTTON",
+          "name": "合成会话 · 建议和倾听",
+          "insideDialog": false
+        },
+        "reports": 1
+      },
+      "failedDeletion": {
+        "text": "操作失败，请重试。",
+        "reports": 1
+      },
+      "deletedAndRefreshFailed": {
+        "text": "操作失败，请重试。\n\n重试会话列表",
+        "focus": {
+          "tag": "H1",
+          "name": "对话洞察",
+          "insideDialog": false
+        },
+        "reports": 0
+      },
+      "overviewAfterDelete": "no remaining relationship contribution"
+    },
+    "paginationNormalAt1280x900": {
+      "initial": {
+        "total": 101,
+        "displayed": 100,
+        "pinned": "1",
+        "lastVisible": "3",
+        "next": "2"
+      },
+      "final": {
+        "displayed": 100,
+        "survivingOrderMatches": true,
+        "pinned": "1",
+        "last": "2"
+      }
+    },
+    "paginationWithInjectedReadFailureAt1280x900": {
+      "initial": {
+        "total": 101,
+        "displayed": 100,
+        "pinned": "1",
+        "lastVisible": "3",
+        "next": "2"
+      },
+      "afterFault": {
+        "count": 99,
+        "text": "操作失败，请重试。\n\n重试会话列表",
+        "hasNext": true
+      },
+      "afterLoadMore": {
+        "count": 99,
+        "text": "请刷新阅读位置后重试。\n\n重试会话列表",
+        "last": "4"
+      },
+      "final": {
+        "displayed": 100,
+        "survivingOrderMatches": true,
+        "pinned": "1",
+        "last": "2"
+      }
+    },
+    "arrowAfterKeyboardRetryAt960x640": {
+      "beforeKey": {
+        "focus": "BODY",
+        "inChat": false,
+        "top": 1674,
+        "remaining": 6462
+      },
+      "afterKey": {
+        "focus": "BODY",
+        "inChat": false,
+        "top": 1674,
+        "remaining": 6462
+      },
+      "beforeFocusedKey": {
+        "focus": "DIV",
+        "inChat": true,
+        "top": 1674,
+        "remaining": 6462
+      },
+      "afterFocusedKey": {
+        "focus": "DIV",
+        "inChat": true,
+        "top": 1714,
+        "remaining": 6422
+      }
+    }
+  }
+}

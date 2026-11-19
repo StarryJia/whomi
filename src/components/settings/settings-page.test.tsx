@@ -21,6 +21,7 @@ function setup(withProvider = true, withModel = false) {
     saveProcessing: vi.fn(async input => { state = { ...state, processing: input }; return input }),
     selectModel: vi.fn(async () => {}), setDebug: vi.fn(async () => {}), getDiagnostics: vi.fn(async () => ({ version: '0.1.2', platform: 'win32', entries: [] })),
     getStorage: vi.fn(async () => ({ path: 'D:\\Whomi', defaultPath: 'D:\\Whomi', restartRequired: false })),
+    openStorageDirectory: vi.fn(async () => {}),
     chooseStorage: vi.fn(async () => ({ token: 'choice', path: 'D:\\新的目录' })),
     relocateStorage: vi.fn(async () => ({ path: 'D:\\新的目录', defaultPath: 'D:\\Whomi', restartRequired: true })), restart: vi.fn(async () => {}),
   }
@@ -142,6 +143,21 @@ describe('正式设置', () => {
     await user.click(screen.getByRole('button', { name: '重试保存' }))
     await waitFor(() => expect(toggle).toHaveAttribute('aria-checked', 'false'))
     expect(vi.mocked(api.saveProcessing).mock.calls[1][0]).toEqual({ ...defaultProcessing, clean: false })
+  })
+
+  it('可用键盘打开当前保存目录，打开失败后可在原路径重试', async () => {
+    const { api, user } = setup(false)
+    await user.click(await screen.findByRole('button', { name: '数据存储' }))
+    const path = await screen.findByRole('button', { name: '打开保存目录 D:\\Whomi' })
+    vi.mocked(api.openStorageDirectory).mockRejectedValueOnce({ action: '无法打开保存目录，请检查目录后重试。' })
+    path.focus()
+    await user.keyboard('{Enter}')
+    expect(await screen.findByRole('alert')).toHaveTextContent('无法打开保存目录')
+    await user.click(path)
+    expect(api.openStorageDirectory).toHaveBeenCalledTimes(2)
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(api.chooseStorage).not.toHaveBeenCalled()
+    expect(api.relocateStorage).not.toHaveBeenCalled()
   })
 
   it('取消迁移不移动文件；失败保留目标，重试成功后提供重启', async () => {

@@ -9,7 +9,11 @@ type MessageRow = Anchor & {
   sent_at_ms: bigint | null; time_raw: string | null; time_precision: MessageView['timePrecision']; timezone: string | null
   ordinal: bigint; kind: MessageView['kind']; source_type: string | null; text: string
 }
-type Cursor = { version: 1; kind: 'messages' | 'conversations'; id: string; size: number; conversationId?: string; snapshotMaxId?: string; bucket?: number; time?: number }
+type MessageCursor = { version: 1; kind: 'messages'; id: string; size: number; conversationId: string; snapshotMaxId: string; bucket: number; time: number }
+type ConversationCursor = { kind: 'conversations'; id: string; size: number } & (
+  { version: 1 } | { version: 2; pinned: 0 | 1; rank: string }
+)
+type Cursor = MessageCursor | ConversationCursor
 function invalid(): never { throw Object.assign(new Error('读取位置无效，请刷新后重试。'), { code: 'INVALID_CURSOR' }) }
 function id(value: unknown, zero = false): bigint {
   if (typeof value !== 'string' || value.length > 19 || !(zero ? /^(0|[1-9][0-9]*)$/ : /^[1-9][0-9]*$/).test(value)) invalid()
@@ -28,6 +32,8 @@ function size(value: unknown = 100): number {
   return value
 }
 function encode(cursor: Cursor): string { return Buffer.from(JSON.stringify(cursor)).toString('base64url') }
+function decode(value: unknown, kind: 'messages'): MessageCursor
+function decode(value: unknown, kind: 'conversations'): ConversationCursor
 function decode(value: unknown, kind: Cursor['kind']): Cursor {
   if (typeof value !== 'string' || value.length > 2048 || !/^[A-Za-z0-9_-]+$/.test(value)) invalid()
   let cursor: Cursor
@@ -36,14 +42,20 @@ function decode(value: unknown, kind: Cursor['kind']): Cursor {
     if (bytes.toString('base64url') !== value) invalid()
     cursor = JSON.parse(bytes.toString('utf8'))
   } catch { invalid() }
-  if (!cursor || typeof cursor !== 'object' || Array.isArray(cursor) || cursor.version !== 1 || cursor.kind !== kind) invalid()
-  const keys = kind === 'messages' ? ['version', 'kind', 'id', 'size', 'conversationId', 'snapshotMaxId', 'bucket', 'time'] : ['version', 'kind', 'id', 'size']
-  if (Object.keys(cursor).length !== keys.length || Object.keys(cursor).some(key => !keys.includes(key))) invalid()
+  if (!cursor || typeof cursor !== 'object' || Array.isArray(cursor) || cursor.kind !== kind) invalid()
+  const keys = ['version', 'kind', 'id', 'size']
   id(cursor.id); size(cursor.size)
-  if (kind === 'messages') {
+  if (cursor.kind === 'messages') {
+    if (cursor.version !== 1) invalid()
+    keys.push('conversationId', 'snapshotMaxId', 'bucket', 'time')
     id(cursor.conversationId); const snapshot = id(cursor.snapshotMaxId)
     if (id(cursor.id) > snapshot || (cursor.bucket !== 0 && cursor.bucket !== 1) || !Number.isSafeInteger(cursor.time) || (cursor.bucket === 1 && cursor.time !== 0)) invalid()
-  }
+  } else if (cursor.version === 2) {
+    keys.push('pinned', 'rank')
+    if (cursor.pinned !== 0 && cursor.pinned !== 1) invalid()
+    id(cursor.rank, true)
+  } else if (cursor.version !== 1) invalid()
+  if (Object.keys(cursor).length !== keys.length || Object.keys(cursor).some(key => !keys.includes(key))) invalid()
   return cursor
 }
 function pageSize(limit: unknown, cursor?: Cursor) {
@@ -59,6 +71,14 @@ function position(row: Anchor): MessagePosition { return { id: String(row.id), t
 
 export function createQueries(store: Store): ConversationQueries {
   const db = store.reader
+  function conversationBoundary(cursor: ConversationCursor) {
+    const rowId = id(cursor.id)
+    if (cursor.version === 2) return [cursor.pinned, -BigInt(cursor.rank), rowId]
+    // 旧游标只保存了编号，排序位置需从仍在的会话读取。
+    const row = db.prepare('SELECT pinned,list_rank FROM conversations WHERE id=?').get(rowId) as { pinned: bigint; list_rank: bigint } | undefined
+    if (!row) invalid()
+    return [row.pinned, -row.list_rank, rowId]
+  }
   const self = db.prepare(`SELECT ${confirmedSelfSql} AS confirmed FROM memberships m WHERE m.conversation_id=? AND m.id=?`)
   function snapshot(conversationId: bigint): bigint {
     return (db.prepare('SELECT coalesce(max(id),0) AS id FROM messages WHERE conversation_id=?').get(conversationId) as { id: bigint }).id
@@ -107,14 +127,16 @@ export function createQueries(store: Store): ConversationQueries {
     async listConversations(input) {
       const cursor = input.cursor === undefined ? undefined : decode(input.cursor, 'conversations'), count = pageSize(input.limit, cursor)
       return db.transaction(() => {
-        const boundary = cursor ? db.prepare('SELECT pinned,list_rank FROM conversations WHERE id=?').get(id(cursor.id)) as { pinned: bigint; list_rank: bigint } | undefined : undefined
-        if (cursor && !boundary) invalid()
-        const rows = db.prepare(`SELECT c.id,c.title,c.kind,c.pinned,coalesce(s.message_count,0) AS message_count,coalesce(s.member_count,0) AS member_count,
+        const boundary = cursor ? conversationBoundary(cursor) : []
+        const rows = db.prepare(`SELECT c.id,c.title,c.kind,c.pinned,c.list_rank,coalesce(s.message_count,0) AS message_count,coalesce(s.member_count,0) AS member_count,
           s.first_sent_at_ms,s.last_sent_at_ms,coalesce(s.status,'pending') AS summary_status
-          FROM conversations c LEFT JOIN conversation_summaries s ON s.conversation_id=c.id ${boundary ? 'WHERE (c.pinned,-c.list_rank,c.id)<(?,?,?)' : ''} ORDER BY c.pinned DESC,c.list_rank ASC,c.id DESC LIMIT ?`).all(...(cursor && boundary ? [boundary.pinned, -boundary.list_rank, id(cursor.id)] : []), count + 1) as { pinned: bigint; id: bigint; title: string; kind: ConversationSummary['kind']; message_count: bigint; member_count: bigint; first_sent_at_ms: bigint | null; last_sent_at_ms: bigint | null; summary_status: ConversationSummary['summaryStatus'] }[]
-        const more = rows.length > count
+          FROM conversations c LEFT JOIN conversation_summaries s ON s.conversation_id=c.id ${cursor ? 'WHERE (c.pinned,-c.list_rank,c.id)<(?,?,?)' : ''} ORDER BY c.pinned DESC,c.list_rank ASC,c.id DESC LIMIT ?`).all(...boundary, count + 1) as { pinned: bigint; list_rank: bigint; id: bigint; title: string; kind: ConversationSummary['kind']; message_count: bigint; member_count: bigint; first_sent_at_ms: bigint | null; last_sent_at_ms: bigint | null; summary_status: ConversationSummary['summaryStatus'] }[]
+        const last = rows[count - 1]
         const items = rows.slice(0, count).map(row => ({ id: String(row.id), title: row.title, pinned: !!row.pinned, kind: row.kind, messageCount: integer(row.message_count), memberCount: integer(row.member_count), firstSentAtMs: timestamp(row.first_sent_at_ms), lastSentAtMs: timestamp(row.last_sent_at_ms), summaryStatus: row.summary_status }))
-        return { items, nextCursor: more ? encode({ version: 1, kind: 'conversations', id: items[items.length - 1].id, size: count }) : null }
+        const nextCursor = rows.length > count ? encode({
+          version: 2, kind: 'conversations', id: String(last.id), size: count, pinned: last.pinned ? 1 : 0, rank: String(last.list_rank),
+        }) : null
+        return { items, nextCursor }
       })()
     },
     async readMessages(input) {
@@ -127,7 +149,7 @@ export function createQueries(store: Store): ConversationQueries {
         let boundary: Anchor | undefined
         if (cursor) {
           boundary = anchor(conversationId, id(cursor.id))
-          if (!boundary || snapshotMaxId > current || boundary.time_bucket !== BigInt(cursor.bucket!) || boundary.sort_time !== BigInt(cursor.time!)) invalid()
+          if (!boundary || snapshotMaxId > current || boundary.time_bucket !== BigInt(cursor.bucket) || boundary.sort_time !== BigInt(cursor.time)) invalid()
         }
         const rows = range(conversationId, snapshotMaxId, boundary, input.direction, count)
         if (input.direction === 'before') rows.reverse()

@@ -7,6 +7,7 @@ export type DesktopTransport = {
   onImport(listener: (snapshot: unknown) => void): () => void
 }
 export function createDesktopClient(transport: DesktopTransport): DesktopApi {
+  const deletionListeners = new Set<(id: string) => void>()
   async function unwrap(method: DesktopMethod, response: unknown) {
     if (!response || typeof response !== 'object' || !('ok' in response)) throw new BoundaryError('INVALID_RESPONSE')
     if (response.ok === false && 'error' in response) {
@@ -29,7 +30,18 @@ export function createDesktopClient(transport: DesktopTransport): DesktopApi {
     previewImport: (jobId, candidateId, options) => call('previewImport', [jobId, candidateId, options]),
     listConversations: input => call('listConversations', [input]), readMessages: input => call('readMessages', [input]), locateSource: input => call('locateSource', [input]),
     listMembers: id => call('listMembers', [id]), confirmSelf: (id, member) => call('confirmSelf', [id, member]),
-    deleteConversation: id => call('deleteConversation', [id]), arrangeConversation: change => call('arrangeConversation', [change]), retrySummary: id => call('retrySummary', [id]),
+    async deleteConversation(id) {
+      await call('deleteConversation', [id])
+      for (const listener of [...deletionListeners]) {
+        try { listener(id) } catch { /* 监听方的异常不改变删除结果。 */ }
+      }
+    },
+    onConversationDeleted(listener) {
+      if (typeof listener !== 'function') throw new BoundaryError('INVALID_ARGUMENT')
+      deletionListeners.add(listener)
+      return () => { deletionListeners.delete(listener) }
+    },
+    arrangeConversation: change => call('arrangeConversation', [change]), retrySummary: id => call('retrySummary', [id]),
     async acceptDroppedFiles(files: File[]) {
       if (!transport.acceptDroppedFiles) throw new BoundaryError('INVALID_SOURCE', '请在桌面应用中选择文件。')
       return await unwrap('chooseSources', await transport.acceptDroppedFiles(files)) as Awaited<ReturnType<DesktopApi['acceptDroppedFiles']>>
