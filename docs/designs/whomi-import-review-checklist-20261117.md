@@ -170,3 +170,11 @@
 
 - 两条前端回归与一条 Windows 桌面回归先复现了缺少关闭按钮，修复后通过。前端全量 644 项、后端全量 745 项、类型检查与桌面构建通过。 [跨页与日志回归](../../src/import-navigation.test.tsx) · [Windows 桌面回归](../../tests/desktop/import.spec.mjs)
 - Windows 桌面首轮 22/23。提醒列表的透明留白挡住了「关于 Whomi」的点击。收紧点击区域后，该用例通过，关闭和窄窗用例也通过。第二轮 22/23，历史上偶发的删除洞察报告后标题未获焦点再次出现，单独复测 1/1 通过，原因仍待确认。首轮、第二轮及焦点单测的完整证据分别保存在本地 `release/issue-25-verification/dismiss-notice-desktop-20261119-140748330/`、`release/issue-25-verification/dismiss-notice-final-20261119-141244784/` 和 `release/issue-25-verification/dismiss-notice-insight-focus-recheck-20261119-141628976/`。
+
+#### Windows 快捷方式启动修复（2026-11-19，待用户手测）
+
+用户从快捷方式启动时，Windows 可能通过标准输出位置传递显示器句柄。旧包在创建后台数据进程时继承这个值，并以 `0x80000003` 退出。Windows 上现为后台进程单独设置普通输出和错误输出，错误诊断继续转发。
+
+- 新回归用系统返回的真实显示器句柄启动 Whomi，并使用空白临时资料目录。原安装版报「句柄无效」且未显示窗口。修复后可显示窗口、创建数据库并正常退出。 [启动回归](../../tests/desktop/runtime.spec.mjs) · [原生启动辅助脚本](../../tests/desktop/fixtures/windows-monitor-startup.ps1)
+- 桌面回归首轮 9/10。提交后恢复用例原先在内部保存点释放时结束进程，实际整批事务尚未提交。修正测试触发点后，10/10 通过，覆盖启动、提交前后恢复、错误日志转发和取消后重导。旧安装版复现、首轮结果和最终桌面回归分别保存在本地 `release/issue-25-verification/windows-shortcut-packaged-red-20261119-170945129/`、`release/issue-25-verification/windows-shortcut-and-runtime-20261119-170819030/` 和 `release/issue-25-verification/windows-shortcut-and-runtime-final-20261119-171145526/`。
+- 类型检查、桌面构建和后端 745 项通过。前端首轮 642/644，富文本编辑器就绪与日志提醒先后顺序两项失败，相关文件单独复跑 24/24。首轮和复测输出保存在本地 `release/issue-25-verification/shortcut-startup-frontend.log` 与 `release/issue-25-verification/shortcut-startup-frontend-focused.log`。

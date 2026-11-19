@@ -1,8 +1,55 @@
 import { test, expect, _electron as electron } from '@playwright/test'
-import { mkdtemp, rm, copyFile, symlink, rmdir, unlink, readFile, readdir, writeFile, mkdir } from 'node:fs/promises'
+import { execFile } from 'node:child_process'
+import { access, mkdtemp, realpath, rm, copyFile, symlink, rmdir, unlink, readFile, readdir, writeFile, mkdir } from 'node:fs/promises'
 import Database from 'better-sqlite3'
+import electronExecutable from 'electron'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { basename, dirname, join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { promisify } from 'node:util'
+
+const runProcess = promisify(execFile)
+
+test('Windows shortcut startup opens the application with a monitor handle in standard output', async ({}, testInfo) => {
+  test.skip(process.platform !== 'win32', 'Requires Windows shortcut startup semantics')
+  const directory = await mkdtemp(join(tmpdir(), 'whomi-runtime-'))
+  const nativeLog = testInfo.outputPath('electron-startup.log')
+  const helper = fileURLToPath(new URL('./fixtures/windows-monitor-startup.ps1', import.meta.url))
+  const bundledExecutable = process.env.WHOMI_PACKAGED_EXECUTABLE
+  const executable = bundledExecutable ? resolve(bundledExecutable) : electronExecutable
+  const args = ['-NoProfile', '-NonInteractive', '-File', helper, '-Executable', executable, '-LogFile', nativeLog]
+  if (!bundledExecutable) args.push('-EntryScript', resolve('out/main/index.cjs'))
+
+  try {
+    await mkdir(dirname(nativeLog), { recursive: true })
+    if (!bundledExecutable) await copyFile('tests/desktop/probe.cjs', join(directory, 'probe.cjs'))
+    const { stdout, stderr } = await runProcess('powershell.exe', args, {
+      env: { ...process.env, WHOMI_RUNTIME_TEST: directory }, windowsHide: true, timeout: 23000,
+    })
+    const resultPath = testInfo.outputPath('startup-result.json')
+    await writeFile(resultPath, stdout)
+    await testInfo.attach('Windows launcher result', { path: resultPath, contentType: 'application/json' })
+    if (stderr) await writeFile(testInfo.outputPath('startup-launcher-stderr.log'), stderr)
+    const result = JSON.parse(stdout)
+    // The native process puts a monitor in stdout, so its stderr is collected via Electron's file logger.
+    const nativeOutput = await readFile(nativeLog, 'utf8').catch(error => {
+      if (error.code !== 'ENOENT') throw error
+      return ''
+    })
+    if (nativeOutput) await testInfo.attach('Electron native startup log', { path: nativeLog, contentType: 'text/plain' })
+    const fatal = nativeOutput.split(/\r?\n/).find(line => line.includes(':FATAL:'))
+    expect(result, fatal ?? 'The Windows launcher should open a Chromium window and close cleanly').toMatchObject({
+      sawChromiumWindow: true, startupExit: null, exitCode: '0x00000000', terminatedByHarness: false,
+    })
+    // Main only opens the window after the data service finishes initializing.
+    await access(join(directory, 'whomi.db'))
+  } finally {
+    const actual = await realpath(directory)
+    if (dirname(actual) !== await realpath(tmpdir()) || !basename(actual).startsWith('whomi-runtime-'))
+      throw new Error('Refusing to remove a non-temporary test profile')
+    await rm(actual, { recursive: true, force: true })
+  }
+})
 
 for (const boundary of ['main', 'data']) test(`rejects a test directory junction at the ${boundary} boundary without opening its target database`, async () => {
   const target = await mkdtemp(resolve('.whomi-runtime-target-'))
@@ -113,7 +160,11 @@ for (const boundary of ['Before','After']) test(`crash recovery after actual imp
   try {
     application=await launch();const page=await application.firstWindow()
     expect(await page.evaluate(()=>typeof window.require!=='undefined'||typeof window.process!=='undefined')).toBe(false)
-    await expect(application.evaluate(async(_electron,boundary)=>globalThis.__whomiRuntimeProbe.request(`probe.crash${boundary}`,null),boundary)).rejects.toThrow()
+    const exit = await application.evaluate(async (_electron, boundary) => {
+      try { await globalThis.__whomiRuntimeProbe.request(`probe.crash${boundary}`, null) }
+      catch (error) { return error.code }
+    }, boundary)
+    expect(exit).toBe('SERVICE_UNAVAILABLE')
     await application.close();application=await launch();await application.firstWindow()
     const recovered=await application.evaluate(async()=>globalThis.__whomiRuntimeProbe.request('probe.recovered',null))
     expect(recovered.integrity).toBe('ok')

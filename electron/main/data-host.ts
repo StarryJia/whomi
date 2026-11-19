@@ -11,8 +11,10 @@ export interface DataHost {
 
 export function startDataHost(userDataPath: string): DataHost {
   const probeEnabled = process.argv.includes('--whomi-runtime-test') && process.env.WHOMI_RUNTIME_TEST === userDataPath
+  // Windows 桌面启动时，标准输出的位置可能存放显示器句柄。
+  const stdout = process.platform === 'win32' ? 'ignore' : 'inherit'
   const child = utilityProcess.fork(join(__dirname, 'data/entry.cjs'), [userDataPath, ...(probeEnabled ? ['--runtime-probe'] : [])], {
-    serviceName: 'Whomi Data', stdio: ['ignore', 'inherit', 'pipe'],
+    serviceName: 'Whomi Data', stdio: ['ignore', stdout, 'pipe'],
   })
   // Windows utility processes can lose inherited terminal output.
   child.stderr?.pipe(process.stderr, { end: false })
