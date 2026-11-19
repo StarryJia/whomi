@@ -100,7 +100,7 @@ export function InsightReportRow({ task, conversationTitle, onOpen, onRename, on
       scope={`reports-${task.conversationId}`} className="insight-report-row" active={false} disabled={disabled} onSelect={onOpen}
       arrange={arrange} rename={onRename && (() => setEditing(true))} remove={remove}
       deleteDescription={{ heading: '删除报告', content: <div className="insight-delete-details">
-        <strong>{title} · {number}</strong><p>会话：{conversationTitle}<br />对话范围：{range}</p>
+        <strong>{title} · {number}</strong><p><span className="insight-delete-conversation" title={conversationTitle}>会话：{conversationTitle}</span>对话范围：{range}</p>
         <p>删除后无法恢复。<br />原始聊天和其他报告会保留。</p>
       </div> }}>
       <FileText aria-hidden="true" /><strong>{title}</strong><ReportRowMetadata task={task} />

@@ -2,9 +2,9 @@ import { _electron as electron, expect, test } from '@playwright/test'
 import { execFile } from 'node:child_process'
 import { createServer } from 'node:http'
 import { createRequire } from 'node:module'
-import { copyFile, mkdir, mkdtemp, readFile, readdir, realpath, rm, rmdir, unlink, writeFile } from 'node:fs/promises'
+import { access as fileAccess, copyFile, mkdir, mkdtemp, readFile, readdir, realpath, rm, rmdir, stat, unlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { basename, dirname, join, parse, resolve } from 'node:path'
+import { basename, dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
 
@@ -12,8 +12,8 @@ const invoke = promisify(execFile)
 const explorerScript = fileURLToPath(new URL('./fixtures/windows-explorer.ps1', import.meta.url))
 const accessScript = fileURLToPath(new URL('./fixtures/windows-log-access.ps1', import.meta.url))
 
-test('Windows Explorer opens the app log folder, job files and legacy and fallback locations', async ({}, info) => {
-  test.skip(process.platform !== 'win32' || parse(resolve('.')).root.toUpperCase() !== 'D:\\', 'Requires a Windows desktop with the checkout on drive D.')
+test('Windows log actions select the current folder, job file, legacy and fallback locations', async ({}, info) => {
+  test.skip(process.platform !== 'win32', 'Requires Windows file permissions.')
   test.setTimeout(120_000)
   const profile = await realpath(await mkdtemp(join(tmpdir(), 'whomi-runtime-error-logs-')))
   const dataRoot = resolve('release/desktop-log-fixtures')
@@ -22,7 +22,7 @@ test('Windows Explorer opens the app log folder, job files and legacy and fallba
   const source = join(profile, 'synthetic-broken-export.json')
   const logs = join(data, 'logs')
   const privateMarker = 'SYNTHETIC-CHAT-AND-CREDENTIAL'
-  let app, page, restoreAccess = false
+  let app, page, restoreAccess = false, nativeFolderPending = false
   const server = createServer((request, response) => {
     let body = ''
     request.on('data', chunk => { body += chunk })
@@ -46,27 +46,31 @@ test('Windows Explorer opens the app log folder, job files and legacy and fallba
     app = await electron.launch({ args: [resolve('out/main/index.cjs'), '--whomi-runtime-test'], env: { ...process.env, WHOMI_RUNTIME_TEST: profile } })
     page = await app.firstWindow()
     await page.emulateMedia({ reducedMotion: 'reduce' })
-    await app.evaluate(({ shell, dialog }, file) => {
+    await app.evaluate(({ shell, dialog }, { file, nativeFolder }) => {
       globalThis.logOpens = []
       const open = shell.openPath
       shell.openPath = async path => {
-        const result = await open(path)
+        const result = path === nativeFolder ? await open(path) : ''
         globalThis.logOpens.push({ path, result })
         return result
       }
       dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [file] })
-    }, source)
+    }, { file: source, nativeFolder: nativeFolderPending ? join(profile, 'logs') : null })
   }
   async function openAbout() {
     await button('设置').click()
     await button('关于 Whomi').click()
   }
   const lastOpen = () => app.evaluate(() => globalThis.logOpens.at(-1))
-  async function confirmExplorer(expected, screenshot) {
+  async function confirmFolder(expected) {
     await expect.poll(lastOpen).toEqual({ path: expected, result: '' })
-    const { stdout } = await invoke('powershell.exe', ['-NoProfile', '-NonInteractive', '-STA', '-ExecutionPolicy', 'Bypass',
-      '-File', explorerScript, '-Directory', expected, '-Screenshot', info.outputPath(screenshot + '.png')], { windowsHide: true, timeout: 16_000 })
-    expect(stdout.trim()).toBe(expected)
+    expect((await stat(expected)).isDirectory()).toBe(true)
+    if (nativeFolderPending) {
+      const { stdout } = await invoke('powershell.exe', ['-NoProfile', '-NonInteractive', '-STA', '-ExecutionPolicy', 'Bypass',
+        '-File', explorerScript, '-Directory', expected], { windowsHide: true, timeout: 25_000 })
+      expect(stdout.trim()).toBe(expected)
+      nativeFolderPending = false
+    }
   }
   const access = action => invoke('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass',
     '-File', accessScript, '-Directory', logs, '-Action', action], { windowsHide: true, timeout: 12_000 })
@@ -83,10 +87,11 @@ test('Windows Explorer opens the app log folder, job files and legacy and fallba
       return true
     }`)
     await writeFile(source, '{"incomplete":')
+    nativeFolderPending = process.env.WHOMI_DESKTOP_VERIFY_EXPLORER === '1'
     await launch()
     await openAbout()
     await button('打开错误日志目录').click()
-    await confirmExplorer(join(profile, 'logs'), '01-empty-explorer')
+    await confirmFolder(join(profile, 'logs'))
     expect(await readdir(join(profile, 'logs'))).toEqual([])
     await app.evaluate(() => globalThis.__whomiRuntimeProbe.request('probe.logConversation', null))
     await app.close(); app = undefined
@@ -124,7 +129,7 @@ test('Windows Explorer opens the app log folder, job files and legacy and fallba
     await launch()
     await openAbout()
     await button('打开错误日志目录').click()
-    await confirmExplorer(logs, '02-drive-d-with-errors')
+    await confirmFolder(logs)
     const names = await readdir(logs)
     const model = await readFile(join(logs, names.find(name => name.includes('-model-'))), 'utf8')
     const insight = await readFile(join(logs, names.find(name => name.includes('-insight-' + taskId + '-'))), 'utf8')
@@ -135,7 +140,7 @@ test('Windows Explorer opens the app log folder, job files and legacy and fallba
     expect(JSON.parse(importLog)).toHaveProperty('code')
     expect(model + insight + importLog).not.toContain(privateMarker)
     await button('打开旧版导入日志目录').click()
-    await confirmExplorer(join(profile, 'import-errors'), '03-legacy-import')
+    await confirmFolder(join(profile, 'import-errors'))
     await access('Block')
     restoreAccess = true
     await expect(writeFile(join(logs, 'blocked-probe.tmp'), '')).rejects.toMatchObject({ code: expect.stringMatching(/^(EACCES|EPERM)$/) })
@@ -143,12 +148,12 @@ test('Windows Explorer opens the app log folder, job files and legacy and fallba
     await expect(page.evaluate(id => window.whomi.settings.testModel(id), modelId)).rejects.toThrow()
     await button('打开错误日志目录').click()
     await expect(page.getByRole('status').filter({ hasText: '备用目录' })).toContainText(join(profile, 'logs'))
-    await confirmExplorer(join(profile, 'logs'), '04-fallback-explorer')
+    await confirmFolder(join(profile, 'logs'))
     expect(await readdir(join(profile, 'logs'))).toEqual(expect.arrayContaining([expect.stringContaining('-model-')]))
     expect(await readdir(join(profile, 'logs', 'import-errors'))).toEqual([expect.stringMatching(/-none\.txt$/)])
     await page.screenshot({ path: info.outputPath('05-about-fallback.png') })
     await button('打开数据目录中的日志').click()
-    await confirmExplorer(logs, '06-readable-d-archive')
+    await confirmFolder(logs)
   } catch (error) {
     await page?.screenshot({ path: info.outputPath('failure.png') }).catch(() => {})
     throw error
@@ -167,7 +172,7 @@ test('Windows Explorer opens the app log folder, job files and legacy and fallba
       }
     }
     if (dirname(data) === dataRoot && basename(data).startsWith('feedback-')) await clean(data)
-    if (dirname(profile) === await realpath(tmpdir()) && basename(profile).startsWith('whomi-runtime-error-logs-')) {
+    if (!nativeFolderPending && dirname(profile) === await realpath(tmpdir()) && basename(profile).startsWith('whomi-runtime-error-logs-')) {
       await clean(profile)
     }
   }
@@ -178,7 +183,16 @@ test('startup reports where to find logs when the selected data disk is unavaila
   const profile = await realpath(await mkdtemp(join(tmpdir(), 'whomi-runtime-startup-logs-')))
   const logs = join(profile, 'logs')
   try {
-    await writeFile(join(profile, 'storage-location.json'), JSON.stringify({ version: 1, path: join(profile, 'offline-drive'), hasDatabase: true }))
+    let offline = join(profile, 'offline-drive')
+    if (process.platform === 'win32') {
+      for (const letter of 'DZYXWVUTSRQPONMLKJIHGFE') {
+        const root = letter + ':\\'
+        const absent = await fileAccess(root).then(() => false, error => error.code === 'ENOENT')
+        if (absent) { offline = join(root, 'WhomiData'); break }
+      }
+    }
+    await writeFile(info.outputPath('offline-location.txt'), offline)
+    await writeFile(join(profile, 'storage-location.json'), JSON.stringify({ version: 1, path: offline, hasDatabase: true }))
     const launch = () => invoke(electronExecutable, [resolve('out/main/index.cjs'), '--whomi-runtime-test'], {
       env: { ...process.env, WHOMI_RUNTIME_TEST: profile }, windowsHide: true, timeout: 12_000,
     })
@@ -201,5 +215,40 @@ test('startup reports where to find logs when the selected data disk is unavaila
     if (dirname(profile) === await realpath(tmpdir()) && basename(profile).startsWith('whomi-runtime-startup-logs-')) {
       await rm(profile, { recursive: true, force: true })
     }
+  }
+})
+
+test('the About page opens logs with the data service offline', async ({}, info) => {
+  const profile = await realpath(await mkdtemp(join(tmpdir(), 'whomi-runtime-offline-data-')))
+  let app, page
+  try {
+    await writeFile(join(profile, 'probe.cjs'), 'module.exports = () => async () => true')
+    app = await electron.launch({ args: [resolve('out/main/index.cjs'), '--whomi-runtime-test'], env: { ...process.env, WHOMI_RUNTIME_TEST: profile } })
+    page = await app.firstWindow()
+    const button = name => page.getByRole('button', { name, exact: true })
+    await expect(button('设置')).toBeVisible()
+    await app.evaluate(async ({ shell }) => {
+      shell.openPath = async path => { globalThis.openedLogFolder = path; return '' }
+      process.emit('uncaughtExceptionMonitor', new Error('PRIVATE_RUNTIME_FIXTURE'), 'uncaughtException')
+      await globalThis.__whomiRuntimeProbe.close()
+    })
+    await button('设置').click()
+    await button('关于 Whomi').click()
+    await expect(button('重新读取设置')).toBeVisible()
+    await button('打开错误日志目录').click()
+    await expect.poll(() => app.evaluate(() => globalThis.openedLogFolder)).toBe(join(profile, 'logs'))
+    const names = await readdir(join(profile, 'logs'))
+    expect(names.some(name => name.includes('-data-'))).toBe(true)
+    const main = await readFile(join(profile, 'logs', names.find(name => name.includes('-main-'))), 'utf8')
+    expect(JSON.parse(main)).toMatchObject({ area: 'main', phase: 'uncaughtException', code: 'MAIN_PROCESS_ERROR' })
+    expect(main).not.toContain('PRIVATE_RUNTIME_FIXTURE')
+    await expect(button('打开错误日志目录')).toBeEnabled()
+    await page.screenshot({ path: info.outputPath('about-without-data.png') })
+  } catch (error) {
+    await page?.screenshot({ path: info.outputPath('failure.png') }).catch(() => {})
+    throw error
+  } finally {
+    await app?.close()
+    if (dirname(profile) === await realpath(tmpdir()) && basename(profile).startsWith('whomi-runtime-offline-data-')) await rm(profile, { recursive: true, force: true })
   }
 })

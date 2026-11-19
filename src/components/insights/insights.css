@@ -96,12 +96,18 @@ button.insight-report-row:active { background: var(--pressed); }
 .insight-citation:hover { text-decoration-thickness: 2px; }
 .reader-modal-card.insight-history-card { width: min(100%, 75vw); max-width: 960px; max-height: min(82svh, 840px); overflow: hidden; }
 .insight-history-card > header { display: flex; flex: none; gap: 12px; align-items: start; justify-content: space-between; overflow-wrap: anywhere; }
-.insight-history-card > header h2 { margin: 0; }
+.insight-history-card > header > div { min-width: 0; }
+.insight-history-card > header h2 { margin: 0; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.insight-history-card > header small { display: flex; align-items: baseline; gap: .3em; }
+.insight-history-card .history-conversation-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .insight-history-card > header button { flex: none; }
 .insight-history-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 .insight-history-body:focus-visible { outline-offset: -2px; }
 .insight-history-body > .memory-prose { max-width: 790px; margin-inline: auto; padding: 0; overflow: visible; }
+.insight-delete-details { max-height: 45vh; overflow-y: auto; overflow-wrap: anywhere; }
 .insight-delete-details > p { line-height: 1.65; }
+.insight-delete-conversation { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.insight-group-toggle > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @keyframes insight-loading { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .insight-list-loading svg { animation: none; } }
 @media (max-width: 1060px) {

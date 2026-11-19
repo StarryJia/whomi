@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { lstatSync, mkdirSync, realpathSync, writeFileSync } from 'node:fs'
 import { lstat, mkdir, readdir, realpath, rename, unlink, writeFile } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import { BoundaryError, localId } from '../../src/shared/desktop-validation'
@@ -18,6 +19,13 @@ export type AppError = {
 const knownCodes = new Set([
   'AGENT_UNAVAILABLE', 'CONTEXT_TOO_LARGE', 'DATA_PROCESS_GONE', 'DISK_SPACE', 'INSIGHT_BUDGET_EXHAUSTED',
   'INSIGHT_CONTEXT_LIMIT', 'INVALID_ANALYSIS', 'INVALID_EVIDENCE', 'INVALID_INSIGHT_REPORT', 'INVALID_INSIGHT_SNAPSHOT',
+  'INVALID_INSIGHT_OUTPUT', 'INVALID_INSIGHT_CHECKPOINT', 'CHATGPT_LIMIT', 'CHATGPT_ACCESS', 'CHATGPT_RECONNECT',
+  'CHATGPT_UNSUPPORTED', 'CHATGPT_INELIGIBLE', 'CHATGPT_UNAVAILABLE', 'CHATGPT_REQUEST', 'CHATGPT_INCOMPLETE',
+  'CHATGPT_ACCOUNT_CHANGED', 'CHATGPT_BUSY', 'CHATGPT_CALLBACK', 'CHATGPT_CANCELLED', 'CHATGPT_DENIED', 'CHATGPT_IDENTITY',
+  'CHATGPT_MODELS', 'CHATGPT_NETWORK', 'CHATGPT_PERMISSION', 'CHATGPT_REVOCATION', 'CHATGPT_TIMEOUT',
+  'ACCOUNT_ACCESS', 'ACCOUNT_BUSY', 'ACCOUNT_CANCELLED', 'ACCOUNT_CHANGED', 'ACCOUNT_CLIENT_REQUIRED', 'ACCOUNT_INCOMPLETE',
+  'ACCOUNT_LOGIN', 'ACCOUNT_NETWORK', 'ACCOUNT_REQUEST', 'ACCOUNT_REVOCATION', 'ACCOUNT_STORAGE', 'ACCOUNT_TIMEOUT',
+  'CODEX_QUOTA_NETWORK', 'CODEX_QUOTA_RESPONSE', 'SUMMARY_TOO_LARGE', 'SESSION_SAVE_FAILED', 'INVALID_CHECKPOINT',
   'INVALID_RESPONSE', 'MAIN_PROCESS_ERROR', 'MODEL_AUTH_FAILED', 'MODEL_CONNECTION_FAILED', 'MODEL_CONTEXT_LIMIT',
   'MODEL_DISABLED', 'MODEL_INPUT_TOO_SMALL', 'MODEL_NOT_FOUND', 'MODEL_OUTPUT_LIMIT', 'MODEL_RATE_LIMIT',
   'MODEL_REQUEST_FAILED', 'MODEL_SYNC_FAILED', 'MODEL_TIMEOUT', 'MODEL_UNAVAILABLE', 'PRELOAD_ERROR', 'RENDERER_ERROR', 'RENDERER_LOAD_FAILED',
@@ -51,12 +59,14 @@ export async function writeLocalLog(root: string, filename: string, record: unkn
   }
 }
 
-export function createAppErrorLogs(userDataPath: string, version: string, openPath: (path: string) => Promise<string>) {
+export function createAppErrorLogs(userDataPath: string, version: string, openPath: (path: string) => Promise<string>, onWriteFailure?: () => void) {
   const profile = resolve(userDataPath)
   const legacyImport = join(profile, 'import-errors')
   const fallbackDirectory = join(profile, 'logs')
   let preferred = fallbackDirectory
   let activeDirectory: string | undefined
+  let retainedDirectories: string[] = []
+  let missedRecords = 0
   let pending = Promise.resolve()
 
   function schedule<T>(action: () => Promise<T>): Promise<T> {
@@ -70,7 +80,7 @@ export function createAppErrorLogs(userDataPath: string, version: string, openPa
     return candidates.filter((path, index) => candidates.findIndex(other => logPathKey(other) === logPathKey(path)) === index)
   }
 
-  function withWritableRoot<T>(action: (directory: string) => Promise<T>) {
+  function withWritableRoot<T>(action: (directory: string) => Promise<T>, recording = true) {
     return schedule(async () => {
       for (const path of directories()) {
         try {
@@ -84,33 +94,58 @@ export function createAppErrorLogs(userDataPath: string, version: string, openPa
           return value
         } catch { /* 目录暂时不可用时，继续使用同一用户的其他日志目录。 */ }
       }
+      if (recording) {
+        missedRecords += 1
+        if (missedRecords === 1) onWriteFailure?.()
+      }
       throw new BoundaryError('ERROR_LOG_UNWRITABLE', '无法写入错误日志。请检查磁盘空间和数据目录权限后重试。')
     })
   }
 
   function archivePath(archive: ErrorLogArchive) {
     if (archive === 'legacy-import') return legacyImport
-    return archive === 'data' ? preferred : fallbackDirectory
+    if (archive === 'data') return preferred
+    if (archive === 'fallback') return fallbackDirectory
+    const retained = retainedDirectories.find(path => archive === `retained:${path}`)
+    if (!retained) throw new BoundaryError('INVALID_ARGUMENT')
+    return retained
   }
-  function selectStorageDirectory(directory: string) {
+  function selectStorageDirectory(directory: string, retained: string[] = []) {
+    retainedDirectories = retained
     preferred = join(resolve(directory), 'logs')
     activeDirectory = undefined
   }
 
   return {
-    async setStorageDirectory(directory: string) {
-      await schedule(async () => selectStorageDirectory(directory))
+    async setStorageDirectory(directory: string, retained: string[] = []) {
+      await schedule(async () => selectStorageDirectory(directory, retained))
     },
-    withStorageRelocation<T extends { path: string }>(relocate: () => Promise<T>) {
+    withStorageRelocation<T extends { path: string; retainedErrorLogDirectories?: string[] }>(relocate: () => Promise<T>) {
       // 迁移校验期间，错误记录排队，切换成功后再写入新目录。
       return schedule(async () => {
         const result = await relocate()
-        selectStorageDirectory(result.path)
+        selectStorageDirectory(result.path, result.retainedErrorLogDirectories)
         return result
       })
     },
     withWritableRoot,
-    importDirectories: () => [...directories().map(path => join(path, 'import-errors')), legacyImport],
+    recordMainException(origin: NodeJS.UncaughtExceptionOrigin) {
+      // 进程可能在回调返回后立即退出。
+      const now = new Date()
+      const phase = origin === 'unhandledRejection' ? 'unhandledRejection' : 'uncaughtException'
+      const record = { recordedAt: now.toISOString(), version, area: 'main', phase, code: 'MAIN_PROCESS_ERROR' }
+      for (const root of directories()) {
+        try {
+          if (logPathKey(realpathSync(dirname(root))) !== logPathKey(dirname(root))) continue
+          try { mkdirSync(root, { mode: 0o700 }) }
+          catch (error) { if ((error as NodeJS.ErrnoException).code !== 'EEXIST') continue }
+          if (!lstatSync(root).isDirectory() || logPathKey(realpathSync(root)) !== logPathKey(root)) continue
+          writeFileSync(join(root, `${now.getTime()}-main-${randomUUID()}.json`), JSON.stringify(record) + '\n', { flag: 'wx', mode: 0o600 })
+          return
+        } catch { /* 退出前仍可尝试备用目录。 */ }
+      }
+    },
+    importDirectories: () => [...[...directories(), ...retainedDirectories].map(path => join(path, 'import-errors')), legacyImport],
     async record({ area, phase, error, taskId, analyzedMessages, budget }: AppError) {
       const code = error instanceof BoundaryError && knownCodes.has(error.code) ? error.code : 'OPERATION_FAILED'
       const id = localId(taskId) ? taskId : undefined
@@ -125,10 +160,13 @@ export function createAppErrorLogs(userDataPath: string, version: string, openPa
     async getArchives(): Promise<ErrorLogArchive[]> {
       await pending
       const available: ErrorLogArchive[] = []
-      for (const archive of ['legacy-import', 'fallback', 'data'] as const) {
-        if (archive === 'data' && logPathKey(preferred) === logPathKey(fallbackDirectory)) continue
+      const seen = new Set([logPathKey(activeDirectory ?? preferred)])
+      const archives: ErrorLogArchive[] = ['legacy-import', 'fallback', 'data', ...retainedDirectories.map(path => `retained:${path}` as const)]
+      for (const archive of archives) {
         const directory = archivePath(archive)
-        if (logPathKey(directory) === logPathKey(activeDirectory ?? preferred)) continue
+        const key = logPathKey(directory)
+        if (seen.has(key)) continue
+        seen.add(key)
         try {
           if ((await readdir(await localLogDirectory(directory))).length) available.push(archive)
         } catch { /* 尚无归档目录。 */ }
@@ -136,9 +174,8 @@ export function createAppErrorLogs(userDataPath: string, version: string, openPa
       return available
     },
     async open(target: ErrorLogTarget): Promise<ErrorLogLocation> {
-      if (target !== 'current' && target !== 'legacy-import' && target !== 'fallback' && target !== 'data') throw new BoundaryError('INVALID_ARGUMENT')
       const location = target === 'current'
-        ? await withWritableRoot(async path => ({ path, fallback: logPathKey(path) !== logPathKey(preferred) }))
+        ? await withWritableRoot(async path => ({ path, fallback: logPathKey(path) !== logPathKey(preferred), ...(missedRecords && { missedRecords }) }), false)
         : { path: archivePath(target), fallback: false }
       try {
         await localLogDirectory(location.path)

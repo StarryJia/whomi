@@ -169,6 +169,9 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
         const values = initial.systemPrompts
         const prompts: InsightPrompts = values ? { version: INSIGHT_PROMPT_VERSION, reading: values.insightReading, checking: values.insightChecking, writing: values.insightWriting } : defaultInsightPrompts
         const checkpoint: InsightCheckpoint | null = initial.checkpoint ? JSON.parse(initial.checkpoint) : null
+        if (checkpoint && !['reading', 'checking', 'writing'].includes(checkpoint.stage)) {
+          throw new BoundaryError('INVALID_INSIGHT_CHECKPOINT', '洞察进度无法恢复，请重新生成。')
+        }
         phase = checkpoint?.stage ?? 'reading'
         await saveAnalysis(id, { state: 'running', error: undefined })
         const report = await generateInsight({ snapshot: initial.snapshot, conversationId: initial.task.conversationId, model: initial.model,
@@ -234,6 +237,7 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
           }, signal),
           save: async (index, messageIds, note, usage) => {
             const snapshot = await storage<AnalysisTask>('commitBatch', id, { index, messageIds, report: note, usage })
+            analyzedMessages = snapshot.analyzedMessages
             publish({ kind: 'analysis', snapshot })
           },
         })
@@ -256,6 +260,7 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
         if (signal.aborted) return
         const report = parseReport(response.text, new Set(batch.items.flatMap(item => item.sourceIds ?? [item.id])))
         const snapshot = await storage<AnalysisTask>('commitBatch', id, { index: batch.index, messageIds: batch.messageIds, report, usage: response.usage })
+        analyzedMessages = snapshot.analyzedMessages
         publish({ kind: 'analysis', snapshot }); reports.push(report)
       }
       if (signal.aborted) return

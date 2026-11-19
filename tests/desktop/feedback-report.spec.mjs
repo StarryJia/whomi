@@ -5,9 +5,10 @@ import { dirname, join, resolve } from 'node:path'
 
 const ending = '合成报告末段：两人确认了新的见面地点。'
 
-test('the same historical report grows with the desktop window, scrolls, and returns focus', async ({}, info) => {
+for (const longName of [false, true]) test(`historical report with a ${longName ? 'long' : 'short'} conversation name resizes, scrolls, and returns focus`, async ({}, info) => {
   test.setTimeout(60_000)
   const directory = await mkdtemp(join(tmpdir(), 'whomi-runtime-feedback-report-'))
+  const conversationName = '虚构报告会话' + (longName ? '测'.repeat(2000) : '')
   const unknown = { EI: null, SN: null, TF: null, JP: null }
   const reports = [{
     format: 'memory-v4', dimensions: unknown, dimensionExplanations: unknown,
@@ -24,7 +25,7 @@ test('the same historical report grows with the desktop window, scrolls, and ret
   await writeFile(join(directory, 'probe.cjs'), `module.exports = writer => async method => {
     if (method !== 'probe.feedbackReports') throw Error('Unsupported synthetic report probe')
     const reports = ${JSON.stringify(reports)}
-    writer.exec("INSERT INTO conversations(id,title,kind,created_at_ms) VALUES(1,'虚构报告会话','direct',0)")
+    writer.prepare("INSERT INTO conversations(id,title,kind,created_at_ms) VALUES(1,?,'direct',0)").run(${JSON.stringify(conversationName)})
     writer.exec(\`INSERT INTO ai_models(id,version,data) VALUES('report-model',1,'{}');
       INSERT INTO ai_model_versions(model_id,version,data) VALUES('report-model',1,'{"model":"report","label":"合成模型"}');\`)
     reports.forEach((report, index) => {
@@ -89,6 +90,7 @@ test('the same historical report grows with the desktop window, scrolls, and ret
     await resize(narrow)
     expect((await measure('04-narrow-report')).width).toBeCloseTo(initial.width, 0)
     const scroller = dialog.getByRole('region', { name: '报告正文' })
+    expect(await scroller.evaluate(element => element.clientHeight)).toBeGreaterThan(0)
     expect(await scroller.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true)
     await scroller.press('End')
     await expect(dialog.getByText(ending)).toBeInViewport()
@@ -104,7 +106,11 @@ test('the same historical report grows with the desktop window, scrolls, and ret
     await page.getByRole('menuitem', { name: '删除' }).click()
     const confirmation = page.getByRole('dialog', { name: '删除报告' })
     expect((await confirmation.locator('.reader-modal-card').boundingBox()).width).toBeCloseTo(440, 0)
-    await confirmation.getByRole('button', { name: '取消' }).click()
+    const cancel = confirmation.getByRole('button', { name: '取消' })
+    await expect(confirmation.getByText(/删除后无法恢复/)).toBeInViewport()
+    await expect(cancel).toBeInViewport()
+    if (longName) await page.screenshot({ path: info.outputPath('06-delete-confirmation.png') })
+    await cancel.click()
     await page.getByRole('button', { name: /虚构报告会话.*会话洞察.*#2/ }).click()
     await expect(page.getByRole('heading', { name: '关于你' })).toBeVisible()
     expect((await page.locator('.insight-reader-content').boundingBox()).width).toBeLessThanOrEqual(790)

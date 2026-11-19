@@ -17,12 +17,12 @@ export type SettingsModelInput = Pick<SettingsModel, 'providerId' | 'label' | 'm
 export type CatalogModel = { id: string; label?: string; group?: string; contextWindow?: number; maxTokens?: number; maxInputTokens?: number }
 export type ModelFeature = 'analysis' | 'conversation'
 export type SettingsSnapshot = { providers: Provider[]; models: SettingsModel[]; processing: ProcessingSettings; selectedModels: Partial<Record<ModelFeature, string>>; debug: boolean }
-export type StorageLocation = { path: string; defaultPath: string; restartRequired: boolean; retainedErrorLogDirectory?: string }
+export type StorageLocation = { path: string; defaultPath: string; restartRequired: boolean; retainedErrorLogDirectory?: string; retainedErrorLogDirectories?: string[] }
 export type StorageChoice = { token: string; path: string }
 export type Diagnostics = { version: string; platform: string; entries: { code: string; action: string }[] }
-export type ErrorLogArchive = 'legacy-import' | 'fallback' | 'data'
+export type ErrorLogArchive = 'legacy-import' | 'fallback' | 'data' | `retained:${string}`
 export type ErrorLogTarget = 'current' | ErrorLogArchive
-export type ErrorLogLocation = { path: string; fallback: boolean }
+export type ErrorLogLocation = { path: string; fallback: boolean; missedRecords?: number }
 export type AccountUsage = { requests: number; inputTokens: number | null; outputTokens: number | null; partial: boolean }
 export interface SettingsApi {
   getPrompts(): Promise<PromptValues>

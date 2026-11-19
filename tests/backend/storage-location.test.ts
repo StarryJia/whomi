@@ -3,7 +3,7 @@ import { link, mkdtemp, mkdir, readFile, readdir, rename, rm, stat, symlink, wri
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import Database from 'better-sqlite3'
-import { createStorageLocationService, resolveStorageLocation } from '../../electron/main/storage-location'
+import { createStorageLocationService, resolveStorageLocation, resolveStorageSelection } from '../../electron/main/storage-location'
 import { createAppErrorLogs } from '../../electron/main/app-error-logs'
 import { createImportDiagnostics } from '../../electron/main/import-diagnostics'
 import { BoundaryError } from '../../src/shared/desktop-validation'
@@ -111,6 +111,32 @@ describe('data location authorization', () => {
     await imports.open('11')
     expect(openPath.mock.lastCall![0]).toContain(join(second, 'logs', 'import-errors'))
     expect(await readdir(join(first, 'logs'))).toEqual(before)
+  })
+
+  it('reopens retained archives and their per-job logs after migrating between two custom directories and restarting', async () => {
+    const { root, source, target: first, service } = await fixture()
+    const second = join(root, 'second')
+    await mkdir(second)
+    await service.relocateStorage(1, (await service.issueChoice(1, first)).token)
+    const openPath = vi.fn(async (_path: string) => '')
+    const before = createAppErrorLogs(source, 'test', openPath)
+    await before.setStorageDirectory(first)
+    await createImportDiagnostics(source, 'test', openPath, undefined, before).report({ phase: 'parse', code: 'INVALID_RECORD', jobId: '11' })
+    const retained = join(first, 'logs')
+    await writeFile(join(retained, 'held'), 'fixture')
+    await link(join(retained, 'held'), join(root, 'second-link'))
+    const moving = createStorageLocationService({ userDataPath: source, stopServices: async () => {}, resumeServices: async () => {} })
+    const choice = await moving.issueChoice(1, second)
+    await before.withStorageRelocation(() => moving.relocateStorage(1, choice.token))
+    const selection = await resolveStorageSelection(source)
+    const reopened = createAppErrorLogs(source, 'test', openPath)
+    await reopened.setStorageDirectory(selection.path, selection.retainedErrorLogDirectories)
+    const archive = `retained:${retained}` as const
+    expect(await reopened.getArchives()).toContain(archive)
+    await expect(reopened.open(archive)).resolves.toMatchObject({ path: retained })
+    await expect(reopened.open(`retained:${root}`)).rejects.toMatchObject({ code: 'INVALID_ARGUMENT' })
+    await createImportDiagnostics(source, 'test', openPath, undefined, reopened).open('11')
+    expect(openPath.mock.lastCall![0]).toContain(join(retained, 'import-errors'))
   })
 
   it('moves healthy data and reports retained logs when the log tree cannot be copied safely', async () => {

@@ -1,49 +1,21 @@
-param(
-  [Parameter(Mandatory)][string]$Directory,
-  [Parameter(Mandatory)][string]$Screenshot
-)
-
+param([Parameter(Mandatory)][string]$Directory)
 $ErrorActionPreference = 'Stop'
-Add-Type -AssemblyName System.Drawing
-Add-Type -TypeDefinition @'
-using System;
-using System.Runtime.InteropServices;
+$fixtureProfile = [IO.Path]::GetDirectoryName($Directory)
+if ([IO.Path]::GetDirectoryName($fixtureProfile) -ne [IO.Path]::GetTempPath().TrimEnd('\') -or
+    [IO.Path]::GetFileName($fixtureProfile) -notmatch '^whomi-runtime-error-logs-[a-zA-Z0-9]+$' -or
+    [IO.Path]::GetFileName($Directory) -ne 'logs') { throw 'Expected a private test log directory.' }
 
-public static class WhomiExplorer {
-    [StructLayout(LayoutKind.Sequential)]
-    public struct Rect { public int Left, Top, Right, Bottom; }
-
-    [DllImport("user32.dll")]
-    public static extern bool SetProcessDpiAwarenessContext(IntPtr context);
-    [DllImport("user32.dll")]
-    public static extern bool GetWindowRect(IntPtr window, out Rect bounds);
-    [DllImport("user32.dll")]
-    public static extern IntPtr GetForegroundWindow();
-}
-'@
-
-[void][WhomiExplorer]::SetProcessDpiAwarenessContext([IntPtr](-4))
 $shell = New-Object -ComObject Shell.Application
+$observed = $false
 for ($attempt = 0; $attempt -lt 40; $attempt++) {
+  $matched = $false
   foreach ($window in $shell.Windows()) {
-    try { $path = $window.Document.Folder.Self.Path } catch { continue }
-    if ($path -ne $Directory) { continue }
-    $target = [IntPtr]([long]$window.HWND)
-    if ([WhomiExplorer]::GetForegroundWindow() -eq $target) {
-      $bounds = New-Object WhomiExplorer+Rect
-      if (![WhomiExplorer]::GetWindowRect($target, [ref]$bounds)) { throw 'Explorer bounds unavailable.' }
-      $bitmap = New-Object Drawing.Bitmap ($bounds.Right - $bounds.Left), ($bounds.Bottom - $bounds.Top)
-      $graphics = [Drawing.Graphics]::FromImage($bitmap)
-      try {
-        $graphics.CopyFromScreen($bounds.Left, $bounds.Top, 0, 0, $bitmap.Size)
-        if ([WhomiExplorer]::GetForegroundWindow() -eq $target) {
-          $bitmap.Save($Screenshot, [Drawing.Imaging.ImageFormat]::Png)
-        }
-      } finally { $graphics.Dispose(); $bitmap.Dispose() }
-    }
-    Write-Output $path
-    exit 0
+    try { $url = [uri]$window.LocationURL } catch { continue }
+    if (!$url.IsAbsoluteUri -or !$url.IsFile -or $url.LocalPath -ne $Directory) { continue }
+    $matched = $true
+    if (!$observed) { $observed = $true; $window.Quit() }
   }
+  if ($observed -and !$matched) { Write-Output $Directory; exit 0 }
   Start-Sleep -Milliseconds 250
 }
-throw "Explorer did not open the expected directory: $Directory"
+throw 'Could not verify that the test folder opened and closed in Explorer.'

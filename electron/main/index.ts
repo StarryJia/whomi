@@ -19,7 +19,7 @@ import { createChatgptAuth } from './chatgpt-auth'
 import { createCodexQuota } from './codex-quota'
 import { createChatgptRunner } from './chatgpt-responses'
 import { createSettingsService } from './settings-service'
-import { createStorageLocationService, resolveStorageLocation } from './storage-location'
+import { createStorageLocationService, resolveStorageSelection } from './storage-location'
 import { settingsChannel, type SettingsApi, type SettingsSnapshot } from '../../src/shared/settings-contract'
 import { settingsMethods } from '../../src/data/settings-client'
 import type { ProcessingMember } from './message-processing'
@@ -47,7 +47,13 @@ let aiService: ReturnType<typeof createAiService> | undefined
 let quitting = false
 if (!app.requestSingleInstanceLock()) app.quit()
 else {
-  const appErrorLogs = createAppErrorLogs(app.getPath('userData'), appVersion, path => shell.openPath(path))
+  const appErrorLogs = createAppErrorLogs(app.getPath('userData'), appVersion, path => shell.openPath(path), () => {
+    if (!app.isReady() || quitting) return
+    for (const window of BrowserWindow.getAllWindows()) window.webContents.send(appExceptionChannel, {
+      title: '未能保存错误日志', detail: '请检查磁盘空间和日志目录权限。',
+    })
+  })
+  process.on('uncaughtExceptionMonitor', (_error, origin) => appErrorLogs.recordMainException(origin))
   let stoppingWorkers = false
   app.on('child-process-gone', (_event, details) => {
     if (quitting || details.reason === 'clean-exit') return
@@ -97,9 +103,9 @@ else {
         }, claimProcessing: (id, signature) => requestData('settingsStorage', ['claimProcessing', [id, signature]]) })
       servicesClosed = false
     }
-    const storageDirectory = await resolveStorageLocation(userDataPath)
-    await appErrorLogs.setStorageDirectory(storageDirectory)
-    await startServices(storageDirectory)
+    const storage = await resolveStorageSelection(userDataPath)
+    await appErrorLogs.setStorageDirectory(storage.path, storage.retainedErrorLogDirectories)
+    await startServices(storage.path)
     await importDiagnostics.flush()
     const aiRouter = createAiRouter(new Proxy({} as AiMethods, { get: (_target, method: keyof AiMethods) => (...args: unknown[]) => (aiService![method] as (...values: unknown[]) => Promise<unknown>)(...args) }))
     publishAi = event => aiRouter.publish(event)

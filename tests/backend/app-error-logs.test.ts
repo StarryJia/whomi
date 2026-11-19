@@ -130,3 +130,21 @@ test('opens the enriched copy when the original and the copy share a filename ac
   expect(openPath.mock.lastCall![0]).toBe(file)
   expect(JSON.parse(await readFile(file, 'utf8'))).toMatchObject({ counts, code: 'INVALID_RECORD', version: '0.1.10' })
 })
+
+test('preserves local failure categories and reports dropped records after write access returns', async () => {
+  const { data, profile, appLogs } = await fixture()
+  const logs = appLogs()
+  await logs.setStorageDirectory(data)
+  await writeFile(join(data, 'logs'), 'blocked')
+  await writeFile(join(profile, 'logs'), 'blocked')
+  await logs.record({ area: 'model', phase: 'generate', error: new BoundaryError('CHATGPT_LIMIT') })
+  await unlink(join(data, 'logs'))
+  const location = await logs.open('current')
+  expect(location).toMatchObject({ path: join(data, 'logs'), missedRecords: 1 })
+  const codes = ['INVALID_INSIGHT_OUTPUT', 'INVALID_INSIGHT_CHECKPOINT', 'CHATGPT_LIMIT', 'CHATGPT_ACCESS',
+    'CHATGPT_UNAVAILABLE', 'CHATGPT_REQUEST', 'CHATGPT_INCOMPLETE', 'ACCOUNT_INCOMPLETE']
+  for (const code of codes) await logs.record({ area: 'insight', phase: 'reading', error: new BoundaryError(code, 'fixture-private') })
+  const records = await Promise.all((await readdir(location.path)).map(name => readFile(join(location.path, name), 'utf8')))
+  expect(records.map(record => JSON.parse(record).code).sort()).toEqual(codes.sort())
+  expect(records.join('')).not.toContain('fixture-private')
+})

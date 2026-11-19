@@ -63,10 +63,11 @@ export function SettingsPage({ api, onClose, onChanged, leaveRef, onLockChange }
       </div>
       <nav id="settings-navigation" aria-label="设置分类" className={`sp-navigation ${menuOpen ? 'is-open' : ''}`}>{categories.map(({ id, label }) => <button key={id} type="button" aria-current={category === id ? 'page' : undefined} disabled={locked} onClick={() => changeCategory(id)}>{label}</button>)}</nav>
     </header>
-    <div ref={main} role="region" aria-label={categoryLabel} tabIndex={-1} className="sp-main">{!snapshot ? <div className="settings-load">{error ? <><ExceptionNotice title="无法读取设置" detail={error} /><button className="ms-button" onClick={() => void load()}>重新读取设置</button></> : <p role="status">正在读取设置…</p>}</div> : <>
+    <div ref={main} role="region" aria-label={categoryLabel} tabIndex={-1} className="sp-main">
+      {category === 'about' && <AboutWhomi api={api} debug={snapshot?.debug} onDebug={debug => setSnapshot(current => current && { ...current, debug })} onBusy={setBusy} />}
+      {!snapshot ? <div className="settings-load">{error ? <><ExceptionNotice title="无法读取设置" detail={error} /><button className="ms-button" onClick={() => void load()}>重新读取设置</button></> : <p role="status">正在读取设置…</p>}</div> : <>
       {category === 'models' && <ModelServices api={api} snapshot={snapshot} setSnapshot={setSnapshot} onChanged={changed} registerGuard={registerGuard} onBusy={setBusy} />}
       {category === 'messages' && <MessageProcessing api={api} value={snapshot.processing} onSaved={processing => { setSnapshot(current => current && { ...current, processing }); changed() }} onBusy={setBusy} />}
-      {category === 'about' && <AboutWhomi api={api} debug={snapshot.debug} onDebug={debug => setSnapshot(current => current && { ...current, debug })} onBusy={setBusy} />}
       {category === 'storage' && <StorageSettings api={api} onBusy={setBusy} onRestartRequired={setRestartRequired} />}
       {category === 'prompts' && <SystemPrompts api={api} registerGuard={registerGuard} onBusy={setBusy} />}
     </>}</div>
