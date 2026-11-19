@@ -5,6 +5,7 @@ import type { ListArrangement } from '../shared/desktop-api'
 import { isMemoryReport } from '../shared/memory'
 import { MemoryArticle } from './memory-article'
 import { ManagedRow } from './ui/managed-row'
+import { ExceptionNotice, ExceptionNoticeScope, useExceptionNoticeLayer } from './ui/exception-notices'
 import './memory-library.css'
 
 export { MemoryArticle, predictionText } from './memory-article'
@@ -37,6 +38,7 @@ export function MemoryLibrary({ entries, unfinished, conversations, selectedId, 
   const dialog = useRef<HTMLDialogElement>(null)
   const heading = useRef<HTMLHeadingElement>(null)
   const selected = entries.find(entry => entry.id === selectedId)
+  useExceptionNoticeLayer(dialog, !!selected?.report)
   const all = [...entries, ...unfinished.filter(item => !entries.some(entry => entry.id === item.id))]
   const groups = new Map<string, { title: string; pinned: boolean; finished: AnalysisTask[]; pending: AnalysisTask[] }>()
   for (const task of all) {
@@ -87,29 +89,30 @@ export function MemoryLibrary({ entries, unfinished, conversations, selectedId, 
           {!pending && <span className="memory-task-detail"><span>聊天范围</span><span className="memory-chat-range">{rangeText(task)}</span></span>}
           <span className="memory-task-meta">{pending ? <span>已整理 {task.analyzedMessages.toLocaleString('zh-CN')} / {task.totalMessages.toLocaleString('zh-CN')} 条</span> : <span>{task.completedAtMs == null ? '生成时间未记录' : `生成于 ${dateTime(task.completedAtMs)}`}</span>}<span>{modelText(task, pending)}</span></span>
           {pending && task.state === 'summarizing' && <span className="memory-task-status">正在撰写文稿</span>}
-          {pending && task.error && <span className="memory-task-status">{task.error}</span>}
+          {pending && task.error && <span className="memory-task-status">整理失败</span>}
           {pending && !task.valid && <span className="memory-task-status">资料已变化，请重新生成记忆。</span>}
         </span>
         <span className={pending ? 'memory-resume-action' : 'memory-read-action'}>{pending ? '继续整理' : ''}<ChevronRight aria-hidden="true" /></span>
       </ManagedRow>
+      {pending && task.error && <ExceptionNotice title={`记忆 ${memoryTaskNumber(task.id)} 整理失败`} detail={task.error} noticeKey={`memory-task:${task.id}`} />}
     </li>
   }
   return <section className="memory-library" ref={library}>
     <header><h1 ref={heading} tabIndex={-1}>记忆仓库</h1>{!choosing && !!all.length && <button ref={chooseButton} type="button" className="page-primary" onClick={() => setChoosing(true)}>生成新记忆</button>}</header>
-    {error && <p role="alert">{error} <button type="button" onClick={retry}>重试</button></p>}
+    {error && <p><ExceptionNotice title="无法读取记忆" detail={error} /> <button type="button" onClick={retry}>重试</button></p>}
     {loading && !all.length && <p role="status">正在读取记忆…</p>}
     {!error && !loading && (!all.length || choosing) && <section className="memory-start" aria-label="整理记忆">
       {choosing ? <div className="memory-conversation-choices">
         <h2 tabIndex={-1} ref={choiceTitle}>选择一段会话</h2>
         {conversations.map(item => <button type="button" className="memory-choice" key={item.id} onClick={() => onStart(item.id)}><span>{item.title}<small>{item.messageCount.toLocaleString('zh-CN')} 条消息</small></span><ChevronRight aria-hidden="true" /></button>)}
         {hasMore && <button type="button" className="page-secondary" onClick={loadMore} disabled={listLoading}>加载更多会话</button>}
-        {listError && <p role="alert">{listError} <button type="button" onClick={retryList}>重新读取会话</button></p>}
+        {listError && <p><ExceptionNotice title="无法读取会话列表" detail={listError} noticeKey="conversation-list" /> <button type="button" onClick={retryList}>重新读取会话</button></p>}
         {!conversations.length && !listLoading && !listError && <button type="button" className="page-primary" onClick={onImport}><FileInput aria-hidden="true" />导入聊天记录</button>}
         <button type="button" className="overview-return" onClick={cancelChoice}><ArrowLeft aria-hidden="true" />取消选择</button>
       </div> : <>
         <div className="memory-format" aria-label="文稿格式预览"><span className="memory-format-label"><BookOpen aria-hidden="true" />文稿预览</span><h2>我们的记忆</h2><ol><li>MBTI 预测</li><li>我们的记忆</li><li>我们的关系</li></ol></div>
         <div className="memory-start-copy"><h2>整理第一份记忆</h2><p>这里收藏从聊天里整理出的记忆。每份文稿都保留着你们一起经历的事。</p>
-          {conversations.length ? <button ref={chooseButton} className="page-primary" type="button" onClick={() => setChoosing(true)}>生成新记忆<ArrowRight aria-hidden="true" /></button> : listError ? <button className="page-secondary" type="button" onClick={retryList}>重新读取会话</button> : !listLoading && <button className="page-primary" type="button" onClick={onImport}><FileInput aria-hidden="true" />导入聊天记录</button>}
+          {conversations.length ? <button ref={chooseButton} className="page-primary" type="button" onClick={() => setChoosing(true)}>生成新记忆<ArrowRight aria-hidden="true" /></button> : listError ? <><ExceptionNotice title="无法读取会话列表" detail={listError} noticeKey="conversation-list" /><button className="page-secondary" type="button" onClick={retryList}>重新读取会话</button></> : !listLoading && <button className="page-primary" type="button" onClick={onImport}><FileInput aria-hidden="true" />导入聊天记录</button>}
         </div></>}
     </section>}
     {!error && !loading && selectedId && !selected && <p role="status">这份记忆已移除。</p>}
@@ -120,13 +123,13 @@ export function MemoryLibrary({ entries, unfinished, conversations, selectedId, 
           expanded={open} controls={`memory-group-${conversationId}`} onSelect={() => toggle(setCollapsed, conversationId)} arrange={arrangeConversation} remove={removeConversation && (() => removeConversation(conversationId))}>
           <ChevronDown className={open ? '' : 'is-collapsed'} aria-hidden="true" /><span className="memory-person-icon"><UserRound aria-hidden="true" /></span><strong>{group.title}</strong><span className="memory-group-count">{group.finished.length} 份记忆{group.pending.length ? ` · ${group.pending.length} 项未完成` : ''}</span>
         </ManagedRow>
-        <div id={`memory-group-${conversationId}`} hidden={!open} className="memory-group-content">
+        <ExceptionNoticeScope active={open}><div id={`memory-group-${conversationId}`} hidden={!open} className="memory-group-content">
           <ul className="memory-task-list">{group.finished.map(task => taskRow(task, false))}</ul>
           {!!group.pending.length && <section className="memory-pending" aria-label={`${group.title}未完成的记忆`}>
             <button className="memory-pending-toggle" type="button" aria-expanded={pendingOpen} aria-controls={`memory-pending-${conversationId}`} onClick={() => toggle(setPendingCollapsed, conversationId)}><ChevronDown className={pendingOpen ? '' : 'is-collapsed'} aria-hidden="true" /><span className="memory-folder-icon"><Folder aria-hidden="true" /></span><strong>未完成（{group.pending.length}）</strong></button>
-            <ul id={`memory-pending-${conversationId}`} hidden={!pendingOpen} className="memory-task-list memory-pending-list">{group.pending.map(task => taskRow(task, true))}</ul>
+            <ExceptionNoticeScope active={pendingOpen}><ul id={`memory-pending-${conversationId}`} hidden={!pendingOpen} className="memory-task-list memory-pending-list">{group.pending.map(task => taskRow(task, true))}</ul></ExceptionNoticeScope>
           </section>}
-        </div>
+        </div></ExceptionNoticeScope>
       </section>
     })}</div>}
     {selected?.report && <dialog className="memory-dialog" ref={dialog} aria-labelledby="memory-title" onCancel={event => { event.preventDefault(); close() }}>

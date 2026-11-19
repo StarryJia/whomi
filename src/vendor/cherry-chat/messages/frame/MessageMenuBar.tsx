@@ -1,6 +1,7 @@
 import { type FC, Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { cn } from '@cherrystudio/ui/lib/utils'
+import { ExceptionNotice } from '../../../../components/ui/exception-notices'
 
 import { useMessageParts } from '../blocks/MessagePartsContext'
 import { useTemporaryValue } from '../hooks/useTemporaryValue'
@@ -85,7 +86,7 @@ const MessageMenuBar: FC<Props> = ({ message, isLastMessage }) => {
           </Fragment>
         ))}
         {copied && <span role="status" className="sr-only">已复制</span>}
-        {copyFailed && <span role="alert" className="whitespace-normal">复制失败，请重试。</span>}
+        {copyFailed && <ExceptionNotice title="复制失败，请重试。" className="whitespace-normal" />}
       </div>
       <MessageTokens message={message} />
     </>

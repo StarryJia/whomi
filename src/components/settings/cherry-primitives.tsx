@@ -2,9 +2,11 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
+import { useExceptionNoticeLayer } from '../ui/exception-notices'
 
 export function ProviderSettingsDrawer({ title, children, onClose, footer, wide = false, busy = false }: { title: string; children: ReactNode; onClose: () => void; footer?: ReactNode; wide?: boolean; busy?: boolean }) {
   const headerId = useId(), panel = useRef<HTMLElement>(null)
+  useExceptionNoticeLayer(panel)
   const closeRef = useRef(onClose); closeRef.current = onClose
   const busyRef = useRef(busy); busyRef.current = busy
   useEffect(() => {

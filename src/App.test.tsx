@@ -1,7 +1,8 @@
-import { render, screen, within } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
+import { fakeImportApi, snapshot } from './test/import-api'
 
 const sidebarStorageKey = 'whomi:sidebar-open'
 const unavailableDestinations = [
@@ -19,6 +20,33 @@ beforeEach(() => {
 })
 
 describe('Whomi 首页', () => {
+  it('离开导入页后仍收到当前批次的阻断提醒', async () => {
+    const { api, emit } = fakeImportApi()
+    render(<App importApi={api} />)
+    await act(async () => emit(snapshot({ status: 'failed', failurePhase: 'statistics', issues: [{ code: 'STATISTICS_FAILED', action: '请查看错误日志。', severity: 'blocking', candidateId: '' }] })))
+    const notices = await screen.findByRole('region', { name: '异常提醒' })
+    expect(within(notices).getByRole('alert')).toHaveTextContent('导入遇到问题')
+    await act(async () => emit(snapshot({ status: 'cancelled' })))
+    expect(screen.queryByRole('region', { name: '异常提醒' })).not.toBeInTheDocument()
+  })
+  it('在窗口异常卡片显示会话列表读取失败，并保留侧栏的重试操作', async () => {
+    const listConversations = vi.fn().mockRejectedValueOnce({ action: '请检查保存目录的访问权限。' })
+      .mockResolvedValue({ items: [], nextCursor: null })
+    const user = userEvent.setup()
+    render(<App client={{ listConversations, readMessages: vi.fn(), locateSource: vi.fn() }} />)
+    const notices = await screen.findByRole('region', { name: '异常提醒' })
+    expect(await within(notices).findByRole('alert')).toHaveTextContent('无法读取会话列表')
+    await user.click(screen.getByRole('button', { name: '展开会话列表' }))
+    expect(screen.queryByText('请检查保存目录的访问权限。')).not.toBeVisible()
+    await user.click(within(notices).getByRole('button', { name: '展开详情' }))
+    expect(within(notices).getByText('请检查保存目录的访问权限。')).toBeVisible()
+    expect(within(screen.getByLabelText('应用导航')).queryByText('请检查保存目录的访问权限。')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '重试会话列表' }))
+    expect(listConversations).toHaveBeenCalledTimes(2)
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
   it('展开时收起按钮位于顶部，Logo 保留返回首页操作', () => {
     render(<App />)
     const sidebar = screen.getByLabelText('应用导航')

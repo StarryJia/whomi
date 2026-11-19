@@ -1,22 +1,31 @@
 import type { Store } from './db/open'
-import type { Discovery, ImportSnapshot, StartImportRequest } from '../../src/shared/import-contract'
+import type { Discovery, ImportFailurePhase, ImportSnapshot, StartImportRequest } from '../../src/shared/import-contract'
 import { createStagingService, type StagedImport, type StagingOptions } from './import/staging'
 import type { GrantedSource } from './import/discovery'
 import { confirmSelf as mutateSelf } from './import/identity'
 import { purgeConversation } from './db/purge'
 import { runImport, type RunnerDependencies, type WriterQueue } from './import/runner'
-import { recoverImports } from './import/recovery'
-import { finishJob, getSnapshot, saveResult, setJobState, terminalStates } from './import/state'
+import { cleanupImportStaging, recoverImports } from './import/recovery'
+import { getSnapshot, recordImportFailure, saveResult, setJobState, terminalStates } from './import/state'
 import { ImportFailure, issue } from './import/limits'
 import { rebuildSummary } from './import/summary'
 import type { ImportPreview, PreviewOptions } from '../../src/shared/desktop-api'
 export type DataServiceOptions = {store:Store;appDataDirectory:string;staging?:Omit<StagingOptions,'appDataDirectory'|'registerArea'>;runner?:Omit<RunnerDependencies,'write'|'changed'>;changed?:(snapshot:ImportSnapshot)=>void}
-type ActiveImport={id:string;signal:AbortController;discovery?:Discovery;staged?:StagedImport;progress?:ImportSnapshot['progress']}
+type ActiveImport={id:string;signal:AbortController;discovery?:Discovery;staged?:StagedImport;progress?:ImportSnapshot['progress'];finishedCandidates?:Set<string>}
 export function createDataService(options:DataServiceOptions) {
   const {store}=options
   let queue:Promise<unknown>=Promise.resolve(),task:Promise<unknown>=Promise.resolve(),active:ActiveImport|undefined,lastEvent=0
   let notificationTimer:NodeJS.Timeout|undefined
-  const write:WriterQueue=operation=> {const next=queue.then(operation);queue=next.catch(()=>{});return next}
+  const cancelling = new Map<string, Promise<void>>()
+  let undurableFailure: { id: string; phase: ImportFailurePhase; code: string } | undefined
+  const write:WriterQueue = operation => {
+    const next = queue.then(() => {
+      if (!store.writer.open || store.writer.inTransaction) throw new ImportFailure('ROLLBACK_STORAGE_ERROR', 'cancel')
+      return operation()
+    })
+    queue = next.catch(() => {})
+    return next
+  }
   const ready=write(()=>recoverImports(store))
   const staging=createStagingService({appDataDirectory:options.appDataDirectory,...options.staging,onProgress(jobId,counts) {
     metadata(jobId,{discovery:active?.discovery,issues:active?.discovery?.issues ?? [],counts});notify(jobId)
@@ -26,7 +35,10 @@ export function createDataService(options:DataServiceOptions) {
   }})
   function notify(id:string) {
     if(!options.changed) return
-    const snapshot=currentSnapshot(id),now=Date.now()
+    let snapshot: ImportSnapshot
+    try { snapshot = currentSnapshot(id) } catch { return }
+    if (snapshot.status === 'completed' && active?.id === id) return
+    const now=Date.now()
     if(terminalStates.has(snapshot.status) || now-lastEvent>=200) {
       if(notificationTimer)clearTimeout(notificationTimer);notificationTimer=undefined
       lastEvent=now;try {options.changed(snapshot)} catch { /* Subscribers cannot affect committed data. */ }
@@ -35,24 +47,52 @@ export function createDataService(options:DataServiceOptions) {
     }
   }
   function currentSnapshot(id:string):ImportSnapshot {
-    const snapshot=getSnapshot(store,id)
-    return active?.id===id && active.progress ? {...snapshot,progress:active.progress}:snapshot
+    const current = active?.id === id ? active : undefined
+    const snapshot = getSnapshot(store,id, store.writer.open && store.writer.inTransaction ? current?.finishedCandidates : undefined)
+    if (undurableFailure?.id === id) {
+      return {...snapshot, status:'failed', failurePhase:undurableFailure.phase, issues:[issue(undurableFailure.code)]}
+    }
+    return snapshot.status === 'committing' && current?.progress ? {...snapshot,progress:current.progress}:snapshot
   }
   function metadata(id:string, value:Record<string,unknown>) {store.writer.prepare('UPDATE import_jobs SET metadata=? WHERE id=?').run(JSON.stringify(value),BigInt(id))}
   async function cleanup(current:ActiveImport) {
-    try {await current.staged?.cleanup();store.writer.prepare('DELETE FROM import_staging_areas WHERE job_id=?').run(BigInt(current.id))} catch { /* Recovery retries registered areas. */ }
+    const staged = current.staged
+    current.staged = undefined
+    try {
+      if (staged) {
+        await staged.cleanup()
+        await write(() => store.writer.prepare('DELETE FROM import_staging_areas WHERE job_id=?').run(BigInt(current.id)))
+      } else await write(() => cleanupImportStaging(store, current.id))
+    } catch { /* Registered directories remain available for cancellation and recovery. */ }
   }
   async function prepareImport(grants:readonly GrantedSource[]):Promise<string> {
     await ready
-    if(active) throw new ImportFailure('IMPORT_BUSY')
+    if(active || cancelling.size) throw new ImportFailure('IMPORT_BUSY')
     const current:ActiveImport={id:'',signal:new AbortController()};active=current
-    const id=await write(()=>store.writer.prepare("INSERT INTO import_jobs(status,phase,created_at_ms) VALUES ('pending','preparing',?)").run(Date.now()).lastInsertRowid.toString());current.id=id
     try {
+      const id=await write(()=>store.writer.prepare("INSERT INTO import_jobs(status,phase,created_at_ms) VALUES ('pending','preparing',?)").run(Date.now()).lastInsertRowid.toString());current.id=id
       setJobState(store,id,'scanning');notify(id)
       current.discovery=await staging.discover(grants,current.signal.signal)
-      metadata(id,{discovery:current.discovery,issues:current.discovery.issues});setJobState(store,id,'awaiting_confirmation');notify(id)
+      metadata(id,{discovery:current.discovery,issues:current.discovery.issues})
+      const blocking = current.discovery.issues.filter(value => value.severity === 'blocking')
+      if (blocking.length || !current.discovery.entries.length) {
+        recordImportFailure(store, id, 'scan', ...(blocking.length ? blocking : [issue('NO_IMPORTABLE_CONVERSATIONS')]))
+        if (active === current) active = undefined
+      } else setJobState(store,id,'awaiting_confirmation')
+      notify(id)
       return id
-    } catch(error) {setJobState(store,id,current.signal.signal.aborted ? 'cancelled':'failed');active=undefined;notify(id);throw error}
+    } catch(error) {
+      if (active === current) active = undefined
+      if (!current.id) throw error
+      if (current.signal.signal.aborted) setJobState(store,current.id,'cancelled')
+      else {
+        const code = error instanceof ImportFailure ? error.code : 'DISCOVERY_FAILED'
+        try { recordImportFailure(store,current.id,'scan',issue(code)) }
+        catch { undurableFailure = {id:current.id, phase:'scan', code} }
+      }
+      notify(current.id)
+      return current.id
+    }
   }
   async function startImport(request:StartImportRequest):Promise<string> {
     await ready
@@ -69,8 +109,20 @@ export function createDataService(options:DataServiceOptions) {
           setJobState(store,id,'validating')
           metadata(id,{discovery:current.discovery,candidates:staged.candidates,issues:staged.issues,counts:staged.counts})
           for(const c of staged.candidates) saveResult(store,id,c,c.status)
-          setJobState(store,id,'awaiting_commit')
-        } catch(error) {metadata(id,{discovery:current.discovery,issues:[issue(error instanceof ImportFailure ? error.code:'STAGING_FAILED')]});setJobState(store,id,current.signal.signal.aborted ? 'cancelled':'failed');active=undefined}
+          const blocking = staged.issues.filter(value => value.severity === 'blocking')
+          if (blocking.length || !staged.candidates.length) {
+            recordImportFailure(store, id, 'parse', ...(blocking.length ? blocking : [issue('NO_IMPORTABLE_CONVERSATIONS')]))
+            await cleanup(current)
+            if (active === current) active = undefined
+          } else setJobState(store,id,'awaiting_commit')
+        } catch(error) {
+          const code = error instanceof ImportFailure ? error.code : 'STAGING_FAILED'
+          try {
+            if (!current.signal.signal.aborted) recordImportFailure(store,id,'parse',issue(code))
+          } catch { undurableFailure = {id, phase:'parse', code} }
+          await cleanup(current)
+          if (active === current) active = undefined
+        }
         notify(id)
       })()
     } else {
@@ -78,15 +130,25 @@ export function createDataService(options:DataServiceOptions) {
       const plan=structuredClone(request.plan)
       // Reserve synchronously before returning so a second submit cannot start another runner.
       setJobState(store,id,'committing')
+      const finished = new Set<string>()
+      current.finishedCandidates = finished
       task=(async()=> {
-        try {await runImport(store,current.staged!,plan,current.signal.signal,{...options.runner,write,changed:()=>notify(id),progress:(processed,total)=>{
-          current.progress={processed,total};notify(id);options.runner?.progress?.(processed,total)
-        }})}
-        catch {await write(()=>finishJob(store,id,current.signal.signal.aborted,true))}
+        try {
+          await runImport(store,current.staged!,plan,current.signal.signal,{
+            ...options.runner,write,
+            changed(candidates) {
+              for (const candidate of candidates ?? []) finished.add(candidate)
+              notify(id)
+            },
+            progress(processed,total) {current.progress={processed,total};notify(id);options.runner?.progress?.(processed,total)},
+          })
+        } catch (error) {
+          // A storage fault can prevent writing even the failure record.
+          const phase = error instanceof ImportFailure ? error.phase : undefined
+          undurableFailure = {id, phase:phase ?? (current.signal.signal.aborted ? 'cancel' : 'save'), code: error instanceof ImportFailure ? error.code : 'STORAGE_UNWRITABLE'}
+        }
         finally {
-          try {
-            if(current.progress) await write(()=>store.writer.prepare("UPDATE import_jobs SET metadata=json_set(metadata,'$.progress',json(?)) WHERE id=?").run(JSON.stringify(current.progress),BigInt(id)))
-          }catch { /* 进度写入失败也必须释放任务与暂存文件。 */ }
+          current.finishedCandidates = undefined
           await cleanup(current);if(active===current) active=undefined;notify(id)
         }
       })()
@@ -95,15 +157,33 @@ export function createDataService(options:DataServiceOptions) {
   }
   async function cancelImport(id:string):Promise<void> {
     await ready
-    const current=active
-    if(!current || current.id!==id) return
-    current.signal.abort()
-    const status=getSnapshot(store,id).status
-    if(status==='awaiting_confirmation' || status==='awaiting_commit') {for(const c of current.staged?.candidates ?? []) saveResult(store,id,c,'cancelled','CANCELLED');setJobState(store,id,'cancelled');await cleanup(current);active=undefined;notify(id)}
-    else await task
+    const pending = cancelling.get(id)
+    if (pending) return pending
+    const current = active?.id === id ? active : undefined
+    const status = currentSnapshot(id).status
+    if (status === 'completed' || status === 'partially_completed' || (!current && !terminalStates.has(status) && undurableFailure?.id !== id)) return
+    const cancellation = (async () => {
+      current?.signal.abort()
+      if (current && (current.finishedCandidates || status === 'staging' || status === 'validating' || status === 'failed')) await task
+      if (current && active === current) { await cleanup(current); active = undefined }
+      await write(async () => {
+        try {
+          await cleanupImportStaging(store,id)
+          if (getSnapshot(store,id).status !== 'cancelled') setJobState(store,id,'cancelled')
+          if (undurableFailure?.id === id) undurableFailure = undefined
+        } catch {
+          const failure = issue('CANCEL_FAILED')
+          try { recordImportFailure(store,id,'cancel',failure) }
+          catch { undurableFailure = {id, phase:'cancel', code:failure.code} }
+          throw new ImportFailure(failure.code)
+        } finally { notify(id) }
+      })
+    })()
+    cancelling.set(id, cancellation)
+    try { await cancellation } finally { cancelling.delete(id) }
   }
   return {
-    ready,write,prepareImport,startImport,cancelImport,importActive:()=>!!active,
+    ready,write,prepareImport,startImport,cancelImport,importActive:()=>!!active || cancelling.size > 0,
     async previewImport(jobId:string,candidateId:string,options:PreviewOptions):Promise<ImportPreview> {
       await ready
       if(!active || active.id!==jobId || !active.staged) throw new ImportFailure('PREVIEW_UNAVAILABLE')
@@ -115,10 +195,16 @@ export function createDataService(options:DataServiceOptions) {
         attachments:message.attachments.map(({kind,name,state})=>({kind,name,state})),
       }))}
     },
-    async getImport(jobId:string) {await ready;return currentSnapshot(jobId)},
+    async getImport(jobId:string) {
+      await ready
+      const snapshot = currentSnapshot(jobId)
+      if (snapshot.status !== 'completed' || active?.id !== jobId) return snapshot
+      await task
+      return currentSnapshot(jobId)
+    },
     async confirmSelf(conversationId:string,memberId:string|null) {await ready;return write(()=>mutateSelf(store,conversationId,memberId))},
     async deleteConversation(conversationId:string) {await ready;return write(()=>purgeConversation(store,conversationId))},
     async retrySummary(conversationId:string) {await ready;return write(()=>rebuildSummary(store,conversationId))},
-    async idle() {await ready;await task;await queue},
+    async idle() {await ready;await task;await Promise.all(cancelling.values());await queue},
   }
 }

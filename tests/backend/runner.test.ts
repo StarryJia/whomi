@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { createDataService } from '../../electron/data/service'
 import { openStore,type Store } from '../../electron/data/db/open'
 import { createCommitter } from '../../electron/data/import/merge'
+import { rebuildSummary } from '../../electron/data/import/summary'
 import { ImportFailure } from '../../electron/data/import/limits'
 import type { ParserAdapter } from '../../electron/data/parsers/types'
 import { normalizeModel } from '../../src/shared/conversation-model'
@@ -38,50 +39,128 @@ test('keeps one job from discovery through staging and rejects a second task',as
   expect(await service.getImport(id)).toMatchObject({status:'completed',inserted:1})
   expect(store.reader.prepare('SELECT count(*) n FROM import_jobs').get()).toEqual({n:1n})
 })
-test('A saved B failed C duplicate reports partial completion',async()=> {
+test('a completed result no longer opens after its last conversation is deleted', async () => {
+  const { service, id } = await setup([{ key: 'a', ids: ['m1'] }])
+  await service.startImport({ kind: 'commit', plan: { jobId: id, decisions: [] } })
+  await service.idle()
+  const [result] = (await service.getImport(id)).results
+  await service.deleteConversation(result.conversationId!)
+  await expect(service.getImport(id)).rejects.toMatchObject({ code: 'IMPORT_RESULT_REMOVED' })
+})
+test('a historical statistics error does not turn a committed import into a cancellable batch', async () => {
+  const { service, id } = await setup([{ key: 'a', ids: ['m1'] }])
+  await service.startImport({ kind: 'commit', plan: { jobId: id, decisions: [] } })
+  await service.idle()
+  store.writer.exec("UPDATE conversation_summaries SET status='failed'")
+  expect(await service.getImport(id)).toMatchObject({ status: 'completed', results: [{ status: 'saved', summaryFailed: false }] })
+})
+test('restores the original library when statistics fail after a new conversation and an append were written', async () => {
+  store.writer.exec(`INSERT INTO conversations(id,title,kind,created_at_ms) VALUES (1,'Existing','direct',0);
+    INSERT INTO source_conversations(conversation_id,platform,owner_key,conversation_key,namespace) VALUES (1,'p','owner','existing','test');
+    INSERT INTO messages(conversation_id,sender_kind,sender_name,kind,text,ordinal) VALUES (1,'unknown','','text','original',0);
+    INSERT INTO conversation_summaries(conversation_id,message_count,status) VALUES (1,1,'ready');`)
+  const {service,id} = await setup([{key:'new',ids:['first']},{key:'existing',ids:['append']},{key:'skipped',ids:['third']}], {
+    summary: async (database, conversationId) => {
+      if (conversationId === '1') throw new Error('injected statistics error')
+      await rebuildSummary(database, conversationId)
+    },
+  })
+  await service.startImport({kind:'commit',plan:{jobId:id,decisions:[]}})
+  await service.idle()
+  expect(store.reader.prepare('SELECT title FROM conversations ORDER BY id').all()).toEqual([{title:'Existing'}])
+  expect(store.reader.prepare('SELECT text FROM messages ORDER BY id').all()).toEqual([{text:'original'}])
+  expect(store.reader.prepare('SELECT message_count,status FROM conversation_summaries').all()).toEqual([{message_count:1n,status:'ready'}])
+  expect(await service.getImport(id)).toMatchObject({status:'failed',inserted:0,failurePhase:'statistics'})
+  await Promise.all([service.cancelImport(id),service.cancelImport(id)])
+  expect(await service.getImport(id)).toMatchObject({status:'cancelled',inserted:0})
+})
+test('a save failure stops the next group and restores the previously processed group',async()=> {
   store.writer.exec("INSERT INTO conversations(id,title,kind,created_at_ms) VALUES (1,'C','direct',0);INSERT INTO source_conversations(conversation_id,platform,owner_key,conversation_key,namespace) VALUES (1,'p','owner','c','test');INSERT INTO messages(id,conversation_id,sender_kind,sender_name,kind,text,ordinal) VALUES (1,1,'unknown','','text','old',0);INSERT INTO message_keys VALUES (1,'test','m3',1)")
   const commit=createCommitter()
-  const {service,id}=await setup([{key:'a',ids:['m1']},{key:'b',ids:['m2']},{key:'c',ids:['m3']}],{commit:async(s,v,t,signal)=> {if(t.sourceKey==='b') throw Error('invalid');return commit(s,v,t,signal)}})
+  const attempts:string[] = []
+  const {service,id}=await setup([{key:'a',ids:['m1']},{key:'b',ids:['m2']},{key:'c',ids:['m3']}],{commit:async(s,v,t,signal)=> {attempts.push(t.sourceKey);if(t.sourceKey==='b') throw Error('invalid');return commit(s,v,t,signal)}})
   await service.startImport({kind:'commit',plan:{jobId:id,decisions:[]}});await service.idle()
-  expect((await service.getImport(id)).results.map(r=>r.status)).toEqual(['saved','failed','duplicate'])
-  expect((await service.getImport(id)).status).toBe('partially_completed')
+  expect(attempts).toEqual(['a','b'])
+  expect(await service.getImport(id)).toMatchObject({status:'failed',failurePhase:'save',inserted:0,duplicates:0,issues:[{code:'COMMIT_FAILED'}]})
+  expect(store.reader.prepare('SELECT text FROM messages').all()).toEqual([{text:'old'}])
 })
-test('groups two files atomically and blocks a known target when any file is blocked',async()=> {
+test('blocks the whole batch when a recognized file has a blocking parse issue',async()=> {
   const {service,id}=await setup([{key:'a',ids:['m1']},{key:'a',ids:['m2'],blocked:true},{key:'c',ids:['m3']}])
-  await service.startImport({kind:'commit',plan:{jobId:id,decisions:[]}});await service.idle()
-  expect((await service.getImport(id)).results.map(r=>r.status)).toEqual(['blocked','blocked','saved'])
-  expect(store.reader.prepare('SELECT text FROM messages').all()).toEqual([{text:'m3'}])
+  expect(await service.getImport(id)).toMatchObject({status:'failed',failurePhase:'parse',inserted:0,issues:[{code:'BAD'}]})
+  expect(store.reader.prepare('SELECT text FROM messages').all()).toEqual([])
 })
-test('stops later groups on storage failure and keeps already saved data',async()=> {
+test('rolls back data written by earlier groups on storage failure',async()=> {
   const {service,id}=await setup([{key:'a',ids:['m1']},{key:'b',ids:['m2']},{key:'c',ids:['m3']}],{commit:async(s,v,t,signal)=>{if(t.sourceKey==='b')throw new ImportFailure('DISK_SPACE');return createCommitter()(s,v,t,signal)}})
   await service.startImport({kind:'commit',plan:{jobId:id,decisions:[]}});await service.idle()
-  expect(await service.getImport(id)).toMatchObject({status:'partially_completed',inserted:1})
-  expect(store.reader.prepare('SELECT text FROM messages').all()).toEqual([{text:'m1'}])
+  expect(await service.getImport(id)).toMatchObject({status:'failed',failurePhase:'save',inserted:0,issues:[{code:'DISK_SPACE'}]})
+  expect(store.reader.prepare('SELECT text FROM messages').all()).toEqual([])
 })
-test('summary failure keeps saved result and can retry separately',async()=> {
-  const {service,id}=await setup([{key:'a',ids:['m1']}],{summary:async()=>{throw Error('summary')}})
+test('rolls back a write when its result has no commit timestamp',async()=> {
+  const commit=createCommitter()
+  const {service,id}=await setup([{key:'a',ids:['m1']}],{commit:async(s,v,t,signal) => {
+    const receipt = await commit(s,v,t,signal)
+    Reflect.deleteProperty(receipt,'committedAt')
+    return receipt
+  }})
   await service.startImport({kind:'commit',plan:{jobId:id,decisions:[]}});await service.idle()
-  let result=(await service.getImport(id)).results[0]
-  expect(result).toMatchObject({status:'saved',summaryFailed:true})
-  await service.retrySummary(result.conversationId!);result=(await service.getImport(id)).results[0]
-  expect(result.summaryFailed).toBe(false)
+  expect(await service.getImport(id)).toMatchObject({status:'failed',failurePhase:'confirm',inserted:0,issues:[{code:'SAVE_CONFIRMATION_MISSING'}]})
+  expect(store.reader.prepare('SELECT text FROM messages').all()).toEqual([])
+  await service.cancelImport(id)
+  expect(await service.getImport(id)).toMatchObject({status:'cancelled',inserted:0})
 })
-test('a summary storage failure does not count committed records twice',async()=> {
-  const progress:number[]=[]
-  const {service,id}=await setup([{key:'a',ids:['m1']}],{summary:async()=>{throw new ImportFailure('DISK_SPACE')},progress:count=>progress.push(count)})
+test('keeps cancellation available when staging cleanup cannot be verified',async()=> {
+  const {service,id}=await setup([{key:'a',ids:['m1'],blocked:true}])
+  const unexpectedPath = join(directory,'unexpected')
+  store.writer.prepare('INSERT INTO import_staging_areas VALUES (?,?,?,?,?)')
+    .run(BigInt(id),unexpectedPath,directory,join(directory,'import-staging'),'example')
+  await expect(service.cancelImport(id)).rejects.toThrow('CANCEL_FAILED')
+  expect(await service.getImport(id)).toMatchObject({status:'failed',failurePhase:'cancel',issues:[{code:'CANCEL_FAILED'}]})
+  store.writer.prepare('DELETE FROM import_staging_areas WHERE path=?').run(unexpectedPath)
+  await service.cancelImport(id)
+  expect(await service.getImport(id)).toMatchObject({status:'cancelled'})
+})
+test('an unsupported source reaches a failed scan without a conversation selection',async()=> {
+  const path=join(directory,'unrecognized.pdf')
+  await writeFile(path,'example unrelated file')
+  const service=createDataService({store,appDataDirectory:directory,staging:{parsers:[parser]}})
+  const id=await service.prepareImport([{rootPath:path}])
+  expect(await service.getImport(id)).toMatchObject({status:'failed',failurePhase:'scan',candidates:[],issues:[{code:'NO_IMPORTABLE_CONVERSATIONS'}]})
+  await service.cancelImport(id)
+  expect(await service.getImport(id)).toMatchObject({status:'cancelled'})
+})
+test('only the selected conversations are imported and receive confirmed results',async()=> {
+  const {service,id}=await setup([{key:'a',ids:['first']},{key:'b',ids:['second']}])
+  const second=(await service.getImport(id)).candidates[1]
+  await service.startImport({kind:'commit',plan:{jobId:id,candidateIds:[second.candidateId],decisions:[]}});await service.idle()
+  expect(await service.getImport(id)).toMatchObject({status:'completed',inserted:1,results:[{candidateId:second.candidateId,status:'saved'}]})
+  expect(store.reader.prepare('SELECT text FROM messages').all()).toEqual([{text:'second'}])
+})
+test('processed groups appear in progress without exposing tentative conversation rows or save receipts',async()=> {
+  const commit=createCommitter()
+  let service:ReturnType<typeof createDataService>, id:string
+  let intermediate:Awaited<ReturnType<typeof service.getImport>>|undefined, visible:unknown
+  const prepared=await setup([{key:'a',ids:['first']},{key:'b',ids:['second']}],{commit:async(s,v,t,signal) => {
+    if (t.sourceKey==='b') {
+      intermediate = await service.getImport(id)
+      visible = store.reader.prepare('SELECT text FROM messages').all()
+    }
+    return commit(s,v,t,signal)
+  }})
+  service=prepared.service;id=prepared.id
   await service.startImport({kind:'commit',plan:{jobId:id,decisions:[]}});await service.idle()
-  expect((await service.getImport(id)).results[0]).toMatchObject({status:'saved',inserted:1})
-  expect(progress.at(-1)).toBe(1)
+  expect(intermediate).toMatchObject({status:'committing',inserted:0,results:[{status:'processed',conversationId:null,committedAt:null},{status:'staged'}]})
+  expect(visible).toEqual([])
+  expect(await service.getImport(id)).toMatchObject({status:'completed',inserted:2})
 })
-test.each([1,2])('cancellation during group %i rolls current group back and preserves prior commits',async groupNumber=> {
+test.each([1,2])('cancellation during group %i rolls back the entire batch',async groupNumber=> {
   let service:ReturnType<typeof createDataService>,id:string,groups=0
   const prepared=await setup([{key:'a',ids:Array.from({length:501},(_,i)=>`m${i}`)},{key:'b',ids:Array.from({length:501},(_,i)=>`n${i}`)}],{commit:async(s,v,t,signal)=> {
     groups++;const merge=createCommitter({afterInsert(n){if(groups===groupNumber && n===1) setImmediate(()=>{void service.cancelImport(id)})}})
     return merge(s,v,t,signal)
   }});service=prepared.service;id=prepared.id
   await service.startImport({kind:'commit',plan:{jobId:id,decisions:[]}});await service.idle()
-  expect(store.reader.prepare('SELECT count(*) n FROM messages').get()).toEqual({n:groupNumber===1 ? 0n:501n})
-  expect((await service.getImport(id)).status).toBe(groupNumber===1 ? 'cancelled':'partially_completed')
+  expect(store.reader.prepare('SELECT count(*) n FROM messages').get()).toEqual({n:0n})
+  expect((await service.getImport(id)).status).toBe('cancelled')
 })
 test('self confirmation uses the same writer queue and runs after rollback',async()=> {
   store.writer.exec("INSERT INTO conversations(id,title,kind,created_at_ms) VALUES (1,'original','direct',0)")
@@ -98,13 +177,13 @@ test('prevents simultaneous prepare requests from creating two jobs',async()=> {
   expect(result.filter(r=>r.status==='fulfilled')).toHaveLength(1)
   expect(store.reader.prepare('SELECT count(*) n FROM import_jobs').get()).toEqual({n:1n})
 })
-test.each([true,false])('blocks every file targeting A when a file has an invalid explicit choice, parser blocked=%s',async blocked=> {
+test('blocks all writes when a file has an invalid explicit target choice',async()=> {
   store.writer.exec("INSERT INTO conversations(id,title,kind,created_at_ms) VALUES (1,'A','direct',0);INSERT INTO source_conversations(conversation_id,platform,owner_key,conversation_key,namespace) VALUES (1,'p','owner','a','test')")
-  const {service,id}=await setup([{key:'a',ids:['m1']},{key:'a',ids:['m2'],blocked}])
+  const {service,id}=await setup([{key:'a',ids:['m1']},{key:'a',ids:['m2']}])
   const c=(await service.getImport(id)).candidates[1]
   await service.startImport({kind:'commit',plan:{jobId:id,decisions:[{candidateId:c.candidateId,target:{kind:'new'},confirmedAliases:[]}]}});await service.idle()
   expect(store.reader.prepare('SELECT count(*) n FROM messages').get()).toEqual({n:0n})
-  expect((await service.getImport(id)).results.map(r=>r.status)).toEqual(['blocked','blocked'])
+  expect(await service.getImport(id)).toMatchObject({status:'failed',failurePhase:'save',inserted:0})
 })
 test('rebuilds member summary after duplicate-only explicit self selection',async()=> {
   store.writer.exec("INSERT INTO conversations(id,title,kind,created_at_ms) VALUES (1,'A','direct',0);INSERT INTO source_conversations(id,conversation_id,platform,owner_key,conversation_key,namespace) VALUES (1,1,'p','owner','a','test');INSERT INTO memberships(id,conversation_id,source_conversation_id,source_key,display_name) VALUES (1,1,1,'sender','示例发送者');INSERT INTO messages(id,conversation_id,member_id,sender_kind,sender_name,kind,text,ordinal) VALUES (1,1,1,'member','示例发送者','text','old',0);INSERT INTO message_keys VALUES (1,'test','m1',1);INSERT INTO conversation_summaries(conversation_id,message_count,member_count,status) VALUES (1,1,1,'ready')")
@@ -144,8 +223,8 @@ test('publishes real parsed counts before staging finishes',async()=> {
 })
 test('blocked parsing keeps its original diagnostic instead of requesting a target selection',async()=>{
   const {service,id}=await setup([{key:'bad',ids:['m1'],blocked:true}])
-  await service.startImport({kind:'commit',plan:{jobId:id,decisions:[]}});await service.idle()
-  const result=(await service.getImport(id)).results[0]
+  const snapshot=await service.getImport(id), result=snapshot.results[0]
+  expect(snapshot).toMatchObject({status:'failed',failurePhase:'parse'})
   expect(result.status).toBe('blocked')
   expect(result.issues).toContainEqual(expect.objectContaining({code:'BAD',action:'请检查文件。'}))
   expect(result.issues.some(issue=>issue.code==='TARGET_REQUIRED' || issue.code==='TARGET_CONFLICT')).toBe(false)

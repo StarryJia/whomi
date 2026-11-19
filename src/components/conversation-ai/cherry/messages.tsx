@@ -12,6 +12,7 @@ import type {
 } from '../../../vendor/cherry-chat/messages/types'
 import type { ModelOption } from '../model-selector'
 import type { ConversationRequest, GenerationUsage } from '../types'
+import { ExceptionNotice } from '../../ui/exception-notices'
 import '../../../vendor/cherry-chat/messages/messages.css'
 
 export interface CherryMessageTurn {
@@ -131,7 +132,7 @@ function ThreadMessages({ turns, scopeKey, running, onRetry, renderReferences, l
   const beforeList = loading || error ? (
     <div className="px-6 pt-3">
       {loading && <p role="status" className="conversation-state-copy">正在恢复对话…</p>}
-      {error && <p role="alert" className="conversation-error">{error}</p>}
+      {error && <ExceptionNotice title="对话恢复失败" detail={error} className="conversation-error" />}
     </div>
   ) : null
 

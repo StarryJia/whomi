@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type RefObject } from 'react'
-import { ChevronDown, ChevronUp, CircleAlert, X } from 'lucide-react'
+import { ChevronDown, ChevronUp, X } from 'lucide-react'
 import type { AiApi } from '../../shared/ai-contract'
 import type { DesktopApi, MessagePage } from '../../shared/desktop-api'
 import type { InsightCitationWindow } from '../../shared/conversation-insights'
 import { ReaderDialog } from '../ui/managed-row'
+import { ExceptionNotice } from '../ui/exception-notices'
 import { ReadOnlyMessages } from './read-only-messages'
 import './insight-source-dialog.css'
 
@@ -116,8 +117,8 @@ export function InsightSourceDialog({ taskId, citationId, phrase, conversationTi
           {current && <ReadOnlyMessages messages={current.page.items} highlightIds={current.highlightIds} />}
           {busy && <p className="insight-source-loading" role="status">正在读取原文…</p>}
         </div>
-        {error && <div className="insight-source-error" role="alert">
-          <CircleAlert size={18} aria-hidden="true" /><span>{error}</span>
+        {error && <div className="insight-source-error">
+          <ExceptionNotice title={error} />
           <button type="button" disabled={busy} onClick={() => {
             scroll.current?.focus({ preventScroll: true })
             retry.current()

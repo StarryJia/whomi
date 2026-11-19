@@ -11,6 +11,7 @@ import { useAnalysisTask } from './use-analysis-task'
 import { ConversationPopoverOwner, ModelSelector, ThinkingSelector, type ThinkingLevel } from './model-selector'
 import { usePaneDivider } from '../ui/pane-divider'
 import { ManagedRow } from '../ui/managed-row'
+import { ExceptionNotice, ExceptionNoticeScope } from '../ui/exception-notices'
 import { MemoryArticle } from '../memory-article'
 import { isMemoryReport } from '../../shared/memory'
 import { isInsightReport, isInsightScope, type InsightScope, type InsightScopePreview } from '../../shared/conversation-insights'
@@ -58,13 +59,15 @@ function Popover({ anchor, label, children, onClose, above = false, alignStart =
     window.addEventListener('scroll', place, true)
     const resize = new ResizeObserver(place)
     if (body.current) resize.observe(body.current)
+    const insideOverlay = (event: Event) => event.composedPath().some(node => node instanceof HTMLElement &&
+      (node.matches('dialog[open], [data-exception-notices]') || node.dataset.conversationPopoverOwner === ownerId))
     const outside = (event: PointerEvent) => {
-      if (event.composedPath().some(node => node instanceof HTMLElement && (node.matches('dialog[open]') || node.dataset.conversationPopoverOwner === ownerId))) return
+      if (insideOverlay(event)) return
       if (!body.current?.contains(event.target as Node) && !anchor.current?.contains(event.target as Node)) close.current()
     }
     const escape = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return
-      if (event.composedPath().some(node => node instanceof HTMLElement && (node.matches('dialog[open]') || node.dataset.conversationPopoverOwner === ownerId))) return
+      if (insideOverlay(event)) return
       event.preventDefault()
       event.stopPropagation()
       close.current()
@@ -807,13 +810,13 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
           }} count={rangeCount} start={sourceStartTimeMs ?? (analysisScope.kind === 'all' ? currentScope?.sourceStartTimeMs : undefined)}
             end={sourceEndTimeMs ?? (analysisScope.kind === 'all' ? currentScope?.sourceEndTimeMs : undefined)}
             loading={scopeLoading} available={!!adapter} />
-          {scopeError && <p role="alert" className="conversation-error">{scopeError}{' '}
+          {scopeError && <p className="conversation-error"><ExceptionNotice title="无法读取对话范围" detail={scopeError} />{' '}
             <button className="analysis-secondary" type="button" onClick={() => setScopeAttempt(value => value + 1)}>重试</button>
           </p>}
           <div className="analysis-model-row">
             <span>分析模型</span>
             {adapter?.models.length ? <div className="analysis-model-options"><ModelSelector label="分析模型" models={adapter.models} value={selectedAnalysisModel?.id ?? ''}
-              disabled={modelSaving.analysis} describedBy={modelErrors.analysis ? `${panelId}-analysis-model-error` : undefined}
+              disabled={modelSaving.analysis}
               onSelect={id => { void chooseModel('analysis', id) }} />
             {selectedAnalysisModel?.thinkingLevels?.length ? <ThinkingSelector levels={selectedAnalysisModel.thinkingLevels} value={analysisThinkingLevel} onSelect={setAnalysisThinkingLevel} disabled={modelSaving.analysis} /> : null}</div>
               : <div className="analysis-model-unavailable"><span>暂无可用模型</span>
@@ -821,8 +824,8 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
               </div>}
           </div>
           <p className="analysis-notice">所选内容将发送至所选模型服务。</p>
-          {modelErrors.analysis && <p id={`${panelId}-analysis-model-error`} role="alert" className="conversation-error">{modelErrors.analysis}</p>}
-          {analysisError && <p role="alert" className="conversation-error">{analysisError}</p>}
+          {modelErrors.analysis && <ExceptionNotice title="无法切换分析模型" detail={modelErrors.analysis} className="conversation-error" />}
+          {analysisError && <ExceptionNotice title="无法开始会话洞察" detail={analysisError} className="conversation-error" />}
           <footer>
             <button type="button" className="analysis-secondary" onClick={closeAnalysis}>取消</button>
             {analysisError && selectedAnalysisModel && adapter?.prepareAnalysis && !preparing && !preparation &&
@@ -845,7 +848,7 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
           </dl>
           <InsightTaskModel task={activeTask} model={selectedAnalysisModel?.label} />
           <InsightTaskDetails usage={analysisUsage} range={activeTask ? insightRange(activeTask) : undefined} outputSpeed={progress?.outputTokensPerSecond} />
-          {analysisError && <p role="alert" className="conversation-error">{analysisError}</p>}
+          {analysisError && <ExceptionNotice title="会话洞察异常" detail={analysisError} className="conversation-error" />}
           <footer>{analysisState === 'running'
             ? <button type="button" disabled={analysis.stopping || waitingForStart} className="analysis-secondary" onClick={() => { void analysis.stop() }}>
                 {pauseSupported ? <Pause aria-hidden="true" /> : <Square aria-hidden="true" />}{pauseSupported ? '暂停生成' : '停止生成'}</button> : null}
@@ -882,7 +885,7 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
   const composerToolbar = <>
     {!adapter?.models.length && onConfigureModels ? <button className="cherry-model-trigger" type="button" onClick={() => configureModels(false)}><Box aria-hidden="true" />配置模型</button>
       : <ModelSelector label="对话模型" models={adapter?.models ?? []} value={selectedModel?.id ?? ''} disabled={submissionLocked || modelSaving.conversation}
-        describedBy={modelErrors.conversation ? `${panelId}-conversation-model-error` : undefined} onSelect={id => { void chooseModel('conversation', id) }} />}
+        onSelect={id => { void chooseModel('conversation', id) }} />}
     {selectedModel && <ThinkingSelector levels={selectedModel.thinkingLevels} value={thinkingLevel} onSelect={setThinkingLevel} disabled={submissionLocked || modelSaving.conversation} />}
     {references.length > 0 && !!adapter?.skills.length && <Select.Root value={skillId || 'default'} onValueChange={value => setSkillId(value === 'default' ? '' : value)} disabled={submissionLocked}>
       <Select.Trigger aria-label="对话技能" className="cherry-model-trigger cherry-skill-trigger"><FileText aria-hidden="true" /><Select.Value /><Select.Icon><ChevronDown /></Select.Icon></Select.Trigger>
@@ -936,13 +939,14 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
             setThreadListOpen(false)
             historyAnchor.current?.focus()
           }}><MessageCircle aria-hidden="true" /><span>{thread.title}</span></ManagedRow>)}
-        {threadListError && <p role="alert" className="conversation-error">{threadListError} <button type="button" className="conversation-text-button" onClick={() => setThreadListAttempt(value => value + 1)}>重新加载对话</button></p>}
+        {threadListError && <p className="conversation-error"><ExceptionNotice title="对话列表操作失败" detail={threadListError} noticeKey={`chat-list:${conversationId}`} /> <button type="button" className="conversation-text-button" onClick={() => setThreadListAttempt(value => value + 1)}>重新加载对话</button></p>}
         {!threads.length && !threadListLoading && adapter?.createThread && <button className="first-conversation" type="button" disabled={threadCreating} onClick={() => void newThread(true).catch(cause => { if (alive.current) setThreadListError(errorText(cause)) })}>
           <SquarePen aria-hidden="true" />开始新对话
         </button>}
       </nav>}
       <div className="conversation-thread-content" data-composer-stage="" inert={threadListOpen}>
-      {!threadListOpen && threadListError && <div className="conversation-thread-error" role="alert"><p>{threadListError}</p><button type="button" className="conversation-text-button" onClick={() => setThreadListAttempt(value => value + 1)}>重新加载对话</button></div>}
+      <ExceptionNoticeScope active={threadContentActive}>
+      {!threadListOpen && threadListError && <div className="conversation-thread-error"><ExceptionNotice title="对话列表操作失败" detail={threadListError} noticeKey={`chat-list:${conversationId}`} /><button type="button" className="conversation-text-button" onClick={() => setThreadListAttempt(value => value + 1)}>重新加载对话</button></div>}
       <CherryMessages ref={messages} turns={turns} scopeKey={draftScope(conversationId, threadId)} running={busy || submissionLocked}
         active={threadContentActive} loading={restoring || threadListLoading} error={restoreError}
         onRetry={id => {
@@ -951,11 +955,12 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
         }}
         renderReferences={turn => <References references={turn.request.references} savedIds={turn.referenceIds} onJump={jump} />} />
       <div className="conversation-panel-composer">
-        {(sendError || (heldSubmission && !submitting && !chatRun.current && !restoring)) && <p role="alert" className="conversation-error">{sendError || '发送状态待确认，请再次确认。'}{(pendingAcceptance || heldSubmission) && <button type="button" className="conversation-text-button"
+        {(sendError || (heldSubmission && !submitting && !chatRun.current && !restoring)) && <p className="conversation-error"><ExceptionNotice title={sendError ? '发送对话时出错' : '发送状态待确认，请再次确认。'} detail={sendError || undefined} />{(pendingAcceptance || heldSubmission) && <button type="button" className="conversation-text-button"
           disabled={confirmingAcceptance} onClick={() => { void confirmPendingAcceptance() }}>确认发送状态</button>}</p>}
-        {modelErrors.conversation && <p id={`${panelId}-conversation-model-error`} role="alert" className="conversation-error">{modelErrors.conversation}</p>}
+        {modelErrors.conversation && <ExceptionNotice title="无法切换对话模型" detail={modelErrors.conversation} className="conversation-error" />}
         {editor}
       </div>
+      </ExceptionNoticeScope>
       </div></div>
     </aside>
   </div>

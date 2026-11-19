@@ -9,6 +9,7 @@ import { usePaneDivider } from './components/ui/pane-divider'
 import { SidebarProvider, useSidebar } from './components/ui/sidebar'
 import { AskIcon, HeartRoomIcon, InsightsIcon, OverviewIcon } from './components/ui/sidebar-icons'
 import { Tooltip, TooltipProvider } from './components/ui/tooltip'
+import { ExceptionNotice, ExceptionNoticeProvider, ExceptionNoticeScope, useExceptionNotice } from './components/ui/exception-notices'
 import { StartupIntro } from './components/startup-intro'
 import { HelloCover } from './components/hello-cover'
 import { ConversationNavigation, ConversationReader, type Conversation } from './components/conversations'
@@ -19,7 +20,7 @@ import { getDesktopClient } from './data/desktop-client'
 import { createPreviewClient } from './data/preview-client'
 import { createConversationAiClient } from './data/conversation-ai-client'
 import { useConversations, type ConversationClient } from './data/use-conversations'
-import { isImportActive, isPersistedResult } from './data/use-import'
+import { getSnapshotFailure, hasConfirmedImport, importError, importFailureNotice, isImportActive } from './data/use-import'
 import type { DesktopApi } from './shared/desktop-api'
 import type { ConversationAiAdapter } from './components/conversation-ai/types'
 import type { AnalysisTask } from './shared/ai-contract'
@@ -183,6 +184,11 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
   const clarification = useClarification(clarificationAdapter)
   const activeSummary = reader.conversations.find(conversation => conversation.id === activeId)
   const saved = useCallback(() => { void reader.refresh() }, [reader.refresh])
+  const importCancelled = useCallback(() => { void reader.refresh({ preserveReader: true }) }, [reader.refresh])
+  const [windowError, setWindowError] = useState<{ title: string; detail: string; count: number } | null>(null)
+  useEffect(() => api?.onAppException?.(notice => setWindowError(previous => ({ ...notice, count: (previous?.count ?? 0) + 1 }))), [api])
+  useExceptionNotice(windowError && { key: `desktop-window-${windowError.count}`, title: windowError.title, detail: windowError.detail })
+  useExceptionNotice(reader.listError ? { key: 'conversation-list', title: '无法读取会话列表', detail: reader.listError } : null)
   const sourceAvailable = (reference: SourceReference) => !!queryClient && !reference.unavailable
   const [introActive, setIntroActive] = useState(
     () => !(preview && previewConversationId) && !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
@@ -192,6 +198,13 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
   }, [preview, previewConversationId, reader.open])
   const name = displayName.trim()
   const mobileDialog = isMobile && open
+  const [backgroundImport, setBackgroundImport] = useState<{ jobId: string; notice: NonNullable<ReturnType<typeof importFailureNotice>> } | null>(null)
+  useEffect(() => api?.onImport?.(snapshot => {
+    const notice = importFailureNotice(getSnapshotFailure(snapshot), snapshot.jobId)
+    setBackgroundImport(current => notice ? { jobId: snapshot.jobId, notice } : current?.jobId === snapshot.jobId ? null : current)
+  }), [api])
+  const importVisible = view === 'import' && !settingsOpen && !mobileDialog && !introActive
+  useExceptionNotice(importVisible ? null : backgroundImport?.notice ?? null)
 
   const finishIntro = useCallback(() => {
     setIntroActive(false)
@@ -282,15 +295,15 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
     if (api && previous) {
       try {
         const task = await api.getImport(previous)
-        if (isImportActive(task) || task.status === 'failed' || task.status === 'partially_completed' ||
-          (task.status === 'cancelled' && task.results.some(isPersistedResult))) {
+        if (isImportActive(task) || task.status === 'failed' || (task.status === 'completed' && !hasConfirmedImport(task))) {
           openImport()
           return
         }
-      } catch {
-        // 让导入页保留原任务的错误与恢复操作。
-        openImport()
-        return
+      } catch (cause) {
+        if (importError(cause).code !== 'IMPORT_RESULT_REMOVED') {
+          openImport()
+          return
+        }
       }
     }
     try { localStorage.removeItem('whomi:import-job') } catch { /* ignore */ }
@@ -394,6 +407,7 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
     {!concealed && !queryClient && <p className="reader-availability">请在桌面应用中查看已保存的会话。</p>}
     <PersonalOverview concealed={concealed} status={!overview && !memoryLoaded && (memoryLoading || memoryError) ? (memoryLoading ? 'loading' : 'error')
       : !overview && !memories.length && !reader.conversations.length && (reader.listLoading || reader.listError) ? (reader.listLoading ? 'loading' : 'error') : 'ready'}
+      readingError={!memoryLoaded && memoryError ? { title: '报告列表读取失败', noticeKey: 'reports-list' } : null}
       retry={() => { refreshMemories(); if (reader.listError) void reader.refresh() }} data={overview ?? { materialStatus: memories.length ? 'ready' : reader.conversations.length ? 'unanalysed' : 'none', discoveries: [], preferences }}
       conversationTitle={(activeSummary ?? reader.conversations[0])?.title}
       onOpenConversation={reader.conversations[0] ? () => openConversation(activeSummary?.id ?? reader.conversations[0].id, {origin:'overview'}) : undefined}
@@ -404,7 +418,7 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
       feedback={feedback}>
       <RelationshipObservations observations={contributions} onRead={openLibrary} />
     </PersonalOverview>
-    {!concealed && memoryLoaded && memoryError && <p role="alert">{memoryError} <button type="button" onClick={refreshMemories}>重试</button></p>}
+    {!concealed && memoryLoaded && memoryError && <p><ExceptionNotice title="报告列表读取失败" noticeKey="reports-list" /> <button type="button" onClick={refreshMemories}>重试</button></p>}
   </>
 
   return (
@@ -507,6 +521,7 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
       </aside>
       {/* 设置返回时复用原阅读器的草稿、引用和滚动位置。 */}
       <main id={settingsOpen ? undefined : 'main-content'} hidden={settingsOpen} ref={mainRef} className={clsx('home', view === 'cover' && 'cover-home', (view === 'overview' || view === 'clarification' || view === 'library') && 'overview-home', view === 'library' && 'insights-home', view === 'conversation' && 'reading-home')} tabIndex={-1} inert={settingsOpen || mobileDialog || introActive}>
+        <ExceptionNoticeScope active={!settingsOpen && !mobileDialog && !introActive}>
         {view === 'cover' ? <HelloCover key={coverKey} name={name} buttonRef={greetingRef} onEnter={enterOverview}>{revealing => overviewContent(!revealing)}</HelloCover>
           : view === 'library' ? <InsightsLibrary tasks={tasks} selectedId={selectedMemory} onSelect={id => { reportOrigin.current = 'library'; setSelectedMemory(id) }}
             conversations={reader.conversations} onReturn={returnFromReport} onTask={(id, taskId) => openConversation(id, { origin: 'library', taskId })}
@@ -524,13 +539,13 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
             loading={memoryLoading} error={memoryError} retry={refreshMemories}
             renderSource={queryClient && readInsightCitation && (target => <InsightSourceDialog {...target}
               client={queryClient} readCitation={readInsightCitation} />)} />
-          : view === 'import' ? <FileImport key={importKey} api={api} onSaved={saved} onOpenConversation={openConversation} />
+          : view === 'import' ? <FileImport key={importKey} api={api} onSaved={saved} onCancelled={importCancelled} onOpenConversation={openConversation} />
           : view === 'clarification' ? <ClarificationPage question={clarificationQuestion} models={clarificationModels ?? (conversationAiAdapter ?? desktopAi)?.models.map(model => ({ ...model, available: true })) ?? []} controller={clarification}
             headingRef={clarificationTitleRef} preview={previewing}
             onOpenSource={reference => openSource(reference, 'clarification')}
             isSourceAvailable={sourceAvailable} /> : view === 'conversation' ? null : overviewContent()}
         {(view === 'conversation' || view === 'library' && selectedMemory && reportOrigin.current === 'conversation') && activeId && reader.current &&
-          <div className="app-conversation-frame" hidden={view !== 'conversation'}><ConversationReader
+          <div className="app-conversation-frame" hidden={view !== 'conversation'}><ExceptionNoticeScope active={view === 'conversation'}><ConversationReader
           key={`${activeId}-${source?.id ?? ''}-${memoryEntry?.taskId ?? memoryEntry?.origin ?? ''}`} conversation={{ id: activeId, title: activeSummary?.title ?? '会话', messages: reader.current.messages }}
           openAnalysisOnEntry={!!memoryEntry?.taskId} initialAnalysisTaskId={memoryEntry?.taskId}
           range={reader.current.range} sourceStatus={reader.current.sourceStatus} loading={reader.loading} error={reader.error} preview={previewing}
@@ -545,10 +560,11 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
             setTasks(entries => entries.map(entry => entry.conversationId === activeId ? { ...entry, valid: false } : entry))
             refreshMemories()
             void reader.open(activeId)
-          }} /></div>}
+          }} /></ExceptionNoticeScope></div>}
+        </ExceptionNoticeScope>
       </main>
       {settingsOpen && api?.settings && <main id="main-content" className="settings-home" tabIndex={-1} inert={mobileDialog}>
-        <SettingsPage api={api.settings} leaveRef={settingsLeave} onLockChange={setSettingsLocked}
+        <SettingsPage api={api.settings} importDiagnostics={api.importDiagnostics} leaveRef={settingsLeave} onLockChange={setSettingsLocked}
           onChanged={() => { settingsChanged.current = true }} onClose={() => closeSettings()} />
       </main>}
       {introActive && <StartupIntro targetRef={brandImageRef} onComplete={finishIntro} />}
@@ -559,7 +575,7 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
 export default function App(props: AppProps) {
   return (
     <TooltipProvider delayDuration={350} skipDelayDuration={120}>
-      <SidebarProvider><HomeShell {...props} /></SidebarProvider>
+      <ExceptionNoticeProvider><SidebarProvider><HomeShell {...props} /></SidebarProvider></ExceptionNoticeProvider>
     </TooltipProvider>
   )
 }

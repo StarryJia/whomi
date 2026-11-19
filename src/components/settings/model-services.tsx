@@ -1,6 +1,7 @@
 // Adapted from Cherry Studio ProviderSettings, fixed revision f19aa72 (AGPL-3.0).
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { usePaneDivider } from '../ui/pane-divider'
+import { ExceptionNotice } from '../ui/exception-notices'
 import * as ContextMenu from '@radix-ui/react-context-menu'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { ArrowLeft, Eye, EyeOff, Filter, Inbox, MoreVertical, Pencil, Plus, RefreshCw, Search, Trash2, UserPen, X } from 'lucide-react'
@@ -61,7 +62,7 @@ function ProviderEditor({ api, provider, preset, onClose, onSaved }: { api: Sett
     <button className="ms-button ms-primary" disabled={busy} type="submit" form={id}>{busy ? '保存中…' : '保存'}</button></>
   const form = <form id={id} className="ms-form" noValidate onSubmit={event => { event.preventDefault(); void submit() }}>
     <ProviderForm draft={draft} provider={provider} preset={preset ?? (provider && presetAccounts.get(provider.id))} errors={errors} busy={busy} onChange={changeDraft} />
-    {error && <p className="ms-error" role="alert">{error}</p>}</form>
+    {error && <ExceptionNotice title="无法保存服务商" detail={error} className="ms-error" />}</form>
   if (!provider && !preset) return <Modal title={title} onClose={onClose} busy={busy} className="custom-provider-dialog">
     <div className="ms-modal-body">{form}</div><footer className="ms-modal-footer">{footer}</footer></Modal>
   return <ProviderSettingsDrawer title={title} busy={busy} onClose={onClose} footer={footer}>{form}</ProviderSettingsDrawer>
@@ -69,7 +70,7 @@ function ProviderEditor({ api, provider, preset, onClose, onSaved }: { api: Sett
 
 function ProviderNotes({ api, provider, onSaved, onClose }: { api: SettingsApi; provider: Provider; onSaved: (value: Provider) => void; onClose: () => void }) {
   const [notes, setNotes] = useState(provider.notes ?? ''), [busy, setBusy] = useState(false), [error, setError] = useState('')
-  return <Modal title="备注" onClose={onClose} busy={busy}><div className="ms-modal-body"><textarea className="cherry-notes" aria-label="服务商备注" maxLength={10000} value={notes} onChange={event => setNotes(event.target.value)} />{error && <p className="ms-error" role="alert">{error}</p>}</div><footer className="ms-modal-footer"><button className="ms-button" disabled={busy} onClick={onClose}>取消</button><button className="ms-button ms-primary" disabled={busy} onClick={() => { setBusy(true); setError(''); void api.saveProvider({ ...providerInput(provider), notes }).then(value => { onSaved(value); onClose() }).catch(cause => setError(errorText(cause))).finally(() => setBusy(false)) }}>保存</button></footer></Modal>
+  return <Modal title="备注" onClose={onClose} busy={busy}><div className="ms-modal-body"><textarea className="cherry-notes" aria-label="服务商备注" maxLength={10000} value={notes} onChange={event => setNotes(event.target.value)} />{error && <ExceptionNotice title="无法保存服务商备注" detail={error} className="ms-error" />}</div><footer className="ms-modal-footer"><button className="ms-button" disabled={busy} onClick={onClose}>取消</button><button className="ms-button ms-primary" disabled={busy} onClick={() => { setBusy(true); setError(''); void api.saveProvider({ ...providerInput(provider), notes }).then(value => { onSaved(value); onClose() }).catch(cause => setError(errorText(cause))).finally(() => setBusy(false)) }}>保存</button></footer></Modal>
 }
 
 export function ModelServices({ api, snapshot, setSnapshot, onChanged, registerGuard, onBusy }: Props) {
@@ -137,7 +138,7 @@ export function ModelServices({ api, snapshot, setSnapshot, onChanged, registerG
     {provider ? <ProviderDetail key={`${provider.id}:${editor ? 'editing' : 'detail'}`} api={api} provider={provider} refreshAccount={refreshAccount} models={snapshot.models.filter(model => model.providerId === provider.id)} savedProvider={savedProvider} savedModels={models => { setSnapshot(current => current && { ...current, models: [...current.models.filter(model => !models.some(saved => saved.id === model.id)), ...models] }); onChanged() }} removedModels={ids => { setSnapshot(current => current && { ...current, models: current.models.filter(model => !ids.includes(model.id)) }); onChanged() }} onBusy={onBusy} registerGuard={guard => { detailGuard.current = guard }} onBack={() => setShowDetail(false)} /> : selectedPreset ? <PresetDetail preset={selectedPreset} onConfigure={() => setEditor('preset')} onBack={() => setShowDetail(false)} /> : <section className="ms-detail ms-empty ms-empty-detail"><p className="ms-hint">添加服务商以配置模型。</p></section>}
     {editor && <ProviderEditor api={api} provider={typeof editor === 'object' ? editor : undefined} preset={editor === 'preset' ? selectedPreset : undefined} onClose={() => setEditor(null)} onSaved={value => { savedProvider(value); setSelectedId(value.id); setShowDetail(true) }} />}
     {notes && <ProviderNotes api={api} provider={notes} onSaved={savedProvider} onClose={() => setNotes(null)} />}
-    {removal && <Modal title="删除服务商" busy={busy} onClose={() => setRemoval(null)}><div className="ms-modal-body"><p>删除 {removal.name} 及其模型配置？</p><p className="ms-hint">已有分析报告和对话记录会保留。</p>{error && <p role="alert" className="ms-error">{error}</p>}</div><footer className="ms-modal-footer"><button className="ms-button" disabled={busy} onClick={() => setRemoval(null)}>取消</button><button className="ms-button ms-primary" disabled={busy} onClick={() => void remove()}>{stopRequired ? '停止任务并重试' : '确认删除'}</button></footer></Modal>}
+    {removal && <Modal title="删除服务商" busy={busy} onClose={() => setRemoval(null)}><div className="ms-modal-body"><p>删除 {removal.name} 及其模型配置？</p><p className="ms-hint">已有分析报告和对话记录会保留。</p>{error && <ExceptionNotice title="无法删除服务商" detail={error} className="ms-error" />}</div><footer className="ms-modal-footer"><button className="ms-button" disabled={busy} onClick={() => setRemoval(null)}>取消</button><button className="ms-button ms-primary" disabled={busy} onClick={() => void remove()}>{stopRequired ? '停止任务并重试' : '确认删除'}</button></footer></Modal>}
   </div>
 }
 
@@ -197,11 +198,14 @@ function ProviderDetail({ api, provider, refreshAccount, models, savedProvider, 
     <div className="ms-form ms-connection"><div className="ms-field"><label htmlFor={`${id}-protocol`}>连接协议</label><ProtocolSelect id={`${id}-protocol`} value={draft.protocol} choices={draft.endpointUrls ? modelProtocols.filter(type => draft.endpointUrls?.[type]) : undefined} disabled={busy || saver.pending} onChange={protocol => { const next = changePresetProtocol(draft, protocol, preset); setDraft(next); void commit(next) }} /></div>
       <div className="ms-field"><label htmlFor={`${id}-key`}>{provider.hasCredential ? '替换密钥' : '密钥'}</label><div className="settings-key"><input id={`${id}-key`} type={showKey ? 'text' : 'password'} autoComplete="off" spellCheck={false} value={draft.apiKey ?? ''} placeholder={provider.hasCredential ? '已保存密钥' : '输入密钥'} onChange={event => { setDraft(current => ({ ...current, apiKey: event.target.value || undefined })); setPicker(false) }} onBlur={() => { void commit() }} /><button className="ms-icon" type="button" aria-label={showKey ? '隐藏输入的密钥' : '显示输入的密钥'} onClick={() => setShowKey(value => !value)}>{showKey ? <EyeOff size={14} /> : <Eye size={14} />}</button></div>{provider.hasCredential && <button className="ms-text-button settings-fit" disabled={saver.pending} onClick={() => { const next = { ...draft, apiKey: null }; setDraft(next); void commit(next) }}>清除密钥</button>}</div>
       <div className="ms-field"><label htmlFor={`${id}-address`}>接口地址</label><input id={`${id}-address`} value={draft.baseUrl} type="url" aria-invalid={!!errors.baseUrl} onChange={event => { setDraft(current => ({ ...current, baseUrl: event.target.value, ...(current.endpointUrls && { endpointUrls: { ...current.endpointUrls, [current.protocol ?? defaultModelProtocol]: event.target.value } }) })); setPicker(false) }} onBlur={() => { void commit() }} />{errors.baseUrl && <p role="alert" className="ms-error">{errors.baseUrl}</p>}</div>
-      {(saver.error || error) && <div role="alert"><p className="ms-error">{saver.error || error}</p>{saver.error && <button className="ms-button" disabled={saver.pending} onClick={() => { void (async () => { try { if (stopRequired) await api.stopModelTasks(models.map(model => model.id)); setError(''); await commit() } catch (cause) { setError(errorText(cause)) } })() }}>{stopRequired ? '停止任务并重试' : '重试保存'}</button>}</div>}
+      {(saver.error || error) && <>
+        <ExceptionNotice title={saver.error ? '无法保存服务商设置' : '模型操作失败'} detail={saver.error || error} className="ms-error" />
+        {saver.error && <button className="ms-button" disabled={saver.pending} onClick={() => { void (async () => { try { if (stopRequired) await api.stopModelTasks(models.map(model => model.id)); setError(''); await commit() } catch (cause) { setError(errorText(cause)) } })() }}>{stopRequired ? '停止任务并重试' : '重试保存'}</button>}
+      </>}
     </div>
     </>}
     <section className="ms-models"><div className="ms-models-heading"><h3>模型 <span>{visibleModels.length}</span></h3><div className="ms-model-actions"><button className="ms-text-button" disabled={busy || saver.pending || dirty || accountUnavailable} onClick={() => setEditor('new')}>手动添加</button><button className="ms-button" disabled={busy || saver.pending || dirty || accountUnavailable} onClick={() => setPicker(true)}><RefreshCw size={14} />同步模型</button><button className="ms-icon" aria-label="添加模型" title="添加模型" disabled={busy || saver.pending || dirty || accountUnavailable} onClick={() => setPicker(true)}><Plus size={14} /></button></div></div>
-      {subscriptionId && error && <p className="ms-error" role="alert">{error}</p>}
+      {subscriptionId && error && <ExceptionNotice title="模型操作失败" detail={error} className="ms-error" />}
       {!!visibleModels.length && <div className="ms-search"><Search size={14} /><input ref={modelSearch} aria-label="搜索已添加模型" placeholder="搜索模型" value={modelQuery} onChange={event => setModelQuery(event.target.value)} /></div>}
       {!visibleModels.length && (subscriptionId ? <div className="account-empty-models">
         <Inbox size={38} strokeWidth={1.25} aria-hidden="true" />

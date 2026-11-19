@@ -1,4 +1,4 @@
-import { importJobStates, importResultStates } from './import-contract'
+import { importFailurePhases, importJobStates, importResultStates } from './import-contract'
 import type { ImportSnapshot } from './import-contract'
 import type { DesktopError, DesktopMethod } from './desktop-api'
 import { attachmentKinds, messageKinds } from './conversation-model'
@@ -50,11 +50,11 @@ const candidateResult = object({
   issues: array(issue),
   summaryFailed: bool,
 })
-const snapshot = object({ jobId: localId, status: oneOf(...importJobStates), discovery: nullable(discovery), candidates: array(candidate), results: array(candidateResult), issues: array(issue), counts, inserted: count, duplicates: count, progress:optional(object({processed:count,total:nullable(count)})) })
+const snapshot = object({ jobId: localId, status: oneOf(...importJobStates), discovery: nullable(discovery), candidates: array(candidate), results: array(candidateResult), issues: array(issue), counts, inserted: count, duplicates: count, failurePhase: optional(oneOf(...importFailurePhases)), progress:optional(object({processed:count,total:nullable(count)})) })
 export const sourceHandle = object({ token: key, displayName: text, kind: oneOf('file', 'directory') })
 const alias = object({ platform: text, aliasKey: text, accountKey: text })
 const target: Check = value => object({ kind: oneOf('new') })(value) || object({ kind: oneOf('existing'), conversationId: localId })(value)
-const start: Check = value => object({ kind: oneOf('stage'), jobId: localId, entryIds: array(key, 10000) })(value) || object({ kind: oneOf('commit'), plan: object({ jobId: localId, decisions: array(object({ candidateId: key, target, confirmedAliases: array(alias, 10000), selfMemberKey: optional(nullable(text)) }), 10000) }) })(value)
+const start: Check = value => object({ kind: oneOf('stage'), jobId: localId, entryIds: array(key, 10000) })(value) || object({ kind: oneOf('commit'), plan: object({ jobId: localId, candidateIds: optional(array(key, 10000)), decisions: array(object({ candidateId: key, target, confirmedAliases: array(alias, 10000), selfMemberKey: optional(nullable(text)) }), 10000) }) })(value)
 const listInput = object({ cursor: optional(cursor), limit: optional(limit(200)) })
 export const listArrangement: Check = value => object({ id: localId, pinned: bool })(value) || object({ id: localId, targetId: localId, placement: oneOf('before', 'after') })(value)
 const readInput = object({ conversationId: localId, cursor: optional(cursor), direction: oneOf('before', 'after'), limit: optional(limit(200)) })

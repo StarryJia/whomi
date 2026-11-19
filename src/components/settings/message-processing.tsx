@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { ChevronDown, Minus, Plus } from 'lucide-react'
 import { defaultProcessing, type ProcessingSettings, type RedactionRule, type SettingsApi } from '../../shared/settings-contract'
 import { CheckBox, errorText, Modal, Switch } from './common'
+import { ExceptionNotice } from '../ui/exception-notices'
 
 const ruleGroups = [
   { id: 'credentials', label: '密码与访问凭据', rules: [{ id: 'key', label: '已知前缀的接口密钥' }, { id: 'token', label: 'Bearer 授权令牌' }] },
@@ -39,7 +40,7 @@ export function MessageProcessing({ api, value, onSaved, onBusy }: { api: Settin
   const toggleRule = (rule: RedactionRule) => void save({ ...current, rules: current.rules.includes(rule) ? current.rules.filter(item => item !== rule) : [...current.rules, rule] })
   function saveSeconds() { if (validSeconds && numericSeconds !== current.mergeSeconds) void save({ ...current, mergeSeconds: numericSeconds }) }
   return <div className="mp-page"><header className="mp-page-heading"><h1 tabIndex={-1}>消息处理</h1><p>在发送给模型前整理聊天内容、处理隐私信息，聊天原文不变。</p></header>
-    {error && <div className="settings-save-error" role="alert"><p className="ms-error">{error}</p>{failed && <button className="ms-button" disabled={busy} onClick={() => void save(failed)}>重试保存</button>}</div>}
+    {error && <div className="settings-save-error"><ExceptionNotice title="无法保存消息处理设置" detail={error} className="ms-error" />{failed && <button className="ms-button" disabled={busy} onClick={() => void save(failed)}>重试保存</button>}</div>}
     <span className="mp-visually-hidden" role="status">{busy ? '正在保存…' : ''}</span>
     <div className="mp-content-section"><h2>整理材料</h2>
       <Setting title="数据清洗" description="整理分享卡片中的链接、小程序等内容。" checked={current.clean} busy={busy} onChange={() => toggle('clean')} />

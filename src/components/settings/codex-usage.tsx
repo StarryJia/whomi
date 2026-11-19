@@ -4,6 +4,7 @@ import type { AccountUsage, SettingsApi } from '../../shared/settings-contract'
 import type { CodexQuotaAction, CodexQuotaState } from '../../shared/codex-quota'
 import { chatgptUsageUrl } from '../../shared/chatgpt-plan'
 import { errorText } from './common'
+import { ExceptionNotice } from '../ui/exception-notices'
 import './codex-usage.css'
 
 type UsageApi = Pick<SettingsApi, 'getAccountUsage' | 'getCodexQuota'>
@@ -34,7 +35,7 @@ function LocalUsage({ api }: { api: UsageApi }) {
       <div className="codex-local-heading"><p>Whomi 当前账号的对话与记忆生成用量</p><button type="button" className="ms-text-button" disabled={loading} onClick={() => setAttempt(value => value + 1)}>{error ? '重读本机用量' : '刷新本机用量'}</button></div>
       {usage && (usage.requests > 0 ? <><dl><div><dt>输入词元</dt><dd>{format(usage.inputTokens)}</dd></div><div><dt>输出词元</dt><dd>{format(usage.outputTokens)}</dd></div></dl><p>已记录 {usage.requests.toLocaleString('zh-CN')} 次请求{usage.partial ? '，部分请求未返回完整用量。' : '。'}</p></> : <p>暂无本机请求记录。</p>)}
       {loading && !usage && <p role="status">正在读取本机用量…</p>}
-      {error && <p className="ms-error" role="alert">{error}</p>}
+      {error && <ExceptionNotice title="无法读取本机用量" detail={error} className="ms-error" />}
     </div>}
   </details>
 }
@@ -99,7 +100,7 @@ export function CodexUsage({ api, accountId }: { api: UsageApi; accountId: strin
           : <><p>{quota.state === 'unavailable' ? unavailableText[quota.reason] : '连接本机 Codex 登录文件，查看该账号的剩余额度。'}</p><div className="codex-empty-actions"><button data-quota-primary className="ms-button" type="button" onClick={() => void run('connect')}>{quota.state === 'unavailable' ? '重新连接本机 Codex' : '连接本机 Codex 用量'}</button>{(quota.state === 'unavailable' || error) && <button className="ms-text-button" type="button" onClick={() => void run('disconnect')}>断开</button>}</div></>}
         {busy === 'connect' && <button data-quota-primary className="ms-text-button" type="button" onClick={() => void run('disconnect')}>取消连接</button>}
       </div>}
-      {error && <p className="ms-error codex-quota-error" role="alert">{error}{ready ? ' 当前显示上次结果。' : ''}</p>}
+      {error && <ExceptionNotice title="额度操作失败" detail={error + (ready ? ' 当前显示上次结果。' : '')} className="ms-error codex-quota-error" />}
       <footer className="codex-quota-footer"><a href={chatgptUsageUrl} target="_blank" rel="noreferrer">在 ChatGPT 管理用量<ArrowUpRight size={14} aria-hidden="true" /></a></footer>
     </section>
     <LocalUsage api={api} />

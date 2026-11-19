@@ -5,6 +5,7 @@ import { subscriptionProviders, type ChatgptStatus, type SubscriptionProviderId 
 import { Modal, Switch, errorText } from './common'
 import { ProviderAvatar, presetAccounts } from './provider-presets'
 import { CodexUsage } from './codex-usage'
+import { ExceptionNotice } from '../ui/exception-notices'
 import './chatgpt-account.css'
 
 const accountNames: Record<SubscriptionProviderId, string> = { 'openai-codex': 'ChatGPT', 'grok-cli': 'Grok', copilot: 'GitHub' }
@@ -149,7 +150,7 @@ export function ProviderAccount({ id, api, provider, refresh, onConnection }: {
           : pending ? <button type="button" disabled={working} onClick={() => void change('cancel')}>取消登录</button>
             : <div className="account-actions"><button type="button" disabled={working} onClick={() => void connect(false)}><LogIn size={14} aria-hidden="true" />{needsPlanPermission ? '授权使用 ChatGPT 套餐' : '使用 ' + accountName + ' 登录'}</button>
               {hadAccount && !needsPlanPermission && <button className="account-alternative" type="button" disabled={working} onClick={() => void connect(true)}>使用其他账号登录</button>}</div>}
-        {(error || readError) && <p role="alert" className="ms-error">{error || readError}</p>}
+        {(error || readError) && <ExceptionNotice title={error ? '账号操作失败' : '无法读取账号状态'} detail={error || readError} className="ms-error" />}
       </div>
     </section>
     {isCodex && connected && <CodexUsage key={status.accountId ?? status.email} api={api} accountId={status.accountId ?? ''} />}

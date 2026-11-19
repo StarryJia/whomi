@@ -24,6 +24,8 @@ import { settingsChannel, type SettingsApi, type SettingsSnapshot } from '../../
 import { settingsMethods } from '../../src/data/settings-client'
 import type { ProcessingMember } from './message-processing'
 import { loadWindowState, rememberWindowState } from './window-state'
+import { createImportDiagnostics, snapshotDiagnostic } from './import-diagnostics'
+import { appExceptionChannel, importDiagnosticsChannel } from '../../src/shared/import-diagnostics'
 import { version as appVersion } from '../../package.json'
 
 // 测试资料必须是操作系统临时目录下的独立目录。
@@ -47,6 +49,7 @@ else {
   app.on('second-instance', () => { const window = BrowserWindow.getAllWindows()[0]; window?.show(); window?.focus() })
   app.whenReady().then(async () => {
     const userDataPath = app.getPath('userData')
+    const importDiagnostics = createImportDiagnostics(userDataPath, appVersion, path => shell.openPath(path))
     let suspended = false, servicesClosed = false, requests = 0
     let publishImport: Parameters<DataHost['onEvent']>[0] = () => {}
     let publishAi: Parameters<NonNullable<typeof aiService>['subscribe']>[0] = () => {}
@@ -115,10 +118,15 @@ else {
     const router = createDesktopRouter({ grants, request: (method, args) => method === 'deleteConversation'
       ? aiService!.deleteConversation((args as [string])[0], async () => { await dataHost!.request(method, args) })
       : dataHost!.request(method, args), async chooseSources(_owner, kind) {
-      const result = await dialog.showOpenDialog(window, { properties: kind === 'files' ? ['openFile', 'multiSelections'] : ['openDirectory'] })
+      const result = await dialog.showOpenDialog({ properties: kind === 'files' ? ['openFile', 'multiSelections'] : ['openDirectory'] })
+        .catch(() => { throw new BoundaryError('PICKER_FAILED', '无法打开来源选择窗口。') })
       return result.canceled || !result.filePaths.length ? [] : grants.issue(window.webContents.id, result.filePaths)
     } })
-    publishImport = snapshot => router.publish(snapshot)
+    publishImport = snapshot => {
+      const diagnostic = snapshotDiagnostic(snapshot)
+      if (diagnostic) void importDiagnostics.report(diagnostic, snapshot.counts).catch(() => {})
+      router.publish(snapshot)
+    }
     const stopWindowEvents = router.onImport(window.webContents.id, snapshot => { if (!window.isDestroyed()) window.webContents.send(desktopChannels.progress, snapshot) })
     const stopAiWindow = aiRouter.subscribe(windowId, event => { if (!window.isDestroyed()) window.webContents.send(aiChannels.event, event) })
     ipcMain.handle(aiChannels.call, async (event, value: unknown) => {
@@ -179,12 +187,23 @@ else {
     }
     ipcMain.handle(desktopChannels.call, (event, value) => handle(event, value))
     ipcMain.handle(desktopChannels.drop, (event, value) => handle(event, value, true))
-    window.once('closed', () => { locations.revokeOwner(windowId); stopWindowEvents(); stopAiWindow(); aiRouter.release(windowId); router.releaseWindow(windowId); ipcMain.removeHandler(settingsChannel); ipcMain.removeHandler(aiChannels.call); ipcMain.removeHandler(desktopChannels.call); ipcMain.removeHandler(desktopChannels.drop) })
+    ipcMain.handle(importDiagnosticsChannel, async (event, operation: unknown, value: unknown) => {
+      try {
+        if (window.isDestroyed() || !isTrustedCaller(event, window, appUrl)) throw new BoundaryError('UNTRUSTED_CALLER', '请在应用窗口中操作。')
+        if (operation === 'report') await importDiagnostics.report(value)
+        else if (operation === 'open') await importDiagnostics.open(value)
+        else throw new BoundaryError('INVALID_ARGUMENT')
+        return { ok: true }
+      } catch (error) { return { ok: false, error: serializableError(error) } }
+    })
+    window.once('closed', () => { locations.revokeOwner(windowId); stopWindowEvents(); stopAiWindow(); aiRouter.release(windowId); router.releaseWindow(windowId); ipcMain.removeHandler(settingsChannel); ipcMain.removeHandler(aiChannels.call); ipcMain.removeHandler(desktopChannels.call); ipcMain.removeHandler(desktopChannels.drop); ipcMain.removeHandler(importDiagnosticsChannel) })
     window.webContents.setWindowOpenHandler(({ url }) => {
       try {
         const link = new URL(url)
         if (['https:', 'http:'].includes(link.protocol) && link.hostname && !link.username && !link.password && url.length <= 8192 && !/[\u0000-\u001f\u007f]/.test(url)) {
-          void shell.openExternal(link.href).catch(() => { if (!window.isDestroyed()) void dialog.showMessageBox(window, { type: 'error', message: '无法打开链接。', detail: '请将链接复制到浏览器中打开。' }) })
+          void shell.openExternal(link.href).catch(() => {
+            if (!window.isDestroyed()) window.webContents.send(appExceptionChannel, { title: '无法打开链接', detail: '请将链接复制到浏览器中打开。' })
+          })
         }
       } catch { /* 非网页地址不能交给系统执行。 */ }
       return { action: 'deny' }

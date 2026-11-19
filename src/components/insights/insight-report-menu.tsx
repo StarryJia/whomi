@@ -4,6 +4,7 @@ import type { AnalysisTask } from '../../shared/ai-contract'
 import { insightTitle } from '../../shared/conversation-insights'
 import type { ListArrangement } from '../../shared/desktop-api'
 import { ManagedRow } from '../ui/managed-row'
+import { ExceptionNotice } from '../ui/exception-notices'
 import { insightCompletedAt, insightRange, insightTaskNumber, insightTaskTitle } from './insight-task'
 
 export type RenameReport = (taskId: string, title: string) => Promise<void>
@@ -54,11 +55,12 @@ export function InsightRenameForm({ title, onCancel, onSave, onBusy }: {
     <label htmlFor={id}>报告名称</label>
     <div className="insight-rename-controls">
       <input ref={field} id={id} value={draft} readOnly={saving} aria-invalid={error?.invalid || undefined}
-        aria-describedby={error ? id + '-error' : undefined} onChange={event => { setDraft(event.currentTarget.value); setError(undefined) }} />
+        aria-describedby={error?.invalid ? id + '-error' : undefined} onChange={event => { setDraft(event.currentTarget.value); setError(undefined) }} />
       <button type="button" className="analysis-secondary" onClick={onCancel} disabled={saving}>取消</button>
       <button type="submit" className="analysis-primary" disabled={saving}>{saving ? '正在保存…' : '保存'}</button>
     </div>
-    {error && <p id={id + '-error'} className="insight-error" role="alert">{error.text}</p>}
+    {error?.invalid ? <p id={id + '-error'} className="insight-error" role="alert">{error.text}</p>
+      : error && <ExceptionNotice title="无法保存报告名称" detail={error.text} className="insight-error" />}
   </form>
 }
 

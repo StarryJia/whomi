@@ -2,8 +2,10 @@ import type { ImportIssue, LocalId, ParsedMember, SourceIdentity } from './conve
 
 export const importJobStates = ['preparing', 'scanning', 'awaiting_confirmation', 'staging', 'validating', 'awaiting_commit', 'committing', 'completed', 'partially_completed', 'failed', 'cancelled'] as const
 export type ImportJobState = typeof importJobStates[number]
-export const importResultStates = ['pending', 'blocked', 'staged', 'committing', 'saved', 'duplicate', 'failed', 'cancelled'] as const
+export const importResultStates = ['pending', 'blocked', 'staged', 'committing', 'processed', 'saved', 'duplicate', 'failed', 'cancelled'] as const
 export type ImportResultState = typeof importResultStates[number]
+export const importFailurePhases = ['source', 'scan', 'parse', 'save', 'confirm', 'statistics', 'cancel'] as const
+export type ImportFailurePhase = typeof importFailurePhases[number]
 export type DiscoveryEntry = { entryId: string; displayName: string; formatId: string }
 export type Discovery = { entries: readonly DiscoveryEntry[]; unrecognized: readonly { displayName: string }[]; issues: readonly ImportIssue[] }
 export type ImportCounts = { seen: number; validRecords: number; invalidRecords: number }
@@ -18,7 +20,7 @@ export type TargetDecision = { candidateId: string; target: { kind: 'new' } | { 
 export type SourceRecordKey = { fingerprint: string; sourceConversationKey: string; ordinal: number }
 
 export type JobId = string
-export type ImportPlan = { jobId: JobId; decisions: TargetDecision[] }
+export type ImportPlan = { jobId: JobId; decisions: TargetDecision[]; candidateIds?: string[] }
 export type StartImportRequest = { kind: 'stage'; jobId: JobId; entryIds: string[] } | { kind: 'commit'; plan: ImportPlan }
 export type ImportCandidateResult = {
   candidateId: string
@@ -31,4 +33,4 @@ export type ImportCandidateResult = {
   issues: ImportIssue[]
   summaryFailed: boolean
 }
-export type ImportSnapshot = { jobId: JobId; status: ImportJobState; discovery: Discovery | null; candidates: Candidate[]; results: ImportCandidateResult[]; issues: ImportIssue[]; counts: ImportCounts; inserted: number; duplicates: number; progress?: {processed:number;total:number|null} }
+export type ImportSnapshot = { jobId: JobId; status: ImportJobState; discovery: Discovery | null; candidates: Candidate[]; results: ImportCandidateResult[]; issues: ImportIssue[]; counts: ImportCounts; inserted: number; duplicates: number; failurePhase?: ImportFailurePhase; progress?: {processed:number;total:number|null} }

@@ -12,7 +12,8 @@ export type StagingOwnership = { appDirectory: string; path: string; root: strin
 export async function cleanupRegisteredStaging(record: StagingOwnership): Promise<void> {
   const app = await fs.realpath(record.appDirectory), root = join(app, 'import-staging')
   if (pathKey(root) !== pathKey(record.root) || dirname(record.path) !== root || !within(root, record.path)) throw new ImportFailure('STAGING_PATH')
-  if (pathKey(await fs.realpath(root)) !== pathKey(root)) throw new ImportFailure('STAGING_PATH')
+  try { if (pathKey(await fs.realpath(root)) !== pathKey(root)) throw new ImportFailure('STAGING_PATH') }
+  catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return; throw error }
   let info: BigIntStats
   try { info = await fs.stat(record.path, { bigint: true }) }
   catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return; throw error }

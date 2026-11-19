@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import * as ContextMenu from '@radix-ui/react-context-menu'
 import { Pencil, Pin, PinOff, Trash2 } from 'lucide-react'
 import type { ListArrangement } from '../../shared/desktop-api'
+import { ExceptionNotice, useExceptionNoticeLayer } from './exception-notices'
 
 export function ReaderDialog({ children, busy, onDismiss, returnFocus, labelledBy }: {
   children: ReactNode
@@ -12,6 +13,7 @@ export function ReaderDialog({ children, busy, onDismiss, returnFocus, labelledB
   labelledBy: string
 }) {
   const dialog = useRef<HTMLDialogElement>(null)
+  useExceptionNoticeLayer(dialog)
   useLayoutEffect(() => {
     const element = dialog.current
     if (!element) return
@@ -53,7 +55,7 @@ export function DeleteListItem({ title, thread, memory, description, onDelete, o
       <div className="reader-modal-card">
         <h2 id="delete-modal-title">{description?.heading ?? (memory ? '删除记忆' : thread ? '删除 AI 对话' : '删除会话')}</h2>
         {description?.content ?? <p className="reader-modal-description">{memory ? `将删除「${title}」及其整理进度，保留原始聊天和其他记忆。` : thread ? `将删除「${title}」的全部提问与回答。` : `将删除「${title}」的原文、成员、本人设置、关联 AI 对话、记忆成稿和此会话的全部洞察报告。`}此操作无法撤销。</p>}
-        {error && <p className="import-error" role="alert">{error}</p>}
+        {error && <ExceptionNotice title={description?.heading ? `${description.heading}失败` : '删除失败'} detail={error} className="import-error" />}
         <div className="reader-modal-footer">
           <button type="button" className="reader-modal-btn" disabled={busy} onClick={onDismiss} autoFocus>取消</button>
           <button type="button" className="reader-modal-btn reader-modal-btn-danger" disabled={busy} onClick={() => void remove()}>{busy ? '正在删除…' : '确认删除'}</button>
@@ -127,7 +129,7 @@ export function ManagedRow({ item, scope, className, active, disabled, children,
         {remove && <ContextMenu.Item className="cherry-menu-item" data-destructive="true" onSelect={() => setDeleting(true)}><Trash2 size={14} />删除</ContextMenu.Item>}
       </ContextMenu.Content></ContextMenu.Portal>
     </ContextMenu.Root>
-    {failure && <div role="alert" className="conversation-list-error">{failure.message}<button type="button" onClick={() => void save(failure.change)}>重试</button></div>}
+    {failure && <div className="conversation-list-error"><ExceptionNotice title="无法保存列表顺序" detail={failure.message} /><button type="button" onClick={() => void save(failure.change)}>重试</button></div>}
     {deleting && remove && <DeleteListItem title={item.title} thread={scope !== 'conversations'} memory={memory} description={deleteDescription} returnFocus={button} onDismiss={() => setDeleting(false)} onDelete={remove} />}
   </>
 }

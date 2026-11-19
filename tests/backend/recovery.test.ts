@@ -20,7 +20,7 @@ beforeAll(async()=> {
   await bundle.write({file:childBundle,format:'cjs'});await bundle.close()
 })
 afterAll(async()=> {await rm(bundleDirectory,{recursive:true,force:true})})
-test.each(['beforeCommit','afterCommit'])('recovers an actual child killed at %s without losing committed state',async boundary=> {
+test.each(['beforeCommit','afterCommit','afterFirstTarget'])('recovers an actual child killed at %s without losing committed state',async boundary=> {
   const temp=temporaryStore()
   let store:ReturnType<typeof openStore>|undefined
   const child=fork(childBundle,[temp.path,boundary],{stdio:['ignore','pipe','pipe','ipc'],env:{...process.env,NODE_PATH:resolve('node_modules')}})
@@ -28,8 +28,12 @@ test.each(['beforeCommit','afterCommit'])('recovers an actual child killed at %s
     await Promise.race([once(child,'message'),once(child,'exit').then(()=>{throw Error('child exited early')}),new Promise((_,reject)=>setTimeout(()=>reject(Error('boundary timeout')),15000))])
     child.kill('SIGKILL');await once(child,'exit')
     store=openStore(temp.path);await recoverImports(store)
-    expect(store.reader.prepare('SELECT count(*) n FROM messages').get()).toEqual({n:boundary==='beforeCommit' ? 0n:3n})
-    expect((getSnapshot(store,'1')).status).toBe(boundary==='beforeCommit' ? 'failed':'completed')
+    expect(store.reader.prepare('SELECT count(*) n FROM messages').get()).toEqual({n:boundary==='afterCommit' ? 3n:0n})
+    expect((getSnapshot(store,'1')).status).toBe(boundary==='afterCommit' ? 'completed':'failed')
+    if (boundary === 'afterFirstTarget') {
+      expect(store.reader.prepare('SELECT count(*) n FROM conversations').get()).toEqual({n:0n})
+      expect(getSnapshot(store,'1')).toMatchObject({failurePhase:'save',issues:[{code:'INTERRUPTED'}]})
+    }
     if(boundary==='afterCommit') {
       const id=store.writer.prepare("INSERT INTO import_jobs(status,created_at_ms) VALUES ('running',0)").run().lastInsertRowid.toString()
       const c=candidate('retry'),r=resolveTarget(store,c)

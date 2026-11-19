@@ -4,6 +4,7 @@ import clsx from 'clsx'
 import type { SourceReference } from '../overview/types'
 import type { ClarificationController, ClarificationModel, ClarificationQuestion } from './types'
 import { ModelSelector, ThinkingSelector } from '../conversation-ai/model-selector'
+import { ExceptionNotice } from '../ui/exception-notices'
 import '../conversation-ai/workspace.css'
 import './clarification-page.css'
 
@@ -121,7 +122,7 @@ function ClarificationQuestionView({ question, models, controller, onOpenSource,
         {entry.pending === 'submit' && <p role="status">正在提交…</p>}
         {entry.withdrawn && <p role="status">{entry.withdrawn.persistence === 'preview' ? '已模拟撤回，未保存。' : '回答已撤回，可重新作答。'}</p>}
         {entry.error && <div className="clarification-error">
-          <p role="alert">{entry.error === 'submit' ? '提交失败，请重试。' : '撤回失败，请重试。'}</p>
+          <ExceptionNotice title={entry.error === 'submit' ? '提交失败，请重试。' : '撤回失败，请重试。'} />
           {entry.error === 'submit' && <button ref={retryRef} className="clarification-secondary" type="button" disabled={!canRetry}
             onClick={() => question && void controller.retry(question, models)}>重试提交</button>}
         </div>}

@@ -3,6 +3,7 @@ import { useId, useRef, useState } from 'react'
 import type { Provider, SettingsApi, SettingsModel, SettingsModelInput } from '../../shared/settings-contract'
 import { errorText, isModelBusy, Switch } from './common'
 import { ProviderSettingsDrawer } from './cherry-primitives'
+import { ExceptionNotice } from '../ui/exception-notices'
 import { capacityErrors, ModelParameters, type CapacityField } from './model-parameters'
 import { useAutoSave } from './use-auto-save'
 import { getDefaultGroupName } from './cherry-model-naming'
@@ -47,7 +48,7 @@ export function ModelEditor({ api, provider, models, existing, onClose, onSaved 
       <button className="ms-text-button" type="button" aria-expanded={showMore} onClick={() => setShowMore(value => !value)}>更多设置</button>
       {showMore && <ModelParameters contextWindow={draft.contextWindow} maxTokens={draft.maxTokens} maxInputTokens={draft.maxInputTokens} errors={errors} busy={false} onChange={(field, value) => changeCapacity(field, value)} onCommit={(field, value) => changeCapacity(field, value, true)} />}
       <div className="settings-row"><span>启用模型</span><Switch label="启用模型" checked={draft.enabled} disabled={saver.pending} onChange={() => { const next = { ...draft, enabled: !draft.enabled }; setDraft(next); if (existing) void commit(next) }} /></div>
-      {(saver.error || localError) && <div role="alert"><p className="ms-error">{saver.error || localError}</p><button type="button" className="ms-button" disabled={saver.pending} onClick={() => { void (async () => { try { if (stopRequired && existing) await api.stopModelTasks([existing.id]); setLocalError(''); await commit() } catch (cause) { setLocalError(errorText(cause)) } })() }}>{stopRequired ? '停止任务并重试' : '重试保存'}</button></div>}
+      {(saver.error || localError) && <div><ExceptionNotice title="无法保存模型" detail={saver.error || localError} className="ms-error" /><button type="button" className="ms-button" disabled={saver.pending} onClick={() => { void (async () => { try { if (stopRequired && existing) await api.stopModelTasks([existing.id]); setLocalError(''); await commit() } catch (cause) { setLocalError(errorText(cause)) } })() }}>{stopRequired ? '停止任务并重试' : '重试保存'}</button></div>}
     </form>
   </ProviderSettingsDrawer>
 }
