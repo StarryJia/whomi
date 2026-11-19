@@ -271,7 +271,7 @@ test('actual reader bounds six pages and preserves a visible anchor in both dire
   } finally { await application?.close(); await cleanup(directory) }
 })
 
-test('actual import selects recognized conversations, logs failures and returns to source selection after cancel', async ({}, testInfo) => {
+test('actual import can hide a failure, reopen its log and recover after cancel', async ({}, testInfo) => {
   test.setTimeout(60000)
   const directory=await mkdtemp(join(tmpdir(),'whomi-runtime-'));let application
   let openedWithSystem = false
@@ -282,7 +282,7 @@ test('actual import selects recognized conversations, logs failures and returns 
     await writeFile(good,JSON.stringify(documentFor([1],'Good synthetic')))
     await writeFile(broken,JSON.stringify(documentFor([2],'Second synthetic')))
     await writeFile(other,'Synthetic ordinary file')
-    application=await electron.launch({args:[resolve('out/main/index.cjs'),'--whomi-runtime-test'],env:{...process.env,WHOMI_RUNTIME_TEST:directory}})
+    application=await launchImportWindow(directory)
     const page=await application.firstWindow()
     await page.getByRole('button',{name:'导入会话',exact:true}).click();await drop(page,sources)
     await expect(page.getByRole('checkbox')).toHaveCount(2)
@@ -311,6 +311,29 @@ test('actual import selects recognized conversations, logs failures and returns 
     await expect(failure).toBeVisible()
     const notice = page.getByRole('region', { name: '异常提醒' })
     await expect(notice).toBeVisible()
+    const closeNotice = notice.getByRole('button', { name: '关闭提醒' })
+    const details = notice.getByRole('button', { name: '展开详情' })
+    await expect(closeNotice).toBeVisible()
+    const card = await notice.getByRole('listitem').boundingBox()
+    const closeBounds = await closeNotice.boundingBox()
+    const detailsBounds = await details.boundingBox()
+    expect(closeBounds.x).toBeGreaterThan(card.x + card.width * 0.75)
+    expect(detailsBounds.y).toBeGreaterThan(closeBounds.y)
+    expect(Math.abs(detailsBounds.x + detailsBounds.width / 2 - (card.x + card.width / 2))).toBeLessThan(8)
+    expect(detailsBounds.width).toBeLessThan(card.width / 4)
+    await captureWindow(application, testInfo.outputPath('notice-collapsed.png'))
+    await details.click()
+    await expect(notice.getByText('请核对聊天记录的导出格式。')).toBeVisible()
+    await captureWindow(application, testInfo.outputPath('notice-expanded.png'))
+    const jobId = await page.evaluate(() => localStorage.getItem('whomi:import-job'))
+    expect(jobId).toBeTruthy()
+    await closeNotice.click()
+    await expect(notice).toHaveCount(0)
+    await page.getByRole('button', { name: '个人总览', exact: true }).click()
+    await expect(notice).toHaveCount(0)
+    await page.getByRole('button', { name: '导入会话', exact: true }).click()
+    await expect(notice).toHaveCount(0)
+    expect(await page.evaluate(id => window.whomi.getImport(id), jobId)).toMatchObject({ status: 'failed' })
     await expect(failure.getByRole('button')).toHaveCount(2)
     await failure.getByRole('button', { name: '查看错误日志' }).click()
     await expect.poll(() => application.evaluate(() => globalThis.openedImportLog)).toMatch(/import-errors.*\.txt$/)
@@ -461,8 +484,10 @@ test('actual large-file parsing shows real counts and can be cancelled', async (
 })
 
 function launchImportWindow(directory) {
+  const executable = process.env.WHOMI_PACKAGED_EXECUTABLE
   return electron.launch({
-    args: [resolve('out/main/index.cjs'), '--whomi-runtime-test'],
+    executablePath: executable ? resolve(executable) : undefined,
+    args: executable ? ['--whomi-runtime-test'] : [resolve('out/main/index.cjs'), '--whomi-runtime-test'],
     env: { ...process.env, WHOMI_RUNTIME_TEST: directory },
   })
 }
@@ -662,5 +687,15 @@ test('compact navigation lets keyboard users expand an import error and return t
     await page.keyboard.press('Tab')
     expect(await navigation.evaluate(panel => panel.contains(document.activeElement) &&
       !document.activeElement.closest('[data-exception-notices]'))).toBe(true)
+    await page.keyboard.press('Shift+Tab')
+    await expect(page.getByRole('button', { name: '收起详情' })).toBeFocused()
+    await page.keyboard.press('Shift+Tab')
+    await expect(page.getByRole('button', { name: '关闭提醒' })).toBeFocused()
+    await page.keyboard.press('Enter')
+    await expect(page.getByRole('region', { name: '异常提醒' })).toHaveCount(0)
+    await expect(navigation.getByRole('link', { name: 'Whomi 首页' })).toBeFocused()
+    await page.keyboard.press('Escape')
+    await expect(navigation).toHaveCount(0)
+    await expect(page.getByRole('region', { name: '导入失败' })).toBeVisible()
   } finally { await application?.close(); await cleanup(directory) }
 })

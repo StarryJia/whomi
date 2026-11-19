@@ -3,10 +3,11 @@ import { createPortal } from 'react-dom'
 import { ChevronDown, CircleAlert, X } from 'lucide-react'
 import './exception-notices.css'
 
-type Notice = { key: string; title: string; detail?: string; blocking?: boolean }
+type Notice = { key: string; title: string; detail?: string }
 type NoticeSource = { notice: Notice; visible: boolean } | { unresolved: ReadonlySet<string> }
 type NoticeState = { sources: ReadonlyMap<string, NoticeSource>; dismissed: ReadonlySet<string> }
 type NoticeContext = {
+  dismissed: ReadonlySet<string>
   publish: (source: string, entry?: NoticeSource) => void
   resolve: (key: string) => void
   addLayer: (layer: HTMLElement) => () => void
@@ -36,10 +37,15 @@ export function useUnresolvedExceptionNotices(keys: ReadonlySet<string>) {
 export function useExceptionNotice(notice: Notice | null): void {
   const update = useNoticeSource()
   const visible = useContext(ScopeVisibility)
-  const { key, title, detail, blocking } = notice ?? {}
+  const { key, title, detail } = notice ?? {}
   useLayoutEffect(() => {
-    update(key && title ? { notice: { key, title, detail, blocking }, visible } : undefined)
-  }, [update, visible, key, title, detail, blocking])
+    update(key && title ? { notice: { key, title, detail }, visible } : undefined)
+  }, [update, visible, key, title, detail])
+}
+
+export function useExceptionNoticeDismissed(key?: string): boolean {
+  const dismissed = useContext(ExceptionNotices)?.dismissed
+  return !!key && !!dismissed?.has(key)
 }
 
 export function useExceptionNoticeLayer(ref: RefObject<HTMLElement | null>, active = true) {
@@ -49,12 +55,12 @@ export function useExceptionNoticeLayer(ref: RefObject<HTMLElement | null>, acti
   }, [active, addLayer, ref])
 }
 
-export function ExceptionNotice({ title, detail, noticeKey, className, blocking }: {
-  title: string; detail?: string; noticeKey?: string; className?: string; blocking?: boolean
+export function ExceptionNotice({ title, detail, noticeKey, className }: {
+  title: string; detail?: string; noticeKey?: string; className?: string
 }) {
   const source = useId()
   const context = useContext(ExceptionNotices)
-  useExceptionNotice({ key: noticeKey ?? source, title, detail: detail === title ? undefined : detail, blocking })
+  useExceptionNotice({ key: noticeKey ?? source, title, detail: detail === title ? undefined : detail })
   return context ? null : <span className={className} role="alert">{detail || title}</span>
 }
 
@@ -65,11 +71,11 @@ function ExceptionNoticeCard({ notice, dismiss }: { notice: Notice; dismiss: () 
     <div className="exception-notice-header">
       <CircleAlert className="exception-notice-symbol" aria-hidden="true" size={18} />
       <span className="exception-notice-title" role="alert">{notice.title}</span>
-      {notice.detail && <button type="button" className="exception-notice-control exception-notice-disclosure" aria-label={expanded ? '收起详情' : '展开详情'}
-        aria-expanded={expanded} aria-controls={detailId} onClick={() => setExpanded(value => !value)}><ChevronDown aria-hidden="true" size={16} /></button>}
-      {!notice.blocking && <button type="button" className="exception-notice-control" aria-label="关闭提醒" onClick={dismiss}><X aria-hidden="true" size={16} /></button>}
+      <button type="button" className="exception-notice-control" aria-label="关闭提醒" onClick={dismiss}><X aria-hidden="true" size={16} /></button>
     </div>
     {notice.detail && <p id={detailId} className="exception-notice-detail" hidden={!expanded}>{notice.detail}</p>}
+    {notice.detail && <button type="button" className="exception-notice-control exception-notice-disclosure" aria-label={expanded ? '收起详情' : '展开详情'}
+      aria-expanded={expanded} aria-controls={detailId} onClick={() => setExpanded(value => !value)}><ChevronDown aria-hidden="true" size={14} /></button>}
   </li>
 }
 
@@ -126,7 +132,7 @@ export function ExceptionNoticeProvider({ children }: { children: ReactNode }) {
       const remaining = [...sources.values()]
       const dismissed = new Set([...current.dismissed].filter(key => remaining.some(item =>
         'notice' in item ? item.notice.key === key : item.unresolved.has(key))))
-      return { sources, dismissed }
+      return { sources, dismissed: dismissed.size === current.dismissed.size ? current.dismissed : dismissed }
     })
   }, [])
   const addLayer = useCallback<NoticeContext['addLayer']>(layer => {
@@ -140,12 +146,12 @@ export function ExceptionNoticeProvider({ children }: { children: ReactNode }) {
     dismissed.delete(key)
     return { ...current, dismissed }
   }), [])
-  const context = useMemo(() => ({ publish, resolve, addLayer }), [publish, resolve, addLayer])
+  const context = useMemo(() => ({ dismissed: state.dismissed, publish, resolve, addLayer }), [state.dismissed, publish, resolve, addLayer])
   const notices = new Map<string, Notice>()
   for (const source of state.sources.values()) {
     if (!('notice' in source) || !source.visible) continue
     const { notice } = source
-    if (notice.blocking || (!state.dismissed.has(notice.key) && !notices.has(notice.key))) notices.set(notice.key, notice)
+    if (!state.dismissed.has(notice.key) && !notices.has(notice.key)) notices.set(notice.key, notice)
   }
   const layer = layers.at(-1)
   const viewport = notices.size ? <ExceptionNoticeViewport layer={layer} notices={[...notices.values()]} dismiss={dismiss} /> : null

@@ -9,7 +9,7 @@ import { ImportProgress } from './import/import-progress'
 import { ImportStateMark } from './import/import-artwork'
 import { ImportGuide } from './import/import-guide'
 import type { GuidePlatform } from './import/platform-guides'
-import { useExceptionNotice } from './ui/exception-notices'
+import { useExceptionNotice, useExceptionNoticeDismissed } from './ui/exception-notices'
 import './import/import.css'
 
 const failureTitles: Record<ImportFailurePhase, string> = {
@@ -44,7 +44,7 @@ export function FileImport(props: ImportProps) {
 export function ImportWorkspace({ api, onOpenConversation, controller }: Pick<ImportProps, 'api' | 'onOpenConversation'> & {
   controller: ReturnType<typeof useImportWorkflow>
 }) {
-  const { snapshot, busy, failure, pickerOpen, cancelling, openingLog } = controller
+  const { snapshot, busy, failure, pickerOpen, cancelling, openingLog, logError } = controller
   const input = useRef<HTMLInputElement>(null)
   const choose = useRef<HTMLButtonElement>(null)
   const failureHeading = useRef<HTMLHeadingElement>(null)
@@ -61,7 +61,8 @@ export function ImportWorkspace({ api, onOpenConversation, controller }: Pick<Im
   const canDrop = showInitial && !busy
   const candidates = snapshot?.candidates.filter(candidate => candidate.status === 'staged') ?? []
   const isSelection = snapshot?.status === 'awaiting_commit' && candidates.length > 1
-  const noticeKey = failure && controller.notice?.key
+  const noticeKey = failure ? controller.notice?.key : undefined
+  const noticeDismissed = useExceptionNoticeDismissed(noticeKey)
   useExceptionNotice(previewError ? { key: 'import:preview', title: previewError } : null)
 
   useLayoutEffect(() => {
@@ -150,6 +151,7 @@ export function ImportWorkspace({ api, onOpenConversation, controller }: Pick<Im
       <div className="import-step import-step-centered" role="region" aria-label="导入失败">
         <ImportStateMark state="failed" />
         <h2 ref={failureHeading} tabIndex={-1}>{failureTitle(failure.phase, failure.code)}</h2>
+        {noticeDismissed && logError && <p className="import-muted" role="status">{logError}</p>}
         <div className="import-step-actions">
           <button className="import-secondary" type="button" disabled={openingLog}
             onClick={() => { void controller.openErrorLog() }}>查看错误日志</button>

@@ -28,7 +28,7 @@
 
    本轮覆盖选择窗口失败、来源失效、没有可导入会话、多会话解析失败、解析中发现异常记录和单文件解析失败。例如用户导入时发现异常记录，顶部正中出现异常消息卡片，展开后可查看对应提示。因异常无法继续导入时，操作按第 15 项执行。全局视觉要求已同步到 [DESIGN.md](../../DESIGN.md#全局异常消息提醒)。
 
-   自动消失时长、折叠后的内容、多条消息如何排列等细节留待设计核对。参考图原件如下。
+   2026-11-19 补充确认。提醒右侧的 × 可关闭卡片，详情使用下方居中的小箭头。例如导入失败后先关闭提醒，再从总览回到导入页，仍可查看本批错误日志或取消导入。参考图原件如下。
 
    ![用户提供的 Cherry 消息提醒参考](assets/whomi-notification-cherry-reference-20261117.png)
 
@@ -163,3 +163,10 @@
 - 保存期间删除在真实数据库上分别验证单目标和双目标；界面测试还调换了删除通知与保存查询的返回顺序。原构建上的三个桌面复现为中断重启、选择器失败跨页、窄窗键盘，三项均先失败后通过。扫描任务已写库但窗口未收到编号的重启场景另有独立的首次失败记录。 原构建（本地记录 `release/issue-25-verification/pr29-fix-regression-before-20261119-113641685/report-html/index.html`） · 修复后（本地记录 `release/issue-25-verification/pr29-fix-regression-after-20261119-114429023/report-html/index.html`） · 未收到编号的首次复现（本地记录 `release/issue-25-verification/pr29-scan-before-reply-before-20261119-115533405/report-html/index.html`）
 - 前端两次中间全量运行分别为 633/634、635/636，暴露了洞察快速重试后仍被隐藏、重新核对已受理回答的失败时未提醒两种情况。修复后前端 643/643、后端 745/745 通过，类型检查与桌面构建通过。设计规则扫描覆盖 47 个源码目标，报告 0 项。 前端（本地记录 `release/pr29-design-review/fix-verified-frontend.log`） · 后端（本地记录 `release/pr29-design-review/fix-verified-backend.log`） · 设计扫描（本地记录 `release/pr29-design-review/fix-design-scan.json`）
 - Windows 桌面组首次 22/23 通过。尚未收到任务编号的用例已经找回并取消导入，最后一条断言同时匹配「选择文件」和「选择文件夹」而失败。改用完整按钮名后，在最终构建重跑 23/23 通过。补录首页时等到启动动画结束且设置按钮可操作，首页提醒和窄窗键盘两项再测均通过。 首次记录（本地记录 `release/issue-25-verification/pr29-reviewed-fixes-20261119-120151243/report-html/index.html`） · 最终桌面报告（本地记录 `release/issue-25-verification/pr29-fixes-final-20261119-120707176/report-html/index.html`） · [首页提醒](evidence/pr29/interrupted-home.png) · [窄窗键盘焦点](evidence/pr29/compact-keyboard-notice.png) · [按月份选择会话](evidence/pr29/selected-november.png)
+
+#### 导入失败提醒可关闭（2026-11-19，待用户验收）
+
+右上角 × 隐藏本次提醒，详情用下方居中的小箭头展开和收起。用示例文本文件触发「没有可导入的会话」，关闭提醒后切到总览，再返回导入页，原任务仍是失败状态，打开的仍是本批日志。点击「取消导入」才回到选文件，之后可导入另一份有效示例文件。如果日志打开失败，且顶部卡片已关闭，导入区会显示打开失败的原因。窄窗可用 Tab、Shift+Tab 和 Enter 进入详情、关闭提醒并把焦点还给导航。 [折叠状态](evidence/pr29/import-notice-collapsed.png) · [展开状态](evidence/pr29/import-notice-expanded.png) · [关闭后返回导入页](evidence/pr29/import-after-dismiss.png) · [窄窗键盘焦点](evidence/pr29/import-notice-compact-keyboard.png)
+
+- 两条前端回归与一条 Windows 桌面回归先复现了缺少关闭按钮，修复后通过。前端全量 644 项、后端全量 745 项、类型检查与桌面构建通过。 [跨页与日志回归](../../src/import-navigation.test.tsx) · [Windows 桌面回归](../../tests/desktop/import.spec.mjs)
+- Windows 桌面首轮 22/23。提醒列表的透明留白挡住了「关于 Whomi」的点击。收紧点击区域后，该用例通过，关闭和窄窗用例也通过。第二轮 22/23，历史上偶发的删除洞察报告后标题未获焦点再次出现，单独复测 1/1 通过，原因仍待确认。首轮、第二轮及焦点单测的完整证据分别保存在本地 `release/issue-25-verification/dismiss-notice-desktop-20261119-140748330/`、`release/issue-25-verification/dismiss-notice-final-20261119-141244784/` 和 `release/issue-25-verification/dismiss-notice-insight-focus-recheck-20261119-141628976/`。

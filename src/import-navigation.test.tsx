@@ -4,7 +4,7 @@ import { expect, it, vi } from 'vitest'
 import App from './App'
 import { candidate, deferred, fakeImportApi, saved, snapshot } from './test/import-api'
 
-it('选择窗口失败后切页仍保留提醒、日志和取消入口', async () => {
+it('关闭来源选择失败提醒后，重访仍能重试打开日志或取消', async () => {
   const user = userEvent.setup()
   const { api } = fakeImportApi()
   api.importDiagnostics = { report: vi.fn(async () => {}), open: vi.fn(async () => {}) }
@@ -14,14 +14,52 @@ it('选择窗口失败后切页仍保留提醒、日志和取消入口', async (
   await user.click(screen.getByRole('button', { name: '选择文件' }))
   await screen.findByRole('heading', { name: '无法打开选择窗口' })
   await user.click(screen.getByRole('button', { name: '个人总览' }))
-  expect(screen.getByRole('region', { name: '异常提醒' })).toBeVisible()
+  const notices = screen.getByRole('region', { name: '异常提醒' })
+  await user.click(within(notices).getByRole('button', { name: '关闭提醒' }))
   await user.click(screen.getByRole('button', { name: '导入会话' }))
+  expect(screen.queryByRole('region', { name: '异常提醒' })).toBeNull()
+  vi.mocked(api.importDiagnostics.open).mockRejectedValueOnce({
+    code: 'IMPORT_LOG_OPEN_FAILED', action: '请检查默认文本查看应用后重试。',
+  })
   await user.click(await screen.findByRole('button', { name: '查看错误日志' }))
   expect(api.importDiagnostics.open).toHaveBeenCalledExactlyOnceWith(null)
+  const failure = screen.getByRole('region', { name: '导入失败' })
+  expect(await within(failure).findByText('请检查默认文本查看应用后重试。')).toBeVisible()
+  await user.click(within(failure).getByRole('button', { name: '查看错误日志' }))
+  expect(api.importDiagnostics.open).toHaveBeenNthCalledWith(2, null)
+  expect(within(failure).queryByText('请检查默认文本查看应用后重试。')).toBeNull()
   expect(api.importDiagnostics.report).toHaveBeenCalledTimes(1)
   await user.click(screen.getByRole('button', { name: '取消导入' }))
   expect(await screen.findByRole('button', { name: '选择文件' })).toBeEnabled()
   expect(screen.queryByRole('region', { name: '异常提醒' })).toBeNull()
+})
+
+it('关闭有编号导入的提醒后，切页仍可查看原任务的日志并取消', async () => {
+  const user = userEvent.setup()
+  const { api, emit } = fakeImportApi()
+  api.importDiagnostics = { report: vi.fn(async () => {}), open: vi.fn(async () => {}) }
+  localStorage.setItem('whomi:import-job', 'job')
+  const failed = snapshot({ status: 'failed', failurePhase: 'save', issues: [
+    { code: 'COMMIT_FAILED', action: '请检查本地存储。', severity: 'blocking', candidateId: '' },
+  ] })
+  emit(failed)
+  render(<App importApi={api} />)
+  await user.click(screen.getByRole('button', { name: '导入会话' }))
+  const notices = await screen.findByRole('region', { name: '异常提醒' })
+  await user.click(within(notices).getByRole('button', { name: '关闭提醒' }))
+  await act(async () => emit({ ...failed }))
+  await user.click(screen.getByRole('button', { name: '个人总览' }))
+  expect(screen.queryByRole('region', { name: '异常提醒' })).toBeNull()
+  await user.click(screen.getByRole('button', { name: '导入会话' }))
+  expect(screen.queryByRole('region', { name: '异常提醒' })).toBeNull()
+  expect(screen.getByRole('heading', { name: '保存失败' })).toBeVisible()
+  expect(localStorage.getItem('whomi:import-job')).toBe('job')
+  expect(api.cancelImport).not.toHaveBeenCalled()
+  await user.click(screen.getByRole('button', { name: '查看错误日志' }))
+  expect(api.importDiagnostics.open).toHaveBeenCalledExactlyOnceWith('job')
+  await user.click(screen.getByRole('button', { name: '取消导入' }))
+  expect(api.cancelImport).toHaveBeenCalledExactlyOnceWith('job')
+  expect(await screen.findByRole('button', { name: '选择文件' })).toBeEnabled()
 })
 
 it('重新进入导入页沿用尚未返回的文件选择，并接收首次确认', async () => {

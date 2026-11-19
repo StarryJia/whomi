@@ -21,7 +21,6 @@ export function importFailureNotice(failure: ImportFailure | null, jobId?: strin
     key: `import:${jobId ?? 'source'}:${failure.phase}:${failure.code}`,
     title: logError ? '错误日志不可用' : '导入遇到问题',
     detail: [failure.action, logError].filter(Boolean).join('\n'),
-    blocking: true,
   }
 }
 
