@@ -12,7 +12,7 @@ import type { WriterQueue } from '../import/runner'
 import { confirmedSelfSql } from '../db/self'
 import { ANALYSIS_PROMPT_VERSION, INSIGHT_PROMPT_VERSION, LEGACY_ANALYSIS_VERSION, LEGACY_MEMORY_VERSION, LEGACY_SCORED_MEMORY_VERSION } from './prompt-version'
 import { dimensionKeys, isMemoryReport, scoreDimensions, type SavedReport } from '../../../src/shared/memory'
-import { isInsightCitation, validateAiCall, validateAiResult } from '../../../src/shared/ai-validation'
+import { isInsightCitation, isInsightCitationId, validateAiCall, validateAiResult } from '../../../src/shared/ai-validation'
 import { defaultInsightTitle, insightTitle, isInsightReport, isInsightScope, type InsightCitation, type InsightCitationInput, type InsightCitationWindow, type InsightReport, type InsightScope, type InsightScopeInput, type InsightSnapshot, type InsightSourceRef } from '../../../src/shared/conversation-insights'
 import { readNotes, type MemoryNotes } from './memory-notes'
 import { defaultModelProtocol, isModelProtocol } from '../../../src/shared/model-protocol'
@@ -48,6 +48,18 @@ function readSavedReport(data: string, conversationId: bigint): SavedReport {
     }
     seen.add(entry.id)
     if (entry.conversationId === String(conversationId) && isInsightCitation(entry)) citations.set(entry.id, entry)
+  }
+  // 未匹配的编号让正文保留无法定位提示，同时避免链接到另一处有效引用。
+  let unavailableId = 'unavailable'
+  for (let suffix = 1; citations.has(unavailableId); suffix++) unavailableId = `unavailable-${suffix}`
+  for (const section of [report.aboutYou, report.relationship]) {
+    if (!Array.isArray(section)) continue
+    for (const paragraph of section) {
+      if (!Array.isArray(paragraph?.content)) continue
+      for (const part of paragraph.content) {
+        if (part?.citationId !== undefined && !isInsightCitationId(part.citationId)) part.citationId = unavailableId
+      }
+    }
   }
   return { ...report, citations: [...citations.values()] }
 }

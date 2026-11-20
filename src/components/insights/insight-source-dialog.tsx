@@ -144,6 +144,7 @@ export function InsightSourceDialog({ taskId, citationId, phrase, conversationTi
         </div>}
         <footer className="insight-source-footer">
           {away && <button type="button" className="insight-source-return" onClick={() => {
+            if (active.current?.kind === 'fragment') track(null)
             scroll.current?.focus({ preventScroll: true })
             returnToCitation()
           }}>回到引用</button>}

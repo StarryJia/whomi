@@ -113,3 +113,32 @@ test('switching citations ignores a late fragment and clears the previous text a
   expect(screen.queryByText('原文30')).not.toBeInTheDocument()
   expect(screen.getByText('1 / 2')).toBeInTheDocument()
 })
+
+test('returning to the current citation cancels a pending fragment jump and allows a new jump', async () => {
+  let completeJump!: (value: InsightCitationWindow) => void
+  const nextFragment = source(['30'], ['30'])
+  const read = vi.fn().mockResolvedValueOnce(source())
+    .mockImplementationOnce(() => new Promise(resolve => { completeJump = resolve }))
+    .mockResolvedValueOnce(nextFragment)
+  render(<InsightSourceDialog {...props(read)} />)
+  await screen.findByText('原文10')
+  const region = screen.getByRole('region', { name: '引用聊天记录' })
+  Object.defineProperties(region, { clientHeight: { value: 300 }, scrollHeight: { value: 1500 } })
+  vi.spyOn(region, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 400, 300))
+  for (const row of region.querySelectorAll('[data-citation=true]')) {
+    vi.spyOn(row, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, -50, 400, 25))
+  }
+  fireEvent.scroll(region, { target: { scrollTop: 600 } })
+
+  const next = screen.getByRole('button', { name: '下一段' })
+  fireEvent.click(next)
+  fireEvent.click(screen.getByRole('button', { name: '回到引用' }))
+  await act(async () => { completeJump(nextFragment) })
+  expect(screen.getByText('原文10')).toBeVisible()
+  expect(screen.getByText('1 / 2')).toBeVisible()
+  expect(screen.queryByText('原文30')).not.toBeInTheDocument()
+
+  fireEvent.click(next)
+  expect(await screen.findByText('原文30')).toBeVisible()
+  expect(screen.getByText('2 / 2')).toBeVisible()
+})

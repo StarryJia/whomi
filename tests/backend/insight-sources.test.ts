@@ -317,6 +317,8 @@ test('一条已保存的引用异常时，报告列表、正文和其余引用�
     if (requestId === 'damaged-report') {
       await expect(repository.completeAnalysis(task.id, { ...report, citations: [{ ...citation, fragments: [] }] }))
         .rejects.toHaveProperty('code', 'INVALID_RESPONSE')
+      await expect(repository.completeAnalysis(task.id, { ...report, relationship: [{ content: [{ text: '约定见面', citationId: ' ' }] }] }))
+        .rejects.toHaveProperty('code', 'INVALID_RESPONSE')
     }
     await repository.completeAnalysis(task.id, report)
   }
@@ -325,7 +327,12 @@ test('一条已保存的引用异常时，报告列表、正文和其余引用�
   const bad = { ...original.citations[1], fragments: [] }
   const duplicate = { ...original.citations[0], id: 'ambiguous' }
   const foreign = { ...original.citations[0], id: 'foreign', conversationId: '2' }
-  const data = JSON.stringify({ ...original, citations: [original.citations[0], bad, duplicate, { ...bad, id: 'ambiguous' }, foreign] })
+  const valid = { ...original.citations[0], id: 'unavailable' }
+  const data = JSON.stringify({ ...original,
+    aboutYou: [{ content: [...original.aboutYou[0].content, { text: '约定见面', citationId: ' ' }] }],
+    relationship: [{ content: [{ text: '随后确认', citationId: 'x'.repeat(129) }, { text: '再次核对', citationId: valid.id }, { text: '。' }] }],
+    citations: [original.citations[0], valid, bad, duplicate, { ...bad, id: 'ambiguous' }, foreign],
+  })
   const revision = createHash('sha256').update(data).digest('hex')
   const update = store.writer.prepare('UPDATE ai_reports SET data=?,content_revision=? WHERE task_id=?')
   update.run(data, revision, damagedId)
@@ -333,8 +340,18 @@ test('一条已保存的引用异常时，报告列表、正文和其余引用�
   const listed = repository.listAnalyses()
   expect(() => validateAiResult('listAnalyses', listed)).not.toThrow()
   expect(listed.find(task => task.id === intactId)?.report).toEqual(original)
-  expect(listed.find(task => task.id === damagedId)?.report).toEqual({ ...original, citations: [original.citations[0]] })
+  const damaged = repository.getReport(damagedId) as InsightReport
+  expect(listed.find(task => task.id === damagedId)?.report).toEqual(damaged)
+  expect(damaged.citations).toEqual([original.citations[0], valid])
+  expect(damaged.aboutYou[0].content).toEqual([...original.aboutYou[0].content, { text: '约定见面', citationId: expect.any(String) }])
+  expect(damaged.relationship[0].content).toEqual([
+    { text: '随后确认', citationId: expect.any(String) }, { text: '再次核对', citationId: valid.id }, { text: '。' },
+  ])
   const read = (citationId: string) => repository.readInsightCitation({ taskId: damagedId, citationId, fragmentIndex: 0 })
+  for (const part of [damaged.aboutYou[0].content[2], damaged.relationship[0].content[0]]) {
+    expect(await read(part.citationId!)).toEqual({ status: 'unavailable' })
+  }
+  expect(await read(valid.id)).toMatchObject({ status: 'available', highlightIds: ['1'] })
   expect(await read('later')).toEqual({ status: 'unavailable' })
   expect(await read('ambiguous')).toEqual({ status: 'unavailable' })
   expect(await read('foreign')).toEqual({ status: 'unavailable' })
