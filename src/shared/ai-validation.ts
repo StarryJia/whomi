@@ -1,7 +1,7 @@
 import { isSubscriptionId } from './chatgpt-plan'
 import type { AiEvent, AiMethods } from './ai-contract'
 import { BoundaryError, availableSourceWindowFields, listArrangement, localId } from './desktop-validation'
-import { insightTitle, isInsightScope, isInsightTimezone, type InsightCitationWindow } from './conversation-insights'
+import { insightTitle, isInsightScope, isInsightTimezone, type InsightCitation, type InsightCitationWindow } from './conversation-insights'
 import { isModelProtocol } from './model-protocol'
 
 type Check = (value: unknown) => boolean
@@ -38,8 +38,10 @@ const revision: Check = value => typeof value === 'string' && /^[0-9a-f]{64}$/.t
 const sourceRef = object({ messageId: localId, revision })
 const sourceRefs: Check = value => array(sourceRef, 2000)(value) && new Set((value as { messageId: string }[]).map(source => source.messageId)).size === (value as unknown[]).length
 const fragment = object({ sources: value => sourceRefs(value) && (value as unknown[]).length > 0 })
-const citation = object({ id: key, conversationId: localId, fragments: value => array(fragment, 200)(value) && (value as unknown[]).length > 0 })
-const paragraphs = array(object({ content: array(object({ text: text(20000, true), citationId: optional(key) }), 200) }), 200)
+export const isInsightCitationId = key
+const citation = object({ id: isInsightCitationId, conversationId: localId, fragments: value => array(fragment, 200)(value) && (value as unknown[]).length > 0 })
+export function isInsightCitation(value: unknown): value is InsightCitation { return citation(value) }
+const paragraphs = array(object({ content: array(object({ text: text(20000, true), citationId: optional(isInsightCitationId) }), 200) }), 200)
 const notes = array(text(4000, true), 200)
 const judgmentFields = { text: text(4000, true), supportingSources: value => sourceRefs(value) && (value as unknown[]).length > 0, counterexampleSources: sourceRefs, alternativeExplanations: notes, limitations: notes } satisfies Record<string, Check>
 const judgments = array(value => ['EI', 'SN', 'TF', 'JP'].some(dimension => object({ dimension: name => name === dimension, direction: direction(dimension), ...judgmentFields })(value)), 200)
@@ -66,7 +68,7 @@ const input: Record<keyof AiMethods, Check[]> = {
   prepareAnalysis: [object({ conversationId: localId, modelId: key, thinkingLevel: optional(thinking), scope: optional(isInsightScope) })], confirmAnalysis: [object({ token: key, requestId: key })],
   discardAnalysisPreparation: [key],
   getAnalysis: [localId], listAnalyses: [optional(localId)], arrangeAnalysis: [listArrangement], renameAnalysis: [object({ taskId: localId, title: value => insightTitle(value) !== null })], deleteAnalysis: [localId], stopAnalysis: [localId], continueAnalysis: [localId], getReport: [localId],
-  readInsightCitation: [object({ taskId: localId, citationId: key, fragmentIndex: count })],
+  readInsightCitation: [object({ taskId: localId, citationId: isInsightCitationId, fragmentIndex: count })],
   openThread: [localId], listThreads: [localId], createThread: [localId], getThread: [localId], arrangeThread: [localId, listArrangement], deleteThread: [localId, localId], sendTurn: [object({ threadId: localId, requestId: key, prompt: text(100000, true), referenceIds: ids, modelId: key, thinkingLevel: optional(thinking), skillId: optional(key) })], retryTurn: [localId], stopTurn: [localId],
 }
 const output: Record<keyof AiMethods, Check> = {

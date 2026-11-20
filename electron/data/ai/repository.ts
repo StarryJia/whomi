@@ -12,8 +12,8 @@ import type { WriterQueue } from '../import/runner'
 import { confirmedSelfSql } from '../db/self'
 import { ANALYSIS_PROMPT_VERSION, INSIGHT_PROMPT_VERSION, LEGACY_ANALYSIS_VERSION, LEGACY_MEMORY_VERSION, LEGACY_SCORED_MEMORY_VERSION } from './prompt-version'
 import { dimensionKeys, isMemoryReport, scoreDimensions, type SavedReport } from '../../../src/shared/memory'
-import { validateAiCall, validateAiResult } from '../../../src/shared/ai-validation'
-import { defaultInsightTitle, insightTitle, isInsightReport, isInsightScope, type InsightCitationInput, type InsightCitationWindow, type InsightReport, type InsightScope, type InsightScopeInput, type InsightSnapshot, type InsightSourceRef } from '../../../src/shared/conversation-insights'
+import { isInsightCitation, isInsightCitationId, validateAiCall, validateAiResult } from '../../../src/shared/ai-validation'
+import { defaultInsightTitle, insightTitle, isInsightReport, isInsightScope, type InsightCitation, type InsightCitationInput, type InsightCitationWindow, type InsightReport, type InsightScope, type InsightScopeInput, type InsightSnapshot, type InsightSourceRef } from '../../../src/shared/conversation-insights'
 import { readNotes, type MemoryNotes } from './memory-notes'
 import { defaultModelProtocol, isModelProtocol } from '../../../src/shared/model-protocol'
 import { BoundaryError, localId } from '../../../src/shared/desktop-validation'
@@ -34,6 +34,35 @@ export type UsageRecord = { ownerKind: 'analysis' | 'turn'; ownerId: string; req
 type AnalysisRow = { title: string | null; elapsed_ms: bigint; prompt_snapshot: string | null; thinking_level: ThinkingLevel | null; id: bigint; conversation_id: bigint; model_id: string; model_version: bigint; created_at_ms: bigint | null; completed_at_ms: bigint | null; pinned: bigint; prompt_version: string; self_fingerprint: string; snapshot_max_id: bigint; state: AiState; total_messages: bigint; skipped_messages: bigint; event_sequence: bigint; error: string | null; checkpoint: string | null }
 type InsightSnapshotRow = { scope: string; timezone: string; source_start_time_ms: bigint | null; source_end_time_ms: bigint | null; created_at_ms: bigint; sources: string }
 type ReportRow = { data: string; content_revision: string | null }
+function readSavedReport(data: string, conversationId: bigint): SavedReport {
+  const report = parse<SavedReport>(data)
+  if (!isInsightReport(report)) return report
+  const citations = new Map<string, InsightCitation>()
+  const seen = new Set<string>()
+  for (const entry of Array.isArray(report.citations) ? report.citations : []) {
+    if (typeof entry?.id !== 'string') continue
+    if (seen.has(entry.id)) {
+      // 同一编号对应多条记录时，无法确定正文引用了哪一条。
+      citations.delete(entry.id)
+      continue
+    }
+    seen.add(entry.id)
+    if (entry.conversationId === String(conversationId) && isInsightCitation(entry)) citations.set(entry.id, entry)
+  }
+  // 未匹配的编号让正文保留无法定位提示，同时避免链接到另一处有效引用。
+  let unavailableId = 'unavailable'
+  for (let suffix = 1; citations.has(unavailableId); suffix++) unavailableId = `unavailable-${suffix}`
+  for (const section of [report.aboutYou, report.relationship]) {
+    if (!Array.isArray(section)) continue
+    for (const paragraph of section) {
+      if (!Array.isArray(paragraph?.content)) continue
+      for (const part of paragraph.content) {
+        if (part?.citationId !== undefined && !isInsightCitationId(part.citationId)) part.citationId = unavailableId
+      }
+    }
+  }
+  return { ...report, citations: [...citations.values()] }
+}
 type TurnRow = { system_prompt: string | null; thinking_level: ThinkingLevel | null; id: bigint; thread_id: bigint; request_id: string; prompt: string; reference_ids: string; model_id: string; model_version: bigint; skill: string | null; self_fingerprint: string; text: string; state: AiState; attempt: bigint; event_sequence: bigint; error: string | null; checkpoint: string | null }
 type ThreadRow = { pinned: bigint; id: bigint; conversation_id: bigint; title: string; created_at_ms: bigint; updated_at_ms: bigint }
 function threadView(row: ThreadRow): AiThreadSummary { return { pinned: !!row.pinned, id: String(row.id), conversationId: String(row.conversation_id), title: row.title, createdAtMs: Number(row.created_at_ms), updatedAtMs: Number(row.updated_at_ms) } }
@@ -237,7 +266,7 @@ export function createAiRepository(store: Store, write: WriterQueue) {
       sourceStartTimeMs: optionalNumber(range.start), sourceEndTimeMs: optionalNumber(range.end),
       pinned: !!row.pinned, state: row.state, analyzedMessages: Number(coverage.n), totalMessages: Number(row.total_messages),
       skippedMessages: Number(row.skipped_messages), usage: aggregate('analysis', String(row.id)), valid, eventSequence: Number(row.event_sequence),
-      ...(row.error ? { error: row.error } : {}), ...(report ? { report: parse<SavedReport>(report.data) } : {}),
+      ...(row.error ? { error: row.error } : {}), ...(report ? { report: readSavedReport(report.data, row.conversation_id) } : {}),
     }
   }
   function turnView(row: TurnRow): AiTurn {
@@ -409,11 +438,10 @@ export function createAiRepository(store: Store, write: WriterQueue) {
       const saved = reader.prepare('SELECT data,content_revision FROM ai_reports WHERE task_id=?').get(row.id) as ReportRow | undefined
       if (!saved) return { status: 'unavailable' }
       if (saved.content_revision !== createHash('sha256').update(saved.data).digest('hex')) return { status: 'expired' }
-      const report = parse<SavedReport>(saved.data)
+      const report = readSavedReport(saved.data, row.conversation_id)
       const citation = isInsightReport(report) ? report.citations.find(item => item.id === input.citationId) : undefined
       const fragment = citation?.fragments[input.fragmentIndex]
       if (!citation || !fragment) return { status: 'unavailable' }
-      if (citation.conversationId !== String(row.conversation_id)) return { status: 'expired' }
       let highlightIds: string[] | null
       try {
         highlightIds = readInsightCitationIds(reader, row.conversation_id, insightSnapshot(row), fragment.sources)

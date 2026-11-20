@@ -17,9 +17,12 @@ export function ReaderDialog({ children, busy, onDismiss, returnFocus, labelledB
   useLayoutEffect(() => {
     const element = dialog.current
     if (!element) return
+    const opener = returnFocus.current
     if (typeof element.showModal === 'function') element.showModal()
     else element.setAttribute('open', '')
     return () => {
+      // 入口随页面失效时让卸载移除模态层，避免原生 close 把焦点送回旧入口。
+      if (opener && (!opener.isConnected || !returnFocus.current)) return
       if (typeof element.close === 'function') element.close()
       returnFocus.current?.focus({ preventScroll: true })
     }

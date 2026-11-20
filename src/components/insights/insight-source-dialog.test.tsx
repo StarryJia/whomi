@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createRef } from 'react'
 import { expect, test, vi } from 'vitest'
 import { InsightSourceDialog } from './insight-source-dialog'
@@ -59,6 +59,7 @@ test('closing during the first read ignores late data and restores the existing 
   const p = props(vi.fn(() => new Promise<InsightCitationWindow>(resolve => { release = resolve })))
   const trigger = document.createElement('button'); document.body.append(trigger); p.returnFocus.current = trigger
   const page = render(<InsightSourceDialog {...p} />)
+  expect(screen.queryByText('1 / 2')).not.toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: '关闭原文' }))
   expect(p.onClose).toHaveBeenCalledOnce()
   page.unmount()
@@ -66,4 +67,78 @@ test('closing during the first read ignores late data and restores the existing 
   await waitFor(() => expect(screen.queryByText('原文10')).not.toBeInTheDocument())
   expect(document.activeElement).toBe(trigger)
   trigger.remove()
+})
+
+test('a fragment jump takes priority over a pending context page and keeps keyboard focus in the new chat', async () => {
+  let finishPage!: (page: Awaited<ReturnType<typeof p.client.readMessages>>) => void
+  const read = vi.fn().mockResolvedValueOnce(source()).mockResolvedValueOnce(source(['30'], ['30']))
+  const p = props(read)
+  p.client.readMessages.mockImplementationOnce(() => new Promise(resolve => { finishPage = resolve }))
+  render(<InsightSourceDialog {...p} />)
+  await screen.findByText('原文10')
+  const region = screen.getByRole('region', { name: '引用聊天记录' })
+  fireEvent.scroll(region, { target: { scrollTop: 0 } })
+  expect(p.client.readMessages).toHaveBeenCalledOnce()
+  const next = screen.getByRole('button', { name: '下一段' })
+  expect(next).toBeEnabled()
+  next.focus()
+  fireEvent.click(next)
+  await screen.findByText('原文30')
+  expect(region).toHaveFocus()
+  await act(async () => { finishPage({ items: [message('9')], beforeCursor: null, afterCursor: 'before', snapshotMaxId: '40' }) })
+  expect(screen.queryByText('原文9')).not.toBeInTheDocument()
+  expect(screen.getByText('原文30')).toBeInTheDocument()
+  expect(screen.getByText('2 / 2')).toBeInTheDocument()
+})
+
+test('switching citations ignores a late fragment and clears the previous text and count', async () => {
+  let finishJump!: (value: InsightCitationWindow) => void
+  let finishCitation!: (value: InsightCitationWindow) => void
+  const read = vi.fn().mockResolvedValueOnce(source())
+    .mockImplementationOnce(() => new Promise(resolve => { finishJump = resolve }))
+    .mockImplementationOnce(() => new Promise(resolve => { finishCitation = resolve }))
+  const p = props(read)
+  const view = render(<InsightSourceDialog {...p} />)
+  await screen.findByText('原文10')
+  const next = screen.getByRole('button', { name: '下一段' })
+  fireEvent.click(next)
+  fireEvent.click(next)
+  expect(read).toHaveBeenCalledTimes(2)
+  view.rerender(<InsightSourceDialog {...p} citationId="e2" phrase="另一次准备" />)
+  expect(screen.queryByText('原文10')).not.toBeInTheDocument()
+  expect(screen.queryByText('1 / 2')).not.toBeInTheDocument()
+  await act(async () => { finishCitation(source(['40'], ['40'])) })
+  await act(async () => { finishJump(source(['30'], ['30'])) })
+  expect(screen.getByText('原文40')).toBeInTheDocument()
+  expect(screen.queryByText('原文30')).not.toBeInTheDocument()
+  expect(screen.getByText('1 / 2')).toBeInTheDocument()
+})
+
+test('returning to the current citation cancels a pending fragment jump and allows a new jump', async () => {
+  let completeJump!: (value: InsightCitationWindow) => void
+  const nextFragment = source(['30'], ['30'])
+  const read = vi.fn().mockResolvedValueOnce(source())
+    .mockImplementationOnce(() => new Promise(resolve => { completeJump = resolve }))
+    .mockResolvedValueOnce(nextFragment)
+  render(<InsightSourceDialog {...props(read)} />)
+  await screen.findByText('原文10')
+  const region = screen.getByRole('region', { name: '引用聊天记录' })
+  Object.defineProperties(region, { clientHeight: { value: 300 }, scrollHeight: { value: 1500 } })
+  vi.spyOn(region, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 400, 300))
+  for (const row of region.querySelectorAll('[data-citation=true]')) {
+    vi.spyOn(row, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, -50, 400, 25))
+  }
+  fireEvent.scroll(region, { target: { scrollTop: 600 } })
+
+  const next = screen.getByRole('button', { name: '下一段' })
+  fireEvent.click(next)
+  fireEvent.click(screen.getByRole('button', { name: '回到引用' }))
+  await act(async () => { completeJump(nextFragment) })
+  expect(screen.getByText('原文10')).toBeVisible()
+  expect(screen.getByText('1 / 2')).toBeVisible()
+  expect(screen.queryByText('原文30')).not.toBeInTheDocument()
+
+  fireEvent.click(next)
+  expect(await screen.findByText('原文30')).toBeVisible()
+  expect(screen.getByText('2 / 2')).toBeVisible()
 })
