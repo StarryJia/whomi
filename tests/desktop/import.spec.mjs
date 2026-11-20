@@ -1,6 +1,6 @@
 import { dismissIdentity } from './fixtures/identity.mjs'
 import { test, expect, _electron as electron } from '@playwright/test'
-import { mkdtemp, copyFile, writeFile, appendFile, mkdir, readdir, readFile, rm, realpath } from 'node:fs/promises'
+import { mkdtemp, copyFile, cp, writeFile, appendFile, mkdir, readdir, readFile, rm, realpath } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve, dirname, basename } from 'node:path'
 import { createHash } from 'node:crypto'
@@ -345,9 +345,9 @@ test('actual import can hide a failure, reopen its log and recover after cancel'
     await expect(page.getByRole('button', { name: '选择文件', exact: true })).toBeVisible()
     await application.evaluate((_, useNative) => { globalThis.useNativeLogOpen = useNative; globalThis.openedImportLog = undefined }, process.env.WHOMI_DESKTOP_OPEN_LOG === '1')
     await page.getByRole('button', { name: '设置', exact: true }).click()
-    await page.getByRole('button', { name: '关于 Whomi', exact: true }).click()
+    await page.getByRole('button', { name: '数据存储', exact: true }).click()
     await page.getByRole('button', { name: '打开错误日志目录' }).click()
-    await expect.poll(() => application.evaluate(() => globalThis.openedImportLog)).toBe(join(directory, 'logs'))
+    await expect.poll(() => application.evaluate(() => globalThis.openedImportLog)).toBe(join(importApplicationDirectory(directory), 'logs'))
     if (process.env.WHOMI_DESKTOP_OPEN_LOG === '1') {
       await expect.poll(() => application.evaluate(() => globalThis.nativeLogOpenResult)).toBe('')
       openedWithSystem = true
@@ -483,11 +483,24 @@ test('actual large-file parsing shows real counts and can be cancelled', async (
   }finally{await application?.close();await cleanup(directory)}
 })
 
-function launchImportWindow(directory) {
-  const executable = process.env.WHOMI_PACKAGED_EXECUTABLE
+function importApplicationDirectory(profile) {
+  return process.env.WHOMI_PACKAGED_EXECUTABLE ? join(profile, 'Whomi') : profile
+}
+
+async function launchImportWindow(directory) {
+  const packaged = process.env.WHOMI_PACKAGED_EXECUTABLE
+  let executablePath
+  if (packaged) {
+    const install = importApplicationDirectory(directory)
+    if (await mkdir(install, { recursive: true })) {
+      const source = dirname(resolve(packaged))
+      await cp(source, install, { recursive: true, filter: path => path !== join(source, 'logs') })
+    }
+    executablePath = join(install, basename(packaged))
+  }
   return electron.launch({
-    executablePath: executable ? resolve(executable) : undefined,
-    args: executable ? ['--whomi-runtime-test'] : [resolve('out/main/index.cjs'), '--whomi-runtime-test'],
+    executablePath,
+    args: executablePath ? ['--whomi-runtime-test'] : [resolve('out/main/index.cjs'), '--whomi-runtime-test'],
     env: { ...process.env, WHOMI_RUNTIME_TEST: directory },
   })
 }
@@ -560,12 +573,12 @@ test('interrupted selection exposes the original log on restart before entering 
     await expect(notices.getByRole('alert')).toHaveText('导入遇到问题')
     await captureWindow(application, testInfo.outputPath('interrupted-home.png'))
     await button('设置').click()
-    await button('关于 Whomi').click()
+    await button('数据存储').click()
     await button('打开错误日志目录').click()
     const opened = () => application.evaluate(() => globalThis.openedImportLogs)
     await expect.poll(opened).toHaveLength(1)
     const [logs] = await opened()
-    expect(logs).toBe(join(directory, 'logs'))
+    expect(logs).toBe(join(importApplicationDirectory(directory), 'logs'))
     const importLogs = join(logs, 'import-errors')
     const files = await readdir(importLogs)
     expect(files).toHaveLength(1)

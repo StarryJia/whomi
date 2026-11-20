@@ -86,7 +86,7 @@ export async function resolveStorageLocation(userDataPath: string): Promise<stri
   return (await resolveStorageSelection(userDataPath)).path
 }
 
-async function manifest(root: string, names = managedNames): Promise<Entry[]> {
+async function manifest(root: string): Promise<Entry[]> {
   await checkedDirectory(root)
   const entries: Entry[] = []
   async function walk(path: string) {
@@ -95,10 +95,10 @@ async function manifest(root: string, names = managedNames): Promise<Entry[]> {
     entries.push({ path: relative(root, path), info })
     if (info.isDirectory()) for (const name of (await fs.readdir(path)).sort()) await walk(join(path, name))
   }
-  for (const name of names) {
+  for (const name of managedNames) {
     const path = join(root, name)
     const info = await checkedPath(path, true)
-    if (info && (name !== 'logs' || info.isDirectory())) await walk(path)
+    if (info) await walk(path)
   }
   return entries
 }
@@ -173,22 +173,6 @@ async function cleanupCreated(target: string, targetIdentity: string, created: E
       if (current.isDirectory()) await fs.rmdir(entry.path)
       else await fs.unlink(entry.path)
     } catch { /* 保留无法确认所有权或仍含文件的目录。 */ }
-  }
-}
-
-async function copyErrorLogs(source: string, target: string, targetIdentity: string, created: Entry[]) {
-  const copied: Entry[] = []
-  try {
-    const logs = await manifest(source, ['logs'])
-    if (!logs.length) return 'absent'
-    for (const entry of logs) await copyEntry(source, target, entry, copied)
-    if (!sameManifest(logs, await manifest(source, ['logs']))) throw new Error('Source logs changed')
-    for (const entry of copied) created.push(entry)
-    return 'copied'
-  } catch {
-    // 无法读取或校验的诊断文件留在原目录，健康的数据仍可迁移。
-    await cleanupCreated(target, targetIdentity, copied)
-    return 'retained'
   }
 }
 
@@ -283,7 +267,7 @@ export function createStorageLocationService(options: StorageLocationOptions) {
   const snapshot = async (): Promise<StorageLocation> => {
     const { path, retainedErrorLogDirectories } = await currentSelection()
     return { path, defaultPath: resolve(options.userDataPath), restartRequired,
-      ...(retainedErrorLogDirectories.length && { retainedErrorLogDirectories, retainedErrorLogDirectory: retainedErrorLogDirectories.at(-1) }) }
+      ...(retainedErrorLogDirectories.length && { retainedErrorLogDirectories }) }
   }
   function requireAvailable() {
     if (restartRequired) throw new BoundaryError('STORAGE_RESTART_REQUIRED', '请重启应用后继续。')
@@ -336,18 +320,18 @@ export function createStorageLocationService(options: StorageLocationOptions) {
         await destination(grant.path, source, grant.identity)
         const entries = await manifest(source)
         for (const entry of entries) await copyEntry(source, grant.path, entry, created)
-        const logArchive = await copyErrorLogs(source, grant.path, grant.identity, created)
         const remaining = await manifest(source)
         if (!sameManifest(entries, remaining)) throw new Error('Source changed')
         await verifyCreated(grant.path, grant.identity, created)
         await rebaseDatabase(source, grant.path)
         await verifyCreated(grant.path, grant.identity, created, true)
         const copiedNames = new Set(entries.map(entry => entry.path.split(sep)[0]))
-        if (logArchive === 'copied') copiedNames.add('logs')
         if ((await fs.readdir(grant.path)).some(name => !copiedNames.has(name))) invalidPath()
         const retained = [...(await currentSelection()).retainedErrorLogDirectories]
         const oldLogs = join(source, 'logs')
-        if (logArchive === 'retained' && !retained.some(path => pathKey(path) === pathKey(oldLogs))) retained.push(oldLogs)
+        // 旧版把错误日志放在数据目录中，迁移后继续按原位置查找。
+        const hasOldLogs = await fs.lstat(oldLogs).then(() => true, error => !missing(error))
+        if (hasOldLogs && !retained.some(path => pathKey(path) === pathKey(oldLogs))) retained.push(oldLogs)
         await publishPointer(options.userDataPath, grant.path, retained)
         selection = { path: grant.path, retainedErrorLogDirectories: retained }
         restartRequired = true

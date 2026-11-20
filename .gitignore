@@ -9,5 +9,6 @@ artifacts/
 *.tsbuildinfo
 out/
 release/
+/logs/
 test-results/
 playwright-report/

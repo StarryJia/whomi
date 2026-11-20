@@ -47,12 +47,8 @@ let aiService: ReturnType<typeof createAiService> | undefined
 let quitting = false
 if (!app.requestSingleInstanceLock()) app.quit()
 else {
-  const appErrorLogs = createAppErrorLogs(app.getPath('userData'), appVersion, path => shell.openPath(path), () => {
-    if (!app.isReady() || quitting) return
-    for (const window of BrowserWindow.getAllWindows()) window.webContents.send(appExceptionChannel, {
-      title: '未能保存错误日志', detail: '请检查磁盘空间和日志目录权限。',
-    })
-  })
+  const installDirectory = app.isPackaged ? dirname(process.execPath) : testDirectory ?? app.getAppPath()
+  const appErrorLogs = createAppErrorLogs(installDirectory, app.getPath('userData'), appVersion, path => shell.openPath(path))
   process.on('uncaughtExceptionMonitor', (_error, origin) => appErrorLogs.recordMainException(origin))
   let stoppingWorkers = false
   app.on('child-process-gone', (_event, details) => {
@@ -104,7 +100,7 @@ else {
       servicesClosed = false
     }
     const storage = await resolveStorageSelection(userDataPath)
-    await appErrorLogs.setStorageDirectory(storage.path, storage.retainedErrorLogDirectories)
+    appErrorLogs.setDataArchives(storage.path, storage.retainedErrorLogDirectories)
     await startServices(storage.path)
     await importDiagnostics.flush()
     const aiRouter = createAiRouter(new Proxy({} as AiMethods, { get: (_target, method: keyof AiMethods) => (...args: unknown[]) => (aiService![method] as (...values: unknown[]) => Promise<unknown>)(...args) }))
@@ -159,6 +155,18 @@ else {
     const devUrl = !app.isPackaged ? process.env.ELECTRON_RENDERER_URL : undefined
     const pagePath = join(__dirname, '../renderer/index.html')
     const appUrl = devUrl ? new URL(devUrl).href : pathToFileURL(pagePath).href
+    const reportLogFailure = (action: string) => {
+      if (!quitting && !window.isDestroyed()) window.webContents.send(appExceptionChannel, { title: '未能保存错误日志', detail: action })
+    }
+    const onExceptionListenerReady = (event: Electron.IpcMainEvent) => {
+      if (!window.isDestroyed() && isTrustedCaller(event, window, appUrl)) appErrorLogs.setWriteFailureListener(reportLogFailure)
+    }
+    ipcMain.on(appExceptionChannel, onExceptionListenerReady)
+    window.webContents.on('did-navigate', () => appErrorLogs.setWriteFailureListener(undefined))
+    window.once('closed', () => {
+      ipcMain.removeListener(appExceptionChannel, onExceptionListenerReady)
+      appErrorLogs.setWriteFailureListener(undefined)
+    })
     const windowId = window.webContents.id
     const grants = createSourceGrants()
     const router = createDesktopRouter({ grants, request: (method, args) => method === 'deleteConversation'
@@ -194,10 +202,13 @@ else {
         const selected = await dialog.showOpenDialog(window, { defaultPath: path, properties: ['openDirectory', 'createDirectory'] })
         return selected.canceled || !selected.filePaths[0] ? null : locations.issueChoice(windowId, selected.filePaths[0])
       },
-      relocateStorage: token => appErrorLogs.withStorageRelocation(() => locations.relocateStorage(windowId, token)),
+      async relocateStorage(token) {
+        const location = await locations.relocateStorage(windowId, token)
+        appErrorLogs.setDataArchives(location.path, location.retainedErrorLogDirectories)
+        return location
+      },
       async restart() { if (!suspended || !(await locations.getStorage()).restartRequired) throw new BoundaryError('INVALID_STATE'); app.relaunch(); app.quit() },
       async getDiagnostics() { const current = await settingsService.get(); return { version: appVersion, platform: process.platform, entries: current.debug ? [...diagnostics] : [] } },
-      getErrorLogArchives: appErrorLogs.getArchives,
       openErrorLogDirectory: appErrorLogs.open,
     }
     ipcMain.handle(settingsChannel, async (event, value: unknown) => {
@@ -207,12 +218,12 @@ else {
         if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).length !== 2 || !('method' in value) || !('args' in value) || typeof value.method !== 'string' || !Object.hasOwn(settingsMethods, value.method) || !Array.isArray(value.args)) throw new BoundaryError('INVALID_ARGUMENT')
         method = value.method as keyof SettingsApi
         if (value.args.length !== settingsMethods[method]) throw new BoundaryError('INVALID_ARGUMENT')
-        if (suspended && !['getStorage', 'openStorageDirectory', 'getErrorLogArchives', 'openErrorLogDirectory', 'restart'].includes(method)) throw new BoundaryError('STORAGE_RESTART_REQUIRED', '数据目录正在切换，请重启应用。')
+        if (suspended && !['getStorage', 'openStorageDirectory', 'openErrorLogDirectory', 'restart'].includes(method)) throw new BoundaryError('STORAGE_RESTART_REQUIRED', '数据目录正在切换，请重启应用。')
         requests++
         try { return { ok: true, value: await (settingsApi[method] as (...args: unknown[]) => Promise<unknown>)(...value.args) } } finally { requests-- }
       } catch (error) {
         const failure = serializableError(error)
-        if (method && method !== 'testModel' && method !== 'getErrorLogArchives' && method !== 'openErrorLogDirectory') {
+        if (method && method !== 'testModel' && method !== 'openErrorLogDirectory') {
           void appErrorLogs.record({ area: method === 'syncModels' || method === 'signInAccount' ? 'model' : 'main', phase: method, error })
         }
         diagnostics.push({ code: failure.code, action: '操作失败，请重试。' }); if (diagnostics.length > 20) diagnostics.shift()
@@ -282,7 +293,7 @@ else {
     if (probeEnabled) console.error('Whomi test startup failed:', serializableError(error).code, logDirectory ?? 'ERROR_LOG_UNWRITABLE')
     else dialog.showErrorBox('Whomi 无法启动', detail + (logDirectory
       ? `\n打开 ${logDirectory} 查看错误日志。`
-      : '\n无法保存错误日志。请检查用户目录权限和磁盘空间。'))
+      : `\n${appErrorLogs.writeFailureAction}`))
     await Promise.allSettled([agentHost?.close(), dataHost?.close()])
     app.exit(1)
   })

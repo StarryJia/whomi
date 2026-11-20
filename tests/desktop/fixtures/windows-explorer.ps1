@@ -2,7 +2,7 @@ param([Parameter(Mandatory)][string]$Directory)
 $ErrorActionPreference = 'Stop'
 $fixtureProfile = [IO.Path]::GetDirectoryName($Directory)
 if ([IO.Path]::GetDirectoryName($fixtureProfile) -ne [IO.Path]::GetTempPath().TrimEnd('\') -or
-    [IO.Path]::GetFileName($fixtureProfile) -notmatch '^whomi-runtime-error-logs-[a-zA-Z0-9]+$' -or
+    [IO.Path]::GetFileName($fixtureProfile) -notmatch '^whomi-(runtime-error-logs|test-log-install)-[a-zA-Z0-9]+$' -or
     [IO.Path]::GetFileName($Directory) -ne 'logs') { throw 'Expected a private test log directory.' }
 
 $shell = New-Object -ComObject Shell.Application

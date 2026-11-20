@@ -74,6 +74,21 @@ test('写入错误日志失败后，可以通过查看入口再写入并打开',
   expect(screen.getByRole('alert')).toHaveTextContent('导入遇到问题')
 })
 
+test('安装日志目录只读时可从任务打开已有记录，找不到时显示实际路径', async () => {
+  const { diagnostics, user } = setup(saved('a', '7', { summaryFailed: true }))
+  const action = '无法写入安装日志目录 C:\\Whomi\\logs。请检查目录写入权限后重试。'
+  diagnostics.report.mockRejectedValue({ code: 'IMPORT_LOG_WRITE_FAILED', action })
+  await user.click(screen.getByRole('button', { name: '选择文件' }))
+  await screen.findByRole('heading', { name: '会话统计更新失败' })
+  const open = screen.getByRole('button', { name: '查看错误日志' })
+  await user.click(open)
+  expect(diagnostics.open).toHaveBeenCalledExactlyOnceWith('job')
+  diagnostics.open.mockRejectedValueOnce({ code: 'IMPORT_LOG_MISSING', action: '找不到错误日志。' })
+  await user.click(open)
+  await user.click(screen.getByRole('button', { name: '展开详情' }))
+  expect(await screen.findByText(action, { exact: false })).toBeVisible()
+})
+
 test('取消导入失败保留任务和日志入口，再次取消确认后返回起点', async () => {
   const { api, diagnostics, user, onCancelled } = setup(saved('a', '7', { summaryFailed: true }))
   vi.mocked(api.cancelImport).mockRejectedValueOnce(new Error('storage write failed'))

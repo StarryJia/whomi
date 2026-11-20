@@ -42,7 +42,6 @@ for (const width of [1920, 360]) test(`订阅服务商在 ${width} 像素下可�
       ipcMain.handle('whomi:settings-call', async (_event, { method, args: [id, next] }) => {
         let value
         if (method === 'get') value = snapshot
-        else if (method === 'getErrorLogArchives') value = []
         else if (method === 'getAccountStatus') value = statuses.get(id) ?? disconnected
         else if (method === 'getCodexQuota') value = disconnected
         else if (method === 'getAccountUsage') {

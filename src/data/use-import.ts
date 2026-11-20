@@ -94,7 +94,7 @@ export function useImport(api?: DesktopApi, { onSaved, onCancelled }: ImportCall
   const restoring = useRef<Promise<void> | null>(null)
   const opening = useRef(false)
   const lastResult = useRef<{ saved?: string; cancelled?: string }>({})
-  const report = useRef<{ key: string; done: Promise<boolean> } | null>(null)
+  const report = useRef<{ key: string; done: Promise<string | undefined> } | null>(null)
   const session = useRef({
     alive: false, generation: 0, jobId: null as string | null, snapshot: null as ImportSnapshot | null,
     busy: false, cancelling: false, preparing: false, operation: 0, events: new Map<string, ImportSnapshot>(), eventVersion: 0,
@@ -228,9 +228,10 @@ export function useImport(api?: DesktopApi, { onSaved, onCancelled }: ImportCall
     if (!api?.importDiagnostics || !failureKey || !failurePhase || !failureCode) return
     if (report.current?.key !== failureKey) {
       const attempt = api.importDiagnostics.report({ phase: failurePhase, code: failureCode, ...(failedJobId && { jobId: failedJobId }) })
-        .then(() => true, () => {
+        .then(() => undefined, cause => {
           if (report.current?.done === attempt) report.current = null
-          return false
+          const error = importError(cause)
+          return error.code === 'IMPORT_LOG_WRITE_FAILED' ? error.action : '无法写入错误日志。请检查目录写入权限。'
         })
       report.current = { key: failureKey, done: attempt }
     }
@@ -239,8 +240,8 @@ export function useImport(api?: DesktopApi, { onSaved, onCancelled }: ImportCall
 
   useEffect(() => {
     let live = true
-    void reportFailure()?.then(written => {
-      if (live && !written) setLogError('无法写入错误日志。请检查本地存储。')
+    void reportFailure()?.then(action => {
+      if (live && action) setLogError(action)
     })
     return () => { live = false }
   }, [reportFailure])
@@ -437,19 +438,21 @@ export function useImport(api?: DesktopApi, { onSaved, onCancelled }: ImportCall
     opening.current = true
     setOpeningLog(true)
     setLogError('')
+    let writeError: string | undefined
     try {
-      const written = reportFailure()
-      if (written && !await written) {
-        if (valid()) setLogError('无法写入错误日志。请检查本地存储。')
+      writeError = await reportFailure()
+      if (!valid() || (current.snapshot && (current.snapshot.status === 'cancelled' || hasConfirmedImport(current.snapshot)))) return
+      if (writeError && !failedJobId) {
+        setLogError(writeError)
         return
       }
-      if (valid() && !(current.snapshot && (current.snapshot.status === 'cancelled' || hasConfirmedImport(current.snapshot)))) {
-        await diagnostics.open(failedJobId ?? null)
-      }
+      await diagnostics.open(failedJobId ?? null)
+      if (valid()) setLogError('')
     } catch (cause) {
       if (valid()) {
         const error = importError(cause)
-        setLogError(error.code === 'OPERATION_FAILED' ? '无法打开错误日志。' : error.action)
+        if (writeError && error.code === 'IMPORT_LOG_MISSING') setLogError(writeError)
+        else setLogError(error.code === 'OPERATION_FAILED' ? '无法打开错误日志。' : error.action)
       }
     } finally {
       if (valid()) {

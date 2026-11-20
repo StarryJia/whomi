@@ -212,8 +212,8 @@ export function createImportDiagnostics(userData: string, version: string, openP
         try {
           if (logs) await logs.withWritableRoot(async root => write(await localLogDirectory(join(root, 'import-errors'), true)))
           else await write(await localLogDirectory(directory, true))
-        } catch {
-          throw new BoundaryError('IMPORT_LOG_WRITE_FAILED', '无法保存错误日志。请检查应用数据目录是否可写。')
+        } catch (error) {
+          throw new BoundaryError('IMPORT_LOG_WRITE_FAILED', error instanceof BoundaryError ? error.action : '无法保存错误日志。请检查日志目录的写入权限。')
         }
       })
     },
