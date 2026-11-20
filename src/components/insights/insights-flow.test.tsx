@@ -62,6 +62,27 @@ it('从任务行任意内容打开指定任务，详情和任务控制按钮单�
   expect(onTask).toHaveBeenLastCalledWith('1', '25')
 })
 
+it('任务请求等待时运行时间递增，失败后保留同口径的覆盖和冻结时间', () => {
+  vi.useFakeTimers()
+  try {
+    const running: AnalysisTask = { ...completed, report: undefined, state: 'running',
+      analyzedMessages: 6, elapsedMs: 3000, elapsedSampledAtMs: Date.now() }
+    const library = (task: AnalysisTask) => <InsightsLibrary tasks={[task]} conversations={[]} loading={false} error=""
+      retry={() => {}} onSelect={() => {}} onReturn={() => {}} onTask={() => {}} onConversations={() => {}} onRenameBusy={() => {}} />
+    const { rerender } = render(library(running))
+    expect(screen.getByText('已运行 00:03 · 2 消息数/s')).toBeVisible()
+    act(() => vi.advanceTimersByTime(3000))
+    expect(screen.getByText('已运行 00:06 · 1 消息数/s')).toBeVisible()
+    rerender(library({ ...running, state: 'failed', elapsedMs: 6000, elapsedSampledAtMs: undefined }))
+    act(() => vi.advanceTimersByTime(3000))
+    expect(screen.getByRole('status')).toHaveTextContent('生成失败')
+    expect(screen.getByText(/6 \/ 12 条/)).toBeVisible()
+    expect(screen.getByText(/已运行 00:06 · 1 消息数\/s/)).toBeVisible()
+  } finally {
+    vi.useRealTimers()
+  }
+})
+
 it('报告只有材料不足说明时保留模型的限定并沿用两节阅读结构', () => {
   render(<InsightArticle report={{ ...report, aboutYou: [], relationship: [], limitations: ['只有一次改期，暂时不能判断相处习惯。'] }} />)
   expect(screen.getByText('只有一次改期，暂时不能判断相处习惯。')).toBeVisible()
@@ -84,7 +105,7 @@ it('管理正常读取后可浏览同名报告并在原位改名，失败保留�
   expect(screen.getByRole('heading', { name: '会话洞察', level: 1 })).toBeVisible()
   expect(screen.getByRole('heading', { name: '关于你' })).toBeVisible()
   expect(screen.getByRole('heading', { name: '你们的相处' })).toBeVisible()
-  expect(screen.getByText('2026.10.01—2026.10.31')).toBeVisible()
+  expect(screen.getByText('2026.10.03—2026.10.03')).toBeVisible()
   await user.click(screen.getByRole('button', { name: '重命名' }))
   const title = screen.getByRole('textbox', { name: '报告名称' })
   expect(title).toHaveFocus()
@@ -102,6 +123,53 @@ it('管理正常读取后可浏览同名报告并在原位改名，失败保留�
   await user.click(screen.getByRole('button', { name: '返回' }))
   expect(await screen.findByRole('button', { name: /小林.*那次合作.*#24/ })).toBeVisible()
   expect(screen.getByRole('button', { name: /小林.*会话洞察.*#23/ })).toBeVisible()
+})
+
+it.each([
+  { scope: completed.scope, timezone: 'Asia/Shanghai', hour: 16 },
+  { scope: { kind: 'all' } as const, timezone: 'Pacific/Kiritimati', hour: 10 },
+])('按报告冻结的时区展示实际首末消息日期 ($timezone)', async ({ scope, timezone, hour }) => {
+  const user = userEvent.setup()
+  const reportWithTwoDays = {
+    ...completed, scope, timezone,
+    sourceStartTimeMs: Date.UTC(2026, 9, 2, hour, 30),
+    sourceEndTimeMs: Date.UTC(2026, 9, 3, hour, 30),
+  }
+  const api = { ai: { listAnalyses: async () => [reportWithTwoDays], onEvent: () => () => {} } } as unknown as DesktopApi
+  render(<App preview conversations={[]} importApi={api} />)
+  await user.click(screen.getByRole('button', { name: '对话洞察' }))
+  const row = await screen.findByRole('button', { name: /小林.*会话洞察.*#24/ })
+  expect(row).toHaveTextContent('对话范围 2026.10.03—2026.10.04')
+  await user.click(row)
+  expect(screen.getByText('2026.10.03—2026.10.04')).toBeVisible()
+})
+
+it('打开短报告再返回时恢复列表原有滚动位置、分组和行焦点', async () => {
+  const user = userEvent.setup()
+  const api = { ai: {
+    listAnalyses: async () => [completed, { ...completed, id: '25', conversationId: '2', conversationTitle: '小陈' }],
+    onEvent: () => () => {},
+  } } as unknown as DesktopApi
+  render(<App preview conversations={[]} importApi={api} />)
+  await user.click(screen.getByRole('button', { name: '对话洞察' }))
+  const row = await screen.findByRole('button', { name: /小林.*会话洞察.*#24/ })
+  const group = screen.getByRole('button', { name: '小陈（1）' })
+  await user.click(group)
+  const main = screen.getByRole('main')
+  const list = row.closest('.insights-list')!
+  let scrollTop = 420
+  Object.defineProperty(main, 'scrollTop', {
+    // 短报告替换长列表时，浏览器把滚动位置限制为 0。
+    get: () => list.hasAttribute('hidden') ? 0 : scrollTop,
+    set: (value: number) => { scrollTop = value },
+  })
+
+  await user.click(row)
+  expect(main.scrollTop).toBe(0)
+  await user.click(screen.getByRole('button', { name: '返回' }))
+  expect(main.scrollTop).toBe(420)
+  expect(group).toHaveAttribute('aria-expanded', 'false')
+  expect(row).toHaveFocus()
 })
 
 it('列表从无数据读取失败后重试，只有成功返回空结果才显示前往会话', async () => {
@@ -163,13 +231,43 @@ it('删除后迟到的报告事件和列表结果都不会恢复已删除的报�
   const dialog = await screen.findByRole('dialog', { name: '删除报告' })
   expect(dialog).toHaveTextContent('#24')
   expect(dialog).toHaveTextContent('小林')
-  expect(dialog).toHaveTextContent(/2026.10.01.*2026.10.31/)
+  expect(dialog).toHaveTextContent('对话范围：2026.10.03—2026.10.03')
   await user.click(within(dialog).getByRole('button', { name: '确认删除' }))
   expect(deleteAnalysis).toHaveBeenCalledWith('24')
   await act(async () => publish({ kind: 'analysis', snapshot: { ...completed, eventSequence: 30 } }))
   await act(async () => resolveList([completed, { ...completed, id: '23' }]))
   expect(screen.queryByRole('button', { name: /小林.*会话洞察.*#24/ })).not.toBeInTheDocument()
   expect(screen.getByRole('button', { name: /小林.*会话洞察.*#23/ })).toBeVisible()
+})
+
+it.each(['下一行', '页面标题'])('删除通知先于请求回执时聚焦%s，跳过同时移除的相邻报告', async target => {
+  const user = userEvent.setup()
+  let publish!: (event: AiEvent) => void
+  let finishDelete!: () => void
+  const deleteAnalysis = vi.fn(() => new Promise<void>(resolve => { finishDelete = resolve }))
+  const candidates = [completed, { ...completed, id: '23' }]
+  if (target === '下一行') candidates.push({ ...completed, id: '22' })
+  const api = { ai: {
+    listAnalyses: async () => candidates, deleteAnalysis,
+    onEvent: (listener: typeof publish) => { publish = listener; return () => {} },
+  } } as unknown as DesktopApi
+  render(<App preview conversations={[]} importApi={api} />)
+  await user.click(screen.getByRole('button', { name: '对话洞察' }))
+  fireEvent.contextMenu(await screen.findByRole('button', { name: /小林.*会话洞察.*#24/ }))
+  await user.click(await screen.findByRole('menuitem', { name: '删除' }))
+  await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '确认删除' }))
+  expect(deleteAnalysis).toHaveBeenCalledExactlyOnceWith('24')
+
+  await act(async () => {
+    for (const taskId of ['23', '24']) publish({ kind: 'analysis-deleted', taskId, conversationId: '1' })
+  })
+  expect(screen.queryByRole('dialog')).toBeNull()
+  const destination = target === '下一行'
+    ? screen.getByRole('button', { name: /小林.*会话洞察.*#22/ })
+    : screen.getByRole('heading', { name: '对话洞察' })
+  expect(destination).toHaveFocus()
+  await act(async () => finishDelete())
+  expect(destination).toHaveFocus()
 })
 
 it('指定暂停任务只显示进度，关窗和开窗都不自动续跑，开始原任务后才允许继续', async () => {
@@ -185,8 +283,8 @@ it('指定暂停任务只显示进度，关窗和开窗都不自动续跑，开�
   expect(await screen.findByText('已暂停', { exact: true })).toBeVisible()
   expect(continueAnalysis).not.toHaveBeenCalled()
   await user.click(screen.getByRole('button', { name: '详情' }))
-  expect(screen.getByText('缓存写入')).toBeVisible()
-  expect(screen.queryByText('缓存读取')).toBeNull()
+  expect(screen.getByText('缓存写入').nextElementSibling).toHaveTextContent('0 词元')
+  expect(screen.getByText('缓存读取').nextElementSibling).toHaveTextContent('—')
   await user.click(screen.getByRole('button', { name: '关闭会话洞察' }))
   await user.click(screen.getByRole('button', { name: '会话洞察' }))
   expect(continueAnalysis).not.toHaveBeenCalled()

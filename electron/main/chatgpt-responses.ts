@@ -55,7 +55,8 @@ export function createChatgptRunner(accessToken: (accountId: string, signal: Abo
           const inputTokens = usage?.input_tokens, outputTokens = usage?.output_tokens
           const cached = usage?.input_tokens_details?.cached_tokens
           return { ...(event.type === 'response.incomplete' ? { stopReason: 'length' as const } : {}), text, checkpoint: '', usage: { startedAt, completedAt, durationMs, firstTokenMs,
-            ...(inputTokens === undefined ? {} : { totalInputTokens: inputTokens, inputTokens: Math.max(0, inputTokens - (cached ?? 0)), cacheReadTokens: cached ?? 0 }),
+            ...(inputTokens === undefined ? {} : { totalInputTokens: inputTokens, inputTokens: Math.max(0, inputTokens - (cached ?? 0)) }),
+            ...(cached === undefined ? {} : { cacheReadTokens: cached }),
             ...(outputTokens === undefined ? {} : { outputTokens, outputTokensPerSecond: outputTokens / Math.max(.001, durationMs / 1000) }),
             ...(inputTokens === undefined || outputTokens === undefined ? { incomplete: true } : {}) } }
         } else if (event.type === 'response.failed') {

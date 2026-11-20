@@ -24,7 +24,7 @@ const maximumEvidenceNotes = 24
 export type InsightGenerationDeps = {
   run: RuntimeRunner['run']
   read: (ids: readonly string[]) => Promise<InsightSourceMessage[]>
-  saveCheckpoint: (state: InsightCheckpoint) => Promise<void>
+  saveCheckpoint: (state: InsightCheckpoint, sampledAtMs: number) => Promise<void>
   signal: AbortSignal
   onText: (text: string) => void
   countInput?: (input: RuntimeInput, model: AiModel) => Promise<InsightInputCount>
@@ -38,6 +38,7 @@ type InsightGenerationInput = {
   prompts: InsightPrompts
   limits: InsightRunLimits
   checkpoint: InsightCheckpoint | null
+  elapsedMs?: number
   thinkingLevel?: RuntimeInput['thinkingLevel']
 }
 
@@ -450,6 +451,8 @@ export async function generateInsight(input: InsightGenerationInput, deps: Insig
     : createInsightCheckpoint(snapshot.taskId, model, { ...input.prompts }, { ...input.limits })
   if (state.version !== 1 || state.taskId !== snapshot.taskId || state.modelId !== model.id || state.modelVersion !== model.version
     || state.prompts.version !== INSIGHT_PROMPT_VERSION || state.attempts.length !== state.callsReserved) return invalidCheckpoint()
+  // 失败状态提交可能晚于最后一个断点。
+  state.elapsedMs = Math.max(state.elapsedMs, input.elapsedMs ?? 0)
   const refs = new Map(snapshot.sources.map(ref => [ref.messageId, ref]))
   if (refs.size !== snapshot.sources.length || !refs.size) return invalidEvidence()
   const covered = new Set(state.coveredMessageIds)
@@ -471,7 +474,7 @@ export async function generateInsight(input: InsightGenerationInput, deps: Insig
 
   async function save() {
     updateElapsed()
-    await deps.saveCheckpoint(state)
+    await deps.saveCheckpoint(state, lastAccountedAt)
   }
 
   async function checkActive() {

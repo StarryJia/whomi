@@ -16,7 +16,7 @@ import { MemoryArticle } from '../memory-article'
 import { isMemoryReport } from '../../shared/memory'
 import { isInsightReport, isInsightScope, type InsightScope, type InsightScopePreview } from '../../shared/conversation-insights'
 import { InsightScopeFields } from '../insights/insight-scope-fields'
-import { formatInsightNumber, insightElapsed, insightPercentage, insightRange, insightSpeed, InsightRing, InsightStatus, insightTaskFailureKey, InsightTaskDetails, InsightTaskModel } from '../insights/insight-task'
+import { formatInsightNumber, insightElapsed, insightPercentage, insightRange, insightSpeed, InsightRing, InsightStatus, insightTaskFailureKey, InsightTaskDetails, InsightTaskModel, useInsightRunDuration } from '../insights/insight-task'
 import { CherryComposer, clearComposerDraft, clearComposerInputHistory, moveComposerInputHistory, readComposerDraft, useComposerDraft, writeComposerDraft, type CherryComposerHandle } from './cherry/composer'
 import { CherryMessages, type CherryMessagesHandle, type CherryMessageTurn } from './cherry/messages'
 import { forgetScrollPosition } from '../../vendor/cherry-chat/messages/list/useScrollPositionMemory'
@@ -783,7 +783,8 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
   const report = analysisResult?.task?.report
   const titles = { idle: '生成中', running: '生成中', done: '已完成', interrupted: '生成失败',
     stopped: pauseSupported ? '已暂停' : '已停止', failed: '生成失败' } as const
-  const statusTitle = analysis.stopping ? '正在暂停' : titles[analysisState]
+  const statusTitle = analysis.stopping ? '正在暂停' : analysis.resuming === 'continue' ? '正在继续'
+    : analysis.resuming === 'retry' ? '正在重试' : titles[analysisState]
   const closeAnalysis = () => {
     setAnalysisOpen(false); setShowReport(false)
     if (analysisState !== 'idle') setAnalysisConfirming(false)
@@ -801,8 +802,9 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
   const coverageDescription = completed !== undefined && total !== undefined
     ? `${statusTitle}，已处理 ${formatInsightNumber(completed)} / ${formatInsightNumber(total)} 条`
     : analysisState === 'idle' ? undefined : statusTitle
-  const runDuration = activeTask?.elapsedMs
+  const runDuration = useInsightRunDuration(analysisOpen ? activeTask : undefined)
   const failure = analysisState === 'failed' || analysisState === 'interrupted'
+  const retryBeforeCreation = analysis.creationFailed || (failure && !activeTask)
   const reportAvailable = analysisState === 'done' && analysisResult?.taskId && (onOpenAnalysisResult || report && !isInsightReport(report))
   function openAnalysis() {
     if (!analysisAnchor.current || (analysisConfirming && approveAnalysisEntry?.(analysisAnchor.current) === false)) return
@@ -811,7 +813,7 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
   function again() {
     if (!analysisAnchor.current) return
     if (approveAnalysisEntry?.(analysisAnchor.current) === false) { closeAnalysis(); return }
-    setAnalysisScope({ kind: 'all' })
+    if (!retryBeforeCreation) setAnalysisScope({ kind: 'all' })
     confirmAnalysis()
   }
   const analysisControl = <>
@@ -878,8 +880,8 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
             ? <button type="button" disabled={analysis.stopping || waitingForStart} className="analysis-secondary" onClick={() => { void analysis.stop() }}>
                 {pauseSupported ? <Pause aria-hidden="true" /> : <Square aria-hidden="true" />}{pauseSupported ? '暂停生成' : '停止生成'}</button> : null}
             {analysisState !== 'running' && analysisState !== 'idle' &&
-              <button type="button" className="analysis-secondary" onClick={again}>{failure && !activeTask ? '重试生成' : '再次洞察'}</button>}
-            {analysis.resumable && <button className="analysis-primary" type="button" disabled={analysis.stopping} onClick={() => { void analysis.run() }}>
+              <button type="button" className="analysis-secondary" disabled={!!analysis.resuming} onClick={again}>{retryBeforeCreation ? '重试生成' : '再次洞察'}</button>}
+            {analysis.resumable && <button className="analysis-primary" type="button" disabled={analysis.stopping || !!analysis.resuming} onClick={() => { void analysis.run() }}>
               {failure ? <RotateCw aria-hidden="true" /> : <Play aria-hidden="true" />}{failure ? '重试' : '继续洞察'}</button>}
             {reportAvailable &&
               <button type="button" className="analysis-primary" onClick={() => {

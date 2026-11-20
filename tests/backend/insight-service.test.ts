@@ -1,13 +1,13 @@
-import { expect, test } from 'vitest'
+import { expect, test, vi } from 'vitest'
 import { createAiService, type RuntimeInput, type RuntimeRunner } from '../../electron/main/ai-service'
 import type { AnalysisTask } from '../../src/shared/ai-contract'
 import { defaultProcessing } from '../../src/shared/settings-contract'
 import { defaultPrompts } from '../../src/shared/system-prompts'
 import type { AppError } from '../../electron/main/app-error-logs'
 
-function fixture(run?: RuntimeRunner['run'], logError?: (entry: AppError) => void) {
+function fixture(run?: RuntimeRunner['run'], logError?: (entry: AppError) => void, beforeStopWrite?: () => void) {
   const model = { id: 'm', label: '本地测试', model: 'm', baseUrl: 'http://localhost', contextWindow: 16000, maxTokens: 1000, version: 1, enabled: true, hasCredential: true }
-  const task: AnalysisTask = { id: '1', scope: { kind: 'all' }, conversationId: '9', modelId: 'm', state: 'queued', analyzedMessages: 0, totalMessages: 1, skippedMessages: 0, usage: {}, valid: true, eventSequence: 1 }
+  const task: AnalysisTask = { id: '1', scope: { kind: 'all' }, conversationId: '9', modelId: 'm', state: 'queued', analyzedMessages: 0, totalMessages: 1, skippedMessages: 0, usage: {}, valid: true, eventSequence: 1, elapsedMs: 0 }
   const message = { id: '13800138000', revision: 'revision-13800138000', sentAtMs: 1000, senderName: '示例甲', isSelf: true, text: '联系 13800138000', replyToMessageId: null }
   const snapshot = { taskId: '1', scope: { kind: 'all' }, timezone: 'Asia/Shanghai', createdAtMs: 1000, sourceStartTimeMs: 1000, sourceEndTimeMs: 1000, sources: [{ messageId: message.id, revision: message.revision }] }
   const saved: any[] = [], usage: any[] = [], requests: RuntimeInput[] = []
@@ -18,11 +18,16 @@ function fixture(run?: RuntimeRunner['run'], logError?: (entry: AppError) => voi
     if (method === 'modelSecret') return { model, encryptedKey: 'encrypted' }
     if (method === 'analysisContext') return { task, model, promptVersion: 'conversation-insights-v1', snapshot, messages: [], batches: [], checkpoint, systemPrompts: { ...defaultPrompts, insightReading: '自定义阅读' } }
     if (method === 'readInsightSources') { expect(args[0]).toEqual({ taskId: '1', messageIds: [message.id] }); return [message] }
-    if (method === 'saveAnalysis') { Object.assign(task, args[1]); return { ...task } }
+    if (method === 'saveAnalysis') {
+      if (args[1].state === 'stopped') beforeStopWrite?.()
+      if (typeof args[2] === 'number') task.elapsedMs! += Math.max(0, Date.now() - args[2])
+      Object.assign(task, args[1])
+      return { ...task }
+    }
     if (method === 'recordUsage') { usage.push(args[0]); return { ...task } }
     if (method === 'saveInsightCheckpoint') {
       if (task.state === 'stopped') return { ...task }
-      checkpoint = args[1]; saved.push(JSON.parse(checkpoint!)); task.analyzedMessages = args[2].length; return { ...task }
+      checkpoint = args[1]; saved.push(JSON.parse(checkpoint!)); task.analyzedMessages = args[2].length; task.elapsedMs = args[3]; return { ...task }
     }
     if (method === 'completeAnalysis') { completed++; task.state = 'completed'; task.report = args[1]; return { ...task } }
     throw new Error(method)
@@ -72,15 +77,23 @@ test('reports the failed insight phase, saved coverage and the budget that stopp
 })
 
 test('pausing an insight persists its cancelled attempt before locking the task as stopped', async () => {
-  const f = fixture(async (_input, options) => new Promise((_resolve, reject) => {
-    options.signal.addEventListener('abort', () => reject(new DOMException('停止', 'AbortError')), { once: true })
-  }))
-  await f.service.confirmAnalysis({ token: 't', requestId: 'r' })
-  await expect.poll(() => f.requests.length).toBe(1)
-  await f.service.stopAnalysis('1')
-  await f.service.idle()
-  expect(f.task.state).toBe('stopped')
-  expect(f.saved.at(-1).attempts.at(-1).status).toBe('failed')
-  expect(f.saved.at(-1).elapsedMs).toBeGreaterThanOrEqual(f.saved[0].elapsedMs)
-  expect(f.completed()).toBe(0)
+  const clock = vi.spyOn(Date, 'now').mockReturnValue(1000)
+  try {
+    const f = fixture(async (_input, options) => new Promise((_resolve, reject) => {
+      options.signal.addEventListener('abort', () => reject(new DOMException('停止', 'AbortError')), { once: true })
+    }), undefined, () => clock.mockReturnValue(4500))
+    await f.service.confirmAnalysis({ token: 't', requestId: 'r' })
+    await expect.poll(() => f.requests.length).toBe(1)
+    expect(await f.service.getAnalysis('1')).toMatchObject({ state: 'running', elapsedMs: 0, elapsedSampledAtMs: 1000 })
+    clock.mockReturnValue(4000)
+    const stopped = await f.service.stopAnalysis('1')
+    clock.mockReturnValue(7000)
+    expect(stopped).not.toHaveProperty('elapsedSampledAtMs')
+    expect(await f.service.getAnalysis('1')).toMatchObject({ state: 'stopped', elapsedMs: 3500 })
+    expect(f.saved.at(-1).attempts.at(-1).status).toBe('failed')
+    expect(f.saved.at(-1).elapsedMs).toBe(3000)
+    expect(f.completed()).toBe(0)
+  } finally {
+    clock.mockRestore()
+  }
 })

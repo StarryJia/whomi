@@ -1,4 +1,4 @@
-import { afterEach, expect, test } from 'vitest'
+import { afterEach, expect, test, vi } from 'vitest'
 import { createAiRepository } from '../../electron/data/ai/repository'
 import { ANALYSIS_PROMPT_VERSION } from '../../electron/data/ai/prompt-version'
 import { openStore } from '../../electron/data/db/open'
@@ -129,7 +129,9 @@ test('省略范围时包含无日期消息，改名仅更新显示名和事件�
   const { repository } = await setup()
   const preparation = await repository.prepareAnalysis({ conversationId: '1', modelId: 'example' })
   const before = await repository.confirmAnalysis({ token: preparation.token, requestId: 'all' })
-  expect(before).toMatchObject({ title: '会话洞察', scope: { kind: 'all' }, totalMessages: 4 })
+  expect(before).toMatchObject({ title: '会话洞察', scope: { kind: 'all' }, totalMessages: 4, timezone: preparation.timezone })
+  expect(repository.listAnalyses()).toEqual([before])
+  expect(() => validateAiResult('listAnalyses', [before])).not.toThrow()
   const renamed = await repository.renameAnalysis({ taskId: before.id, title: ' 那次合作 ' })
   expect(renamed.title).toBe('那次合作')
   expect(renamed.scope).toEqual(before.scope)
@@ -242,7 +244,7 @@ test('报告拒绝未完整覆盖、跨会话或版本不符的来源', async ()
     citations: [{ id: 'time', conversationId: '1', fragments: [{ sources: [{ messageId: '1', revision: source.revision }] }] }], limitations: [],
   }
   await expect(repository.completeAnalysis(task.id, report)).rejects.toHaveProperty('code', 'ANALYSIS_INCOMPLETE')
-  await repository.saveInsightCheckpoint(task.id, 'complete', ['1', '4'])
+  await repository.saveInsightCheckpoint(task.id, 'complete', ['1', '4'], 2500)
   await expect(repository.completeAnalysis(task.id, { ...report, citations: [{ ...report.citations[0], conversationId: '2' }] }))
     .rejects.toHaveProperty('code', 'INVALID_INSIGHT_CITATION')
   for (const ref of [{ messageId: '2', revision: source.revision }, { messageId: '1', revision: '0'.repeat(64) }]) {
@@ -250,9 +252,15 @@ test('报告拒绝未完整覆盖、跨会话或版本不符的来源', async ()
     await expect(repository.completeAnalysis(task.id, { ...report, citations })).rejects.toHaveProperty('code', 'INVALID_INSIGHT_CITATION')
   }
   expect(repository.getAnalysis(task.id)).not.toHaveProperty('insightContentRevision')
-  const completed = await repository.completeAnalysis(task.id, report)
-  expect(completed).toMatchObject({ state: 'completed', insightContentRevision: expect.stringMatching(/^[a-f0-9]{64}$/), report })
-  expect(await repository.completeAnalysis(task.id, report)).toEqual(completed)
+  const clock = vi.spyOn(Date, 'now').mockReturnValue(4000)
+  try {
+    const completed = await repository.completeAnalysis(task.id, report, 1000)
+    expect(completed).toMatchObject({ state: 'completed', elapsedMs: 5500,
+      insightContentRevision: expect.stringMatching(/^[a-f0-9]{64}$/), report })
+    expect(await repository.completeAnalysis(task.id, report, 1000)).toEqual(completed)
+  } finally {
+    clock.mockRestore()
+  }
 })
 
 test('回复补全或重新确认本人后，旧报告仍能定位原文，未完任务保持原来的输入版本', async () => {

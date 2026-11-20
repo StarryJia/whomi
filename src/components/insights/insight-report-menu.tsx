@@ -5,7 +5,7 @@ import { insightTitle } from '../../shared/conversation-insights'
 import type { ListArrangement } from '../../shared/desktop-api'
 import { ManagedRow } from '../ui/managed-row'
 import { ExceptionNotice } from '../ui/exception-notices'
-import { insightCompletedAt, insightRange, insightTaskNumber, insightTaskTitle } from './insight-task'
+import { insightCompletedAt, insightReportRange, insightTaskNumber, insightTaskTitle } from './insight-task'
 
 export type RenameReport = (taskId: string, title: string) => Promise<void>
 
@@ -66,7 +66,7 @@ export function InsightRenameForm({ title, onCancel, onSave, onBusy }: {
 
 function ReportRowMetadata({ task }: { task: AnalysisTask }) {
   return <>
-    <span className="insight-row-range"><span>对话范围 {insightRange(task)}</span><span>生成于 {insightCompletedAt(task.completedAtMs)}</span></span>
+    <span className="insight-row-range"><span>对话范围 {insightReportRange(task)}</span><span>生成于 {insightCompletedAt(task.completedAtMs)}</span></span>
     <span className="insight-row-model"><span>模型</span><span>{task.modelIdentity?.label || task.modelId || '—'}</span></span>
     <span className="insight-row-number">{insightTaskNumber(task)}</span>
   </>
@@ -86,7 +86,7 @@ export function InsightReportRow({ task, conversationTitle, onOpen, onRename, on
   const row = useRef<HTMLLIElement>(null)
   const title = insightTaskTitle(task)
   const number = insightTaskNumber(task)
-  const range = insightRange(task)
+  const range = insightReportRange(task)
   function endEdit() {
     setEditing(false)
     requestAnimationFrame(() => row.current?.querySelector<HTMLButtonElement>('button[data-list-id]')?.focus({ preventScroll: true }))

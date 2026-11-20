@@ -48,6 +48,11 @@ function key(value: unknown): value is string { return text(value, 256) }
 function object(value: unknown): value is Record<string, unknown> { return !!value && typeof value === 'object' && !Array.isArray(value) }
 function fields(value: unknown, allowed: string[]): asserts value is Record<string, unknown> { if (!object(value) || Object.keys(value).some(field => !allowed.includes(field))) fail('INVALID_ARGUMENT') }
 function parse<T>(value: string): T { return JSON.parse(value) as T }
+function insightElapsedAt(row: AnalysisRow, now: number, sampledAtMs?: number) {
+  if (sampledAtMs === undefined) return row.elapsed_ms
+  if (row.prompt_version !== INSIGHT_PROMPT_VERSION || !Number.isSafeInteger(sampledAtMs) || sampledAtMs < 0) fail('INVALID_INSIGHT_CHECKPOINT')
+  return row.elapsed_ms + BigInt(Math.max(0, now - sampledAtMs))
+}
 function optionalNumber(value: bigint | null): number | null { return value === null ? null : Number(value) }
 function usage(value: AiUsage): AiUsage {
   fields(value, [...usageFields, 'incomplete'])
@@ -207,7 +212,7 @@ export function createAiRepository(store: Store, write: WriterQueue) {
     const valid = row.self_fingerprint === current.fingerprint
     const counterpartName = row.state === 'completed' && valid && current.kind === 'direct' && current.selfName !== null
       ? readCounterpartName(row.conversation_id) : undefined
-    const insight = reader.prepare('SELECT scope,source_start_time_ms AS start,source_end_time_ms AS end FROM ai_insight_snapshots WHERE task_id=?').get(row.id) as { scope: string; start: bigint | null; end: bigint | null } | undefined
+    const insight = reader.prepare('SELECT scope,timezone,source_start_time_ms AS start,source_end_time_ms AS end FROM ai_insight_snapshots WHERE task_id=?').get(row.id) as { scope: string; timezone: string; start: bigint | null; end: bigint | null } | undefined
     const range = insight ?? reader.prepare('SELECT min(sent_at_ms) AS start,max(sent_at_ms) AS end FROM messages WHERE conversation_id=? AND id<=?').get(row.conversation_id, row.snapshot_max_id) as { start: bigint | null; end: bigint | null }
     const snapshot = reader.prepare('SELECT data FROM ai_model_versions WHERE model_id=? AND version=?').get(row.model_id, row.model_version) as { data: string } | undefined
     let modelIdentity: AnalysisTask['modelIdentity']
@@ -221,7 +226,7 @@ export function createAiRepository(store: Store, write: WriterQueue) {
       ...(row.thinking_level ? { thinkingLevel: row.thinking_level } : {}),
       id: String(row.id), conversationId: String(row.conversation_id), conversationTitle: current.title, ...(counterpartName && { counterpartName }),
       ...(row.title === null ? {} : { title: row.title }),
-      ...(insight ? { scope: parse<InsightScope>(insight.scope), insightSelfFingerprint: row.self_fingerprint, elapsedMs: Number(row.elapsed_ms) } : {}),
+      ...(insight ? { scope: parse<InsightScope>(insight.scope), timezone: insight.timezone, insightSelfFingerprint: row.self_fingerprint, elapsedMs: Number(row.elapsed_ms) } : {}),
       ...(report?.content_revision ? { insightContentRevision: report.content_revision } : {}),
       modelId: row.model_id, ...(modelIdentity ? { modelIdentity } : {}),
       createdAtMs: optionalNumber(row.created_at_ms), completedAtMs: optionalNumber(row.completed_at_ms),
@@ -426,13 +431,15 @@ export function createAiRepository(store: Store, write: WriterQueue) {
       }
       return { ...context, messages: messages(String(row.conversation_id), row.snapshot_max_id).filter(analyzable), batches: (reader.prepare('SELECT data FROM ai_analysis_batches WHERE task_id=? ORDER BY batch_index').all(row.id) as { data: string }[]).map(batch => parse<AnalysisBatch>(batch.data)) }
     },
-    async saveAnalysis(taskId: string, patch: AnalysisPatch): Promise<AnalysisTask> {
+    async saveAnalysis(taskId: string, patch: AnalysisPatch, sampledAtMs?: number): Promise<AnalysisTask> {
       patchState(patch)
       await write(() => {
         const row = analysisRow(taskId)
         if (!activeStates.has(row.state)) return
         if (patch.state === 'completed') fail('REPORT_REQUIRED')
-        db.prepare('UPDATE ai_analysis_tasks SET state=?,error=?,checkpoint=?,event_sequence=event_sequence+1 WHERE id=?').run(patch.state ?? row.state, Object.hasOwn(patch, 'error') ? patch.error ?? null : row.error, patch.checkpoint === undefined ? row.checkpoint : patch.checkpoint, row.id)
+        db.prepare('UPDATE ai_analysis_tasks SET state=?,error=?,checkpoint=?,elapsed_ms=?,event_sequence=event_sequence+1 WHERE id=?').run(
+          patch.state ?? row.state, Object.hasOwn(patch, 'error') ? patch.error ?? null : row.error,
+          patch.checkpoint === undefined ? row.checkpoint : patch.checkpoint, insightElapsedAt(row, Date.now(), sampledAtMs), row.id)
         if (patch.usage) insertUsage({ ownerKind: 'analysis', ownerId: taskId, requestId: 'snapshot', usage: patch.usage })
       })
       return repository.getAnalysis(taskId)
@@ -484,7 +491,7 @@ export function createAiRepository(store: Store, write: WriterQueue) {
       })())
       return repository.getAnalysis(taskId)
     },
-    async completeAnalysis(taskId: string, report: SavedReport): Promise<AnalysisTask> {
+    async completeAnalysis(taskId: string, report: SavedReport, sampledAtMs?: number): Promise<AnalysisTask> {
       await write(() => db.transaction(() => {
         const row = analysisRow(taskId); if (!activeStates.has(row.state)) return; assertCurrent(row)
         if (row.prompt_version === INSIGHT_PROMPT_VERSION) {
@@ -519,7 +526,9 @@ export function createAiRepository(store: Store, write: WriterQueue) {
         const data = JSON.stringify(report)
         const revision = isInsightReport(report) ? createHash('sha256').update(data).digest('hex') : null
         db.prepare('INSERT INTO ai_reports(task_id,data,content_revision) VALUES(?,?,?)').run(row.id, data, revision)
-        db.prepare("UPDATE ai_analysis_tasks SET state='completed',completed_at_ms=?,error=NULL,event_sequence=event_sequence+1 WHERE id=?").run(Date.now(), row.id)
+        const completedAtMs = Date.now()
+        db.prepare("UPDATE ai_analysis_tasks SET state='completed',completed_at_ms=?,elapsed_ms=?,error=NULL,event_sequence=event_sequence+1 WHERE id=?")
+          .run(completedAtMs, insightElapsedAt(row, completedAtMs, sampledAtMs), row.id)
       })())
       return repository.getAnalysis(taskId)
     },

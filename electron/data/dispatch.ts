@@ -16,7 +16,7 @@ const aiStorageArity = {
   listModels: [0, 0], saveModel: [1, 2], modelSecret: [1, 2], listSkills: [0, 0], registerSkill: [1, 1],
   previewInsightScope: [1, 1], prepareAnalysis: [1, 2], discardAnalysisPreparation: [1, 1], confirmAnalysis: [1, 2], getAnalysis: [1, 1], listAnalyses: [0, 1], arrangeAnalysis: [1, 1], renameAnalysis: [1, 1], deleteAnalysis: [1, 1], getReport: [1, 1],
   readInsightSources: [1, 1], readInsightCitation: [1, 1], saveInsightCheckpoint: [3, 4],
-  analysisContext: [1, 1], saveAnalysis: [2, 2], commitBatch: [2, 2], completeAnalysis: [2, 2], resumeAnalysis: [1, 1],
+  analysisContext: [1, 1], saveAnalysis: [2, 3], commitBatch: [2, 2], completeAnalysis: [2, 3], resumeAnalysis: [1, 1],
   openThread: [1, 1], listThreads: [1, 1], createThread: [1, 1], getThread: [1, 1], arrangeThread: [2, 2], deleteThread: [2, 2], createTurn: [1, 1], turnContext: [1, 1], saveTurn: [2, 2], beginRetryTurn: [1, 1],
   recordUsage: [1, 1], recover: [0, 0],
 } as const satisfies Record<keyof AiRepository, readonly [number, number]>

@@ -57,6 +57,7 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
   const active = new Map<string, Work>()
   const work = new Set<Work>()
   const deleting = new Set<string>()
+  const elapsedSamples = new Map<string, { elapsedMs: number; sampledAtMs: number }>()
   const listeners = new Set<(event: AiEvent) => void>()
   const pending: { priority: number; run(): Promise<void>; reject(error: unknown): void }[] = []
   let working = false, closing = false
@@ -70,7 +71,16 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
     return operation
   }
   const storage = async <T>(method: string, ...args: unknown[]) => await options.storage(method, args) as T
-  function publish(event: AiEvent) { options.changed?.(event); for (const listener of listeners) { try { listener(event) } catch { /* 窗口关闭不能改变任务提交。 */ } } }
+  function withElapsedSample(task: AnalysisTask): AnalysisTask {
+    const sample = elapsedSamples.get(task.id)
+    return sample && task.state === 'running' && task.elapsedMs === sample.elapsedMs
+      ? { ...task, elapsedSampledAtMs: sample.sampledAtMs } : task
+  }
+  function publish(event: AiEvent) {
+    const update = event.kind === 'analysis' ? { ...event, snapshot: withElapsedSample(event.snapshot) } : event
+    options.changed?.(update)
+    for (const listener of listeners) { try { listener(update) } catch { /* 窗口关闭不能改变任务提交。 */ } }
+  }
   function available(conversationId: string) {
     if (deleting.has(conversationId)) throw new BoundaryError('CONVERSATION_DELETING', '会话正在删除，请稍后重试。')
   }
@@ -148,7 +158,11 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
     void task.catch(() => {})
     return record
   }
-  async function saveAnalysis(id: string, patch: unknown) { const snapshot = await storage<AnalysisTask>('saveAnalysis', id, patch); publish({ kind: 'analysis', snapshot }); return snapshot }
+  async function saveAnalysis(id: string, patch: unknown, sampledAtMs?: number) {
+    const snapshot = await storage<AnalysisTask>('saveAnalysis', id, patch, ...(sampledAtMs === undefined ? [] : [sampledAtMs]))
+    publish({ kind: 'analysis', snapshot })
+    return snapshot
+  }
   async function saveTurn(id: string, patch: unknown) { const snapshot = await storage<AiTurn>('saveTurn', id, patch); publish({ kind: 'turn', snapshot }); return snapshot }
   async function analysisProcessor(id: string, conversationId: string) {
     const processing = await options.processing?.(conversationId)
@@ -173,9 +187,12 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
           throw new BoundaryError('INVALID_INSIGHT_CHECKPOINT', '洞察进度无法恢复，请重新生成。')
         }
         phase = checkpoint?.stage ?? 'reading'
-        await saveAnalysis(id, { state: 'running', error: undefined })
+        const running = await storage<AnalysisTask>('saveAnalysis', id, { state: 'running', error: undefined })
+        const elapsedSample = { elapsedMs: running.elapsedMs ?? 0, sampledAtMs: Date.now() }
+        elapsedSamples.set(id, elapsedSample)
+        publish({ kind: 'analysis', snapshot: running })
         const report = await generateInsight({ snapshot: initial.snapshot, conversationId: initial.task.conversationId, model: initial.model,
-          prompts, limits: defaultInsightRunLimits, checkpoint, thinkingLevel: initial.task.thinkingLevel }, {
+          prompts, limits: defaultInsightRunLimits, checkpoint, elapsedMs: running.elapsedMs, thinkingLevel: initial.task.thinkingLevel }, {
           signal, onText: () => {},
           read: async messageIds => {
             const sources = await storage<InsightSourceMessage[]>('readInsightSources', { taskId: id, messageIds })
@@ -184,9 +201,11 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
               return protectedSource ? { ...source, text: protectedSource.text, senderName: protectedSource.senderName } : source
             })
           },
-          saveCheckpoint: async state => {
+          saveCheckpoint: async (state, sampledAtMs) => {
             phase = state.stage
             const snapshot = await storage<AnalysisTask>('saveInsightCheckpoint', id, JSON.stringify(state), state.coveredMessageIds, state.elapsedMs)
+            elapsedSample.elapsedMs = state.elapsedMs
+            elapsedSample.sampledAtMs = sampledAtMs
             analyzedMessages = snapshot.analyzedMessages
             publish({ kind: 'analysis', snapshot })
           },
@@ -196,7 +215,7 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
           }, runtimeOptions.signal),
         })
         signal.throwIfAborted()
-        const snapshot = await storage<AnalysisTask>('completeAnalysis', id, report)
+        const snapshot = await storage<AnalysisTask>('completeAnalysis', id, report, elapsedSamples.get(id)?.sampledAtMs)
         publish({ kind: 'analysis', snapshot })
         return
       }
@@ -307,8 +326,11 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
       if (!signal.aborted) {
         options.logError?.({ area: 'insight', taskId: id, phase, error, analyzedMessages,
           budget: error instanceof InsightBudgetError ? error.budget : undefined })
-        await saveAnalysis(id, { state: 'failed', error: error instanceof BoundaryError ? error.action : '分析失败，请重试。' })
+        await saveAnalysis(id, { state: 'failed', error: error instanceof BoundaryError ? error.action : '分析失败，请重试。' },
+          elapsedSamples.get(id)?.sampledAtMs)
       }
+    } finally {
+      elapsedSamples.delete(id)
     }
   }
   async function executeTurn(id: string, signal: AbortSignal) {
@@ -388,7 +410,9 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
     listSkills: () => storage('listSkills'), prepareAnalysis: input => control(async () => { available(input.conversationId); const { model } = await storage<{ model: AiModel }>('modelSecret', input.modelId); return storage('prepareAnalysis', { ...input, thinkingLevel: await acceptedThinking(model, input.thinkingLevel) }) }),
     discardAnalysisPreparation: token => control(() => storage('discardAnalysisPreparation', token)),
     confirmAnalysis: input => control(async () => { const task = await storage<AnalysisTask>('confirmAnalysis', input); available(task.conversationId); if (task.state === 'queued') launch(`analysis:${task.id}`, task.conversationId, signal => executeAnalysis(task.id, signal), task.modelId); return task }),
-    getAnalysis: id => storage('getAnalysis', id), listAnalyses: id => storage('listAnalyses', id), getReport: id => storage('getReport', id),
+    getAnalysis: async id => withElapsedSample(await storage<AnalysisTask>('getAnalysis', id)),
+    listAnalyses: async id => (await storage<AnalysisTask[]>('listAnalyses', id)).map(withElapsedSample),
+    getReport: id => storage('getReport', id),
     previewInsightScope: input => storage('previewInsightScope', input),
     readInsightCitation: input => storage('readInsightCitation', input),
     renameAnalysis: input => control(async () => {
@@ -414,10 +438,11 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
     stopAnalysis: id => control(async () => {
       const task = await storage<AnalysisTask>('getAnalysis', id)
       const running = active.get(`analysis:${id}`)
+      const elapsedSample = elapsedSamples.get(id)
       running?.abort.abort()
-      // 洞察的取消回执先写入断点，避免恢复时把暂停时间计入请求耗时。
+      // 断点可能在停止过程中更新，确认时用同一次运行的最新计时点。
       if (task.scope) await running?.task.catch(() => {})
-      return saveAnalysis(id, { state: 'stopped' })
+      return saveAnalysis(id, { state: 'stopped' }, elapsedSample?.sampledAtMs)
     }),
     continueAnalysis: id => control(async () => {
       const current = await storage<AnalysisTask>('getAnalysis', id)
