@@ -1,6 +1,6 @@
 import type { ThinkingLevel } from '../../shared/thinking'
 import type { ReferenceRange } from './selection'
-import type { AnalysisPreparation, AnalysisTask, AiState, AiUsage, AiThread, AiThreadSummary, AiModelIdentity, AiMethods, PrepareAnalysisInput } from '../../shared/ai-contract'
+import type { AnalysisPreparation, AnalysisTask, AnalysisUsage, AiState, AiUsage, AiThread, AiThreadSummary, AiModelIdentity, AiMethods, PrepareAnalysisInput } from '../../shared/ai-contract'
 import type { InsightScope } from '../../shared/conversation-insights'
 import type { ModelOption } from './model-selector'
 
@@ -9,10 +9,10 @@ export type AnalysisProgress = {
   analyzedMessages: number
   totalMessages: number
   outputTokensPerSecond?: number
-  usage?: GenerationUsage
+  usage?: AnalysisUsage
   task?: AnalysisTask
 }
-export type AnalysisResult = { taskId?: string; usage?: GenerationUsage; task?: AnalysisTask }
+export type AnalysisResult = { taskId?: string; usage?: AnalysisUsage; task?: AnalysisTask }
 export type ConversationRequest = {
   requestId?: string
   turnId?: string

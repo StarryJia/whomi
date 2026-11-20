@@ -1,6 +1,6 @@
-import { useEffectEvent, useId, useMemo, useState } from 'react'
+import { useEffect, useEffectEvent, useId, useMemo, useState } from 'react'
 import { Check, ChevronDown, CircleAlert, Pause } from 'lucide-react'
-import type { AnalysisTask, AiUsage } from '../../shared/ai-contract'
+import type { AnalysisTask, AnalysisUsage } from '../../shared/ai-contract'
 import { defaultInsightTitle, isInsightReport } from '../../shared/conversation-insights'
 import { isMemoryReport } from '../../shared/memory'
 import { thinkingLevelLabel } from '../conversation-ai/model-selector'
@@ -33,9 +33,14 @@ export function formatInsightRange(start?: number | null, end?: number | null, t
   return start == null || end == null ? '时间未记录' : formatInsightDate(start, timezone) + '—' + formatInsightDate(end, timezone)
 }
 
+export function insightReportRange(task: AnalysisTask) {
+  const timezone = task.timezone ?? (task.scope?.kind === 'dates' ? task.scope.timezone : undefined)
+  return formatInsightRange(task.sourceStartTimeMs, task.sourceEndTimeMs, timezone)
+}
+
 export function insightRange(task: AnalysisTask) {
   if (task.scope?.kind === 'dates') return task.scope.startDate.replaceAll('-', '.') + '—' + task.scope.endDate.replaceAll('-', '.')
-  return formatInsightRange(task.sourceStartTimeMs, task.sourceEndTimeMs)
+  return insightReportRange(task)
 }
 
 export function insightCompletedAt(value?: number | null) {
@@ -52,6 +57,19 @@ export function insightTaskNumber(task: AnalysisTask) {
 }
 
 export const known = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && value >= 0
+
+export function useInsightRunDuration(task?: AnalysisTask) {
+  const sampledAt = task?.state === 'running' && task.valid ? task.elapsedSampledAtMs : undefined
+  const [now, setNow] = useState(Date.now)
+  useEffect(() => {
+    if (sampledAt === undefined) return
+    setNow(Date.now())
+    const interval = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(interval)
+  }, [sampledAt])
+  const elapsed = task?.elapsedMs
+  return sampledAt === undefined || elapsed === undefined ? elapsed : elapsed + Math.max(0, now - sampledAt)
+}
 
 export function insightElapsed(milliseconds?: number) {
   if (!known(milliseconds)) return '—'
@@ -84,11 +102,14 @@ export function InsightStatus({ status }: { status: '生成中' | '已暂停' | 
   </span>
 }
 
-export function InsightTaskDetails({ usage, range, outputSpeed }: { usage?: AiUsage; range?: string; outputSpeed?: number }) {
+export function InsightTaskDetails({ usage, range, outputSpeed }: { usage?: AnalysisUsage; range?: string; outputSpeed?: number }) {
   const [open, setOpen] = useState(false)
   const id = useId()
-  const input = usage?.totalInputTokens ?? (known(usage?.inputTokens) ? usage.inputTokens + (usage.cacheReadTokens ?? 0) + (usage.cacheWriteTokens ?? 0) : undefined)
-  const partialInput = usage?.incomplete || usage?.totalInputTokens === undefined && (known(usage?.cacheReadTokens) !== known(usage?.cacheWriteTokens))
+  const cacheRead = usage?.cacheReadTokens
+  const cacheWrite = usage?.cacheWriteTokens
+  const partialCache = usage?.cacheReadTokensIncomplete || usage?.cacheWriteTokensIncomplete || known(cacheRead) !== known(cacheWrite)
+  const input = usage?.totalInputTokens ?? (known(usage?.inputTokens) ? usage.inputTokens + (cacheRead ?? 0) + (cacheWrite ?? 0) : undefined)
+  const partialInput = usage?.incomplete || usage?.totalInputTokens === undefined && partialCache
   const computed = known(usage?.outputTokens) && known(usage.durationMs) && usage.durationMs > 0
     ? usage.outputTokens * 1000 / usage.durationMs : outputSpeed ?? usage?.outputTokensPerSecond
   return <div className="insight-task-details">
@@ -101,8 +122,8 @@ export function InsightTaskDetails({ usage, range, outputSpeed }: { usage?: AiUs
         <div><dt>输入词元</dt><dd>{known(input) ? (partialInput ? '至少 ' : '') + formatInsightNumber(input) : '—'}</dd></div>
         <div><dt>输出词元</dt><dd>{known(usage?.outputTokens) ? formatInsightNumber(usage.outputTokens) : '—'}</dd></div>
         <div className="insight-detail-wide"><dt>平均输出速度</dt><dd>{known(computed) ? formatInsightNumber(computed) + ' 词元/秒' : '—'}</dd></div>
-        {known(usage?.cacheReadTokens) && <div><dt>缓存读取</dt><dd>{formatInsightNumber(usage.cacheReadTokens)} 词元</dd></div>}
-        {known(usage?.cacheWriteTokens) && <div><dt>缓存写入</dt><dd>{formatInsightNumber(usage.cacheWriteTokens)} 词元</dd></div>}
+        <div><dt>缓存读取</dt><dd>{!usage?.cacheReadTokensIncomplete && known(cacheRead) ? formatInsightNumber(cacheRead) + ' 词元' : '—'}</dd></div>
+        <div><dt>缓存写入</dt><dd>{!usage?.cacheWriteTokensIncomplete && known(cacheWrite) ? formatInsightNumber(cacheWrite) + ' 词元' : '—'}</dd></div>
       </dl>
     </div>
   </div>

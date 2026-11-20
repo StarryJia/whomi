@@ -4,6 +4,8 @@ import type { AnalysisProgress, AnalysisResult, ConversationAiAdapter } from './
 
 type Phase = 'idle' | 'running' | 'done' | 'stopped' | 'failed' | 'interrupted'
 type Request = Parameters<ConversationAiAdapter['analyze']>[0]
+type TaskView = { phase: Phase; progress?: AnalysisProgress; result?: AnalysisResult; error: string; blocked: boolean }
+type CreationFailure = { scope: Request['scope']; error: string; previous?: TaskView }
 const incompatible = new Set(['MODEL_CHANGED', 'INVALID_MODEL', 'IDENTITY_CHANGED', 'PROMPT_CHANGED', 'PROCESSING_CHANGED', 'INVALID_TASK', 'INVALID_OWNER'])
 
 function cannotResume(error: unknown) {
@@ -33,6 +35,8 @@ export function useAnalysisTask(adapter: ConversationAiAdapter | undefined, conv
   const [confirming, setConfirming] = useState(!initialTaskId)
   const [blocked, setBlocked] = useState(false)
   const [stopping, setStopping] = useState(false)
+  const [creationFailure, setCreationFailure] = useState<CreationFailure>()
+  const [resuming, setResuming] = useState<'continue' | 'retry'>()
   const operation = useRef<AbortController | undefined>(undefined)
   const generation = useRef(0)
   const task = progress?.task
@@ -40,6 +44,7 @@ export function useAnalysisTask(adapter: ConversationAiAdapter | undefined, conv
     (phase === 'stopped' || phase === 'failed' || phase === 'interrupted'))
 
   function receive(snapshot: AnalysisTask) {
+    setResuming(undefined)
     setProgress({ task: snapshot, analyzedMessages: snapshot.analyzedMessages, totalMessages: snapshot.totalMessages, usage: snapshot.usage })
     setResult({ taskId: snapshot.id, usage: snapshot.usage, task: snapshot })
     setPhase(phaseOf(snapshot))
@@ -51,7 +56,7 @@ export function useAnalysisTask(adapter: ConversationAiAdapter | undefined, conv
     const observer = new AbortController()
     const version = ++generation.current
     setPhase('idle'); setProgress(undefined); setResult(undefined)
-    setError(''); setConfirming(!preferredTask.current); setBlocked(false); setStopping(false)
+    setError(''); setConfirming(!preferredTask.current); setBlocked(false); setStopping(false); setResuming(undefined); setCreationFailure(undefined)
     if (!fromMemory || preferredTask.current) void adapter?.watchAnalysis?.(conversationId, snapshot => {
       if (version === generation.current) receive(snapshot)
     }, observer.signal, preferredTask.current).catch(cause => {
@@ -72,13 +77,16 @@ export function useAnalysisTask(adapter: ConversationAiAdapter | undefined, conv
     const controller = new AbortController()
     operation.current = controller
     const version = ++generation.current
+    const previous = creationFailure?.previous ?? (task || result?.taskId
+      ? { phase, progress, result, error: error || task?.error || '', blocked } : undefined)
     let accepted = false
-    setPhase('running'); setConfirming(false); setError(''); setBlocked(false)
-    if (request) { setProgress(undefined); setResult(undefined) }
+    setConfirming(false); setError(''); setBlocked(false); setCreationFailure(undefined)
+    if (request) { setPhase('running'); setProgress(undefined); setResult(undefined) }
+    else setResuming(phase === 'stopped' ? 'continue' : 'retry')
     function update(value: AnalysisProgress) {
       if (version !== generation.current) return
       if (value.task) { accepted = true; preferredTask.current = value.task.id; receive(value.task) }
-      else setProgress(value)
+      else if (request || accepted) setProgress(value)
     }
     try {
       const outcome = request
@@ -90,13 +98,17 @@ export function useAnalysisTask(adapter: ConversationAiAdapter | undefined, conv
       else { setPhase('failed'); setError('报告尚未保存，请重试。') }
     } catch (cause) {
       if (version !== generation.current) return
-      // 新分析在创建前失败时，原任务的断点仍应可用。
-      if (request && !accepted && task) receive(task)
-      else setPhase('failed')
-      setError(failure(cause))
-      if ((!request || accepted) && cannotResume(cause)) setBlocked(true)
+      if (request && !accepted) {
+        setCreationFailure({ scope: request.scope, error: failure(cause), previous })
+        setProgress(undefined)
+      } else {
+        setError(failure(cause))
+        if (cannotResume(cause)) setBlocked(true)
+      }
+      if (request || accepted) setPhase('failed')
     } finally {
       if (operation.current === controller) operation.current = undefined
+      if (version === generation.current) setResuming(undefined)
     }
   }
 
@@ -126,5 +138,17 @@ export function useAnalysisTask(adapter: ConversationAiAdapter | undefined, conv
     }
   }
 
-  return { phase, progress, result, error, setError, confirming, setConfirming, resumable, stopping, run, stop }
+  function restorePrevious() {
+    const previous = creationFailure?.previous
+    if (!previous) return
+    setCreationFailure(undefined)
+    setPhase(previous.phase)
+    setProgress(previous.progress)
+    setResult(previous.result)
+    setError(previous.error)
+    setBlocked(previous.blocked)
+  }
+
+  return { phase, progress, result, error, setError, confirming, setConfirming, resumable, stopping, resuming,
+    creationFailure, restorePrevious, run, stop }
 }

@@ -8,7 +8,7 @@ import { ReaderDialog, actionError } from '../ui/managed-row'
 import { ExceptionNotice, ExceptionNoticeScope } from '../ui/exception-notices'
 import { InsightArticle } from './insight-article'
 import { InsightRenameForm, InsightReportRow, type RenameReport } from './insight-report-menu'
-import { formatInsightNumber, insightCompletedAt, insightElapsed, insightPercentage, insightRange, insightSpeed, InsightRing, InsightStatus, insightTaskFailed, insightTaskFailureKey, insightTaskNumber, insightTaskTitle, InsightTaskDetails, InsightTaskModel } from './insight-task'
+import { formatInsightNumber, insightCompletedAt, insightElapsed, insightPercentage, insightRange, insightReportRange, insightSpeed, InsightRing, InsightStatus, insightTaskFailed, insightTaskFailureKey, insightTaskNumber, insightTaskTitle, InsightTaskDetails, InsightTaskModel, useInsightRunDuration } from './insight-task'
 import './insights.css'
 
 type CitationTarget = { taskId: string; citationId: string; phrase: string; conversationTitle: string; fragmentCount: number }
@@ -40,7 +40,7 @@ function ReportPage({ task, report, onBack, rename, onRenameBusy, renderSource }
             {rename && <button ref={edit} className="analysis-link" type="button" onClick={() => setEditing(true)}><Pencil aria-hidden="true" />重命名</button>}
           </div>}
         <dl className="insight-reader-meta">
-          <div><dt>对话范围</dt><dd>{insightRange(task)}</dd></div>
+          <div><dt>对话范围</dt><dd>{insightReportRange(task)}</dd></div>
           <div><dt>生成时间</dt><dd>{insightCompletedAt(task.completedAtMs)}</dd></div>
           <div><dt>模型</dt><dd>{task.modelIdentity?.label || task.modelId || '—'}</dd></div>
           <div><dt>报告编号</dt><dd>{insightTaskNumber(task)}</dd></div>
@@ -70,6 +70,8 @@ function TaskRow({ task, onOpen, onStop, onContinue }: {
   const status = insightTaskFailed(task) ? '生成失败'
     : task.state === 'stopped' ? '已暂停' : '生成中'
   const failed = status === '生成失败'
+  const elapsed = useInsightRunDuration(task)
+  const count = formatInsightNumber(task.analyzedMessages) + ' / ' + formatInsightNumber(task.totalMessages) + ' 条'
   const number = insightTaskNumber(task)
   const start = status === '生成中' ? onStop : task.valid ? onContinue : undefined
   async function run() {
@@ -93,9 +95,9 @@ function TaskRow({ task, onOpen, onStop, onContinue }: {
       <div className="insight-task-row-status">
         {!failed && <InsightRing percentage={insightPercentage(task.analyzedMessages, task.totalMessages)} />}
         <div><InsightStatus status={busy ?? status} />
-          {!failed && <span> · {formatInsightNumber(task.analyzedMessages)} / {formatInsightNumber(task.totalMessages)} 条</span>}
+          {!failed && <span> · {count}</span>}
           {failed && task.analyzedMessages > 0 && <span>，已保留进度</span>}
-          {!failed && <small>已运行 {insightElapsed(task.elapsedMs)} · {insightSpeed(task.analyzedMessages, task.elapsedMs)}</small>}
+          <small>{failed && count + ' · '}已运行 {insightElapsed(elapsed)} · {insightSpeed(task.analyzedMessages, elapsed)}</small>
         </div>
       </div>
       <div className="insight-task-row-actions">
@@ -110,6 +112,11 @@ function TaskRow({ task, onOpen, onStop, onContinue }: {
     {(error || (failed && task.error)) && <ExceptionNotice title={`洞察 ${insightTaskNumber(task)} ${error ? '操作失败' : '生成失败'}`}
       detail={error?.detail ?? task.error} noticeKey={error ? `insight-action:${task.id}:${error.attempt}` : insightTaskFailureKey(task)} className="insight-error" />}
   </li>
+}
+
+function visibleTaskRows(list: HTMLElement | null) {
+  return Array.from(list?.querySelectorAll<HTMLButtonElement>('[data-insight-task] button[data-list-id]') ?? [])
+    .filter(row => !row.disabled && !row.closest('[hidden]'))
 }
 
 export function InsightsLibrary({ tasks, conversations, selectedId, onSelect, onReturn, onTask, onConversations, loading, error, retry, arrange, rename,
@@ -139,8 +146,9 @@ export function InsightsLibrary({ tasks, conversations, selectedId, onSelect, on
   const heading = useRef<HTMLHeadingElement>(null)
   const legacyReturn = useRef<HTMLButtonElement>(null)
   const previous = useRef<string | undefined>(undefined)
-  const listPosition = useRef(0)
+  const listPosition = useRef<number | undefined>(undefined)
   const retryPressed = useRef(false)
+  const deleteFocus = useRef<{ taskId: string; nearbyIds: string[] } | undefined>(undefined)
   const selected = tasks.find(task => task.id === selectedId && task.state === 'completed' && task.report)
   const selectedReport = selected?.report
   const readingNew = isInsightReport(selectedReport)
@@ -167,16 +175,35 @@ export function InsightsLibrary({ tasks, conversations, selectedId, onSelect, on
     const oldId = previous.current
     previous.current = selected?.id
     if (selected && readingNew) {
-      if (scroll) { if (!oldId) listPosition.current = scroll.scrollTop; scroll.scrollTop = 0 }
+      if (scroll) scroll.scrollTop = 0
     } else if (!selected) {
-      if (scroll && oldId) scroll.scrollTop = listPosition.current
+      const position = listPosition.current
+      listPosition.current = undefined
+      if (scroll && oldId && position !== undefined) scroll.scrollTop = position
       const row = oldId ? rowFor(oldId) : undefined
       if (row && !row.closest('[hidden]')) {
         row.focus({ preventScroll: true })
-        row.scrollIntoView({ block: 'nearest' })
+        const rowBounds = row.getBoundingClientRect()
+        const viewport = scroll?.getBoundingClientRect()
+        if (position === undefined || (viewport && (rowBounds.top < viewport.top || rowBounds.bottom > viewport.bottom))) {
+          row.scrollIntoView({ block: 'nearest' })
+        }
       } else heading.current?.focus({ preventScroll: true })
     }
   }, [selected?.id, readingNew])
+
+  useLayoutEffect(() => {
+    const intent = deleteFocus.current
+    if (!intent || tasks.some(task => task.id === intent.taskId)) return
+    deleteFocus.current = undefined
+    const rows = visibleTaskRows(list.current)
+    const visible = new Map(rows.map(row => [row.dataset.listId, row]))
+    const nextId = intent.nearbyIds.find(id => visible.has(id))
+    const group = list.current?.querySelector<HTMLButtonElement>('.insight-group-toggle')
+    const next = (nextId ? visible.get(nextId) : rows[0]) ?? group ?? heading.current
+    next?.focus({ preventScroll: true })
+    next?.scrollIntoView({ block: 'nearest' })
+  }, [tasks])
 
   useEffect(() => {
     if (!retryPressed.current || loading) return
@@ -196,23 +223,25 @@ export function InsightsLibrary({ tasks, conversations, selectedId, onSelect, on
     })
   }
 
-  function locate(id: string) {
+  function locate(task: AnalysisTask) {
     if (savingTitle) return
-    legacyReturn.current = rowFor(id) ?? null
-    onSelect(id)
+    listPosition.current = isInsightReport(task.report) ? list.current?.closest('main')?.scrollTop : undefined
+    legacyReturn.current = rowFor(task.id) ?? null
+    onSelect(task.id)
   }
 
   async function removeTask(task: AnalysisTask) {
-    const before = Array.from(list.current?.querySelectorAll<HTMLButtonElement>('[data-insight-task] button[data-list-id]') ?? [])
-      .filter(row => !row.closest('[hidden]'))
-    const index = before.findIndex(row => row.dataset.listId === task.id)
-    const nextId = (before[index + 1] ?? before[index - 1])?.dataset.listId
-    await remove!(task.id)
-    requestAnimationFrame(() => {
-      const next = nextId ? rowFor(nextId) : undefined
-      const group = list.current?.querySelector<HTMLButtonElement>('.insight-group-toggle')
-      ;(next ?? group ?? heading.current)?.focus({ preventScroll: true })
-    })
+    const ids = visibleTaskRows(list.current).map(row => row.dataset.listId!)
+    const index = ids.indexOf(task.id)
+    const intent = { taskId: task.id, nearbyIds: [...ids.slice(index + 1), ...ids.slice(0, index).reverse()] }
+    // 删除通知可能早于请求回执，待目标行和弹窗卸载后恢复焦点。
+    deleteFocus.current = intent
+    try {
+      await remove!(task.id)
+    } catch (error) {
+      if (deleteFocus.current === intent) deleteFocus.current = undefined
+      throw error
+    }
   }
 
   const empty = groups.size === 0
@@ -245,7 +274,7 @@ export function InsightsLibrary({ tasks, conversations, selectedId, onSelect, on
               <ChevronDown aria-hidden="true" /><span title={group.title}>{group.title}（{formatInsightNumber(group.tasks.length)}）</span>
             </button></h2>
             <ExceptionNoticeScope active={open}><ul id={listId} hidden={!open}>{group.tasks.map(task => task.state === 'completed' && task.report
-              ? <InsightReportRow key={task.id} task={task} conversationTitle={group.title} onOpen={() => locate(task.id)}
+              ? <InsightReportRow key={task.id} task={task} conversationTitle={group.title} onOpen={() => locate(task)}
                 onRename={rename} onRenameBusy={busy => { setSavingTitle(busy); onRenameBusy(busy) }}
                 disabled={savingTitle} arrange={arrange} remove={remove && (() => removeTask(task))} />
               : <TaskRow key={task.id} task={task} onOpen={() => { if (!savingTitle) onTask(task.conversationId, task.id) }} onContinue={onContinue} onStop={onStop} />)}</ul></ExceptionNoticeScope>

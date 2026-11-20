@@ -20,11 +20,13 @@ const maxShrinkDepth = 8
 const maxOutputRepairs = 1
 const maximumNotesPerBatch = 48
 const maximumEvidenceNotes = 24
+const elapsedPersistenceIntervalMs = 5000
 
 export type InsightGenerationDeps = {
   run: RuntimeRunner['run']
   read: (ids: readonly string[]) => Promise<InsightSourceMessage[]>
-  saveCheckpoint: (state: InsightCheckpoint) => Promise<void>
+  saveCheckpoint: (state: InsightCheckpoint, sampledAtMs: number) => Promise<void>
+  saveElapsed?: (elapsedMs: number, sampledAtMs: number) => Promise<void>
   signal: AbortSignal
   onText: (text: string) => void
   countInput?: (input: RuntimeInput, model: AiModel) => Promise<InsightInputCount>
@@ -38,6 +40,7 @@ type InsightGenerationInput = {
   prompts: InsightPrompts
   limits: InsightRunLimits
   checkpoint: InsightCheckpoint | null
+  elapsedMs?: number
   thinkingLevel?: RuntimeInput['thinkingLevel']
 }
 
@@ -442,10 +445,51 @@ function mayRepair(error: unknown, used: number): boolean {
   return used < maxOutputRepairs && ['INVALID_INSIGHT_OUTPUT', 'MODEL_OUTPUT_LIMIT'].includes(String(codeOf(error)))
 }
 
+type SampleElapsed = () => { elapsedMs: number; sampledAtMs: number }
+
 export async function generateInsight(input: InsightGenerationInput, deps: InsightGenerationDeps): Promise<InsightReport> {
-  const { snapshot, model } = input
   const clock = deps.now ?? Date.now
-  let lastAccountedAt = clock()
+  const startedAtMs = clock()
+  let sampledAtMs = startedAtMs
+  // 状态提交和计时采样都可能晚于最后一个完整断点。
+  const previousElapsedMs = Math.max(input.checkpoint?.elapsedMs ?? 0, input.elapsedMs ?? 0)
+  const sampleElapsed: SampleElapsed = () => {
+    sampledAtMs = Math.max(sampledAtMs, clock())
+    return { elapsedMs: previousElapsedMs + sampledAtMs - startedAtMs, sampledAtMs }
+  }
+  const { saveElapsed } = deps
+  if (!saveElapsed) return generateInsightReport(input, deps, sampleElapsed)
+
+  let write: Promise<void> | undefined
+  async function persist(operation: () => Promise<void>) {
+    const pending = Promise.resolve(write).then(operation)
+    write = pending
+    try { await pending } finally { if (write === pending) write = undefined }
+  }
+
+  const timer = setInterval(() => {
+    if (deps.signal.aborted || write) return
+    const sample = sampleElapsed()
+    void persist(async () => {
+      try { await saveElapsed(sample.elapsedMs, sample.sampledAtMs) }
+      catch { /* 下一次采样或完整断点会继续持久化用时。 */ }
+    })
+  }, elapsedPersistenceIntervalMs)
+  timer.unref()
+  try {
+    return await generateInsightReport(input, {
+      ...deps,
+      saveCheckpoint: (state, time) => persist(() => deps.saveCheckpoint(state, time)),
+    }, sampleElapsed)
+  } finally {
+    clearInterval(timer)
+    await write
+  }
+}
+
+async function generateInsightReport(input: InsightGenerationInput, deps: InsightGenerationDeps, sampleElapsed: SampleElapsed): Promise<InsightReport> {
+  const { snapshot, model } = input
+  let lastAccountedAt: number
   const state = input.checkpoint ? structuredClone(input.checkpoint)
     : createInsightCheckpoint(snapshot.taskId, model, { ...input.prompts }, { ...input.limits })
   if (state.version !== 1 || state.taskId !== snapshot.taskId || state.modelId !== model.id || state.modelVersion !== model.version
@@ -464,14 +508,14 @@ export async function generateInsight(input: InsightGenerationInput, deps: Insig
   }
 
   function updateElapsed() {
-    const now = clock()
-    state.elapsedMs += Math.max(0, now - lastAccountedAt)
-    lastAccountedAt = now
+    const sample = sampleElapsed()
+    state.elapsedMs = sample.elapsedMs
+    lastAccountedAt = sample.sampledAtMs
   }
 
   async function save() {
     updateElapsed()
-    await deps.saveCheckpoint(state)
+    await deps.saveCheckpoint(state, lastAccountedAt)
   }
 
   async function checkActive() {
@@ -493,10 +537,11 @@ export async function generateInsight(input: InsightGenerationInput, deps: Insig
   }
 
   async function readFrozen(ids: readonly string[]): Promise<InsightSourceMessage[]> {
-    await checkActive()
+    const checkReading = state.report ? () => deps.signal.throwIfAborted() : checkActive
+    await checkReading()
     if (ids.some(id => !refs.has(id))) return invalidEvidence()
     const results = await deps.read(ids)
-    await checkActive()
+    await checkReading()
     const requested = new Set(ids)
     const byId = new Map<string, InsightSourceMessage>()
     for (const message of results) {

@@ -35,6 +35,17 @@ test('ChatGPT plan inference uses only the official endpoint, streams text and r
   expect(fetcher).toHaveBeenCalledTimes(2)
 })
 
+test.each([undefined, 0])('ChatGPT cache reads distinguish missing statistics from %s', async cached => {
+  const runner = createChatgptRunner(async () => 'synthetic', async () => stream([
+    { type: 'response.output_text.delta', delta: '收到' },
+    { type: 'response.completed', response: { status: 'completed',
+      usage: { input_tokens: 15, output_tokens: 2, ...(cached === undefined ? {} : { input_tokens_details: { cached_tokens: cached } }) } } },
+  ]))
+  const result = await runner.run(input, { signal: new AbortController().signal, onText: vi.fn() })
+  expect(result.usage.totalInputTokens).toBe(15)
+  expect(result.usage.cacheReadTokens).toBe(cached)
+})
+
 test.each([
   ['context_length_exceeded',400,'MODEL_CONTEXT_LIMIT'],
   ['subscription_sharing_user_not_eligible',403,'CHATGPT_INELIGIBLE'],

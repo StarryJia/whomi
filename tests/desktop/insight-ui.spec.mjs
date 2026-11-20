@@ -5,19 +5,25 @@ import { tmpdir } from 'node:os'
 import { basename, dirname, join, resolve } from 'node:path'
 import { insightModelPrompt, insightModelReply, syntheticInsightConversation, syntheticInsightScope } from './fixtures/insight-model.mjs'
 
-async function failNext(app, method, fragmentIndex, channel = 'whomi:ai-call') {
+async function failNext(app, method, fragmentIndex, channel = 'whomi:ai-call', hold = false) {
   await app.evaluate(({ ipcMain }, target) => {
     const { channel } = target
     const original = ipcMain._invokeHandlers.get(channel)
+    const attempts = []
+    const gate = target.hold && new Promise(resolve => {
+      globalThis.heldInsightFailure = { attempts, release: resolve }
+    })
     ipcMain.removeHandler(channel)
     ipcMain.handle(channel, async (event, value) => {
       if (value.method === target.method && (target.fragmentIndex === undefined || value.args[0]?.fragmentIndex === target.fragmentIndex)) {
+        attempts.push(value.args)
+        if (gate) await gate
         ipcMain.removeHandler(channel); ipcMain.handle(channel, original)
         return { ok: false, error: { code: 'OPERATION_FAILED', action: '操作失败，请重试。' } }
       }
       return original(event, value)
     })
-  }, { method, fragmentIndex, channel })
+  }, { method, fragmentIndex, channel, hold })
 }
 
 function completion(response, result) {
@@ -26,7 +32,7 @@ function completion(response, result) {
   response.end(`data: ${JSON.stringify({ id: 'synthetic-ui', choices: [{ index: 0, delta: {}, finish_reason: 'stop' }], usage: { prompt_tokens: 20, completion_tokens: 10, total_tokens: 30 } })}\n\ndata: [DONE]\n\n`)
 }
 
-async function harness({ model = true, self = true, hold = true, reject = true, longReport = false, extraConversations = 0 } = {}) {
+async function harness({ model = true, self = true, hold = true, reject = true, longReport = false, extraConversations = 0, distinctOverviewJudgments = false } = {}) {
   const evidence = test.info().outputPath('screenshots')
   const directory = resolve(await mkdtemp(join(tmpdir(), 'whomi-runtime-insight-ui-')))
   const requests = [], errors = [], fixtureErrors = []
@@ -49,6 +55,16 @@ async function harness({ model = true, self = true, hold = true, reject = true, 
           response.end(JSON.stringify({ error: { message: 'Synthetic UI retry fixture', type: 'server_error' } })); return
         }
         const result = insightModelReply(prompt)
+        if (distinctOverviewJudgments && prompt.stage === 'reading' && prompt.messages?.some(message => message.id === '4')) {
+          result.candidates[0].supportingIds.push('4')
+        }
+        if (distinctOverviewJudgments && prompt.stage === 'checking' && result.action === 'finish' && prompt.check.supportingIds.includes('4')) {
+          result.supportingIds.push('4')
+        }
+        if (distinctOverviewJudgments && prompt.stage === 'writing' && prompt.checks.some(check => check.finding?.supportingIds.includes('4'))) {
+          result.judgments.push({ dimension: 'JP', direction: 'J', text: '你提前定好了见面时间。', supportingIds: ['4'],
+            counterexampleIds: [], alternativeExplanations: [], limitations: ['仅限这次见面。'] })
+        }
         if (longReport && prompt.stage === 'writing') {
           result.aboutYou.push(...Array.from({ length: 10 }, (_, index) => ({ content: [{ text: `合成阅读段落 ${index + 1}：你先给出三个办法，ta 表示想先说完，之后又主动询问主意。这些片段显示不同时间对建议的需要有所变化；仅凭本次聊天，不能把这种表达理解为固定的性格。` }] })))
           result.citations[0].fragments[0].messageIds = ['1', '3']
@@ -73,6 +89,7 @@ async function harness({ model = true, self = true, hold = true, reject = true, 
     const { seedSyntheticInsight } = await import('./insight-model.mjs')
     return writer.transaction(() => {
       seedSyntheticInsight(writer)
+      if (${distinctOverviewJudgments}) writer.prepare('UPDATE messages SET text=? WHERE id=4').run('我提前定好了周五见面的时间。')
       if (${extraConversations} > 0) {
         writer.exec('UPDATE conversations SET pinned=1 WHERE id=1')
         const addChat = writer.prepare("INSERT INTO conversations(title,kind,created_at_ms) VALUES(?,'direct',0)")
@@ -88,30 +105,37 @@ async function harness({ model = true, self = true, hold = true, reject = true, 
     })()
   }`)
   const launch = () => electron.launch({ args: [resolve('out/main/index.cjs'), '--whomi-runtime-test'], env: { ...process.env, WHOMI_RUNTIME_TEST: directory } })
-  app = await launch()
-  let page = await app.firstWindow()
-  page.on('pageerror', error => errors.push(error.message))
+  async function openWindow() {
+    app = await launch()
+    const page = await app.firstWindow()
+    page.on('pageerror', error => errors.push(error.message))
+    return page
+  }
+  async function restart() {
+    await app.close()
+    const page = await openWindow()
+    await app.evaluate(({ BrowserWindow }) => { BrowserWindow.getAllWindows()[0].setSize(1280, 900) })
+    try {
+      await expect(page.locator('.hello-cover')).toBeAttached({ timeout: 15_000 })
+      await expect(page.locator('.startup-intro')).toHaveCount(0)
+    } catch (error) {
+      await page.screenshot({ path: join(evidence, 'startup-failed.png') }).catch(() => {})
+      throw error
+    }
+    const btn = name => page.getByRole('button', { name, exact: true })
+    if (await btn('展开侧栏').isVisible()) await btn('展开侧栏').click()
+    return { app, page, btn, shot: name => page.screenshot({ path: join(evidence, name + '.png'), animations: 'disabled' }) }
+  }
+  const page = await openWindow()
   await app.evaluate(() => globalThis.__whomiRuntimeProbe.request('probe.seedInsight', null))
   if (model) await page.evaluate(async baseUrl => {
     const provider = await window.whomi.settings.saveProvider({ name: '合成本地服务', baseUrl, enabled: true, apiKey: 'test-only-key' })
     await window.whomi.settings.saveModel({ providerId: provider.id, label: '合成洞察模型', model: 'example', contextWindow: 12000, maxTokens: 1000, enabled: true })
   }, `http://127.0.0.1:${server.address().port}/v1`)
-  await app.close()
-  app = await launch()
-  page = await app.firstWindow()
-  page.on('pageerror', error => errors.push(error.message))
-  await app.evaluate(({ BrowserWindow }) => { const window = BrowserWindow.getAllWindows()[0]; window.setSize(1280, 900) })
-  await expect(page.locator('.hello-cover')).toBeAttached()
-  await expect(page.locator('.startup-intro')).toHaveCount(0)
-  const btn = name => page.getByRole('button', { name, exact: true })
-  if (await btn('展开侧栏').isVisible()) await btn('展开侧栏').click()
-  if (await btn('展开会话列表').isVisible()) await btn('展开会话列表').click()
-  await btn(syntheticInsightConversation).click()
-  return {
-    app, page, btn, requests, errors, fixtureErrors, evidence,
-    shot: name => page.screenshot({ path: join(evidence, name + '.png'), animations: 'disabled' }),
-    close,
-  }
+  const window = await restart()
+  if (await window.btn('展开会话列表').isVisible()) await window.btn('展开会话列表').click()
+  await window.btn(syntheticInsightConversation).click()
+  return { ...window, requests, errors, fixtureErrors, evidence, restart, close }
   } catch (error) { await close(); throw error }
 }
 
@@ -227,6 +251,13 @@ test('real Electron insight UI validates scope, pauses and retries, reads exact 
     await btn('开始洞察').click()
     await expect.poll(() => h.requests.map(request => request.stage), { timeout: 20_000 }).toEqual(['reading', 'checking'])
     await expect(btn('暂停生成')).toBeVisible()
+    const runtimeStats = page.locator('.insight-task-runtime dd')
+    const elapsed = runtimeStats.first()
+    const initialElapsed = await elapsed.innerText()
+    await expect.poll(async () => {
+      const currentElapsed = await elapsed.innerText()
+      return /^\d{2}:\d{2}$/.test(currentElapsed) && currentElapsed > initialElapsed
+    }).toBe(true)
     await shot('05-progress-collapsed')
     await btn('详情').click()
     await expect(page.getByRole('group', { name: '分析用量' })).toBeVisible()
@@ -235,7 +266,13 @@ test('real Electron insight UI validates scope, pauses and retries, reads exact 
     await btn('暂停生成').click()
     await expect(btn('继续洞察')).toBeEnabled()
     await shot('07-progress-paused')
+    const pausedAt = Date.now()
+    const pausedStats = await runtimeStats.allTextContents()
     await management('22-management-paused')
+    await expect.poll(async () => ({
+      stats: await runtimeStats.allTextContents(),
+      waitedOneTick: Date.now() - pausedAt >= 1100,
+    })).toEqual({ stats: pausedStats, waitedOneTick: true })
     await btn('继续洞察').click()
     await expect(btn('重试')).toBeEnabled()
     await shot('08-progress-failed')
@@ -376,15 +413,44 @@ test('real Electron insight UI validates scope, pauses and retries, reads exact 
     await shot('19-delete-confirm')
     await deletion.getByRole('button', { name: '取消', exact: true }).click()
     await expect(row).toBeFocused()
-    await row.click({ button: 'right' }); await page.getByRole('menuitem', { name: '删除', exact: true }).click()
-    await failNext(app, 'deleteAnalysis')
+    const overlay = deletion.locator('.reader-modal-overlay')
+    const clickOutsideDeleteCard = () => overlay.click({ position: { x: 12, y: 100 } })
+    for (const dismiss of [() => page.keyboard.press('Escape'), clickOutsideDeleteCard]) {
+      await row.click({ button: 'right' })
+      await page.getByRole('menuitem', { name: '删除', exact: true }).click()
+      await dismiss()
+      await expect(deletion).toHaveCount(0)
+      await expect(row).toBeFocused()
+    }
+
+    await row.click({ button: 'right' })
+    await page.getByRole('menuitem', { name: '删除', exact: true }).click()
+    await failNext(app, 'deleteAnalysis', undefined, 'whomi:ai-call', true)
+    const id = await row.getAttribute('data-list-id')
     await deletion.getByRole('button', { name: '确认删除', exact: true }).click()
+    try {
+      const pending = deletion.getByRole('button', { name: '正在删除…', exact: true })
+      await expect(pending).toBeDisabled()
+      await expect(deletion.getByRole('button', { name: '取消', exact: true })).toBeDisabled()
+      await expect.poll(() => app.evaluate(() => globalThis.heldInsightFailure.attempts)).toEqual([[id]])
+      await pending.press('Enter')
+      await page.keyboard.press('Escape')
+      await clickOutsideDeleteCard()
+      await expect(deletion).toBeVisible()
+      await expect(row).toBeVisible()
+      expect(await app.evaluate(() => globalThis.heldInsightFailure.attempts)).toEqual([[id]])
+      await shot('report-delete-pending')
+    } finally {
+      await app.evaluate(() => globalThis.heldInsightFailure.release())
+    }
     await expect(deletion.getByRole('alert')).toBeVisible()
+    await expect(deletion.getByRole('button', { name: '取消', exact: true })).toBeEnabled()
     await expect(row).toBeVisible()
     await shot('simulated-delete-failed')
     await deletion.getByRole('button', { name: '确认删除', exact: true }).click()
     await expect(page.getByRole('heading', { name: '暂无洞察报告' })).toBeVisible()
     await expect(page.getByRole('heading', { name: '对话洞察', exact: true })).toBeFocused()
+    await shot('report-delete-final-focus')
     expect(await page.evaluate(async () => (await window.whomi.ai.previewInsightScope({ conversationId: '1', scope: { kind: 'all' } })).totalMessages)).toBe(284)
     expect(h.errors).toEqual([]); expect(h.fixtureErrors).toEqual([])
     expect(h.requests.flatMap(request => request.messages ?? []).every(message => ['1', '2', '3'].includes(message.id))).toBe(true)
@@ -548,9 +614,131 @@ test('real Electron preserves long report reading position and fits an 80-charac
   } finally { await h.close() }
 })
 
-test('real Electron keeps existing reports after a refresh failure and updates overview after one report is deleted', async () => {
-  test.setTimeout(90_000)
+test('real Electron retains elapsed insight time across abrupt exit', async ({}, info) => {
+  test.setTimeout(75_000)
+  const h = await harness({ reject: false })
+  try {
+    const { app, page, btn, shot } = h
+    const task = await page.evaluate(async scope => {
+      const [model] = await window.whomi.ai.listModels()
+      const prepared = await window.whomi.ai.prepareAnalysis({ conversationId: '1', modelId: model.id, scope })
+      return window.whomi.ai.confirmAnalysis({ token: prepared.token, requestId: 'synthetic-crash-running-insight' })
+    }, syntheticInsightScope)
+    await expect.poll(() => h.requests.map(request => request.stage), { timeout: 20_000 }).toEqual(['reading', 'checking'])
+    const readTask = target => target.evaluate(id => window.whomi.ai.getAnalysis(id), task.id)
+    const beforeWait = await readTask(page)
+    await btn('对话洞察').click()
+    await page.locator(`[data-insight-task="${task.id}"] .insight-task-link`).click()
+    await expect(btn('暂停生成')).toBeVisible()
+    const elapsed = page.locator('.insight-task-runtime dd').first()
+    const visibleSeconds = async () => {
+      const [minutes, seconds] = (await elapsed.innerText()).split(':').map(Number)
+      return minutes * 60 + seconds
+    }
+    // 跨过完整的采样间隔，避免退出恰好发生在下一次写入前。
+    await expect.poll(visibleSeconds, { timeout: 20_000 }).toBeGreaterThanOrEqual(Math.ceil(beforeWait.elapsedMs / 1000) + 11)
+    await shot('running-before-abrupt-exit')
+    const displayedAtExit = (await visibleSeconds()) * 1000
+    const savedAtExit = (await readTask(page)).elapsedMs
+    const child = app.process()
+    const exited = new Promise(resolve => child.once('exit', (code, signal) => resolve({ code, signal })))
+    // 模拟进程突然结束，跳过应用的退出保存流程。
+    const interruption = app.evaluate(() => process.exit(91)).catch(() => {})
+    const exit = await exited
+    await interruption
+    expect(exit).toEqual({ code: 91, signal: null })
+    await new Promise(resolve => setTimeout(resolve, 8_000))
+    const restored = await h.restart()
+    const recovered = await readTask(restored.page)
+    await info.attach('elapsed-recovery.json', { contentType: 'application/json', body: JSON.stringify({
+      taskId: task.id, exit, atRequest: beforeWait.elapsedMs, displayedAtExit, savedAtExit, recovered: recovered.elapsedMs,
+    }, null, 2) })
+    await restored.btn('对话洞察').click()
+    const row = restored.page.locator(`[data-insight-task="${task.id}"]`)
+    await expect(row).toContainText('生成失败')
+    await restored.shot('interrupted-after-restart')
+    expect(recovered).toMatchObject({ id: task.id, state: 'interrupted' })
+    expect(recovered.elapsedMs).toBeGreaterThanOrEqual(beforeWait.elapsedMs + 4_000)
+    expect(recovered.elapsedMs).toBeGreaterThanOrEqual(savedAtExit)
+    expect(recovered.elapsedMs).toBeLessThanOrEqual(displayedAtExit + 2_000)
+
+    await row.getByRole('button', { name: '重试', exact: true }).click()
+    await expect.poll(() => readTask(restored.page), { timeout: 20_000 }).toMatchObject({ id: task.id, state: 'completed' })
+    expect((await readTask(restored.page)).elapsedMs).toBeGreaterThanOrEqual(recovered.elapsedMs)
+    await expect(row.getByRole('button', { name: new RegExp('#' + task.id + '$') })).toBeVisible()
+    await restored.shot('resumed-same-report')
+    expect(h.fixtureErrors).toEqual([])
+    expect(h.errors).toEqual([])
+  } finally { await h.close() }
+})
+
+for (const resizeDuringReading of [false, true]) test(resizeDuringReading
+  ? 'real Electron reveals focused report after resizing while reading'
+  : 'real Electron restores a scrolled report list and its focus at 960 by 640', async () => {
+  test.setTimeout(60_000)
   const h = await harness({ hold: false, reject: false }), { app, page, btn, shot } = h
+  try {
+    await app.evaluate(({ BrowserWindow, ipcMain }, width) => {
+      BrowserWindow.getAllWindows()[0].setSize(width, width === 960 ? 640 : 900)
+      const channel = 'whomi:ai-call'
+      const original = ipcMain._invokeHandlers.get(channel)
+      ipcMain.removeHandler(channel)
+      ipcMain.handle(channel, async (event, value) => {
+        const result = await original(event, value)
+        if (value.method !== 'listAnalyses' || value.args[0] !== undefined || !result.ok) return result
+        const saved = result.value.find(task => task.state === 'completed' && task.report)
+        if (!saved) return result
+        // 只扩充渲染用的列表快照，打开的目标仍是实际保存的报告。
+        const filler = Array.from({ length: 24 }, (_, index) => ({ ...saved, id: String(100 + index), title: '合成列表报告 ' + (index + 1) }))
+        const otherGroup = { ...saved, id: '200', conversationId: '200', conversationTitle: '合成折叠分组' }
+        return { ...result, value: [otherGroup, ...filler.slice(0, 16), saved, ...filler.slice(16)] }
+      })
+    }, resizeDuringReading ? 1280 : 960)
+    const task = await page.evaluate(async scope => {
+      const [model] = await window.whomi.ai.listModels()
+      const preparation = await window.whomi.ai.prepareAnalysis({ conversationId: '1', modelId: model.id, scope })
+      return window.whomi.ai.confirmAnalysis({ token: preparation.token, requestId: 'synthetic-list-scroll' })
+    }, syntheticInsightScope)
+    await expect.poll(() => page.evaluate(id => window.whomi.ai.getAnalysis(id), task.id), { timeout: 20_000 })
+      .toMatchObject({ state: 'completed' })
+    await expect.poll(() => page.evaluate(() => innerWidth)).toBe(resizeDuringReading ? 1280 : 960)
+    await btn('对话洞察').click()
+    const otherGroup = btn('合成折叠分组（1）')
+    await otherGroup.click()
+    await expect(otherGroup).toHaveAttribute('aria-expanded', 'false')
+    const row = btn(`${syntheticInsightConversation} · 会话洞察 #${task.id}`)
+    const main = page.locator('main.insights-home')
+    const scrollTop = () => main.evaluate(element => element.scrollTop)
+    await row.scrollIntoViewIfNeeded()
+    await row.focus()
+    const listTop = await scrollTop()
+    expect(listTop).toBeGreaterThan(500)
+    await shot('narrow-list-before-reading')
+    await row.press('Enter')
+    await expect(btn('你一开始就给了三个办法')).toBeVisible()
+    expect(await scrollTop()).toBe(0)
+    if (resizeDuringReading) {
+      await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(960, 640))
+      await expect.poll(() => page.evaluate(() => innerWidth)).toBe(960)
+      await shot('narrow-report-before-return')
+    }
+    await btn('返回').press('Enter')
+    await expect(row).toBeFocused()
+    await shot('narrow-list-after-returning')
+    await expect(row).toBeInViewport()
+    if (!resizeDuringReading) expect(await scrollTop()).toBe(listTop)
+    await expect(otherGroup).toHaveAttribute('aria-expanded', 'false')
+    expect(await main.evaluate(element => element.scrollWidth)).toBe(await main.evaluate(element => element.clientWidth))
+    expect(h.fixtureErrors).toEqual([])
+    expect(h.errors).toEqual([])
+  } finally { await h.close() }
+})
+
+test('real Electron keeps same-name reports independent and rebuilds overview after deletion and restart', async () => {
+  test.setTimeout(90_000)
+  const h = await harness({ hold: false, reject: false, distinctOverviewJudgments: true })
+  let { app, page, btn, shot } = h
+  const observations = () => page.getByRole('region', { name: '你在不同关系中的表现' })
   async function generateReport(scope, requestId) {
     const task = await page.evaluate(async ({ scope, requestId }) => {
       const [model] = await window.whomi.ai.listModels()
@@ -565,31 +753,39 @@ test('real Electron keeps existing reports after a refresh failure and updates o
   try {
     const kept = await generateReport(syntheticInsightScope, 'synthetic-overview-kept')
     await btn('个人总览').click()
-    const keptContribution = btn(`会话洞察 #${kept}`)
-    await expect(keptContribution).toBeVisible()
+    await expect(btn(`会话洞察 #${kept}`)).toBeVisible()
     const removed = await generateReport({ ...syntheticInsightScope, endDate: '2026-10-11' }, 'synthetic-overview-removed')
     expect(removed).not.toBe(kept)
     await expect(btn(`会话洞察 #${removed}`)).toBeVisible()
+    await expect(observations().getByText('???J', { exact: true })).toBeVisible()
+    const report = await page.evaluate(id => window.whomi.ai.getReport(id), removed)
+    expect(report.judgments).toContainEqual(expect.objectContaining({
+      dimension: 'JP', direction: 'J', supportingSources: [{ messageId: '4', revision: expect.any(String) }],
+    }))
     const requestsAfterGeneration = h.requests.length
-    const renamed = '合成报告 · 扩展日期范围'
-    const keptRow = btn(`${syntheticInsightConversation} · 会话洞察 #${kept}`)
+    const renamed = '合成报告 · 两份同名报告'
+    const originalKeptRow = btn(`${syntheticInsightConversation} · 会话洞察 #${kept}`)
     const originalRemovedRow = btn(`${syntheticInsightConversation} · 会话洞察 #${removed}`)
-    const removedRow = btn(`${syntheticInsightConversation} · ${renamed} #${removed}`)
+    const keptRow = () => btn(`${syntheticInsightConversation} · ${renamed} #${kept}`)
+    const removedRow = () => btn(`${syntheticInsightConversation} · ${renamed} #${removed}`)
+    const keptContribution = () => btn(`${renamed} #${kept}`)
+    const removedContribution = () => btn(`${renamed} #${removed}`)
 
     await btn('对话洞察').click()
-    await expect(keptRow).toBeVisible()
-    const conversationRow = btn(syntheticInsightConversation)
-    const deleteConversation = page.getByRole('dialog', { name: '删除会话' })
+    await expect(originalKeptRow).toBeVisible()
+    const conversationRow = () => btn(syntheticInsightConversation)
     async function requestDelete() {
-      await conversationRow.click({ button: 'right' })
+      const dialog = page.getByRole('dialog', { name: '删除会话' })
+      await conversationRow().click({ button: 'right' })
       await page.getByRole('menuitem', { name: '删除', exact: true }).click()
-      await expect(deleteConversation).toContainText('此会话的全部洞察报告')
+      await expect(dialog).toContainText('此会话的全部洞察报告')
+      return dialog
     }
-    await requestDelete()
+    let deleteConversation = await requestDelete()
     await expect(deleteConversation.getByRole('button', { name: '取消' })).toBeFocused()
     await shot('conversation-delete-scope')
     await deleteConversation.getByRole('button', { name: '取消' }).click()
-    for (const report of [keptRow, originalRemovedRow]) {
+    for (const report of [originalKeptRow, originalRemovedRow]) {
       await report.click()
       await expect(btn('你一开始就给了三个办法')).toBeVisible()
       await btn('返回').click()
@@ -601,39 +797,47 @@ test('real Electron keeps existing reports after a refresh failure and updates o
     await btn('保存').click()
     const refreshError = page.getByRole('region', { name: '异常提醒' }).getByRole('alert').filter({ hasText: '报告列表读取失败' })
     await expect(refreshError).toHaveText('报告列表读取失败')
-    await expect(keptRow).toBeVisible()
-    await expect(removedRow).toBeVisible()
+    await expect(originalKeptRow).toBeVisible()
+    await expect(removedRow()).toBeVisible()
     await shot('simulated-management-refresh-failed-with-reports')
     await page.locator('.insights-list').getByRole('button', { name: '重试', exact: true }).click()
     await expect(page.getByRole('heading', { name: '对话洞察', exact: true })).toBeFocused()
     await expect(refreshError).toHaveCount(0)
-    await expect(keptRow).toBeVisible()
-    await expect(removedRow).toBeVisible()
+    await expect(originalKeptRow).toBeVisible()
+    await expect(removedRow()).toBeVisible()
+    await originalKeptRow.click({ button: 'right' })
+    await page.getByRole('menuitem', { name: '重命名', exact: true }).click()
+    await page.getByRole('textbox', { name: '报告名称' }).fill(renamed)
+    await btn('保存').click()
+    await expect(keptRow()).toBeVisible()
     expect(h.requests).toHaveLength(requestsAfterGeneration)
 
     await btn('个人总览').click()
-    const removedContribution = btn(`${renamed} #${removed}`)
-    await expect(keptContribution).toBeVisible()
-    await expect(removedContribution).toBeVisible()
-    await removedContribution.scrollIntoViewIfNeeded()
+    await expect(keptContribution()).toBeVisible()
+    await expect(removedContribution()).toBeVisible()
+    await expect(observations().getByText('???J', { exact: true })).toBeVisible()
+    await removedContribution().scrollIntoViewIfNeeded()
     await shot('overview-two-report-sources')
 
     await btn('对话洞察').click()
-    await removedRow.click({ button: 'right' })
+    await removedRow().click({ button: 'right' })
     await page.getByRole('menuitem', { name: '删除', exact: true }).click()
     const dialog = page.getByRole('dialog', { name: '删除报告' })
     await expect(dialog).toContainText(`${renamed} · #${removed}`)
+    await expect(dialog).toContainText('2026.10.11')
+    await expect(dialog).toContainText(syntheticInsightConversation)
     await dialog.getByRole('button', { name: '确认删除', exact: true }).click()
     await expect(dialog).toHaveCount(0)
-    await expect(removedRow).toHaveCount(0)
-    await expect(keptRow).toBeFocused()
+    await expect(removedRow()).toHaveCount(0)
+    await expect(keptRow()).toBeFocused()
 
     await btn('个人总览').click()
-    await expect(removedContribution).toHaveCount(0)
-    await expect(keptContribution).toBeVisible()
-    await keptContribution.scrollIntoViewIfNeeded()
+    await expect(removedContribution()).toHaveCount(0)
+    await expect(keptContribution()).toBeVisible()
+    await expect(observations().getByText('????', { exact: true })).toBeVisible()
+    await keptContribution().scrollIntoViewIfNeeded()
     await shot('overview-one-report-source-after-deletion')
-    await keptContribution.click()
+    await keptContribution().click()
     await btn('你一开始就给了三个办法').click()
     const source = page.getByRole('region', { name: '引用聊天记录' })
     const evidence = source.locator('[data-citation=true]')
@@ -642,9 +846,19 @@ test('real Electron keeps existing reports after a refresh failure and updates o
     await btn(syntheticInsightConversation).click()
     await expect(page.getByRole('heading', { name: syntheticInsightConversation, exact: true })).toBeVisible()
 
+    ;({ app, page, btn, shot } = await h.restart())
+    await btn('个人总览').click()
+    await expect(keptContribution()).toBeVisible()
+    await expect(removedContribution()).toHaveCount(0)
+    await expect(observations().getByText('????', { exact: true })).toBeVisible()
+    await keptContribution().scrollIntoViewIfNeeded()
+    await shot('overview-after-restart')
     await btn('对话洞察').click()
-    await keptRow.click()
-    await requestDelete()
+    await expect(removedRow()).toHaveCount(0)
+    await keptRow().click()
+    await expect(page.getByRole('heading', { name: renamed, exact: true })).toBeVisible()
+    if (await btn('展开会话列表').isVisible()) await btn('展开会话列表').click()
+    deleteConversation = await requestDelete()
     await failNext(app, 'deleteConversation', undefined, 'whomi:call')
     await deleteConversation.getByRole('button', { name: '确认删除', exact: true }).click()
     await expect(deleteConversation.getByRole('alert')).toBeVisible()
@@ -654,11 +868,14 @@ test('real Electron keeps existing reports after a refresh failure and updates o
     await expect(deleteConversation).toHaveCount(0)
     await expect(page.getByRole('heading', { name: '暂无洞察报告' })).toBeVisible()
     await shot('list-after-confirmed-conversation-deletion')
-    await expect(conversationRow).toHaveCount(0)
+    await expect(conversationRow()).toHaveCount(0)
     await expect(btn('导入会话')).toBeVisible()
     await expect(btn('重试会话列表')).toHaveCount(0)
     await btn('个人总览').click()
-    await expect(keptContribution).toHaveCount(0)
+    await expect(keptContribution()).toHaveCount(0)
+    await expect(observations()).toHaveCount(0)
+    await expect(page.getByText('尚待了解', { exact: true })).toHaveCount(4)
+    await shot('overview-without-valid-sources')
     expect(h.requests).toHaveLength(requestsAfterGeneration)
     expect(h.fixtureErrors).toEqual([])
     expect(h.errors).toEqual([])
