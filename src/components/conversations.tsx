@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { actionError, ManagedRow, ReaderDialog } from './ui/managed-row'
 import { ExceptionNotice } from './ui/exception-notices'
+import { ChatMessageContent, ConversationAvatar } from './chat-message-content'
 import { ArrowLeft, ChevronRight, MousePointer2, Plus, UserRound } from 'lucide-react'
 import clsx from 'clsx'
 import { Tooltip } from './ui/tooltip'
@@ -34,10 +35,6 @@ export function resolveSourceRange(conversations: readonly Conversation[], sourc
     : startIndex
   if (startIndex < 0 || endIndex < startIndex) return null
   return { conversation, startIndex, endIndex }
-}
-
-function Initial({ name }: { name: string }) {
-  return <span className="conversation-avatar" aria-hidden="true">{[...name.trim()][0] || '·'}</span>
 }
 
 export function ConversationNavigation({ wide, conversations, activeId, onSelect, onImport, hasMore, loading, error, onLoadMore, onRefresh, arrange, remove, openRequest = 0 }: {
@@ -88,7 +85,7 @@ export function ConversationNavigation({ wide, conversations, activeId, onSelect
             {conversations.map(conversation => <li key={conversation.id}>
               <ManagedRow item={conversation} scope="conversations" className="conversation-item" active={activeId === conversation.id}
                 onSelect={() => onSelect(conversation.id)} arrange={arrange} remove={remove && (() => remove(conversation.id))}>
-                <Initial name={conversation.title} />
+                <ConversationAvatar name={conversation.title} />
                 {wide && <span className="conversation-name">{conversation.title}</span>}
               </ManagedRow>
             </li>)}
@@ -110,11 +107,6 @@ function comparePosition(left: MessagePosition, right: MessagePosition) {
   // 本地编号可能超过 JavaScript 安全整数，不能先转换为 Number。
   if (/^\d+$/.test(left.id) && /^\d+$/.test(right.id)) return BigInt(left.id) < BigInt(right.id) ? -1 : 1
   return left.id < right.id ? -1 : 1
-}
-function messageTime(message: MessageView) {
-  if (message.timeBucket === 1 || message.sentAtMs === null) return message.timeRaw
-  const date = new Date(message.sentAtMs)
-  return Number.isNaN(date.getTime()) ? message.timeRaw : date.toLocaleString('zh-CN')
 }
 const messageKinds: Record<MessageView['kind'], string> = {
   text: '文字', image: '图片', audio: '语音', video: '视频', file: '文件', sticker: '表情', link: '链接',
@@ -472,6 +464,8 @@ export function ConversationReader({ conversation, initialAnalysisTaskId, openAn
           const jumpTarget = jump?.targetId === message.id && (!jump.pending || selected)
           const joinedBefore = showSelected && index > 0 && selection.selectedIds.has(conversation.messages[index - 1].id)
           const joinedAfter = showSelected && index < conversation.messages.length - 1 && selection.selectedIds.has(conversation.messages[index + 1].id)
+          const replyId = message.reply?.targetMessageId
+          const replyTarget = replyId ? conversation.messages.find(item => item.id === replyId) : undefined
           return <li key={message.id} data-message-id={message.id}
           ref={start ? firstSource : undefined}
           role={selectionMode ? 'option' : undefined} aria-selected={selectionMode ? selected : undefined} aria-label={`${message.senderName}：${message.text || messageKinds[message.kind]}`}
@@ -479,25 +473,10 @@ export function ConversationReader({ conversation, initialAnalysisTaskId, openAn
           className={clsx('message', message.isSelf && 'message-self', highlighted && 'message-source', showSelected && 'message-selected',
             joinedBefore && 'selection-joined-before', joinedAfter && 'selection-joined-after',
             (referenced || jumpTarget) && 'message-reference-target')}>
-          <Initial name={message.senderName} />
-          <div className="message-content">
-            {message.timeBucket === 1 && (index === 0 || conversation.messages[index - 1].timeBucket !== 1) && <p className="message-time-unknown">时间未知</p>}
-            <div className="message-meta"><span>{message.senderName}</span>{messageTime(message) && <span>{messageTime(message)}</span>}{start && <span className="source-range-label">引用范围起点</span>}{end && !start && <span className="source-range-label">引用范围终点</span>}</div>
-            <p className="message-text">{message.text}</p>
-            {message.reply && (() => {
-              const targetId = message.reply.targetMessageId
-              const target = conversation.messages.find(item => item.id === targetId)
-              const sender = message.reply.senderName ?? target?.senderName
-              const text = message.reply.text ?? target?.text ?? '原消息'
-              const content = <>{sender && <strong>{sender}</strong>}<span>{text}</span></>
-              return message.reply.state === 'resolved' && targetId && (target || onLocateMessageId)
-                ? <button className="message-quote is-linked" type="button" disabled={quoteBusy}
-                  aria-label={`查看引用原消息：${sender ? `${sender}：` : ''}${text.slice(0, 120)}`} title={text}
-                  onPointerDown={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()}
-                  onClick={event => { event.stopPropagation(); void navigateQuote({ targetId, originId: message.id }) }}>{content}</button>
-                : <blockquote className="message-quote" title={text}>{content}</blockquote>
-            })()}
-          </div>
+          <ChatMessageContent message={message} replyTarget={replyTarget} replyBusy={quoteBusy}
+            sourceLabel={start ? '引用范围起点' : end ? '引用范围终点' : undefined}
+            firstUnknownTime={message.timeBucket === 1 && (index === 0 || conversation.messages[index - 1].timeBucket !== 1)}
+            onOpenReply={replyTarget || onLocateMessageId ? targetId => { void navigateQuote({ targetId, originId: message.id }) } : undefined} />
         </li>})}
       </ol> : !loading && !error && !sourceStatus ? <p className="reader-empty">这段会话还没有聊天记录。</p> : null}
       {loading && !sourceStatus && <p className="reader-empty" role="status">正在读取…</p>}

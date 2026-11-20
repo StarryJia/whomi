@@ -89,6 +89,33 @@ it('报告只有材料不足说明时保留模型的限定并沿用两节阅读�
   expect(screen.getAllByRole('heading').map(heading => heading.textContent)).toEqual(['关于你', '你们的相处'])
 })
 
+it.each([
+  ['找不到来源', []],
+  ['片段为空', [{ ...report.citations[0], fragments: [] }]],
+  ['来源属于其他会话', [{ ...report.citations[0], conversationId: '2' }]],
+] as const)('报告中的引用%s时提示无法定位，保留报告且不读取聊天', async (_reason, citations) => {
+  const user = userEvent.setup()
+  const readInsightCitation = vi.fn()
+  const api = { ai: {
+    listAnalyses: async () => [{ ...completed, report: { ...report, citations } }],
+    readInsightCitation, onEvent: () => () => {},
+  } } as unknown as DesktopApi
+  render(<App preview conversations={[]} importApi={api} />)
+  await user.click(screen.getByRole('button', { name: '对话洞察' }))
+  await user.click(await screen.findByRole('button', { name: /小林.*会话洞察.*#24/ }))
+  expect(screen.queryByRole('button', { name: '你和 ta 一起核对了时间。' })).toBeNull()
+  const citation = screen.getByRole('button', { name: '那次改期' })
+  expect(citation).not.toHaveAttribute('aria-haspopup')
+  await user.click(citation)
+  expect(screen.getByRole('alert')).toHaveTextContent('无法定位这处引用的原文')
+  await user.click(screen.getByRole('button', { name: '关闭提醒' }))
+  expect(citation).toHaveFocus()
+  await user.keyboard('{Enter}')
+  expect(screen.getByRole('alert')).toHaveTextContent('无法定位这处引用的原文')
+  expect(screen.queryByRole('dialog')).toBeNull()
+  expect(readInsightCitation).not.toHaveBeenCalled()
+})
+
 it('管理正常读取后可浏览同名报告并在原位改名，失败保留输入及旧标题', async () => {
   const user = userEvent.setup()
   const renameAnalysis = vi.fn()
@@ -238,6 +265,44 @@ it('删除后迟到的报告事件和列表结果都不会恢复已删除的报�
   await act(async () => resolveList([completed, { ...completed, id: '23' }]))
   expect(screen.queryByRole('button', { name: /小林.*会话洞察.*#24/ })).not.toBeInTheDocument()
   expect(screen.getByRole('button', { name: /小林.*会话洞察.*#23/ })).toBeVisible()
+})
+
+it.each(['报告', '会话'])('原文读取期间删除%s后退出到列表，不向已删除的引用交还焦点', async target => {
+  const user = userEvent.setup()
+  let publish!: (event: AiEvent) => void
+  let conversationDeleted!: (id: string) => void
+  let release!: () => void
+  const api = {
+    onConversationDeleted: (listener: typeof conversationDeleted) => { conversationDeleted = listener; return () => {} },
+    ai: {
+      listAnalyses: async () => [completed, { ...completed, id: '23' }],
+      readInsightCitation: async () => {
+        await new Promise<void>(resolve => { release = resolve })
+        return { status: 'unavailable' }
+      },
+      onEvent: (listener: typeof publish) => { publish = listener; return () => {} },
+    },
+  } as unknown as DesktopApi
+  render(<App preview conversations={[]} importApi={api} />)
+  await user.click(screen.getByRole('button', { name: '对话洞察' }))
+  await user.click(await screen.findByRole('button', { name: /小林.*会话洞察.*#24/ }))
+  const citation = screen.getByRole('button', { name: '那次改期' })
+  await user.click(citation)
+  const dialog = screen.getByRole('dialog')
+  within(dialog).getByRole('button', { name: '关闭原文' }).focus()
+  const restored = vi.fn()
+  citation.addEventListener('focus', restored)
+  await act(async () => {
+    if (target === '报告') publish({ kind: 'analysis-deleted', taskId: '24', conversationId: '1' })
+    else conversationDeleted('1')
+  })
+  await act(async () => release())
+  expect(restored).not.toHaveBeenCalled()
+  expect(screen.queryByRole('dialog')).toBeNull()
+  expect(screen.queryByRole('alert')).toBeNull()
+  expect(screen.getByRole('heading', { name: '对话洞察' })).toHaveFocus()
+  if (target === '报告') expect(screen.getByRole('button', { name: /小林.*会话洞察.*#23/ })).toBeVisible()
+  else expect(screen.getByRole('heading', { name: '暂无洞察报告' })).toBeVisible()
 })
 
 it.each(['下一行', '页面标题'])('删除通知先于请求回执时聚焦%s，跳过同时移除的相邻报告', async target => {

@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { afterEach, expect, test, vi } from 'vitest'
 import { createAiRepository } from '../../electron/data/ai/repository'
 import { ANALYSIS_PROMPT_VERSION } from '../../electron/data/ai/prompt-version'
@@ -297,6 +298,49 @@ test('报告拒绝未完整覆盖、跨会话或版本不符的来源', async ()
   } finally {
     clock.mockRestore()
   }
+})
+
+test('一条已保存的引用异常时，报告列表、正文和其余引用仍可读取', async () => {
+  const { repository, store } = await setup()
+  const ids: string[] = []
+  for (const requestId of ['damaged-report', 'intact-report']) {
+    const preparation = await repository.prepareAnalysis({ conversationId: '1', modelId: 'example', scope: october })
+    const task = await repository.confirmAnalysis({ token: preparation.token, requestId })
+    ids.push(task.id)
+    const [source] = repository.readInsightSources({ taskId: task.id, messageIds: ['1'] })
+    const citation = { id: 'time', conversationId: '1', fragments: [{ sources: [{ messageId: '1', revision: source.revision }] }] }
+    const report: InsightReport = {
+      format: 'conversation-insights-v1', aboutYou: [{ content: [{ text: '那次问时间', citationId: 'time' }, { text: '稍后又问', citationId: 'later' }] }],
+      citations: [citation, { ...citation, id: 'later' }], relationship: [], limitations: [],
+    }
+    await repository.saveInsightCheckpoint(task.id, 'done', ['1', '4'])
+    if (requestId === 'damaged-report') {
+      await expect(repository.completeAnalysis(task.id, { ...report, citations: [{ ...citation, fragments: [] }] }))
+        .rejects.toHaveProperty('code', 'INVALID_RESPONSE')
+    }
+    await repository.completeAnalysis(task.id, report)
+  }
+  const [damagedId, intactId] = ids
+  const original = repository.getReport(damagedId) as InsightReport
+  const bad = { ...original.citations[1], fragments: [] }
+  const duplicate = { ...original.citations[0], id: 'ambiguous' }
+  const foreign = { ...original.citations[0], id: 'foreign', conversationId: '2' }
+  const data = JSON.stringify({ ...original, citations: [original.citations[0], bad, duplicate, { ...bad, id: 'ambiguous' }, foreign] })
+  const revision = createHash('sha256').update(data).digest('hex')
+  const update = store.writer.prepare('UPDATE ai_reports SET data=?,content_revision=? WHERE task_id=?')
+  update.run(data, revision, damagedId)
+
+  const listed = repository.listAnalyses()
+  expect(() => validateAiResult('listAnalyses', listed)).not.toThrow()
+  expect(listed.find(task => task.id === intactId)?.report).toEqual(original)
+  expect(listed.find(task => task.id === damagedId)?.report).toEqual({ ...original, citations: [original.citations[0]] })
+  const read = (citationId: string) => repository.readInsightCitation({ taskId: damagedId, citationId, fragmentIndex: 0 })
+  expect(await read('later')).toEqual({ status: 'unavailable' })
+  expect(await read('ambiguous')).toEqual({ status: 'unavailable' })
+  expect(await read('foreign')).toEqual({ status: 'unavailable' })
+  expect(await read('time')).toMatchObject({ status: 'available', highlightIds: ['1'] })
+  update.run(data, '0'.repeat(64), damagedId)
+  expect(await read('time')).toEqual({ status: 'expired' })
 })
 
 test('回复补全或重新确认本人后，旧报告仍能定位原文，未完任务保持原来的输入版本', async () => {

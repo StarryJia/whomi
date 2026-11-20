@@ -1,17 +1,22 @@
 import { Fragment } from 'react'
-import type { InsightReport } from '../../shared/conversation-insights'
+import type { InsightCitation, InsightReport } from '../../shared/conversation-insights'
 
-export function InsightArticle({ report, onOpenCitation }: {
+export function InsightArticle({ report, conversationId, onOpenCitation }: {
   report: InsightReport
-  onOpenCitation?: (citationId: string, trigger: HTMLButtonElement) => void
+  conversationId?: string
+  onOpenCitation?: (citation: InsightCitation | undefined, trigger: HTMLButtonElement) => void
 }) {
-  const citations = new Set(report.citations.filter(citation => citation.fragments.length).map(citation => citation.id))
+  const citations = new Map(report.citations
+    .filter(item => item.conversationId === conversationId && item.fragments.length)
+    .map(item => [item.id, item]))
   function paragraphs(values: InsightReport['aboutYou']) {
     return values.map((paragraph, index) => <p key={index}>
-      {paragraph.content.map(({ text, citationId }, part) => citationId && citations.has(citationId) && onOpenCitation
-        ? <button key={part} className="insight-citation" type="button" aria-haspopup="dialog"
-          onClick={event => onOpenCitation(citationId, event.currentTarget)}>{text}</button>
-        : <Fragment key={part}>{text}</Fragment>)}
+      {paragraph.content.map(({ text, citationId }, part) => {
+        if (!citationId || !onOpenCitation) return <Fragment key={part}>{text}</Fragment>
+        const citation = citations.get(citationId)
+        return <button key={part} className="insight-citation" type="button" aria-haspopup={citation && 'dialog'}
+          onClick={event => onOpenCitation(citation, event.currentTarget)}>{text}</button>
+      })}
     </p>)
   }
   return <article className="insight-prose">

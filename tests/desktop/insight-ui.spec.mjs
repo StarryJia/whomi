@@ -32,7 +32,7 @@ function completion(response, result) {
   response.end(`data: ${JSON.stringify({ id: 'synthetic-ui', choices: [{ index: 0, delta: {}, finish_reason: 'stop' }], usage: { prompt_tokens: 20, completion_tokens: 10, total_tokens: 30 } })}\n\ndata: [DONE]\n\n`)
 }
 
-async function harness({ model = true, self = true, hold = true, reject = true, longReport = false, extraConversations = 0, distinctOverviewJudgments = false } = {}) {
+async function harness({ model = true, self = true, hold = true, reject = true, longReport = false, extraConversations = 0, distinctOverviewJudgments = false, conversationTitle = syntheticInsightConversation } = {}) {
   const evidence = test.info().outputPath('screenshots')
   const directory = resolve(await mkdtemp(join(tmpdir(), 'whomi-runtime-insight-ui-')))
   const requests = [], errors = [], fixtureErrors = []
@@ -89,6 +89,7 @@ async function harness({ model = true, self = true, hold = true, reject = true, 
     const { seedSyntheticInsight } = await import('./insight-model.mjs')
     return writer.transaction(() => {
       seedSyntheticInsight(writer)
+      writer.prepare('UPDATE conversations SET title=? WHERE id=1').run(${JSON.stringify(conversationTitle)})
       if (${distinctOverviewJudgments}) writer.prepare('UPDATE messages SET text=? WHERE id=4').run('我提前定好了周五见面的时间。')
       if (${extraConversations} > 0) {
         writer.exec('UPDATE conversations SET pinned=1 WHERE id=1')
@@ -134,7 +135,7 @@ async function harness({ model = true, self = true, hold = true, reject = true, 
   }, `http://127.0.0.1:${server.address().port}/v1`)
   const window = await restart()
   if (await window.btn('展开会话列表').isVisible()) await window.btn('展开会话列表').click()
-  await window.btn(syntheticInsightConversation).click()
+  await window.btn(conversationTitle).click()
   return { ...window, requests, errors, fixtureErrors, evidence, restart, close }
   } catch (error) { await close(); throw error }
 }
@@ -335,7 +336,8 @@ test('real Electron insight UI validates scope, pauses and retries, reads exact 
     expect(beforeShift).toBeLessThan(2)
     await expect(btn('回到引用')).toBeVisible()
     await shot('13-source-browse-earlier')
-    await btn('回到引用').click()
+    await btn('回到引用').press('Enter')
+    await expect(source).toBeFocused()
     await expect(btn('回到引用')).toHaveCount(0)
     const beforeLater = await source.locator('[data-message-id]').count()
     const afterAnchor = await source.evaluate(el => {
@@ -368,8 +370,9 @@ test('real Electron insight UI validates scope, pauses and retries, reads exact 
     const sourceTitle = sourceDialog.getByRole('heading', { name: /^原文 · / })
     expect(noticeBounds.y + noticeBounds.height).toBeLessThan((await sourceTitle.boundingBox()).y)
     expect(Math.abs(noticeBounds.x + noticeBounds.width / 2 - (await page.evaluate(() => innerWidth)) / 2)).toBeLessThan(2)
-    await sourceDialog.getByRole('button', { name: '重试', exact: true }).click()
+    await btn('下一段').press('Enter')
     await expect(source.locator('[data-citation=true]')).toHaveAttribute('data-message-id', '3')
+    await expect(source).toBeFocused()
     await expect(btn('下一段')).toBeDisabled()
     await expect(btn('上一段')).toBeEnabled()
     await shot('15-source-second')
@@ -460,6 +463,99 @@ test('real Electron insight UI validates scope, pauses and retries, reads exact 
     await writeFile(join(evidence, 'failure-ui.txt'), await page.locator('body').innerText())
     throw error
   } finally { await h.close() }
+})
+
+async function holdNextSourceReply(app, method) {
+  await app.evaluate(({ ipcMain }, method) => {
+    const channel = method === 'readMessages' ? 'whomi:call' : 'whomi:ai-call'
+    const original = ipcMain._invokeHandlers.get(channel)
+    delete globalThis.releaseSourceReply
+    ipcMain.removeHandler(channel)
+    ipcMain.handle(channel, async (event, value) => {
+      if (value.method !== method) return original(event, value)
+      ipcMain.removeHandler(channel)
+      ipcMain.handle(channel, original)
+      const result = await original(event, value)
+      await new Promise(resolve => { globalThis.releaseSourceReply = resolve })
+      return result
+    })
+  }, method)
+}
+
+test('narrow citation dialog can close a pending read and change fragments during pagination', async ({}, info) => {
+  const conversationTitle = '合成会话 · ' + 'QuarterlyReview'.repeat(15)
+  const h = await harness({ hold: false, reject: false, conversationTitle }), { app, page, btn, shot } = h
+  const source = page.getByRole('region', { name: '引用聊天记录' })
+  const dialog = page.getByRole('dialog', { name: '原文 · ' + conversationTitle })
+  const count = dialog.locator('.insight-source-footer')
+  const highlighted = source.locator('[data-citation=true]')
+  const held = () => expect.poll(() => app.evaluate(() => typeof globalThis.releaseSourceReply)).toBe('function')
+  const release = () => app.evaluate(() => globalThis.releaseSourceReply?.())
+  try {
+    const task = await page.evaluate(async scope => {
+      const [model] = await window.whomi.ai.listModels()
+      const prepared = await window.whomi.ai.prepareAnalysis({ conversationId: '1', modelId: model.id, scope })
+      return window.whomi.ai.confirmAnalysis({ token: prepared.token, requestId: 'source-dialog-late-reads' })
+    }, syntheticInsightScope)
+    await expect.poll(() => page.evaluate(id => window.whomi.ai.getAnalysis(id), task.id), { timeout: 20_000 }).toMatchObject({ state: 'completed' })
+    const requests = h.requests.length
+    await btn('对话洞察').click()
+    await page.locator('.insight-report-row[data-list-id]').click()
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(960, 640))
+    const first = btn('你一开始就给了三个办法'), second = btn('ta 也会主动问你有没有主意。')
+    await holdNextSourceReply(app, 'readInsightCitation')
+    await first.press('Enter')
+    await held()
+    await expect(dialog.getByRole('status')).toContainText('正在读取原文')
+    await shot('source-loading-narrow-long-name')
+    await expect(count).not.toContainText('1 / 2')
+    await expect(source.locator('[data-message-id]')).toHaveCount(0)
+    await expect(btn('关闭原文')).toBeInViewport()
+    await expect(btn('关闭原文')).toBeFocused()
+    await expect(dialog.getByText('引用：你一开始就给了三个办法', { exact: true })).toBeInViewport({ ratio: 1 })
+    await page.keyboard.press('Escape')
+    await expect(first).toBeFocused()
+    await second.press('Enter')
+    await expect(highlighted).toHaveAttribute('data-message-id', '3')
+    await release()
+    await expect(count).toContainText('1 / 1')
+    await expect(dialog).toContainText('引用：ta 也会主动问你有没有主意。')
+    await expect(highlighted).toHaveAttribute('data-message-id', '3')
+    await btn('关闭原文').click()
+    await expect(second).toBeFocused()
+
+    await first.press('Enter')
+    await expect(highlighted).toHaveAttribute('data-message-id', '1')
+    await holdNextSourceReply(app, 'readMessages')
+    await source.evaluate(viewport => { viewport.scrollTop = 0; viewport.dispatchEvent(new Event('scroll')) })
+    await held()
+    await expect(count).toContainText('1 / 2')
+    await btn('下一段').press('Enter')
+    await expect(highlighted).toHaveAttribute('data-message-id', '3')
+    await expect(count).toContainText('2 / 2')
+    const ids = () => source.locator('[data-message-id]').evaluateAll(rows => rows.map(row => row.dataset.messageId))
+    const before = await ids()
+    await release()
+    await source.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))
+    expect(await ids()).toEqual(before)
+    await expect(source).toBeFocused()
+    const viewport = await source.boundingBox(), previous = await btn('上一段').boundingBox(), next = await btn('下一段').boundingBox()
+    expect(viewport.height).toBeGreaterThan(120)
+    expect(previous.y + previous.height).toBeLessThanOrEqual(viewport.y)
+    expect(next.y).toBeGreaterThanOrEqual(viewport.y + viewport.height)
+    expect(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
+    await shot('source-second-narrow-long-name')
+    await page.keyboard.press('Escape')
+    await expect(first).toBeFocused()
+    expect(h.requests).toHaveLength(requests)
+    expect(h.errors).toEqual([])
+  } catch (error) {
+    await page.screenshot({ path: info.outputPath('failure.png') }).catch(() => {})
+    throw error
+  } finally {
+    await release()
+    await h.close()
+  }
 })
 
 test('real Electron requires self selection and a model before creating an insight', async () => {
@@ -574,22 +670,13 @@ test('real Electron preserves long report reading position and fits an 80-charac
     await btn('返回').click()
     await expect(row).toBeFocused()
     await row.click()
-    await app.evaluate(({ ipcMain }) => {
-      const channel = 'whomi:ai-call'
-      const original = ipcMain._invokeHandlers.get(channel)
-      ipcMain.removeHandler(channel)
-      ipcMain.handle(channel, async (event, value) => {
-        const result = await original(event, value)
-        if (value.method === 'readInsightCitation') {
-          ipcMain.removeHandler(channel)
-          ipcMain.handle(channel, original)
-          await new Promise(resolve => { globalThis.releaseInsightCitation = resolve })
-        }
-        return result
-      })
-    })
+    await holdNextSourceReply(app, 'readInsightCitation')
     await citation.click()
-    await expect.poll(() => app.evaluate(() => Boolean(globalThis.releaseInsightCitation))).toBe(true)
+    await expect.poll(() => app.evaluate(() => Boolean(globalThis.releaseSourceReply))).toBe(true)
+    await citation.evaluate(link => {
+      window.removedCitationFocusEvents = 0
+      link.addEventListener('focus', () => { window.removedCitationFocusEvents++ })
+    })
     await shot('33-source-open-during-conversation-deletion')
     await page.evaluate(() => window.whomi.deleteConversation('1'))
     try {
@@ -601,10 +688,11 @@ test('real Electron preserves long report reading position and fits an 80-charac
       await shot('failure-conversation-deletion-keeps-source-open')
       throw error
     } finally {
-      await app.evaluate(() => globalThis.releaseInsightCitation())
+      await app.evaluate(() => globalThis.releaseSourceReply())
     }
     expect(await page.evaluate(() => window.whomi.ai.listAnalyses())).toEqual([])
     await expect(page.getByRole('region', { name: '引用聊天记录' })).toHaveCount(0)
+    expect(await page.evaluate(() => window.removedCitationFocusEvents)).toBe(0)
     await shot('34-list-after-conversation-deletion')
     await btn('个人总览').click()
     await expect(page.getByRole('heading', { name: '你的人格倾向' })).toBeVisible()

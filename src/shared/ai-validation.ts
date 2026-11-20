@@ -1,7 +1,7 @@
 import { isSubscriptionId } from './chatgpt-plan'
 import type { AiEvent, AiMethods } from './ai-contract'
 import { BoundaryError, availableSourceWindowFields, listArrangement, localId } from './desktop-validation'
-import { insightTitle, isInsightScope, isInsightTimezone, type InsightCitationWindow } from './conversation-insights'
+import { insightTitle, isInsightScope, isInsightTimezone, type InsightCitation, type InsightCitationWindow } from './conversation-insights'
 import { isModelProtocol } from './model-protocol'
 
 type Check = (value: unknown) => boolean
@@ -39,6 +39,7 @@ const sourceRef = object({ messageId: localId, revision })
 const sourceRefs: Check = value => array(sourceRef, 2000)(value) && new Set((value as { messageId: string }[]).map(source => source.messageId)).size === (value as unknown[]).length
 const fragment = object({ sources: value => sourceRefs(value) && (value as unknown[]).length > 0 })
 const citation = object({ id: key, conversationId: localId, fragments: value => array(fragment, 200)(value) && (value as unknown[]).length > 0 })
+export function isInsightCitation(value: unknown): value is InsightCitation { return citation(value) }
 const paragraphs = array(object({ content: array(object({ text: text(20000, true), citationId: optional(key) }), 200) }), 200)
 const notes = array(text(4000, true), 200)
 const judgmentFields = { text: text(4000, true), supportingSources: value => sourceRefs(value) && (value as unknown[]).length > 0, counterexampleSources: sourceRefs, alternativeExplanations: notes, limitations: notes } satisfies Record<string, Check>

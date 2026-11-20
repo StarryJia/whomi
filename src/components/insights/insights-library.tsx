@@ -21,11 +21,15 @@ function ReportPage({ task, report, onBack, rename, onRenameBusy, renderSource }
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [citation, setCitation] = useState<CitationTarget>()
+  const [citationErrorAttempt, setCitationErrorAttempt] = useState(0)
   const heading = useRef<HTMLHeadingElement>(null)
   const edit = useRef<HTMLButtonElement>(null)
   const sourceTrigger = useRef<HTMLButtonElement>(null)
   const title = insightTaskTitle(task)
-  useLayoutEffect(() => { heading.current?.focus({ preventScroll: true }) }, [])
+  useLayoutEffect(() => {
+    heading.current?.focus({ preventScroll: true })
+    return () => { sourceTrigger.current = null }
+  }, [])
   function endEdit() {
     setEditing(false)
     requestAnimationFrame(() => edit.current?.focus({ preventScroll: true }))
@@ -46,12 +50,16 @@ function ReportPage({ task, report, onBack, rename, onRenameBusy, renderSource }
           <div><dt>报告编号</dt><dd>{insightTaskNumber(task)}</dd></div>
         </dl>
       </header>
-      <InsightArticle report={report} onOpenCitation={renderSource && ((citationId, trigger) => {
-        const reference = report.citations.find(item => item.id === citationId && item.conversationId === task.conversationId)
-        if (!reference?.fragments.length) return
+      <InsightArticle report={report} conversationId={task.conversationId} onOpenCitation={renderSource && ((reference, trigger) => {
+        if (!reference) {
+          setCitationErrorAttempt(attempt => attempt + 1)
+          return
+        }
+        setCitationErrorAttempt(0)
         sourceTrigger.current = trigger
-        setCitation({ taskId: task.id, citationId, phrase: trigger.textContent ?? '', conversationTitle: task.conversationTitle ?? '会话', fragmentCount: reference.fragments.length })
+        setCitation({ taskId: task.id, citationId: reference.id, phrase: trigger.textContent ?? '', conversationTitle: task.conversationTitle ?? '会话', fragmentCount: reference.fragments.length })
       })} />
+      {citationErrorAttempt > 0 && <ExceptionNotice key={citationErrorAttempt} title="无法定位这处引用的原文。" />}
     </div>
     {citation && renderSource?.({ ...citation, onClose: () => setCitation(undefined), returnFocus: sourceTrigger })}
   </section>

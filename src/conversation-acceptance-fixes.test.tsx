@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { expect, test, vi } from 'vitest'
 import App from './App'
 import { ConversationReader } from './components/conversations'
+import { ReadOnlyMessages } from './components/insights/read-only-messages'
 import { PersonalOverview } from './components/overview/personal-overview'
 import { useOverviewFeedback } from './components/overview/use-overview-feedback'
 import type { OverviewData } from './components/overview/types'
@@ -96,6 +97,18 @@ test('reader retains verbatim content while omitting type and attachment diagnos
   expect(screen.queryByText(/文件缺失|文件未导入/)).not.toBeInTheDocument()
   expect(screen.getByText('[动画表情]')).toBeInTheDocument()
   expect(document.querySelectorAll('.message-text')[1].textContent).toBe('  好听诶  ')
+})
+
+test('insight source shows a resolved reply from the loaded messages without adding a jump action', async () => {
+  const rows = await messages()
+  rows[1] = { ...rows[1], reply: { ...rows[1].reply!, senderName: null, text: null } }
+  render(<ReadOnlyMessages messages={rows} highlightIds={['2']} />)
+
+  const quote = screen.getByRole('blockquote')
+  expect(quote).toHaveTextContent('示例甲')
+  expect(quote.querySelector('span')?.textContent).toBe('原消息\n保留换行')
+  expect(screen.queryByRole('button')).not.toBeInTheDocument()
+  expect(screen.getAllByText('时间未知')).toHaveLength(1)
 })
 
 test('reply bubble jumps to the real message without selecting it and can return to the reply', async () => {
