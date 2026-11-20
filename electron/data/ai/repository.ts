@@ -17,7 +17,7 @@ import { defaultInsightTitle, insightTitle, isInsightReport, isInsightScope, typ
 import { readNotes, type MemoryNotes } from './memory-notes'
 import { defaultModelProtocol, isModelProtocol } from '../../../src/shared/model-protocol'
 import { BoundaryError, localId } from '../../../src/shared/desktop-validation'
-import type { AiModel, AiReport, AiSkill, AiState, AiThread, AiThreadSummary, AiTurn, AiUsage, AnalysisPreparation, AnalysisTask, PrepareAnalysisInput } from '../../../src/shared/ai-contract'
+import type { AiModel, AiReport, AiSkill, AiState, AiThread, AiThreadSummary, AiTurn, AiUsage, AnalysisPreparation, AnalysisTask, AnalysisUsage, PrepareAnalysisInput } from '../../../src/shared/ai-contract'
 import { threadTitle } from './thread-title'
 import { captureInsightSources, previewInsightScope, readCurrentInsightSources, readInsightCitationIds, readInsightSources, type StoredInsightSnapshot, type StoredInsightSourceRef } from './insight-sources'
 
@@ -181,13 +181,17 @@ export function createAiRepository(store: Store, write: WriterQueue) {
     }
     return messageIds.map(messageId => result.get(messageId)!)
   }
-  function aggregate(kind: 'analysis' | 'turn', ownerId: string): AiUsage {
+  function aggregate(kind: 'analysis' | 'turn', ownerId: string): AnalysisUsage {
     const records = reader.prepare('SELECT data FROM ai_request_usage WHERE owner_kind=? AND owner_id=? ORDER BY request_id').all(kind, id(ownerId)) as { data: string }[]
     if (!records.length) return {}
-    const values = records.map(row => parse<AiUsage>(row.data)), result: AiUsage = {}
+    const values = records.map(row => parse<AiUsage>(row.data)), result: AnalysisUsage = {}
     for (const field of [...tokenFields, 'durationMs'] as const) {
       const reported = values.filter(value => value[field] !== undefined)
-      if (reported.length) result[field] = reported.reduce((sum, value) => sum + value[field]!, 0)
+      if (!reported.length) continue
+      result[field] = reported.reduce((sum, value) => sum + value[field]!, 0)
+      if (kind !== 'analysis' || reported.length === values.length) continue
+      if (field === 'cacheReadTokens') result.cacheReadTokensIncomplete = true
+      if (field === 'cacheWriteTokens') result.cacheWriteTokensIncomplete = true
     }
     if (values.some(value => value.incomplete || value.inputTokens === undefined || value.outputTokens === undefined)) result.incomplete = true
     if (result.outputTokens !== undefined && result.durationMs && result.durationMs > 0) result.outputTokensPerSecond = result.outputTokens / (result.durationMs / 1000)
@@ -441,6 +445,14 @@ export function createAiRepository(store: Store, write: WriterQueue) {
           patch.state ?? row.state, Object.hasOwn(patch, 'error') ? patch.error ?? null : row.error,
           patch.checkpoint === undefined ? row.checkpoint : patch.checkpoint, insightElapsedAt(row, Date.now(), sampledAtMs), row.id)
         if (patch.usage) insertUsage({ ownerKind: 'analysis', ownerId: taskId, requestId: 'snapshot', usage: patch.usage })
+      })
+      return repository.getAnalysis(taskId)
+    },
+    async saveInsightElapsed(taskId: string, elapsedMs: number): Promise<AnalysisTask> {
+      if (!Number.isSafeInteger(elapsedMs) || elapsedMs < 0) fail('INVALID_INSIGHT_CHECKPOINT')
+      await write(() => {
+        db.prepare("UPDATE ai_analysis_tasks SET elapsed_ms=?,event_sequence=event_sequence+1 WHERE id=? AND prompt_version=? AND state='running' AND elapsed_ms<?")
+          .run(elapsedMs, id(taskId), INSIGHT_PROMPT_VERSION, elapsedMs)
       })
       return repository.getAnalysis(taskId)
     },

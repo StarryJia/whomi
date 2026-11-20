@@ -115,8 +115,13 @@ async function harness({ model = true, self = true, hold = true, reject = true, 
     await app.close()
     const page = await openWindow()
     await app.evaluate(({ BrowserWindow }) => { BrowserWindow.getAllWindows()[0].setSize(1280, 900) })
-    await expect(page.locator('.hello-cover')).toBeAttached()
-    await expect(page.locator('.startup-intro')).toHaveCount(0)
+    try {
+      await expect(page.locator('.hello-cover')).toBeAttached({ timeout: 15_000 })
+      await expect(page.locator('.startup-intro')).toHaveCount(0)
+    } catch (error) {
+      await page.screenshot({ path: join(evidence, 'startup-failed.png') }).catch(() => {})
+      throw error
+    }
     const btn = name => page.getByRole('button', { name, exact: true })
     if (await btn('展开侧栏').isVisible()) await btn('展开侧栏').click()
     return { app, page, btn, shot: name => page.screenshot({ path: join(evidence, name + '.png'), animations: 'disabled' }) }
@@ -609,12 +614,72 @@ test('real Electron preserves long report reading position and fits an 80-charac
   } finally { await h.close() }
 })
 
-test('real Electron restores a scrolled report list and its focus at 960 by 640', async () => {
+test('real Electron retains elapsed insight time across abrupt exit', async ({}, info) => {
+  test.setTimeout(75_000)
+  const h = await harness({ reject: false })
+  try {
+    const { app, page, btn, shot } = h
+    const task = await page.evaluate(async scope => {
+      const [model] = await window.whomi.ai.listModels()
+      const prepared = await window.whomi.ai.prepareAnalysis({ conversationId: '1', modelId: model.id, scope })
+      return window.whomi.ai.confirmAnalysis({ token: prepared.token, requestId: 'synthetic-crash-running-insight' })
+    }, syntheticInsightScope)
+    await expect.poll(() => h.requests.map(request => request.stage), { timeout: 20_000 }).toEqual(['reading', 'checking'])
+    const readTask = target => target.evaluate(id => window.whomi.ai.getAnalysis(id), task.id)
+    const beforeWait = await readTask(page)
+    await btn('对话洞察').click()
+    await page.locator(`[data-insight-task="${task.id}"] .insight-task-link`).click()
+    await expect(btn('暂停生成')).toBeVisible()
+    const elapsed = page.locator('.insight-task-runtime dd').first()
+    const visibleSeconds = async () => {
+      const [minutes, seconds] = (await elapsed.innerText()).split(':').map(Number)
+      return minutes * 60 + seconds
+    }
+    // 跨过完整的采样间隔，避免退出恰好发生在下一次写入前。
+    await expect.poll(visibleSeconds, { timeout: 20_000 }).toBeGreaterThanOrEqual(Math.ceil(beforeWait.elapsedMs / 1000) + 11)
+    await shot('running-before-abrupt-exit')
+    const displayedAtExit = (await visibleSeconds()) * 1000
+    const savedAtExit = (await readTask(page)).elapsedMs
+    const child = app.process()
+    const exited = new Promise(resolve => child.once('exit', (code, signal) => resolve({ code, signal })))
+    // 模拟进程突然结束，跳过应用的退出保存流程。
+    const interruption = app.evaluate(() => process.exit(91)).catch(() => {})
+    const exit = await exited
+    await interruption
+    expect(exit).toEqual({ code: 91, signal: null })
+    await new Promise(resolve => setTimeout(resolve, 8_000))
+    const restored = await h.restart()
+    const recovered = await readTask(restored.page)
+    await info.attach('elapsed-recovery.json', { contentType: 'application/json', body: JSON.stringify({
+      taskId: task.id, exit, atRequest: beforeWait.elapsedMs, displayedAtExit, savedAtExit, recovered: recovered.elapsedMs,
+    }, null, 2) })
+    await restored.btn('对话洞察').click()
+    const row = restored.page.locator(`[data-insight-task="${task.id}"]`)
+    await expect(row).toContainText('生成失败')
+    await restored.shot('interrupted-after-restart')
+    expect(recovered).toMatchObject({ id: task.id, state: 'interrupted' })
+    expect(recovered.elapsedMs).toBeGreaterThanOrEqual(beforeWait.elapsedMs + 4_000)
+    expect(recovered.elapsedMs).toBeGreaterThanOrEqual(savedAtExit)
+    expect(recovered.elapsedMs).toBeLessThanOrEqual(displayedAtExit + 2_000)
+
+    await row.getByRole('button', { name: '重试', exact: true }).click()
+    await expect.poll(() => readTask(restored.page), { timeout: 20_000 }).toMatchObject({ id: task.id, state: 'completed' })
+    expect((await readTask(restored.page)).elapsedMs).toBeGreaterThanOrEqual(recovered.elapsedMs)
+    await expect(row.getByRole('button', { name: new RegExp('#' + task.id + '$') })).toBeVisible()
+    await restored.shot('resumed-same-report')
+    expect(h.fixtureErrors).toEqual([])
+    expect(h.errors).toEqual([])
+  } finally { await h.close() }
+})
+
+for (const resizeDuringReading of [false, true]) test(resizeDuringReading
+  ? 'real Electron reveals focused report after resizing while reading'
+  : 'real Electron restores a scrolled report list and its focus at 960 by 640', async () => {
   test.setTimeout(60_000)
   const h = await harness({ hold: false, reject: false }), { app, page, btn, shot } = h
   try {
-    await app.evaluate(({ BrowserWindow, ipcMain }) => {
-      BrowserWindow.getAllWindows()[0].setSize(960, 640)
+    await app.evaluate(({ BrowserWindow, ipcMain }, width) => {
+      BrowserWindow.getAllWindows()[0].setSize(width, width === 960 ? 640 : 900)
       const channel = 'whomi:ai-call'
       const original = ipcMain._invokeHandlers.get(channel)
       ipcMain.removeHandler(channel)
@@ -628,7 +693,7 @@ test('real Electron restores a scrolled report list and its focus at 960 by 640'
         const otherGroup = { ...saved, id: '200', conversationId: '200', conversationTitle: '合成折叠分组' }
         return { ...result, value: [otherGroup, ...filler.slice(0, 16), saved, ...filler.slice(16)] }
       })
-    })
+    }, resizeDuringReading ? 1280 : 960)
     const task = await page.evaluate(async scope => {
       const [model] = await window.whomi.ai.listModels()
       const preparation = await window.whomi.ai.prepareAnalysis({ conversationId: '1', modelId: model.id, scope })
@@ -636,7 +701,7 @@ test('real Electron restores a scrolled report list and its focus at 960 by 640'
     }, syntheticInsightScope)
     await expect.poll(() => page.evaluate(id => window.whomi.ai.getAnalysis(id), task.id), { timeout: 20_000 })
       .toMatchObject({ state: 'completed' })
-    await expect.poll(() => page.evaluate(() => innerWidth)).toBe(960)
+    await expect.poll(() => page.evaluate(() => innerWidth)).toBe(resizeDuringReading ? 1280 : 960)
     await btn('对话洞察').click()
     const otherGroup = btn('合成折叠分组（1）')
     await otherGroup.click()
@@ -652,13 +717,18 @@ test('real Electron restores a scrolled report list and its focus at 960 by 640'
     await row.press('Enter')
     await expect(btn('你一开始就给了三个办法')).toBeVisible()
     expect(await scrollTop()).toBe(0)
+    if (resizeDuringReading) {
+      await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(960, 640))
+      await expect.poll(() => page.evaluate(() => innerWidth)).toBe(960)
+      await shot('narrow-report-before-return')
+    }
     await btn('返回').press('Enter')
     await expect(row).toBeFocused()
+    await shot('narrow-list-after-returning')
     await expect(row).toBeInViewport()
-    expect(await scrollTop()).toBe(listTop)
+    if (!resizeDuringReading) expect(await scrollTop()).toBe(listTop)
     await expect(otherGroup).toHaveAttribute('aria-expanded', 'false')
     expect(await main.evaluate(element => element.scrollWidth)).toBe(await main.evaluate(element => element.clientWidth))
-    await shot('narrow-list-after-returning')
     expect(h.fixtureErrors).toEqual([])
     expect(h.errors).toEqual([])
   } finally { await h.close() }

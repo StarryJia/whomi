@@ -237,7 +237,7 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
   const [analysisOpen, setAnalysisOpen] = useState(openAnalysisOnEntry)
   const analysis = useAnalysisTask(adapter, conversationId, identityRevision, initialAnalysisTaskId, openAnalysisOnEntry)
   const { confirming: analysisConfirming, setConfirming: setAnalysisConfirming, phase: analysisState,
-    error: analysisError, setError: setAnalysisError, progress, result: analysisResult } = analysis
+    error: analysisError, setError: setAnalysisError, progress, result: analysisResult, creationFailure } = analysis
   const [showReport, setShowReport] = useState(false)
   const [preparation, setPreparation] = useState<AnalysisPreparation>()
   const submittedPreparations = useRef(new Set<string>())
@@ -780,7 +780,9 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
   const pauseSupported = !!adapter?.continueAnalysis
   const waitingForStart = analysisState === 'running' && pauseSupported &&
     (!activeTask || !['queued', 'running', 'summarizing'].includes(activeTask.state))
-  const report = analysisResult?.task?.report
+  const previous = creationFailure?.previous
+  const reportResult = analysisState === 'done' ? analysisResult : previous?.phase === 'done' ? previous.result : undefined
+  const report = reportResult?.task?.report
   const titles = { idle: '生成中', running: '生成中', done: '已完成', interrupted: '生成失败',
     stopped: pauseSupported ? '已暂停' : '已停止', failed: '生成失败' } as const
   const statusTitle = analysis.stopping ? '正在暂停' : analysis.resuming === 'continue' ? '正在继续'
@@ -804,8 +806,16 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
     : analysisState === 'idle' ? undefined : statusTitle
   const runDuration = useInsightRunDuration(analysisOpen ? activeTask : undefined)
   const failure = analysisState === 'failed' || analysisState === 'interrupted'
-  const retryBeforeCreation = analysis.creationFailed || (failure && !activeTask)
-  const reportAvailable = analysisState === 'done' && analysisResult?.taskId && (onOpenAnalysisResult || report && !isInsightReport(report))
+  const retryBeforeCreation = failure && !activeTask
+  const reportId = reportResult?.taskId
+  const reportAvailable = reportId && (onOpenAnalysisResult || report && !isInsightReport(report))
+  function openReport() {
+    if (!reportId) return
+    if (onOpenAnalysisResult) {
+      closeAnalysis()
+      onOpenAnalysisResult(reportId)
+    } else setShowReport(true)
+  }
   function openAnalysis() {
     if (!analysisAnchor.current || (analysisConfirming && approveAnalysisEntry?.(analysisAnchor.current) === false)) return
     setAnalysisOpen(true)
@@ -813,9 +823,13 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
   function again() {
     if (!analysisAnchor.current) return
     if (approveAnalysisEntry?.(analysisAnchor.current) === false) { closeAnalysis(); return }
-    if (!retryBeforeCreation) setAnalysisScope({ kind: 'all' })
+    if (creationFailure) setAnalysisScope(creationFailure.scope ?? { kind: 'all' })
+    else if (!retryBeforeCreation) setAnalysisScope({ kind: 'all' })
     confirmAnalysis()
   }
+  const failedScope = creationFailure?.scope
+  const failedRange = failedScope?.kind === 'dates'
+    ? failedScope.startDate.replaceAll('-', '.') + '—' + failedScope.endDate.replaceAll('-', '.') : '全部记录'
   const analysisControl = <>
     <button ref={analysisAnchor} type="button" className="conversation-analysis-trigger" aria-expanded={analysisOpen} aria-description={coverageDescription} title={coverageDescription}
       onClick={() => analysisOpen ? closeAnalysis() : openAnalysis()}>
@@ -828,7 +842,7 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
         {showReport && report && !isInsightReport(report) ? <>
           <h3 tabIndex={-1} ref={element => { element?.focus({ preventScroll: true }) }}>{isMemoryReport(report) ? '我们的记忆' : '分析报告'}</h3>
           <MemoryArticle report={report} />
-          <footer><button type="button" className="analysis-secondary" onClick={() => setShowReport(false)}><ArrowLeft aria-hidden="true" />返回进度</button></footer>
+          <footer><button type="button" className="analysis-secondary" onClick={() => setShowReport(false)}><ArrowLeft aria-hidden="true" />{creationFailure ? '返回洞察' : '返回进度'}</button></footer>
         </> : analysisConfirming ? <>
           <p className="analysis-conversation">当前会话：{preparation?.title ?? title}</p>
           <InsightScopeFields value={analysisScope} onChange={scope => {
@@ -858,6 +872,16 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
               <button type="button" className="analysis-secondary" onClick={confirmAnalysis}>重新核对</button>}
             <button type="button" disabled={!canStart} className="analysis-primary" onClick={analyze}>开始洞察</button>
           </footer>
+        </> : creationFailure ? <>
+          <div className="analysis-progress-heading"><p className="analysis-conversation">当前会话：{title}</p><InsightStatus status={statusTitle} /></div>
+          <p className="analysis-description">分析范围：{failedRange}</p>
+          <ExceptionNotice title="无法开始会话洞察" detail={creationFailure.error} className="conversation-error" />
+          <footer>
+            {reportAvailable && <button type="button" className="analysis-secondary" onClick={openReport}>查看上次报告</button>}
+            {previous?.progress?.task && previous.phase !== 'done' &&
+              <button type="button" className="analysis-secondary" onClick={analysis.restorePrevious}>返回上次任务</button>}
+            <button type="button" className="analysis-primary" onClick={again}>重试生成</button>
+          </footer>
         </> : <>
           <div className="analysis-progress-heading"><p className="analysis-conversation">当前会话：{title}</p><InsightStatus status={statusTitle} /></div>
           <div className="analysis-meter">
@@ -884,12 +908,7 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
             {analysis.resumable && <button className="analysis-primary" type="button" disabled={analysis.stopping || !!analysis.resuming} onClick={() => { void analysis.run() }}>
               {failure ? <RotateCw aria-hidden="true" /> : <Play aria-hidden="true" />}{failure ? '重试' : '继续洞察'}</button>}
             {reportAvailable &&
-              <button type="button" className="analysis-primary" onClick={() => {
-                if (onOpenAnalysisResult) {
-                  closeAnalysis()
-                  onOpenAnalysisResult(analysisResult!.taskId!)
-                } else setShowReport(true)
-              }}>查看报告<ArrowRight aria-hidden="true" /></button>}
+              <button type="button" className="analysis-primary" onClick={openReport}>查看报告<ArrowRight aria-hidden="true" /></button>}
           </footer>
         </>}
       </section>

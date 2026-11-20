@@ -183,7 +183,11 @@ export function InsightsLibrary({ tasks, conversations, selectedId, onSelect, on
       const row = oldId ? rowFor(oldId) : undefined
       if (row && !row.closest('[hidden]')) {
         row.focus({ preventScroll: true })
-        if (position === undefined) row.scrollIntoView({ block: 'nearest' })
+        const rowBounds = row.getBoundingClientRect()
+        const viewport = scroll?.getBoundingClientRect()
+        if (position === undefined || (viewport && (rowBounds.top < viewport.top || rowBounds.bottom > viewport.bottom))) {
+          row.scrollIntoView({ block: 'nearest' })
+        }
       } else heading.current?.focus({ preventScroll: true })
     }
   }, [selected?.id, readingNew])

@@ -3,7 +3,7 @@ import { BoundaryError, validateError } from '../shared/desktop-validation'
 import { validateAiCall, validateAiEvent, validateAiResult } from '../shared/ai-validation'
 
 export function createAiClient(transport: { invoke(method: keyof AiMethods, args: unknown[]): Promise<unknown>; onEvent(listener: (event: unknown) => void): () => void }): AiApi {
-  const pendingAnalysisControls = new Map<string, Promise<unknown>>()
+  const pendingAnalysisControls = new Map<string, { method: keyof AiMethods; request: Promise<unknown> }>()
 
   async function invoke(method: keyof AiMethods, args: unknown[]) {
     const response = await transport.invoke(method, args) as { ok: boolean; value?: unknown; error?: unknown }
@@ -16,11 +16,13 @@ export function createAiClient(transport: { invoke(method: keyof AiMethods, args
   async function call(method: keyof AiMethods, ...args: unknown[]) {
     validateAiCall(method, args)
     if (method !== 'stopAnalysis' && method !== 'continueAnalysis') return invoke(method, args)
-    const key = `${method}:${args[0]}`
-    const pending = pendingAnalysisControls.get(key)
-    if (pending) return pending
-    const request = invoke(method, args).finally(() => pendingAnalysisControls.delete(key))
-    pendingAnalysisControls.set(key, request)
+    const taskId = args[0] as string
+    const pending = pendingAnalysisControls.get(taskId)
+    if (pending?.method === method) return pending.request
+    const request = invoke(method, args).finally(() => {
+      if (pendingAnalysisControls.get(taskId)?.request === request) pendingAnalysisControls.delete(taskId)
+    })
+    pendingAnalysisControls.set(taskId, { method, request })
     return request
   }
   const names = ['listModels', 'saveModel', 'testModel', 'listSkills', 'previewInsightScope', 'prepareAnalysis', 'discardAnalysisPreparation', 'confirmAnalysis', 'getAnalysis', 'listAnalyses', 'arrangeAnalysis', 'renameAnalysis', 'deleteAnalysis', 'stopAnalysis', 'continueAnalysis', 'getReport', 'readInsightCitation', 'openThread', 'listThreads', 'createThread', 'getThread', 'arrangeThread', 'deleteThread', 'sendTurn', 'retryTurn', 'stopTurn'] as const

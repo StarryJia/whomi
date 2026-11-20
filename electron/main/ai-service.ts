@@ -209,6 +209,14 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
             analyzedMessages = snapshot.analyzedMessages
             publish({ kind: 'analysis', snapshot })
           },
+          saveElapsed: async (elapsedMs, sampledAtMs) => {
+            const snapshot = await storage<AnalysisTask>('saveInsightElapsed', id, elapsedMs)
+            if (snapshot.state === 'running' && snapshot.elapsedMs === elapsedMs) {
+              elapsedSample.elapsedMs = elapsedMs
+              elapsedSample.sampledAtMs = sampledAtMs
+              publish({ kind: 'analysis', snapshot })
+            }
+          },
           run: (input, runtimeOptions) => schedule(0, async () => {
             await storage('analysisContext', id)
             return runTrackedModel('analysis', id, randomUUID(), { ...input, apiKey: await modelSecret(initial.model) }, runtimeOptions.signal, runtimeOptions.onText)

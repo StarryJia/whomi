@@ -36,6 +36,42 @@ async function setup() {
   return { store, repository, temp }
 }
 
+test.each([
+  {
+    label: '仅第一次返回读取零值，写入均为零',
+    caches: [{ cacheReadTokens: 0, cacheWriteTokens: 0 }, { cacheWriteTokens: 0 }],
+    expected: { cacheReadTokens: 0, cacheReadTokensIncomplete: true, cacheWriteTokens: 0 },
+  },
+  {
+    label: '读取完整，写入只有第一次返回非零值',
+    caches: [{ cacheReadTokens: 3, cacheWriteTokens: 5 }, { cacheReadTokens: 4 }],
+    expected: { cacheReadTokens: 7, cacheWriteTokens: 5, cacheWriteTokensIncomplete: true },
+  },
+  {
+    label: '每次都返回读取和写入零值',
+    caches: [{ cacheReadTokens: 0, cacheWriteTokens: 0 }, { cacheReadTokens: 0, cacheWriteTokens: 0 }],
+    expected: { cacheReadTokens: 0, cacheWriteTokens: 0 },
+  },
+  {
+    label: '历史记录未保存缓存用量',
+    caches: [{}, {}],
+    expected: {},
+  },
+])('洞察用量区分缓存字段的报告完整性：$label', async ({ caches, expected }) => {
+  const { repository } = await setup()
+  const preparation = await repository.prepareAnalysis({ conversationId: '1', modelId: 'example' })
+  const task = await repository.confirmAnalysis({ token: preparation.token, requestId: 'cache-usage' })
+  for (const [index, cache] of caches.entries()) {
+    await repository.recordUsage({ ownerKind: 'analysis', ownerId: task.id, requestId: String(index),
+      usage: { inputTokens: 50, totalInputTokens: 60, outputTokens: 10, durationMs: 1000, ...cache } })
+  }
+
+  const snapshot = repository.getAnalysis(task.id)
+  expect(snapshot.usage).toEqual({ inputTokens: 100, totalInputTokens: 120, outputTokens: 20,
+    durationMs: 2000, outputTokensPerSecond: 10, ...expected })
+  expect(() => validateAiResult('getAnalysis', snapshot)).not.toThrow()
+})
+
 test('取消准备释放完整快照，重复取消和迟到取消不删除已确认任务', async () => {
   const { repository, store } = await setup()
   const cancelled = await repository.prepareAnalysis({ conversationId: '1', modelId: 'example' })

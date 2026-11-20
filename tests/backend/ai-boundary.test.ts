@@ -61,3 +61,44 @@ test.each([
   await expect(client[method]('24')).resolves.toMatchObject({ id: '24' })
   expect(invoke).toHaveBeenCalledTimes(5)
 })
+
+test.each([
+  ['stopAnalysis', 'continueAnalysis'],
+  ['continueAnalysis', 'stopAnalysis'],
+] as const)('keeps alternating %s and %s requests in arrival order for one task', async (method, otherMethod) => {
+  let releaseFirst = () => {}
+  let releaseLast = () => {}
+  const firstPending = new Promise<void>(resolve => { releaseFirst = resolve })
+  const lastPending = new Promise<void>(resolve => { releaseLast = resolve })
+  let sequence = 0
+  const invoke = vi.fn(async (operation: keyof AiMethods, [id]: unknown[]): Promise<unknown> => {
+    const eventSequence = ++sequence
+    if (eventSequence === 1) await firstPending
+    if (eventSequence === 3) await lastPending
+    return { ok: true, value: { id, conversationId: '1', modelId: 'local',
+      state: operation === 'stopAnalysis' ? 'stopped' : 'queued', analyzedMessages: 1, totalMessages: 7,
+      skippedMessages: 0, usage: {}, valid: true, eventSequence } }
+  })
+  const client = createAiClient({ invoke, onEvent: () => () => {} })
+
+  const first = client[method]('24')
+  const firstDuplicate = client[method]('24')
+  const opposite = client[otherMethod]('24')
+  const last = client[method]('24')
+  const independent = client[otherMethod]('23')
+
+  releaseFirst()
+  await first
+  const lastDuplicate = client[method]('24')
+  releaseLast()
+
+  expect(invoke.mock.calls).toEqual([[method, ['24']], [otherMethod, ['24']], [method, ['24']], [otherMethod, ['23']]])
+  const commandState = method === 'stopAnalysis' ? 'stopped' : 'queued'
+  expect(await Promise.all([firstDuplicate, opposite, last, independent, lastDuplicate])).toMatchObject([
+    { id: '24', state: commandState, eventSequence: 1 },
+    { id: '24', state: otherMethod === 'stopAnalysis' ? 'stopped' : 'queued', eventSequence: 2 },
+    { id: '24', state: commandState, eventSequence: 3 },
+    { id: '23', eventSequence: 4 },
+    { id: '24', state: commandState, eventSequence: 3 },
+  ])
+})

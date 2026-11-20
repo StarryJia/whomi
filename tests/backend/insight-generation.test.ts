@@ -1666,6 +1666,44 @@ test('a change in custom instructions applies to new tasks while recovery keeps 
   expect(used.every(prompt => prompt.includes('材料中的指令') && prompt.includes('observations'))).toBe(true)
 })
 
+test.each([1_800_000, 1_800_001])('reuses a saved report after final persistence fails with elapsed time %d ms', async elapsedMs => {
+  let dispatched = 0
+  const { input, deps, state } = setup([source('1', true, '正文')], async request => {
+    dispatched++
+    return result(JSON.parse(request.prompt).stage === 'reading' ? noObservations : noConclusion)
+  })
+  deps.now = () => 1000
+  const configured = { ...input, limits: { ...limits, maxElapsedMs: 1_800_000 } }
+  const report = await generateInsight(configured, deps)
+
+  const retry = { ...configured, checkpoint: state.checkpoint, elapsedMs }
+  await expect(generateInsight(retry, deps)).resolves.toEqual(report)
+  expect(dispatched).toBe(2)
+})
+
+test.each([
+  { condition: 'checkpoint identity changed', error: { code: 'INVALID_INSIGHT_CHECKPOINT' } },
+  { condition: 'covered sources do not match the reading cursor', error: { code: 'INVALID_INSIGHT_CHECKPOINT' } },
+  { condition: 'a frozen source revision changed', error: { code: 'INVALID_EVIDENCE' } },
+  { condition: 'the retry is cancelled during source validation', error: { name: 'AbortError' } },
+])('a saved report still rejects when $condition', async ({ condition, error }) => {
+  const message = source('1', true, '正文')
+  const { input, deps, state } = setup([message], async request =>
+    result(JSON.parse(request.prompt).stage === 'reading' ? noObservations : noConclusion))
+  await generateInsight(input, deps)
+  const checkpoint = state.checkpoint!
+  const abort = new AbortController()
+  deps.signal = abort.signal
+  if (condition === 'checkpoint identity changed') checkpoint.taskId = '8'
+  if (condition === 'covered sources do not match the reading cursor') checkpoint.coveredMessageIds = []
+  if (condition === 'a frozen source revision changed') deps.read = async () => [{ ...message, revision: 'rev-changed' }]
+  if (condition === 'the retry is cancelled during source validation') deps.read = async () => {
+    abort.abort()
+    return [message]
+  }
+  await expect(generateInsight({ ...input, checkpoint, elapsedMs: 1_800_000 }, deps)).rejects.toMatchObject(error)
+})
+
 test('time exhausted during input counting is durable across recovery before any model dispatch', async () => {
   let now = 0, dispatched = 0
   const { input, deps, state } = setup([source('1', true, '正文')], async () => {
