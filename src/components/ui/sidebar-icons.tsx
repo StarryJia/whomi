@@ -1,5 +1,8 @@
 import { createLucideIcon } from 'lucide-react'
 
+// InsightsIcon and AskIcon adapt Lucide 1.61.0 FileText and MessageCircleQuestionMark
+// with separate fill/detail paths and a closed bubble outline (ISC); see lucide.LICENSE.
+
 export const OverviewIcon = createLucideIcon('sidebar-overview', [
   ['circle', { className: 'sidebar-icon-fill', cx: '8.5', cy: '8', r: '3.2', key: 'head' }],
   ['path', { className: 'sidebar-icon-fill', d: 'M2 20.5v-1A5.5 5.5 0 0 1 7.5 14h2a5.5 5.5 0 0 1 5.5 5.5v1Z', key: 'shoulders' }],

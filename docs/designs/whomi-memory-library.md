@@ -1,8 +1,6 @@
 # 整理成记忆与记忆仓库
 
-2026-10-31 确认的产品与界面设计。本文是本功能命名、阅读入口、文稿模板及验收的依据。0.1.6 桌面版已接通仓库、事件归并和三节文稿，旧的 `conversation-analysis-v1` 任务保留原执行路径。下方可交互页面为设计样稿。
-
-[打开可交互阅读样稿](previews/memory-library/index.html)。样稿使用虚构会话演示两条阅读路径。对应画面见[原会话工具栏](assets/memory-library/toolbar.png)、[仓库导航与列表](assets/memory-library/vault.png)、[文稿阅读窗](assets/memory-library/reader.png)和[窄窗阅读](assets/memory-library/narrow.png)。
+历史记录：本文保留 2026-10-31 确认、0.1.6 接通的旧记忆功能约定，仅用于理解历史成稿和任务兼容。当前入口已由[对话洞察](../planning/ideas/004-conversation-insights.md)替代，不再以本页作为新功能规范。旧界面截图与静态样稿已清理。
 
 ## 从原会话生成，到仓库阅读
 

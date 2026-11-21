@@ -38,14 +38,13 @@
 | [隐私封面与启动动效](whomi-private-cover-motion.md) | Hello、总览入口与最终约 3.8 秒开场；历史动画迭代单列 |
 | [导入与会话视觉方案](whomi-file-import-visual-proposal.md) | 已选前端图稿与当时的实现范围，不代表真实解析服务 |
 | [导入与会话实现](whomi-file-import-implementation.md) | 文件选择、会话抽屉和只读布局；无持久化会话、模型或来源索引业务 |
-| [首页历史计划](../superpowers/plans/2026-10-26-whomi-home.md) | 保留已完成阶段的任务记录，不作为新功能执行授权 |
 | [封面与动画历史计划](../superpowers/plans/2026-10-27-private-cover-motion.md) | 保留当时实现步骤与验证要求，不需重新执行 |
 
 例如，旧版截图可用于核对当时按钮的布局；新版从「查看记忆」进入对应成稿的验收应使用实际接入后的版本。
 
 ## 研究和来源
 
-[心理支持参考](../research/psychological-support-references.md)保留实际资料核查日期，并区分研究内容与新产品决定；[第三方声明](../../THIRD_PARTY_NOTICES.md)记录许可证及品牌来源。研究、静态源码阅读和产品设想不等于 Whomi 模型效果已验证。
+[心理支持参考](../research/psychological-support-references.md)保留实际资料核查日期，并区分研究内容与新产品决定。第三方来源与许可保存在对应模块中，见 [ChatLab 解析模块](../../electron/vendor/chatlab-parser/UPSTREAM.md)和 [Cherry 对话模块](../../src/vendor/cherry-chat/UPSTREAM.md)。研究、静态源码阅读和产品设想不等于 Whomi 模型效果已验证。
 
 ## 暂缓与后续工作
 

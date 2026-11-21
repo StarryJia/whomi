@@ -7,6 +7,18 @@ files:
   - out/**
   - package.json
 extraResources:
+  - from: src/components/ui/shadcn.LICENSE
+    to: licenses/shadcn/LICENSE
+  - from: src/components/ui/lucide.LICENSE
+    to: licenses/lucide/LICENSE
+  - from: node_modules/gsap/README.md
+    to: licenses/gsap/README.md
+  - from: node_modules/gsap/package.json
+    to: licenses/gsap/package.json
+  - from: node_modules/@gsap/react/README.md
+    to: licenses/gsap-react/README.md
+  - from: node_modules/@gsap/react/package.json
+    to: licenses/gsap-react/package.json
   - from: src/vendor/virtua-resize/LICENSE
     to: licenses/virtua/LICENSE
   - from: src/vendor/virtua-resize/UPSTREAM.md
@@ -39,8 +51,6 @@ extraResources:
     to: licenses/cherry-chat/shared/source-manifest.json
   - from: build/icon.png
     to: branding/icon.png
-  - from: THIRD_PARTY_NOTICES.md
-    to: licenses/THIRD_PARTY_NOTICES.md
   - from: electron/vendor/chatlab-parser/LICENSE
     to: licenses/chatlab/LICENSE
   - from: electron/vendor/chatlab-parser/UPSTREAM.md
