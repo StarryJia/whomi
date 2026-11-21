@@ -1,7 +1,7 @@
 import * as TooltipPrimitive from '@radix-ui/react-tooltip'
 import type { ReactElement, ReactNode } from 'react'
 
-// Adapted from shadcn/ui Tooltip (MIT); see THIRD_PARTY_NOTICES.md.
+// Adapted from shadcn/ui Tooltip (MIT); see shadcn.LICENSE.
 export const TooltipProvider = TooltipPrimitive.Provider
 
 export function Tooltip({

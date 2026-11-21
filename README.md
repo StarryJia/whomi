@@ -105,10 +105,10 @@ PR（Pull Request，合并请求）用于提交待审阅的修改。新增功能
 1. 从最新 `main` 创建工作分支，一次合并请求围绕一个问题。例如修复导入失败时，将相关提示与恢复操作放在同一份修改中。
 2. 按模板说明原来的问题、修改后的行为、验证方式和结果，并关联已有的问题记录。[合并请求模板](.github/pull_request_template.md)
 3. 根据改动范围完成检查。代码修改运行类型检查与相关测试，文档修改检查事实和链接。涉及界面时，核对正常完成、取消、失败重试和窄窗口，并附关键状态截图。具体要求见[项目约定](AGENTS.md)。
-4. 复用外部代码或素材时，保留来源与许可说明，并更新第三方声明。
+4. 复用外部代码或素材时，在对应模块保留原始版权、许可证和来源记录；随安装包分发的模块同时更新许可证资源清单。
 
 ## 开源许可
 
 [AGPL-3.0](LICENSE) · [StarryJia/whomi](https://github.com/StarryJia/whomi)
 
-感谢 [ChatLab](https://github.com/ChatLab/ChatLab) 和 [Cherry Studio](https://github.com/CherryHQ/cherry-studio) 的开发者与贡献者分享他们的工作。Whomi 的聊天文件解析、模型设置和回复排版复用了其中的部分实现，具体来源与许可见[第三方声明](THIRD_PARTY_NOTICES.md)。
+感谢 [ChatLab](https://github.com/ChatLab/ChatLab) 和 [Cherry Studio](https://github.com/CherryHQ/cherry-studio) 的开发者与贡献者分享他们的工作。Whomi 的聊天文件解析、模型设置和回复排版复用了其中的部分实现，来源与许可分别保存在 [ChatLab 解析模块](electron/vendor/chatlab-parser/UPSTREAM.md)、[Cherry 对话模块](src/vendor/cherry-chat/UPSTREAM.md)、[Markdown 排版模块](src/vendor/cherry-markdown/UPSTREAM.md)和[服务商目录](src/vendor/cherry-providers/UPSTREAM.md)中。

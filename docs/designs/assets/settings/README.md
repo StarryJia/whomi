@@ -12,7 +12,7 @@
 
 三张候选的服务商、地址、模型和选中状态全部是示例。图片只比较整体结构，不验证控件、连接、消息转换或保存。图片中的蓝色图标、粗选中线、Logo 细节和模型行差异不作为设计规范；后续预览直接引用原始 Logo、现有图标及 Whomi 样式。
 
-用户选择与四处标注保存在 [feedback-r2.md](feedback-r2.md)。修订版采用[独立交互预览](../../previews/settings/index.html)，直接引用原始品牌资产，不重绘 Logo；后续浏览器截图另存为 `revision-*.png`，保留本轮候选原图。预置服务商清单仍等待用户提供，演示云服务与演示本地服务不代表真实预置。
+用户选择与四项修订见[设置设计文档](../../whomi-settings-design.md#111-用户选择后的交付)。修订版采用[独立交互预览](../../previews/settings/index.html)，直接引用原始品牌资产，不重绘 Logo；后续浏览器截图另存为 `revision-*.png`，保留本轮候选原图。预置服务商清单仍等待用户提供，演示云服务与演示本地服务不代表真实预置。
 
 已归档修订截图：`revision-models.png`、`revision-messages.png`、`revision-rules.png`、`revision-about.png`、`revision-add-provider.png`、`revision-model-picker.png`、`revision-narrow.png`。桌面截图为 1440 × 960，窄窗为 360 × 800；均是实际浏览器渲染，不是生成图，也不证明真实模型或处理算法可用。
 
