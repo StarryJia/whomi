@@ -112,7 +112,7 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
   const [conversationNavigationRequest, setConversationNavigationRequest] = useState(0)
   const [tasks, setTasks] = useState<AnalysisTask[]>([])
   const observeInsightFailure = useInsightTaskFailureNotices(tasks)
-  const completedReports = useMemo(() => tasks.filter(task => task.state === 'completed' && !!task.report), [tasks])
+  const validReports = useMemo(() => tasks.filter(task => task.valid && task.state === 'completed' && !!task.report), [tasks])
   const [insightEntry, setInsightEntry] = useState<{ taskId?:string; origin:'overview'|'library' }>()
   const [reportsError, setReportsError] = useState('')
   const [reportsLoading, setReportsLoading] = useState(Boolean(api?.ai))
@@ -170,14 +170,14 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
     return () => { active = false; unsubscribe() }
   }, [api?.ai, reportsRevision, refreshReports])
   const contributions = useMemo(() => {
-    const sources = new Map(completedReports.map(task => [task.id, task]))
-    return currentOverviewContributions(completedReports)
+    const sources = new Map(validReports.map(task => [task.id, task]))
+    return currentOverviewContributions(validReports)
       .map(item => {
         const source = sources.get(item.taskId)
         return { ...item, title: source?.conversationTitle ?? '会话 ' + item.conversationId, counterpartName: source?.counterpartName,
           sourceReports: item.sourceTaskIds.map(id => ({ id, title: sources.get(id)?.title ?? '会话洞察' })) }
       })
-  }, [completedReports])
+  }, [validReports])
   const preferences = useMemo(() => relationshipPreferences(contributions), [contributions])
   const [coverKey, setCoverKey] = useState(0)
   const [importKey, setImportKey] = useState(0)
@@ -396,12 +396,12 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
     {!concealed && previewing && <p className="overview-preview-label">开发预览 · 全部内容为虚构示例 · 未写入真实存储</p>}
     {!concealed && !queryClient && <p className="reader-availability">请在桌面应用中查看已保存的会话。</p>}
     <PersonalOverview concealed={concealed} status={!overview && !reportsLoaded && (reportsLoading || reportsError) ? (reportsLoading ? 'loading' : 'error')
-      : !overview && !completedReports.length && !reader.conversations.length && (reader.listLoading || reader.listError) ? (reader.listLoading ? 'loading' : 'error') : 'ready'}
+      : !overview && !validReports.length && !reader.conversations.length && (reader.listLoading || reader.listError) ? (reader.listLoading ? 'loading' : 'error') : 'ready'}
       readingError={!reportsLoaded && reportsError ? { title: '报告列表读取失败', noticeKey: 'reports-list' } : null}
-      retry={() => { refreshReports(); if (reader.listError) void reader.refresh() }} data={overview ?? { materialStatus: completedReports.length ? 'ready' : reader.conversations.length ? 'unanalysed' : 'none', discoveries: [], preferences }}
+      retry={() => { refreshReports(); if (reader.listError) void reader.refresh() }} data={overview ?? { materialStatus: validReports.length ? 'ready' : reader.conversations.length ? 'unanalysed' : 'none', discoveries: [], preferences }}
       conversationTitle={(activeSummary ?? reader.conversations[0])?.title}
       onOpenConversation={reader.conversations[0] ? () => openConversation(activeSummary?.id ?? reader.conversations[0].id, {origin:'overview'}) : undefined}
-      onOpenReport={completedReports[0] ? () => openLibrary(completedReports[0].id) : undefined}
+      onOpenReport={validReports[0] ? () => openLibrary(validReports[0].id) : undefined}
       hasRelationshipObservations={contributions.length > 0}
       headingRef={overviewTitleRef} onReturnToCover={returnToCover} onImport={openImport}
       onOpenSource={openSource} isSourceAvailable={sourceAvailable}

@@ -182,7 +182,7 @@ test('capture comprehensive evidence for import flow, unified top bar, conversat
     await page.getByRole('menuitem', { name: '删除', exact: true }).click()
     const deleteModal = page.getByRole('dialog', { name: '删除会话' })
     await expect(deleteModal).toBeVisible()
-    await expect(deleteModal.getByText(/原文、成员、本人设置、关联 AI 对话、记忆成稿和此会话的全部洞察报告。此操作无法撤销。/)).toBeVisible()
+    await expect(deleteModal.getByText(/原文、成员、本人设置、关联 AI 对话和此会话的全部洞察报告。此操作无法撤销。/)).toBeVisible()
     await page.screenshot({ path: join(evidence, '14-conversation-delete-confirm-modal.png') })
 
     // 点击确认删除

@@ -129,6 +129,30 @@ it('空列表导航到会话，选择会话后由工具栏打开范围，取消�
   expect(adapter.analyze).not.toHaveBeenCalled()
 })
 
+it('总览只打开当前本人的报告，删除最后一份有效报告后仍可从列表重读旧报告', async () => {
+  const user = userEvent.setup()
+  const previous = { ...insightTask, valid: false }
+  const current = { ...insightTask, id: '2', title: '更正本人的洞察', report: { ...report, judgments: [] } }
+  let onEvent!: (event: AiEvent) => void
+  const api = { ai: {
+    listAnalyses: async () => [previous, current],
+    onEvent: (callback: typeof onEvent) => { onEvent = callback; return () => {} },
+  } } as unknown as DesktopApi
+  render(<App conversations={[{ id: '1', title: '周末', messages: [] }]} preview importApi={api} />)
+  await user.click(screen.getByRole('button', { name: '个人总览' }))
+  await user.click(await screen.findByRole('button', { name: '查看对话洞察' }))
+  expect(await screen.findByRole('heading', { name: current.title })).toBeVisible()
+
+  await user.click(screen.getByRole('button', { name: '个人总览' }))
+  await act(async () => onEvent({ kind: 'analysis-deleted', taskId: current.id, conversationId: current.conversationId }))
+  expect(await screen.findByText(/生成第一份会话洞察。/)).toBeVisible()
+  expect(screen.getByRole('button', { name: '打开会话整理' })).toBeVisible()
+  expect(screen.queryByRole('button', { name: '查看对话洞察' })).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: '对话洞察' }))
+  await user.click(await screen.findByRole('button', { name: /周末的安排.*#1/ }))
+  expect(await screen.findByRole('heading', { name: previous.title })).toBeVisible()
+})
+
 it('一段关系已可判断时显示对应维度的关系数并能阅读来源', async () => {
   const user = userEvent.setup()
   const api = { ai:{ listAnalyses: async () => [insightTask], onEvent: () => () => {} } } as unknown as DesktopApi

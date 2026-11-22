@@ -142,7 +142,7 @@ export function ProviderAccount({ id, api, provider, refresh, onConnection }: {
         {!unverified && <p role="status">{connected ? status.email || (isCodex ? '已授权使用 ChatGPT 套餐。' : '账户已授权。')
           : pending ? deviceCode ? '请在 GitHub 验证页面输入设备码。' : '请在浏览器中完成授权。'
           : needsPlanPermission ? '已登录 ' + (status.email || 'ChatGPT') + '，尚未授权使用套餐。'
-          : '将在浏览器中完成授权。登录后，可使用' + (isCodex ? '你的 ChatGPT 套餐' : '账户中的模型') + '回答问题和整理记忆。'}</p>}
+          : '将在浏览器中完成授权。登录后，可使用' + (isCodex ? '你的 ChatGPT 套餐' : '账户中的模型') + '回答问题和生成会话洞察。'}</p>}
         {deviceCode && <div className="account-device-code"><code>{deviceCode}</code>{trustedDeviceLink && <a href={deviceUrl} target="_blank" rel="noreferrer">打开 GitHub 验证页面</a>}</div>}
         {unverified ? <button type="button" disabled={working} onClick={() => void change('read')}>重试读取状态</button>
           : connected ? <div className="account-actions"><button type="button" disabled={working} onClick={() => setConfirmExit(true)}>退出登录</button>

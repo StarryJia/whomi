@@ -57,7 +57,7 @@ for (const width of [1280, 440]) test(`两类会话管理在 ${width} 像素下�
     await btn(originals[0]).dragTo(btn(originals[2]))
     await expect.poll(() => names(list())).toEqual([originals[0], originals[2], originals[1]])
     await choose(originals[1], '置顶')
-    await expect(list().getByRole('alert')).toBeVisible()
+    await expect(page.getByRole('region', { name: '异常提醒' }).getByRole('alert')).toHaveText('无法保存列表顺序')
     await expect(btn(originals[1])).toHaveAttribute('data-pinned', 'false')
     await shot('pin-retry')
     await probe('probe.unblock'); await list().getByRole('button', { name: '重试' }).click()
@@ -94,7 +94,8 @@ for (const width of [1280, 440]) test(`两类会话管理在 ${width} 像素下�
     await btn('关闭 AI 对话').click()
     const scroll = page.locator('.reader-scroll')
     const top = await scroll.evaluate(el => { el.scrollTop = 380; return el.scrollTop })
-    await openList(); await choose(originals[1], '删除'); await expect(page.getByRole('dialog', { name: '删除会话' })).toContainText('记忆成稿')
+    await openList(); await choose(originals[1], '删除')
+    await expect(page.getByRole('dialog', { name: '删除会话' })).toContainText('原文、成员、本人设置、关联 AI 对话和此会话的全部洞察报告。')
     await shot('original-delete'); await btn('取消').click()
     await expect(btn(originals[1])).toBeVisible()
     await choose(originals[1], '删除'); await btn('确认删除').click()
@@ -103,6 +104,9 @@ for (const width of [1280, 440]) test(`两类会话管理在 ${width} 像素下�
     await expect(page.getByRole('heading', { name: title })).toBeVisible()
     expect(await scroll.evaluate(el => el.scrollTop)).toBe(top)
     await btn('AI 对话').click(); await expect(draft()).toHaveText('保留这条草稿')
+  } catch (error) {
+    if (page && !page.isClosed()) await page.screenshot({ path: test.info().outputPath('failure.png'), timeout: 3000 }).catch(() => {})
+    throw error
   } finally {
     await app?.close()
     if (dirname(directory) === resolve(tmpdir()) && directory.includes('whomi-runtime-lists-')) await rm(directory, { recursive: true, force: true })
