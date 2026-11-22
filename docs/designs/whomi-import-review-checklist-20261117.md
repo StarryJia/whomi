@@ -6,6 +6,8 @@
 
 前 20 项保留 2026-11-17 的原审核要求和历史截图。2026-11-19 确认的实施方案、结果和本轮运行证据见文末。历史截图对应修改前的版本。
 
+2026-11-22 补验结果：第 6 项的 Windows 资源管理器鼠标拖放通过四种组合。见[原生选择窗口与资源管理器拖放](#原生选择窗口与资源管理器拖放)。
+
 本轮失败操作统一按第 15、17 项执行。第 7 项采纳的保存失败标题与提示调整纳入清单，原建议中的重试保存入口按第 15 项调整。第 10、11 项将取消的目标确定为整批恢复到导入前状态。
 
 ## 统一清单
@@ -178,3 +180,18 @@
 - 新回归用系统返回的真实显示器句柄启动 Whomi，并使用空白临时资料目录。原安装版报「句柄无效」且未显示窗口。修复后可显示窗口、创建数据库并正常退出。 [启动回归](../../tests/desktop/runtime.spec.mjs) · [原生启动辅助脚本](../../tests/desktop/fixtures/windows-monitor-startup.ps1)
 - 桌面回归首轮 9/10。提交后恢复用例原先在内部保存点释放时结束进程，实际整批事务尚未提交。修正测试触发点后，10/10 通过，覆盖启动、提交前后恢复、错误日志转发和取消后重导。旧安装版复现、首轮结果和最终桌面回归分别保存在本地 `release/issue-25-verification/windows-shortcut-packaged-red-20261119-170945129/`、`release/issue-25-verification/windows-shortcut-and-runtime-20261119-170819030/` 和 `release/issue-25-verification/windows-shortcut-and-runtime-final-20261119-171145526/`。
 - 类型检查、桌面构建和后端 745 项通过。前端首轮 642/644，富文本编辑器就绪与日志提醒先后顺序两项失败，相关文件单独复跑 24/24。首轮和复测输出保存在本地 `release/issue-25-verification/shortcut-startup-frontend.log` 与 `release/issue-25-verification/shortcut-startup-frontend-focused.log`。
+
+#### 原生选择窗口与资源管理器拖放
+
+2026-11-22，验收工单 #25 的来源选择。运行版本为 `67a383c`，其完整文件树与验收基线 `origin/main` 的 `b3fd6f0` 相同。每组使用独立空资料库和合成聊天。打开 Whomi 原生选择窗口后，由 Windows 系统鼠标输入从资源管理器拖入文件或文件夹。测试先核对鼠标起点和终点所属窗口，等待拖入会话保存，再操作仍然打开的选择窗口。确认用例给选择窗口预设了另一份有效聊天所在的文件或文件夹，并读取窗口实际返回的路径。
+
+| 资源管理器拖入项 | 原选择窗口的返回 | 窗口返回前 → 返回后，导入任务数 | 资料库中全部会话 |
+| --- | --- | --- | --- |
+| 文件 `Mouse-file.json` | 取消，返回空列表 | 1 → 1 | `Mouse-file` |
+| 文件 `Mouse-file.json` | 确认，返回 `Picker-file.json` | 1 → 1 | `Mouse-file` |
+| 文件夹 `Mouse-folder` | 取消，返回空列表 | 1 → 1 | `Mouse-folder` |
+| 文件夹 `Mouse-folder` | 确认，返回 `Picker-folder` | 1 → 1 | `Mouse-folder` |
+
+四组分别收到一次来自系统的放下事件。每组前后查询导入任务表，均只包含同一条已完成任务。事件、选择窗口返回值、任务编号和会话名称见[四组结果](evidence/issue25-native-drag/results.json)。确认备用来源后的界面见[文件结果](evidence/issue25-native-drag/file-confirmed.png)和[文件夹结果](evidence/issue25-native-drag/folder-confirmed.png)。
+
+首轮在文件拖入并保存后，测试工具定位到不支持调用的控件，未完成取消操作。该轮 1 项失败，3 项未运行，退出码为 1。改用原生对话框按钮后，独立复跑 4 项全部通过，退出码为 0。两轮完整命令、时间、输出、报告和截图分别保存在原工作区的 `release/issue-25-verification/explorer-four-20261122-185807532/` 和 `release/issue-25-verification/explorer-actions-20261122-185910007/`。
