@@ -3,13 +3,20 @@ import { defaultProcessing } from '../../src/shared/settings-contract'
 import { createMessageProcessor } from '../../electron/main/message-processing'
 
 test('processing merges consecutive known-time messages and preserves every source id without mutating originals', () => {
-  const messages = [{ id: '1', memberId: '7', senderName: '小林', text: '不是', kind: 'text', sentAtMs: 1000 }, { id: '2', memberId: '7', senderName: '小林', text: '不在乎', kind: 'text', sentAtMs: 2000 }, { id: '3', memberId: '8', senderName: '小叶', text: '🙂', kind: 'sticker', sentAtMs: 3000 }]
+  const messages = [{ id: '1', memberId: '7', senderName: '小林', text: '不是', sourceIds: ['1'], kind: 'text', sentAtMs: 1000 }, { id: '2', memberId: '7', senderName: '小林', text: '不在乎', kind: 'text', sentAtMs: 2000 }, { id: '3', memberId: '8', senderName: '小叶', text: '🙂', kind: 'sticker', sentAtMs: 3000 }]
   const original = structuredClone(messages)
   const result = createMessageProcessor({ ...defaultProcessing, merge: true }, [{ id: '7', displayName: '小林' }, { id: '8', displayName: '小叶' }]).messages(messages)
   expect(result).toHaveLength(2)
   expect(result[0]).toMatchObject({ senderName: 'U7', text: '不是\n不在乎', sourceIds: ['1', '2'] })
   expect(result[1].text).toBe('🙂')
   expect(messages).toEqual(original)
+})
+
+test('同名消息缺少成员编号时保持独立', () => {
+  const processor = createMessageProcessor({ ...defaultProcessing, merge: true, anonymize: false }, [])
+  const first = { id: '1', senderName: '示例成员', text: '第一条', kind: 'text', sentAtMs: 1000 }
+  const second = { ...first, id: '2', text: '第二条', sentAtMs: 2000 }
+  expect(processor.messages([first, second]).map(item => item.sourceIds)).toEqual([['1'], ['2']])
 })
 
 test('selected redactions protect question, history and profile text while preserving source identifiers', () => {

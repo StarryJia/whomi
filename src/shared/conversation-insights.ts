@@ -1,5 +1,7 @@
 import type { SourceWindow } from './desktop-api'
-import type { MemoryDimensions, SavedReport } from './memory'
+
+export type InsightDimensions = { EI: 'E' | 'I' | null; SN: 'S' | 'N' | null; TF: 'T' | 'F' | null; JP: 'J' | 'P' | null }
+export const dimensionKeys = ['EI', 'SN', 'TF', 'JP'] as const
 
 export type InsightScope =
   | { kind: 'all' }
@@ -22,8 +24,8 @@ export type InsightInline = { text: string; citationId?: string }
 export type InsightParagraph = { content: InsightInline[] }
 
 export type InsightJudgment = {
-  [Dimension in keyof MemoryDimensions]: { dimension: Dimension; direction: MemoryDimensions[Dimension] }
-}[keyof MemoryDimensions] & {
+  [Dimension in keyof InsightDimensions]: { dimension: Dimension; direction: InsightDimensions[Dimension] }
+}[keyof InsightDimensions] & {
   text: string
   supportingSources: InsightSourceRef[]
   counterexampleSources: InsightSourceRef[]
@@ -101,6 +103,6 @@ export function insightTitle(value: unknown): string | null {
   return title && title.length <= 160 && [...title].length <= 80 ? title : null
 }
 
-export function isInsightReport(report: SavedReport | undefined): report is InsightReport {
-  return !!report && 'format' in report && report.format === 'conversation-insights-v1'
+export function isInsightReport(report: unknown): report is InsightReport {
+  return typeof report === 'object' && report !== null && 'format' in report && report.format === 'conversation-insights-v1'
 }

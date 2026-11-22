@@ -1,4 +1,4 @@
-import { dimensionKeys, type MemoryDimensions } from '../shared/memory'
+import { dimensionKeys, type InsightDimensions } from '../shared/conversation-insights'
 
 export const personalityDimensions = {
   EI: { id: 'energy', name: '精力来源', left: '外向 E', right: '内向 I',
@@ -11,6 +11,6 @@ export const personalityDimensions = {
     leftContext: '更习惯提前安排', rightContext: '更习惯保留弹性' },
 } as const
 
-export function predictionText(dimensions: MemoryDimensions) {
+export function predictionText(dimensions: InsightDimensions) {
   return dimensionKeys.map(axis => dimensions[axis] ?? '?').join('')
 }

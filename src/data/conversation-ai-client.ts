@@ -3,7 +3,7 @@ import type { AiApi, AiEvent, AiThread, AiTurn, AnalysisTask } from '../shared/a
 import type { AnalysisProgress, AnalysisResult, ConversationAiAdapter, ConversationRequest, RestoredConversationTurn } from '../components/conversation-ai/types'
 import type { ModelFeature, SettingsApi } from '../shared/settings-contract'
 
-const settled = (state: string) => !['queued', 'running', 'summarizing'].includes(state)
+const settled = (state: string) => !['queued', 'running'].includes(state)
 const cancelled = () => new DOMException('已停止。', 'AbortError')
 const check = (signal: AbortSignal) => { if (signal.aborted) throw cancelled() }
 const requestId = () => crypto.randomUUID()
@@ -292,7 +292,7 @@ export async function createConversationAiClient(api: AiApi, settings?: Settings
       check(signal)
       const tasks = await api.listAnalyses(conversationId)
       check(signal)
-      const active = (task: AnalysisTask) => task.valid && ['queued', 'running', 'summarizing'].includes(task.state)
+      const active = (task: AnalysisTask) => task.valid && ['queued', 'running'].includes(task.state)
       const latest = taskId ? tasks.find(task => task.id === taskId) : [...tasks].sort((a, b) =>
         Number(active(b)) - Number(active(a)) || (b.createdAtMs ?? 0) - (a.createdAtMs ?? 0) ||
         b.id.localeCompare(a.id, 'en', { numeric: true }))[0]

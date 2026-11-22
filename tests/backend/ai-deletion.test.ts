@@ -9,7 +9,7 @@ function fixture(runtime: RuntimeRunner, beforeResponse?: (method: string) => Pr
   let deleted = false
   const lateWrites: string[] = []
   const service = createAiService({ runtime, secrets: { encrypt: text => text, decrypt: text => text }, storage: async (method, args) => {
-    if (deleted && ['saveTurn', 'saveAnalysis', 'recordUsage', 'commitBatch', 'completeAnalysis'].includes(method)) lateWrites.push(method)
+    if (deleted && ['saveTurn', 'saveAnalysis', 'recordUsage', 'saveInsightCheckpoint', 'saveInsightElapsed', 'completeAnalysis'].includes(method)) lateWrites.push(method)
     if (method === 'getThread') return { id: args[0], conversationId: args[0] === '3' ? '1' : args[0], turns: [...turns.values()].filter(turn => turn.threadId === args[0]) }
     if (method === 'deleteThread') {
       for (const [id, turn] of turns) if (turn.threadId === args[1]) turns.delete(id)
@@ -31,7 +31,9 @@ function fixture(runtime: RuntimeRunner, beforeResponse?: (method: string) => Pr
     if (method === 'getAnalysis') return analysis
     if (method === 'deleteAnalysis') { deleted = true; return }
     if (method === 'beginRetryTurn') { const turn = turns.get(args[0] as string)!; turn.state = 'queued'; await beforeResponse?.(method); return turn }
-    if (method === 'analysisContext') return { task: analysis, model, selfFingerprint: 'self', messages: [{ id: '1', text: '测试正文', senderName: '本人', isSelf: true, kind: 'text' }], batches: [], checkpoint: null }
+    if (method === 'analysisContext') return { task: analysis, model, snapshot: { taskId: analysis.id, scope: { kind: 'all' }, sources: [{ messageId: '1', revision: 'rev1' }] }, checkpoint: null }
+    if (method === 'readInsightSources') return [{ id: '1', revision: 'rev1', text: '测试正文', senderName: '本人', isSelf: true, sentAtMs: 0, replyToMessageId: null }]
+    if (method === 'saveInsightElapsed' || method === 'saveInsightCheckpoint') return analysis
     if (method === 'saveAnalysis') return Object.assign(analysis, args[1])
     if (method === 'modelSecret') return { model, encryptedKey: null }
     if (method === 'recordUsage') return {}
@@ -42,7 +44,7 @@ function fixture(runtime: RuntimeRunner, beforeResponse?: (method: string) => Pr
 }
 const send = (threadId: string, requestId = threadId) => ({ threadId, requestId, prompt: '测试问题', referenceIds: [], modelId: 'm' })
 
-test('删除单份记忆等待运行器退出，发布确切任务删除事件，保留同时运行的对话', async () => {
+test('删除单份洞察等待运行器退出，发布确切任务删除事件，保留同时运行的对话', async () => {
   const signals = new Map<string, AbortSignal>()
   const state = fixture({ run: async (input, options) => {
     signals.set(input.key, options.signal)
@@ -50,7 +52,7 @@ test('删除单份记忆等待运行器退出，发布确切任务删除事件�
   } })
   const events: unknown[] = []
   state.service.subscribe(event => events.push(event))
-  await state.service.confirmAnalysis({ token: 'token', requestId: 'single-memory' })
+  await state.service.confirmAnalysis({ token: 'token', requestId: 'single-insight' })
   await vi.waitFor(() => expect(signals.size).toBe(1))
   await state.service.sendTurn(send('1'))
   await state.service.deleteAnalysis('1')

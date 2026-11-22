@@ -104,7 +104,7 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
   const overviewTitleRef = useRef<HTMLHeadingElement>(null)
   const clarificationTitleRef = useRef<HTMLHeadingElement>(null)
   const [view, setView] = useState<'cover' | 'overview' | 'import' | 'conversation' | 'clarification' | 'library'>(preview && previewConversationId ? 'conversation' : 'cover')
-  const [selectedMemory, setSelectedMemory] = useState<string>()
+  const [selectedReportId, setSelectedReportId] = useState<string>()
   const reportOrigin = useRef<'library' | 'overview' | 'conversation'>('library')
   const renameBusy = useRef(false)
   const removedReports = useRef(new Set<string>())
@@ -112,26 +112,26 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
   const [conversationNavigationRequest, setConversationNavigationRequest] = useState(0)
   const [tasks, setTasks] = useState<AnalysisTask[]>([])
   const observeInsightFailure = useInsightTaskFailureNotices(tasks)
-  const memories = useMemo(() => tasks.filter(task => task.state === 'completed' && !!task.report), [tasks])
-  const [memoryEntry, setMemoryEntry] = useState<{ taskId?:string; origin:'overview'|'library' }>()
-  const [memoryError, setMemoryError] = useState('')
-  const [memoryLoading, setMemoryLoading] = useState(Boolean(api?.ai))
-  const [memoryLoaded, setMemoryLoaded] = useState(false)
-  const [memoryRevision, setMemoryRevision] = useState(0)
-  const refreshMemories = useCallback(() => setMemoryRevision(revision => revision + 1), [])
+  const completedReports = useMemo(() => tasks.filter(task => task.state === 'completed' && !!task.report), [tasks])
+  const [insightEntry, setInsightEntry] = useState<{ taskId?:string; origin:'overview'|'library' }>()
+  const [reportsError, setReportsError] = useState('')
+  const [reportsLoading, setReportsLoading] = useState(Boolean(api?.ai))
+  const [reportsLoaded, setReportsLoaded] = useState(false)
+  const [reportsRevision, setReportsRevision] = useState(0)
+  const refreshReports = useCallback(() => setReportsRevision(revision => revision + 1), [])
   useEffect(() => {
     if (!api?.ai) return
     let active = true
     const changes = new Map<string, AnalysisTask | null>()
-    setMemoryError('')
-    setMemoryLoading(true)
+    setReportsError('')
+    setReportsLoading(true)
     const unsubscribe = api.ai.onEvent(event => {
       if (!active || event.kind === 'turn') return
       if (event.kind === 'analysis-deleted') {
         removedReports.current.add(event.taskId)
         changes.set(event.taskId, null)
         setTasks(items => items.filter(task => task.id !== event.taskId))
-        setSelectedMemory(id => id === event.taskId ? undefined : id)
+        setSelectedReportId(id => id === event.taskId ? undefined : id)
       } else {
         const task = event.snapshot
         if (removedReports.current.has(task.id) || removedConversations.current.has(task.conversationId)) return
@@ -144,7 +144,7 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
           if (stored && stored.eventSequence > task.eventSequence) return items
           return stored ? items.map(item => item.id === task.id ? task : item) : [task, ...items]
         })
-        if (task.state === 'completed') refreshMemories()
+        if (task.state === 'completed') refreshReports()
       }
     })
     void api.ai.listAnalyses().then(snapshot => {
@@ -163,21 +163,21 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
             return newer && newer.eventSequence > task.eventSequence ? newer : task
           })
       })
-      setMemoryLoaded(true)
+      setReportsLoaded(true)
     }).catch(() => {
-      if (active) setMemoryError('报告列表读取失败。')
-    }).finally(() => { if (active) setMemoryLoading(false) })
+      if (active) setReportsError('报告列表读取失败。')
+    }).finally(() => { if (active) setReportsLoading(false) })
     return () => { active = false; unsubscribe() }
-  }, [api?.ai, memoryRevision, refreshMemories])
+  }, [api?.ai, reportsRevision, refreshReports])
   const contributions = useMemo(() => {
-    const sources = new Map(memories.map(task => [task.id, task]))
-    return currentOverviewContributions(memories)
+    const sources = new Map(completedReports.map(task => [task.id, task]))
+    return currentOverviewContributions(completedReports)
       .map(item => {
         const source = sources.get(item.taskId)
         return { ...item, title: source?.conversationTitle ?? '会话 ' + item.conversationId, counterpartName: source?.counterpartName,
           sourceReports: item.sourceTaskIds.map(id => ({ id, title: sources.get(id)?.title ?? '会话洞察' })) }
       })
-  }, [memories])
+  }, [completedReports])
   const preferences = useMemo(() => relationshipPreferences(contributions), [contributions])
   const [coverKey, setCoverKey] = useState(0)
   const [importKey, setImportKey] = useState(0)
@@ -320,9 +320,9 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
   function forgetConversation(id: string) {
     void importSession.conversationDeleted(id)
     removedConversations.current.add(id)
-    if (tasks.some(task => task.id === selectedMemory && task.conversationId === id)) setSelectedMemory(undefined)
+    if (tasks.some(task => task.id === selectedReportId && task.conversationId === id)) setSelectedReportId(undefined)
     setTasks(entries => entries.filter(task => task.conversationId !== id))
-    refreshMemories()
+    refreshReports()
     if (activeId === id) {
       settingsReturn.current = null
       setActiveId(undefined)
@@ -333,7 +333,7 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
   }
 
   function openConversation(id: string, entry?: { origin:'overview'|'library'; taskId?:string }) {
-    setMemoryEntry(entry)
+    setInsightEntry(entry)
     setSource(undefined)
     setFromImport(view === 'import')
     setActiveId(id)
@@ -344,7 +344,7 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
   }
 
   function openSource(reference: SourceReference, origin: 'overview' | 'clarification' = 'overview') {
-    setMemoryEntry(undefined)
+    setInsightEntry(undefined)
     setSource(reference)
     setFromImport(false)
     setSourceOrigin(origin)
@@ -363,14 +363,14 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
 
   function openLibrary(id?: string) {
     reportOrigin.current = id && (view === 'overview' || view === 'conversation') ? view : 'library'
-    setSelectedMemory(id)
+    setSelectedReportId(id)
     setView('library')
     closeMobile()
   }
 
   function returnFromReport() {
     if (renameBusy.current) return
-    setSelectedMemory(undefined)
+    setSelectedReportId(undefined)
     if (reportOrigin.current === 'overview') enterOverview()
     if (reportOrigin.current === 'conversation') {
       setView('conversation')
@@ -395,20 +395,20 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
   const overviewContent = (concealed = false) => <>
     {!concealed && previewing && <p className="overview-preview-label">开发预览 · 全部内容为虚构示例 · 未写入真实存储</p>}
     {!concealed && !queryClient && <p className="reader-availability">请在桌面应用中查看已保存的会话。</p>}
-    <PersonalOverview concealed={concealed} status={!overview && !memoryLoaded && (memoryLoading || memoryError) ? (memoryLoading ? 'loading' : 'error')
-      : !overview && !memories.length && !reader.conversations.length && (reader.listLoading || reader.listError) ? (reader.listLoading ? 'loading' : 'error') : 'ready'}
-      readingError={!memoryLoaded && memoryError ? { title: '报告列表读取失败', noticeKey: 'reports-list' } : null}
-      retry={() => { refreshMemories(); if (reader.listError) void reader.refresh() }} data={overview ?? { materialStatus: memories.length ? 'ready' : reader.conversations.length ? 'unanalysed' : 'none', discoveries: [], preferences }}
+    <PersonalOverview concealed={concealed} status={!overview && !reportsLoaded && (reportsLoading || reportsError) ? (reportsLoading ? 'loading' : 'error')
+      : !overview && !completedReports.length && !reader.conversations.length && (reader.listLoading || reader.listError) ? (reader.listLoading ? 'loading' : 'error') : 'ready'}
+      readingError={!reportsLoaded && reportsError ? { title: '报告列表读取失败', noticeKey: 'reports-list' } : null}
+      retry={() => { refreshReports(); if (reader.listError) void reader.refresh() }} data={overview ?? { materialStatus: completedReports.length ? 'ready' : reader.conversations.length ? 'unanalysed' : 'none', discoveries: [], preferences }}
       conversationTitle={(activeSummary ?? reader.conversations[0])?.title}
       onOpenConversation={reader.conversations[0] ? () => openConversation(activeSummary?.id ?? reader.conversations[0].id, {origin:'overview'}) : undefined}
-      onOpenMemory={memories[0] ? () => openLibrary(memories[0].id) : undefined}
+      onOpenReport={completedReports[0] ? () => openLibrary(completedReports[0].id) : undefined}
       hasRelationshipObservations={contributions.length > 0}
       headingRef={overviewTitleRef} onReturnToCover={returnToCover} onImport={openImport}
       onOpenSource={openSource} isSourceAvailable={sourceAvailable}
       feedback={feedback}>
       <RelationshipObservations observations={contributions} onRead={openLibrary} />
     </PersonalOverview>
-    {!concealed && memoryLoaded && memoryError && <p><ExceptionNotice title="报告列表读取失败" noticeKey="reports-list" /> <button type="button" onClick={refreshMemories}>重试</button></p>}
+    {!concealed && reportsLoaded && reportsError && <p><ExceptionNotice title="报告列表读取失败" noticeKey="reports-list" /> <button type="button" onClick={refreshReports}>重试</button></p>}
   </>
 
   return (
@@ -513,10 +513,10 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
       <main id={settingsOpen ? undefined : 'main-content'} hidden={settingsOpen} ref={mainRef} className={clsx('home', view === 'cover' && 'cover-home', (view === 'overview' || view === 'clarification' || view === 'library') && 'overview-home', view === 'library' && 'insights-home', view === 'conversation' && 'reading-home')} tabIndex={-1} inert={settingsOpen || mobileDialog || introActive}>
         <ExceptionNoticeScope active={!settingsOpen && !mobileDialog && !introActive}>
         {view === 'cover' ? <HelloCover key={coverKey} name={name} buttonRef={greetingRef} onEnter={enterOverview}>{revealing => overviewContent(!revealing)}</HelloCover>
-          : view === 'library' ? <InsightsLibrary tasks={tasks} selectedId={selectedMemory} onSelect={id => { reportOrigin.current = 'library'; setSelectedMemory(id) }}
+          : view === 'library' ? <InsightsLibrary tasks={tasks} selectedId={selectedReportId} onSelect={id => { reportOrigin.current = 'library'; setSelectedReportId(id) }}
             conversations={reader.conversations} onReturn={returnFromReport} onTask={(id, taskId) => openConversation(id, { origin: 'library', taskId })}
             onConversations={revealConversations}
-            arrange={api?.ai?.arrangeAnalysis && (async change => { await api.ai!.arrangeAnalysis(change); refreshMemories() })}
+            arrange={api?.ai?.arrangeAnalysis && (async change => { await api.ai!.arrangeAnalysis(change); refreshReports() })}
             rename={api?.ai?.renameAnalysis && (async (taskId, title) => publishTask(await api.ai!.renameAnalysis({ taskId, title })))}
             onRenameBusy={busy => { renameBusy.current = busy }}
             remove={api?.ai?.deleteAnalysis && (async id => {
@@ -526,7 +526,7 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
             })}
             onStop={api?.ai?.stopAnalysis && (async id => publishTask(await api.ai!.stopAnalysis(id)))}
             onContinue={api?.ai?.continueAnalysis && (async id => publishTask(await api.ai!.continueAnalysis(id)))}
-            loading={memoryLoading} error={memoryError} retry={refreshMemories}
+            loading={reportsLoading} error={reportsError} retry={refreshReports}
             renderSource={queryClient && readInsightCitation && (target => <InsightSourceDialog {...target}
               client={queryClient} readCitation={readInsightCitation} />)} />
           : view === 'import' ? <ImportWorkspace key={importKey} api={api} controller={importSession} onOpenConversation={openConversation} />
@@ -534,21 +534,21 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
             headingRef={clarificationTitleRef} preview={previewing}
             onOpenSource={reference => openSource(reference, 'clarification')}
             isSourceAvailable={sourceAvailable} /> : view === 'conversation' ? null : overviewContent()}
-        {(view === 'conversation' || view === 'library' && selectedMemory && reportOrigin.current === 'conversation') && activeId && reader.current &&
+        {(view === 'conversation' || view === 'library' && selectedReportId && reportOrigin.current === 'conversation') && activeId && reader.current &&
           <div className="app-conversation-frame" hidden={view !== 'conversation'}><ExceptionNoticeScope active={view === 'conversation'}><ConversationReader
-          key={`${activeId}-${source?.id ?? ''}-${memoryEntry?.taskId ?? memoryEntry?.origin ?? ''}`} conversation={{ id: activeId, title: activeSummary?.title ?? '会话', messages: reader.current.messages }}
-          openAnalysisOnEntry={!!memoryEntry?.taskId} initialAnalysisTaskId={memoryEntry?.taskId}
+          key={`${activeId}-${source?.id ?? ''}-${insightEntry?.taskId ?? insightEntry?.origin ?? ''}`} conversation={{ id: activeId, title: activeSummary?.title ?? '会话', messages: reader.current.messages }}
+          openAnalysisOnEntry={!!insightEntry?.taskId} initialAnalysisTaskId={insightEntry?.taskId}
           range={reader.current.range} sourceStatus={reader.current.sourceStatus} loading={reader.loading} error={reader.error} preview={previewing}
           beforeCursor={reader.current.beforeCursor} afterCursor={reader.current.afterCursor}
           messageCount={activeSummary?.messageCount} aiAdapter={conversationAiAdapter ?? desktopAi}
           sourceStartTimeMs={activeSummary?.firstSentAtMs} sourceEndTimeMs={activeSummary?.lastSentAtMs}
           onLocateMessageId={id => reader.locate({ conversationId: activeId, messageId: id }, { preserveOnFailure: true })}
           onBefore={reader.loadBefore} onAfter={reader.loadAfter} onRetry={() => { void reader.open(activeId) }}
-          onReturn={source ? (sourceOrigin === 'clarification' ? openClarification : enterOverview) : memoryEntry ? (memoryEntry.origin === 'library' ? () => openLibrary() : enterOverview) : fromImport ? openImport : undefined}
-          returnLabel={memoryEntry?.origin === 'library' ? '返回对话洞察' : fromImport ? '返回导入结果' : sourceOrigin === 'clarification' ? '返回问一问' : '返回个人总览'}
-          api={api} onConfigureModels={api?.settings ? onReturn => { settingsReturn.current = onReturn; closeMobile(); setSettingsOpen(true) } : undefined} onOpenMemory={openLibrary} onSelfChanged={() => {
+          onReturn={source ? (sourceOrigin === 'clarification' ? openClarification : enterOverview) : insightEntry ? (insightEntry.origin === 'library' ? () => openLibrary() : enterOverview) : fromImport ? openImport : undefined}
+          returnLabel={insightEntry?.origin === 'library' ? '返回对话洞察' : fromImport ? '返回导入结果' : sourceOrigin === 'clarification' ? '返回问一问' : '返回个人总览'}
+          api={api} onConfigureModels={api?.settings ? onReturn => { settingsReturn.current = onReturn; closeMobile(); setSettingsOpen(true) } : undefined} onOpenReport={openLibrary} onSelfChanged={() => {
             setTasks(entries => entries.map(entry => entry.conversationId === activeId ? { ...entry, valid: false } : entry))
-            refreshMemories()
+            refreshReports()
             void reader.open(activeId)
           }} /></ExceptionNoticeScope></div>}
         </ExceptionNoticeScope>

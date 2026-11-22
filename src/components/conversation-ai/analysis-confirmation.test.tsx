@@ -265,7 +265,7 @@ it('工具栏圆环按已保存原文计数，未保存完不能显示百分之�
   expect(screen.getByText('>99%')).toBeVisible()
 })
 
-it('仓库打开正在整理的任务只订阅指定编号；生成新记忆不误接旧任务', async () => {
+it('对话洞察列表只订阅选中的任务，新建洞察独立启动', async () => {
   const active: AnalysisTask = { id: '7', conversationId: 'c', modelId: 'm', state: 'running',
     analyzedMessages: 9, totalMessages: 16, skippedMessages: 0, usage: {}, valid: true, eventSequence: 3 }
   const adapter: ConversationAiAdapter = { models: [{ id: 'm', label: '本机模型' }], skills: [], respond: vi.fn(), analyze: vi.fn(),

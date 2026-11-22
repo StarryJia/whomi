@@ -117,7 +117,7 @@ type QuoteJump = { targetId: string; originId?: string; referenceIds?: readonly 
 
 export function ConversationReader({ conversation, initialAnalysisTaskId, openAnalysisOnEntry, range, sourceStatus, onReturn, returnLabel = '返回个人总览',
   beforeCursor, afterCursor, onBefore, onAfter, loading, error, onRetry, messageCount, sourceStartTimeMs, sourceEndTimeMs, aiAdapter,
-  onLocateMessageId, api, onSelfChanged, onConfigureModels, onOpenMemory }: {
+  onLocateMessageId, api, onSelfChanged, onConfigureModels, onOpenReport }: {
   initialAnalysisTaskId?: string
   openAnalysisOnEntry?: boolean
   conversation: { id: string; title: string; messages: readonly MessageView[] }
@@ -140,7 +140,7 @@ export function ConversationReader({ conversation, initialAnalysisTaskId, openAn
   onLocateMessageId?: (messageId: string) => Promise<boolean>
   api?: Pick<DesktopApi, 'listMembers' | 'confirmSelf'>
   onConfigureModels?: (onReturn: () => void) => void
-  onOpenMemory?: (taskId: string) => void
+  onOpenReport?: (taskId: string) => void
   onSelfChanged?: () => Promise<void> | void
 }) {
   const heading = useRef<HTMLHeadingElement>(null)
@@ -404,7 +404,7 @@ export function ConversationReader({ conversation, initialAnalysisTaskId, openAn
     await (direction === 'before' ? onBefore?.() : onAfter?.())
   }
 
-  return <ConversationWorkspace initialAnalysisTaskId={initialAnalysisTaskId} openAnalysisOnEntry={openAnalysisOnEntry} onConfigureModels={onConfigureModels} onOpenAnalysisResult={onOpenMemory} conversationId={conversation.id} identityRevision={identityRevision} title={conversation.title} messageCount={messageCount}
+  return <ConversationWorkspace initialAnalysisTaskId={initialAnalysisTaskId} openAnalysisOnEntry={openAnalysisOnEntry} onConfigureModels={onConfigureModels} onOpenAnalysisResult={onOpenReport} conversationId={conversation.id} identityRevision={identityRevision} title={conversation.title} messageCount={messageCount}
     sourceStartTimeMs={sourceStartTimeMs} sourceEndTimeMs={sourceEndTimeMs} approveAnalysisEntry={approveAnalysisEntry}
     references={selection.references} onClearReferences={selection.clear} onRestoreReferences={selection.restore}
     onEndReferenceView={endReferenceView}

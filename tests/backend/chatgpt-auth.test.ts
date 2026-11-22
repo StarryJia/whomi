@@ -10,10 +10,9 @@ import { openStore } from '../../electron/data/db/open'
 import { createAiRepository } from '../../electron/data/ai/repository'
 import { createSettingsRepository } from '../../electron/data/settings/repository'
 import { createAiService } from '../../electron/main/ai-service'
-import { temporaryStore, useLegacyAnalysisFixture } from './helpers'
+import { temporaryStore } from './helpers'
 import { sourceMessages } from '../desktop/fixtures/moving-chat.mjs'
-import { memoryModelReply } from '../desktop/fixtures/memory-model.mjs'
-import { explainedSourcePrompt, scoredSourcePrompt } from '../../electron/data/ai/memory-scoring'
+import { simpleInsightReply } from '../desktop/fixtures/insight-model.mjs'
 
 const issuer = 'https://auth.openai.com'
 const resource = 'https://api.openai.com/v1'
@@ -214,7 +213,7 @@ test('a transient remote revocation failure retries and an unconfirmed sign-out 
   expect((await createChatgptAuth(f.options).getStatus()).state).toBe('disconnected')
 })
 
-test('a ChatGPT-authenticated memory pauses at 8/24, rotates the protected credential after restart and only resumes the remaining messages',async()=>{
+test('a ChatGPT-authenticated insight pauses between reading batches, rotates the protected credential after restart and only resumes the remaining messages',async()=>{
   const f = fixture()
   f.config.expire = 120
   const signedIn = f.auth.signIn()
@@ -229,11 +228,10 @@ test('a ChatGPT-authenticated memory pauses at 8/24, rotates the protected crede
     return { db, ai: createAiRepository(db,write), settings: createSettingsRepository(db,write) }
   }
   const data = database()
-  useLegacyAnalysisFixture(data.db)
   await data.settings.initialize()
   await data.settings.setAccountConnection('openai-codex',account,true)
   const model = await data.settings.saveModel({providerId:'cherry:openai-codex',label:'虚构套餐模型',model:'sample',enabled:true,
-    contextWindow:3584 + Buffer.byteLength(explainedSourcePrompt) - Buffer.byteLength(scoredSourcePrompt),maxTokens:512})
+    contextWindow:8000,maxTokens:512})
   const originalVersion = model.version
   data.db.writer.exec(`INSERT INTO conversations(id,title,kind,created_at_ms) VALUES(1,'搬家','direct',0);
     INSERT INTO source_conversations(id,conversation_id,platform,namespace) VALUES(1,1,'example','one');
@@ -242,7 +240,7 @@ test('a ChatGPT-authenticated memory pauses at 8/24, rotates the protected crede
   const insert = data.db.writer.prepare("INSERT INTO messages(id,conversation_id,member_id,sender_kind,sender_name,kind,text,ordinal,sent_at_ms) VALUES(?,1,?,'member',?,'text',?,?,?)")
   sourceMessages.forEach((text:string,index:number) => {
     const n=index+1
-    insert.run(n,n%2?1:2,n%2?'本人':'朋友','笔记'+String(n).padStart(2,'0')+' · '+text,index,1761700000000+n*120000)
+    insert.run(n,n%2?1:2,n%2?'本人':'朋友','笔记'+String(n).padStart(2,'0')+' · '+text+' 合成阅读材料。'.repeat(65),index,1761700000000+n*120000)
   })
   const blocked = Promise.withResolvers<void>()
   const sourceRequests: string[][] = []
@@ -259,7 +257,7 @@ test('a ChatGPT-authenticated memory pauses at 8/24, rotates the protected crede
         return new Promise((_,reject)=>init!.signal!.addEventListener('abort',()=>reject(init!.signal!.reason),{once:true}))
       }
     }
-    const answer=memoryModelReply([{content:body.instructions},body.input.at(-1)],{title:'周六搬家',text:'你们约好了取钥匙的时间。'})
+    const answer=JSON.stringify(simpleInsightReply(raw))
     const events=[{type:'response.output_text.delta',delta:answer},{type:'response.completed',response:{status:'completed'}}]
     return new Response(events.map(event=>'data: '+JSON.stringify(event)+'\n\n').join(''),{headers:{'content-type':'text/event-stream'}})
   }
@@ -272,11 +270,14 @@ test('a ChatGPT-authenticated memory pauses at 8/24, rotates the protected crede
   let worker = service(data,f.auth)
   try {
     const prepared=await worker.prepareAnalysis({conversationId:'1',modelId:model.id})
-    const task=await worker.confirmAnalysis({token:prepared.token,requestId:'signed-memory'})
+    const task=await worker.confirmAnalysis({token:prepared.token,requestId:'signed-insight'})
     await blocked.promise
     await worker.stopAnalysis(task.id)
     await worker.idle()
-    expect(data.ai.getAnalysis(task.id)).toMatchObject({state:'stopped',analyzedMessages:8,totalMessages:24})
+    const covered = sourceRequests[0].length
+    expect(covered).toBeGreaterThan(0)
+    expect(covered).toBeLessThan(24)
+    expect(data.ai.getAnalysis(task.id)).toMatchObject({state:'stopped',analyzedMessages:covered,totalMessages:24})
     await worker.close();data.db.close();f.auth.close()
     const clock=Date.now()
     vi.spyOn(Date,'now').mockImplementation(()=>clock+121_000)
@@ -289,9 +290,9 @@ test('a ChatGPT-authenticated memory pauses at 8/24, rotates the protected crede
     worker=service(conn,auth)
     await worker.continueAnalysis(task.id)
     await worker.idle()
-    expect(conn.ai.getAnalysis(task.id)).toMatchObject({id:task.id,state:'completed',analyzedMessages:24,totalMessages:24,report:{relationship:expect.any(String)}})
+    expect(conn.ai.getAnalysis(task.id)).toMatchObject({id:task.id,state:'completed',analyzedMessages:24,totalMessages:24,report:{format:'conversation-insights-v1'}})
     expect(conn.ai.listAnalyses('1')).toHaveLength(1)
-    expect(sourceRequests.slice(checkpoint).flat()).toEqual(Array.from({length:16},(_,i)=>String(i+9)))
+    expect(sourceRequests.slice(checkpoint).flat()).toEqual(Array.from({length:24-covered},(_,i)=>String(i+covered+1)))
     expect(f.counters().refresh).toBe(1)
     expect(conn.ai.modelSecret(model.id).model.version).toBe(originalVersion)
     expect(conn.ai.modelSecret(model.id).encryptedKey).toBeNull()

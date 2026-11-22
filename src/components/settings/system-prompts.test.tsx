@@ -13,12 +13,11 @@ function setup(values = defaultPrompts) {
   render(<SystemPrompts api={api} registerGuard={() => {}} onBusy={() => {}} />)
   return { api, user: userEvent.setup() }
 }
-test('含自定义记忆指令的旧设置仅展示对话与洞察入口，各自说明仍可打开', async () => {
-  const { user } = setup({ ...defaultPrompts, memorySource: '历史取材示例', memoryMerge: '历史归并示例', memoryFinal: '历史成稿示例' })
+test('设置展示对话与洞察的四个提示词入口，各自说明可打开', async () => {
+  const { user } = setup()
   await screen.findByRole('button', { name: '编辑AI 对话' })
   expect(screen.getAllByRole('button', { name: /^编辑/ }).map(button => button.getAttribute('aria-label')))
     .toEqual(['编辑AI 对话', '编辑洞察阅读', '编辑洞察核查', '编辑洞察成稿'])
-  expect(screen.queryByRole('button', { name: /记忆.*说明/ })).not.toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: '洞察成稿说明' }))
   const help = screen.getByRole('dialog', { name: '洞察成稿说明' })
   expect(within(help).getByText('作用')).toBeVisible()

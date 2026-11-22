@@ -37,7 +37,6 @@ test('系统提示词保存、取消、失败重试、重启及实际请求', as
     if (await category.isVisible()) await category.click()
     await page.getByRole('button', { name: '系统提示词', exact: true }).click()
     await expect(page.getByRole('button', { name: /^编辑/ })).toHaveCount(4)
-    await expect(page.getByRole('button', { name: /记忆(取材|归并|成稿)/ })).toHaveCount(0)
   }
   try {
     app = await launch()
@@ -46,7 +45,6 @@ test('系统提示词保存、取消、失败重试、重启及实际请求', as
     await expect(page.getByRole('button', { name: '设置', exact: true })).toBeVisible()
     await app.evaluate(async () => globalThis.__whomiRuntimeProbe.request('probe.seed', null))
     await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1280, 900))
-    await page.evaluate(() => window.whomi.settings.savePrompt('memorySource', '历史取材示例'))
     await openSettings(page)
     await page.screenshot({ path: join(evidence, 'desktop-list.png') })
     await page.getByRole('button', { name: '洞察成稿说明' }).focus()
@@ -86,7 +84,6 @@ test('系统提示词保存、取消、失败重试、重启及实际请求', as
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await expect(page.getByRole('button', { name: '设置', exact: true })).toBeVisible()
     await openSettings(page)
-    expect((await page.evaluate(() => window.whomi.settings.getPrompts())).memorySource).toBe('历史取材示例')
     await page.getByRole('button', { name: '编辑AI 对话' }).click()
     await expect(page.getByRole('textbox')).toHaveValue('先回应用户提到的具体经历。')
     await page.getByRole('button', { name: '取消', exact: true }).click()

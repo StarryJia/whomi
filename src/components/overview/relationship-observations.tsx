@@ -1,9 +1,10 @@
 import { ChevronRight } from 'lucide-react'
-import { aggregateRelationships, dimensionKeys, type MemoryDimensions } from '../../shared/memory'
+import { aggregateRelationships } from '../../shared/insight-overview'
+import { dimensionKeys, type InsightDimensions } from '../../shared/conversation-insights'
 import { personalityDimensions, predictionText } from '../personality-dimensions'
 import type { OverviewData } from './types'
 
-export type RelationshipObservation = { taskId: string; title: string; counterpartName?: string; dimensions: MemoryDimensions; sourceReports?: { id: string; title: string }[] }
+export type RelationshipObservation = { taskId: string; title: string; counterpartName?: string; dimensions: InsightDimensions; sourceReports?: { id: string; title: string }[] }
 
 function relationshipContext(relations: RelationshipObservation[]) {
   const contacts = [...new Set(relations.flatMap(item => item.counterpartName ? [item.counterpartName] : []))]

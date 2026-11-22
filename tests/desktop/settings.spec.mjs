@@ -66,7 +66,7 @@ test('settings persist real models, process outbound chat, preserve drafts and m
   const destination = await mkdtemp(join(tmpdir(), 'whomi-storage-settings-'))
   const occupied = await mkdtemp(join(tmpdir(), 'whomi-occupied-settings-'))
   await writeFile(join(occupied, 'keep.txt'), 'do not replace')
-  const evidence = resolve('release/settings-acceptance-20261030')
+  const evidence = test.info().outputPath('screenshots')
   await mkdir(evidence, { recursive: true })
   const requests = []
   let fail = true
@@ -169,7 +169,7 @@ test('settings persist real models, process outbound chat, preserve drafts and m
     await page.getByRole('combobox', { name: '对话模型' }).click()
     await page.getByRole('option', { name: 'synthetic-chat', exact: true }).click()
     await page.getByRole('button', { name: '关闭 AI 对话' }).click()
-    await page.getByRole('button', { name: '整理成记忆', exact: true }).click()
+    await page.getByRole('button', { name: '会话洞察', exact: true }).click()
     await page.getByRole('combobox', { name: '分析模型' }).click()
     await page.getByRole('option', { name: '合成分析', exact: true }).click()
     await page.keyboard.press('Escape')

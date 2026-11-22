@@ -127,7 +127,7 @@ it('管理正常读取后可浏览同名报告并在原位改名，失败保留�
   await user.click(screen.getByRole('button', { name: '对话洞察' }))
   const row = await screen.findByRole('button', { name: /小林.*会话洞察.*#24/ })
   expect(screen.getByRole('button', { name: /小林.*会话洞察.*#23/ })).toBeVisible()
-  expect(screen.queryByRole('button', { name: /新建报告|生成新记忆/ })).toBeNull()
+  expect(screen.queryByRole('button', { name: /新建报告|开始洞察/ })).toBeNull()
   await user.click(row)
   expect(screen.getByRole('heading', { name: '会话洞察', level: 1 })).toBeVisible()
   expect(screen.getByRole('heading', { name: '关于你' })).toBeVisible()

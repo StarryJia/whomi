@@ -1,10 +1,9 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
-import { ArrowLeft, ChevronDown, FileText, LoaderCircle, Pencil, X } from 'lucide-react'
+import { ArrowLeft, ChevronDown, FileText, LoaderCircle, Pencil } from 'lucide-react'
 import type { AnalysisTask } from '../../shared/ai-contract'
-import { isInsightReport, type InsightReport } from '../../shared/conversation-insights'
+import type { InsightReport } from '../../shared/conversation-insights'
 import type { ListArrangement } from '../../shared/desktop-api'
-import { MemoryArticle } from '../memory-article'
-import { ReaderDialog, actionError } from '../ui/managed-row'
+import { actionError } from '../ui/managed-row'
 import { ExceptionNotice, ExceptionNoticeScope } from '../ui/exception-notices'
 import { InsightArticle } from './insight-article'
 import { InsightRenameForm, InsightReportRow, type RenameReport } from './insight-report-menu'
@@ -152,14 +151,13 @@ export function InsightsLibrary({ tasks, conversations, selectedId, onSelect, on
   const [savingTitle, setSavingTitle] = useState(false)
   const list = useRef<HTMLElement>(null)
   const heading = useRef<HTMLHeadingElement>(null)
-  const legacyReturn = useRef<HTMLButtonElement>(null)
   const previous = useRef<string | undefined>(undefined)
   const listPosition = useRef<number | undefined>(undefined)
   const retryPressed = useRef(false)
   const deleteFocus = useRef<{ taskId: string; nearbyIds: string[] } | undefined>(undefined)
   const selected = tasks.find(task => task.id === selectedId && task.state === 'completed' && task.report)
   const selectedReport = selected?.report
-  const readingNew = isInsightReport(selectedReport)
+  const readingReport = !!selectedReport
   const groups = new Map<string, { title: string; pinned: boolean; tasks: AnalysisTask[] }>()
   for (const task of tasks) {
     if (task.state === 'completed' && !task.report) continue
@@ -182,7 +180,7 @@ export function InsightsLibrary({ tasks, conversations, selectedId, onSelect, on
     const scroll = list.current?.closest('main')
     const oldId = previous.current
     previous.current = selected?.id
-    if (selected && readingNew) {
+    if (selected && readingReport) {
       if (scroll) scroll.scrollTop = 0
     } else if (!selected) {
       const position = listPosition.current
@@ -198,7 +196,7 @@ export function InsightsLibrary({ tasks, conversations, selectedId, onSelect, on
         }
       } else heading.current?.focus({ preventScroll: true })
     }
-  }, [selected?.id, readingNew])
+  }, [selected?.id, readingReport])
 
   useLayoutEffect(() => {
     const intent = deleteFocus.current
@@ -233,8 +231,7 @@ export function InsightsLibrary({ tasks, conversations, selectedId, onSelect, on
 
   function locate(task: AnalysisTask) {
     if (savingTitle) return
-    listPosition.current = isInsightReport(task.report) ? list.current?.closest('main')?.scrollTop : undefined
-    legacyReturn.current = rowFor(task.id) ?? null
+    listPosition.current = list.current?.closest('main')?.scrollTop
     onSelect(task.id)
   }
 
@@ -261,7 +258,7 @@ export function InsightsLibrary({ tasks, conversations, selectedId, onSelect, on
     }}>重试</button>
 
   return <>
-    <ExceptionNoticeScope active={!readingNew}><section className="insights-list" ref={list} hidden={readingNew}>
+    <ExceptionNoticeScope active={!readingReport}><section className="insights-list" ref={list} hidden={readingReport}>
       <h1 ref={heading} tabIndex={-1}>对话洞察</h1>
       {empty && loading ? <div className="insight-list-loading" aria-busy="true">
         <p role="status"><LoaderCircle aria-hidden="true" />正在读取报告列表…</p>
@@ -290,21 +287,7 @@ export function InsightsLibrary({ tasks, conversations, selectedId, onSelect, on
         })}
       </>}
     </section></ExceptionNoticeScope>
-    {selected && selectedReport && (isInsightReport(selectedReport)
-      ? <ReportPage key={selected.id} task={selected} report={selectedReport} onBack={onReturn} rename={rename}
-        onRenameBusy={onRenameBusy} renderSource={renderSource} />
-      : <ReaderDialog busy={false} labelledBy={id + '-legacy-title'} onDismiss={onReturn} returnFocus={legacyReturn}>
-        <div className="reader-modal-overlay" onClick={event => { if (event.target === event.currentTarget) onReturn() }}>
-          <section className="reader-modal-card insight-history-card">
-            <header><div><h2 id={id + '-legacy-title'}>{insightTaskTitle(selected)}</h2>
-              <small><span className="history-conversation-name" title={selected.conversationTitle}>{selected.conversationTitle}</span> · {insightTaskNumber(selected)}</small></div>
-              <button type="button" className="insight-close" aria-label="关闭记忆" onClick={onReturn}><X aria-hidden="true" /></button>
-            </header>
-            <div className="insight-history-body" role="region" aria-label="报告正文" tabIndex={0}>
-              <MemoryArticle report={selectedReport} />
-            </div>
-          </section>
-        </div>
-      </ReaderDialog>)}
+    {selected && selectedReport && <ReportPage key={selected.id} task={selected} report={selectedReport} onBack={onReturn}
+      rename={rename} onRenameBusy={onRenameBusy} renderSource={renderSource} />}
   </>
 }

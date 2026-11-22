@@ -37,6 +37,15 @@ export function insightModelPrompt(input) {
   return JSON.parse(typeof content === 'string' ? content : content.map(part => part.text ?? '').join(''))
 }
 
+export function simpleInsightReply(prompt) {
+  if (prompt.stage === 'reading') return { observations: [], openThreads: [], candidates: [] }
+  if (prompt.stage === 'writing') return {
+    aboutYou: [], relationship: [{ content: [{ text: '你们商量了见面的时间。' }] }],
+    citations: [], limitations: ['仅依据本次聊天。'],
+  }
+  throw new Error('Unexpected synthetic insight stage')
+}
+
 export function insightModelReply(prompt) {
   if (prompt.stage === 'reading') {
     return {

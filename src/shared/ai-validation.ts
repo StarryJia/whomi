@@ -24,16 +24,8 @@ const model = object({ ...modelFields, planProvider: optional(isSubscriptionId),
 const usageFields = { inputTokens: optional(count), totalInputTokens: optional(count), outputTokens: optional(count), cacheReadTokens: optional(count), cacheWriteTokens: optional(count), outputTokensPerSecond: optional(metric), firstTokenMs: optional(metric), durationMs: optional(metric), startedAt: optional(count), completedAt: optional(count), incomplete: optional(bool) }
 const usage = object(usageFields)
 const analysisUsage = object({ ...usageFields, cacheReadTokensIncomplete: optional(bool), cacheWriteTokensIncomplete: optional(bool) })
-const state: Check = value => ['queued', 'running', 'summarizing', 'completed', 'stopped', 'failed', 'interrupted'].includes(value as string)
-const legacyReport = object({ summary: text(100000, true), observations: array(object({ text: text(20000, true), evidenceMessageIds: ids, limitations: text(20000) }), 200), limitations: text(20000) })
+const state: Check = value => ['queued', 'running', 'completed', 'stopped', 'failed', 'interrupted'].includes(value as string)
 const direction = (pair: string): Check => nullable(value => typeof value === 'string' && value.length === 1 && pair.includes(value))
-const memoryFields = { dimensions: object({ EI: direction('EI'), SN: direction('SN'), TF: direction('TF'), JP: direction('JP') }), events: array(object({ title: text(256, true), text: text(20000, true) }), 200), relationship: text(20000, true) }
-const memoryReport = object({ ...memoryFields, format: value => value === 'memory-v2' })
-const votePair: Check = value => Array.isArray(value) && value.length === 2 && value.every(count)
-const scoredReport = object({ ...memoryFields, format: value => value === 'memory-v3', eventVotes: object({ EI: votePair, SN: votePair, TF: votePair, JP: votePair }) })
-const explanation = nullable(object({ text: text(4000, true), evidenceMessageIds: ids }))
-const explainedReport = object({ ...memoryFields, format: value => value === 'memory-v4', eventVotes: object({ EI: votePair, SN: votePair, TF: votePair, JP: votePair }),
-  dimensionExplanations: object({ EI: explanation, SN: explanation, TF: explanation, JP: explanation }) })
 const revision: Check = value => typeof value === 'string' && /^[0-9a-f]{64}$/.test(value)
 const sourceRef = object({ messageId: localId, revision })
 const sourceRefs: Check = value => array(sourceRef, 2000)(value) && new Set((value as { messageId: string }[]).map(source => source.messageId)).size === (value as unknown[]).length
@@ -46,9 +38,8 @@ const notes = array(text(4000, true), 200)
 const judgmentFields = { text: text(4000, true), supportingSources: value => sourceRefs(value) && (value as unknown[]).length > 0, counterexampleSources: sourceRefs, alternativeExplanations: notes, limitations: notes } satisfies Record<string, Check>
 const judgments = array(value => ['EI', 'SN', 'TF', 'JP'].some(dimension => object({ dimension: name => name === dimension, direction: direction(dimension), ...judgmentFields })(value)), 200)
 const insightReport = object({ format: value => value === 'conversation-insights-v1', aboutYou: paragraphs, relationship: paragraphs, citations: array(citation, 2000), limitations: notes, judgments: optional(judgments) })
-const report: Check = value => legacyReport(value) || memoryReport(value) || scoredReport(value) || explainedReport(value) || insightReport(value)
 const modelIdentity = object({ id: key, version: positive, label: text(256, true), model: key })
-const analysis = object({ id: localId, conversationId: localId, conversationTitle: optional(text(100000)), counterpartName: optional(text(100000)), title: optional(value => typeof value === 'string' && insightTitle(value) === value), scope: optional(isInsightScope), timezone: optional(isInsightTimezone), insightContentRevision: optional(revision), insightSelfFingerprint: optional(revision), elapsedMs: optional(count), elapsedSampledAtMs: optional(count), modelId: key, modelIdentity: optional(modelIdentity), createdAtMs: optional(nullable(count)), completedAtMs: optional(nullable(count)), sourceStartTimeMs: optional(nullable(timestamp)), sourceEndTimeMs: optional(nullable(timestamp)), pinned: optional(bool), thinkingLevel: optional(thinking), state, analyzedMessages: count, totalMessages: count, skippedMessages: count, usage: analysisUsage, error: optional(text(2000)), report: optional(report), valid: bool, eventSequence: count })
+const analysis = object({ id: localId, conversationId: localId, conversationTitle: optional(text(100000)), counterpartName: optional(text(100000)), title: optional(value => typeof value === 'string' && insightTitle(value) === value), scope: optional(isInsightScope), timezone: optional(isInsightTimezone), insightContentRevision: optional(revision), insightSelfFingerprint: optional(revision), elapsedMs: optional(count), elapsedSampledAtMs: optional(count), modelId: key, modelIdentity: optional(modelIdentity), createdAtMs: optional(nullable(count)), completedAtMs: optional(nullable(count)), sourceStartTimeMs: optional(nullable(timestamp)), sourceEndTimeMs: optional(nullable(timestamp)), pinned: optional(bool), thinkingLevel: optional(thinking), state, analyzedMessages: count, totalMessages: count, skippedMessages: count, usage: analysisUsage, error: optional(text(2000)), report: optional(insightReport), valid: bool, eventSequence: count })
 const turn = object({ id: localId, threadId: localId, requestId: key, prompt: text(100000, true), referenceIds: ids, modelId: key, modelIdentity: optional(modelIdentity), thinkingLevel: optional(thinking), skillId: optional(key), text: text(2 * 1024 ** 2), state, attempt: positive, usage, error: optional(text(2000)), eventSequence: count })
 const threadFields = { pinned: optional(bool), id: localId, conversationId: localId, title: text(200, true), createdAtMs: count, updatedAtMs: count }
 const thread = object({ ...threadFields, turns: array(turn, 10000) })
@@ -74,7 +65,7 @@ const input: Record<keyof AiMethods, Check[]> = {
 const output: Record<keyof AiMethods, Check> = {
   listModels: array(model, 1000), saveModel: model, testModel: value => value === undefined, listSkills: array(object({ id: key, label: text(256, true), version: key }), 1000),
   previewInsightScope: object({ scope: isInsightScope, timezone: isInsightTimezone, totalMessages: count, analyzableMessages: count, sourceStartTimeMs: nullable(timestamp), sourceEndTimeMs: nullable(timestamp) }),
-  prepareAnalysis: preparation, confirmAnalysis: analysis, getAnalysis: analysis, listAnalyses: array(analysis), arrangeAnalysis: value => value === undefined, renameAnalysis: analysis, deleteAnalysis: value => value === undefined, stopAnalysis: analysis, continueAnalysis: analysis, getReport: report, readInsightCitation: citationWindow,
+  prepareAnalysis: preparation, confirmAnalysis: analysis, getAnalysis: analysis, listAnalyses: array(analysis), arrangeAnalysis: value => value === undefined, renameAnalysis: analysis, deleteAnalysis: value => value === undefined, stopAnalysis: analysis, continueAnalysis: analysis, getReport: insightReport, readInsightCitation: citationWindow,
   discardAnalysisPreparation: value => value === undefined,
   openThread: thread, listThreads: array(object(threadFields)), createThread: thread, getThread: thread, arrangeThread: value => value === undefined, deleteThread: value => value === undefined, sendTurn: turn, retryTurn: turn, stopTurn: turn,
 }

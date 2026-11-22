@@ -1,6 +1,6 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowRight, ArrowLeft, Pause, Play, Box, Check, ChevronDown, FileText, MessageCircle, PanelLeft, RotateCw, Square, SquarePen, X } from 'lucide-react'
+import { ArrowRight, Pause, Play, Box, Check, ChevronDown, FileText, MessageCircle, PanelLeft, RotateCw, Square, SquarePen, X } from 'lucide-react'
 import * as Select from '@radix-ui/react-select'
 import type { ReferenceRange } from './selection'
 import type { ConversationAiAdapter, ConversationRequest, RestoredConversationTurn } from './types'
@@ -12,9 +12,7 @@ import { ConversationPopoverOwner, ModelSelector, ThinkingSelector, type Thinkin
 import { usePaneDivider } from '../ui/pane-divider'
 import { ManagedRow } from '../ui/managed-row'
 import { ExceptionNotice, ExceptionNoticeScope, useExceptionNotice } from '../ui/exception-notices'
-import { MemoryArticle } from '../memory-article'
-import { isMemoryReport } from '../../shared/memory'
-import { isInsightReport, isInsightScope, type InsightScope, type InsightScopePreview } from '../../shared/conversation-insights'
+import { isInsightScope, type InsightScope, type InsightScopePreview } from '../../shared/conversation-insights'
 import { InsightScopeFields } from '../insights/insight-scope-fields'
 import { formatInsightNumber, insightElapsed, insightPercentage, insightRange, insightSpeed, InsightRing, InsightStatus, insightTaskFailureKey, InsightTaskDetails, InsightTaskModel, useInsightRunDuration } from '../insights/insight-task'
 import { CherryComposer, clearComposerDraft, clearComposerInputHistory, moveComposerInputHistory, readComposerDraft, useComposerDraft, writeComposerDraft, type CherryComposerHandle } from './cherry/composer'
@@ -238,7 +236,6 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
   const analysis = useAnalysisTask(adapter, conversationId, identityRevision, initialAnalysisTaskId, openAnalysisOnEntry)
   const { confirming: analysisConfirming, setConfirming: setAnalysisConfirming, phase: analysisState,
     error: analysisError, setError: setAnalysisError, progress, result: analysisResult, creationFailure } = analysis
-  const [showReport, setShowReport] = useState(false)
   const [preparation, setPreparation] = useState<AnalysisPreparation>()
   const submittedPreparations = useRef(new Set<string>())
   const [analysisScope, setAnalysisScope] = useState<InsightScope>({ kind: 'all' })
@@ -387,7 +384,6 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
     setModelSaving({})
     setBusy(false)
     setTurns(items => items.map(turn => turn.status === 'running' ? { ...turn, status: 'stopped' } : turn))
-    setShowReport(false)
     return () => {
       alive.current = false
       ++threadGeneration.current
@@ -412,12 +408,12 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
         // 首次读到的终态属于历史；只有观察到进行中的轮次才报告随后的失败。
         const running = runningTurns.get(value.id)
         if (running && (value.eventSequence ?? 0) < (running.eventSequence ?? 0)) continue
-        if (['queued', 'running', 'summarizing'].includes(value.state)) runningTurns.set(value.id, value)
+        if (['queued', 'running'].includes(value.state)) runningTurns.set(value.id, value)
         else if (runningTurns.delete(value.id)) reportReplyFailure(value)
         const pending = unconfirmedSubmissions.get(value.requestId)
         if (!pending || !matchesConversationRequest(value, pending.request) ||
           (pending.retry && !retryAdvanced(value, pending))) continue
-        if (pending.stopRequested && ['queued', 'running', 'summarizing'].includes(value.state)) {
+        if (pending.stopRequested && ['queued', 'running'].includes(value.state)) {
           if (adapter.stopTurn && !stoppingReadbacks.has(value.id)) {
             stoppingReadbacks.add(value.id)
             void stopPersistedTurn(value.id).then(async () => {
@@ -444,11 +440,11 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
             modelId: value.modelId, thinkingLevel: value.thinkingLevel, skillId: value.skillId, references: existing?.request.references ?? [] },
             modelIdentity: value.modelIdentity, referenceIds: value.referenceIds, text: value.text, usage: value.usage,
             error: value.error ?? (value.state === 'interrupted' ? '回答中断，请重试。' : undefined),
-            status: ['queued', 'running', 'summarizing'].includes(value.state) ? 'running' : value.state === 'completed' ? 'done' : value.state === 'stopped' ? 'stopped' : 'failed' }
+            status: ['queued', 'running'].includes(value.state) ? 'running' : value.state === 'completed' ? 'done' : value.state === 'stopped' ? 'stopped' : 'failed' }
         })
         return [...restored, ...previous.filter(turn => !turn.remote && !values.some(value => value.requestId === turn.request.requestId))]
       })
-      setBusy(values.some(turn => ['queued', 'running', 'summarizing'].includes(turn.state)) || !!chatRun.current)
+      setBusy(values.some(turn => ['queued', 'running'].includes(turn.state)) || !!chatRun.current)
     }
     const work = adapter.watchThread ? adapter.watchThread(conversationId, receive, controller.signal, threadId)
       : adapter.restoreThread!(conversationId, threadId).then(receive)
@@ -514,7 +510,7 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
         thinkingLevel: value.thinkingLevel, skillId: value.skillId, referenceIds: value.referenceIds },
       modelIdentity: value.modelIdentity, referenceIds: value.referenceIds, text: value.text, usage: value.usage,
       error: value.error ?? (value.state === 'interrupted' ? '回答中断，请重试。' : undefined),
-      status: ['queued', 'running', 'summarizing'].includes(value.state) ? 'running' : value.state === 'completed' ? 'done' : value.state === 'stopped' ? 'stopped' : 'failed' }
+      status: ['queued', 'running'].includes(value.state) ? 'running' : value.state === 'completed' ? 'done' : value.state === 'stopped' ? 'stopped' : 'failed' }
   }
   function replaceTurn(next: Turn) {
     setTurns(items => {
@@ -734,7 +730,7 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
       if (!matchesConversationRequest(saved, request)) throw new Error('发送状态待确认，请再次确认。')
       const submission = unconfirmedSubmissions.get(request.requestId!)
       if (request.turnId && (!submission || !retryAdvanced(saved, submission))) throw new Error('重试状态待确认，请再次确认。')
-      if (submission?.stopRequested && ['queued', 'running', 'summarizing'].includes(saved.state)) {
+      if (submission?.stopRequested && ['queued', 'running'].includes(saved.state)) {
         if (!adapter.stopTurn) throw new Error('请重新打开当前对话，停止回答。')
         await stopPersistedTurn(saved.id)
         if (!stillPending()) return
@@ -779,16 +775,15 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
   const activeTask = progress?.task
   const pauseSupported = !!adapter?.continueAnalysis
   const waitingForStart = analysisState === 'running' && pauseSupported &&
-    (!activeTask || !['queued', 'running', 'summarizing'].includes(activeTask.state))
+    (!activeTask || !['queued', 'running'].includes(activeTask.state))
   const previous = creationFailure?.previous
   const reportResult = analysisState === 'done' ? analysisResult : previous?.phase === 'done' ? previous.result : undefined
-  const report = reportResult?.task?.report
   const titles = { idle: '生成中', running: '生成中', done: '已完成', interrupted: '生成失败',
     stopped: pauseSupported ? '已暂停' : '已停止', failed: '生成失败' } as const
   const statusTitle = analysis.stopping ? '正在暂停' : analysis.resuming === 'continue' ? '正在继续'
     : analysis.resuming === 'retry' ? '正在重试' : titles[analysisState]
   const closeAnalysis = () => {
-    setAnalysisOpen(false); setShowReport(false)
+    setAnalysisOpen(false)
     if (analysisState !== 'idle') setAnalysisConfirming(false)
     analysisAnchor.current?.focus()
   }
@@ -808,13 +803,11 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
   const failure = analysisState === 'failed' || analysisState === 'interrupted'
   const retryBeforeCreation = failure && !activeTask
   const reportId = reportResult?.taskId
-  const reportAvailable = reportId && (onOpenAnalysisResult || report && !isInsightReport(report))
+  const reportAvailable = reportId && onOpenAnalysisResult
   function openReport() {
-    if (!reportId) return
-    if (onOpenAnalysisResult) {
-      closeAnalysis()
-      onOpenAnalysisResult(reportId)
-    } else setShowReport(true)
+    if (!reportId || !onOpenAnalysisResult) return
+    closeAnalysis()
+    onOpenAnalysisResult(reportId)
   }
   function openAnalysis() {
     if (!analysisAnchor.current || (analysisConfirming && approveAnalysisEntry?.(analysisAnchor.current) === false)) return
@@ -839,11 +832,7 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
       <section className="analysis-sheet">
         <header className="analysis-sheet-title"><h3>会话洞察</h3><button type="button" className="insight-close"
           aria-label="关闭会话洞察" onClick={closeAnalysis}><X aria-hidden="true" /></button></header>
-        {showReport && report && !isInsightReport(report) ? <>
-          <h3 tabIndex={-1} ref={element => { element?.focus({ preventScroll: true }) }}>{isMemoryReport(report) ? '我们的记忆' : '分析报告'}</h3>
-          <MemoryArticle report={report} />
-          <footer><button type="button" className="analysis-secondary" onClick={() => setShowReport(false)}><ArrowLeft aria-hidden="true" />{creationFailure ? '返回洞察' : '返回进度'}</button></footer>
-        </> : analysisConfirming ? <>
+        {analysisConfirming ? <>
           <p className="analysis-conversation">当前会话：{preparation?.title ?? title}</p>
           <InsightScopeFields value={analysisScope} onChange={scope => {
             setAnalysisScope(scope); setPreparation(undefined); setScopeError(''); setAnalysisError('')

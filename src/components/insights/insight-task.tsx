@@ -1,8 +1,7 @@
 import { useEffect, useEffectEvent, useId, useMemo, useState } from 'react'
 import { Check, ChevronDown, CircleAlert, Pause } from 'lucide-react'
 import type { AnalysisTask, AnalysisUsage } from '../../shared/ai-contract'
-import { defaultInsightTitle, isInsightReport } from '../../shared/conversation-insights'
-import { isMemoryReport } from '../../shared/memory'
+import { defaultInsightTitle } from '../../shared/conversation-insights'
 import { thinkingLevelLabel } from '../conversation-ai/model-selector'
 import { useUnresolvedExceptionNotices } from '../ui/exception-notices'
 
@@ -49,11 +48,11 @@ export function insightCompletedAt(value?: number | null) {
 }
 
 export function insightTaskTitle(task: AnalysisTask) {
-  return task.title ?? (isInsightReport(task.report) || !task.report ? defaultInsightTitle : isMemoryReport(task.report) ? '我们的记忆' : '分析报告')
+  return task.title ?? defaultInsightTitle
 }
 
 export function insightTaskNumber(task: AnalysisTask) {
-  return '#' + (task.scope || isInsightReport(task.report) ? task.id : task.id.padStart(4, '0'))
+  return '#' + task.id
 }
 
 export const known = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && value >= 0

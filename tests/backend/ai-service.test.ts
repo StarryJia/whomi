@@ -1,7 +1,8 @@
-import { expect, test } from 'vitest'
+import { expect, test, vi } from 'vitest'
 import { createAiService } from '../../electron/main/ai-service'
 import { defaultProcessing } from '../../src/shared/settings-contract'
 import type { AiModel, AnalysisTask } from '../../src/shared/ai-contract'
+import { simpleInsightReply } from '../desktop/fixtures/insight-model.mjs'
 import { resolveModelLimits } from '../../src/shared/model-limits'
 
 test('preparing and duplicate confirmation do not duplicate a model run; completion waits for report storage', async () => {
@@ -11,26 +12,28 @@ test('preparing and duplicate confirmation do not duplicate a model run; complet
   const storage = async (method: string, args: unknown[]) => {
     if (method === 'prepareAnalysis') return { token: 'token', conversationId: '1', title: '示例', selfName: '我', totalMessages: 1, analyzableMessages: 1, snapshotMaxId: '1', expiresAt: Date.now() + 10000, model }
     if (method === 'confirmAnalysis' || method === 'getAnalysis') return { ...task }
-    if (method === 'analysisContext') return { task: { ...task }, model, selfFingerprint: 'self-v1', messages: [{ id: '1', text: '明天听你讲', senderName: '我', isSelf: true, kind: 'text' }], batches: [], checkpoint: null }
+    if (method === 'analysisContext') return { task, model, checkpoint: null, snapshot: { taskId: task.id, scope: { kind: 'all' }, sources: [{ messageId: '1', revision: 'r1' }] } }
+    if (method === 'readInsightSources') return [{ id: '1', revision: 'r1', senderName: '我', isSelf: true, sentAtMs: 1000, text: '明天听你讲', replyToMessageId: null }]
     if (method === 'modelSecret') return { model, encryptedKey: null }
     if (method === 'saveAnalysis') { Object.assign(task, args[1]); return { ...task } }
-    if (method === 'commitBatch') { task.analyzedMessages = 1; return { ...task } }
+    if (method === 'saveInsightCheckpoint') { task.analyzedMessages = (args[2] as string[]).length; return { ...task } }
     if (method === 'completeAnalysis') { completed = true; throw new Error('disk full') }
     if (method === 'recordUsage') return {}
     throw new Error(method)
   }
-  const service = createAiService({ storage, runtime: { run: async () => { runs++; return await new Promise<any>(resolve => { release = resolve }) } }, secrets: { encrypt: value => value, decrypt: value => value } })
+  const service = createAiService({ storage, runtime: { run: async input => {
+    runs++
+    if (runs === 1) await new Promise(resolve => { release = resolve })
+    return { text: JSON.stringify(simpleInsightReply(JSON.parse(input.prompt))), usage: { outputTokens: 50 }, checkpoint: '' }
+  } }, secrets: { encrypt: value => value, decrypt: value => value } })
   await service.prepareAnalysis({ conversationId: '1', modelId: 'm' })
   expect(runs).toBe(0)
   await service.confirmAnalysis({ token: 'token', requestId: 'same' })
   await service.confirmAnalysis({ token: 'token', requestId: 'same' })
-  await new Promise(resolve => setTimeout(resolve, 5))
-  expect(runs).toBe(1)
-  release({ text: JSON.stringify({ summary: '示例观察', observations: [{ text: '提供具体帮助', evidenceMessageIds: ['1'], limitations: '仅限本段' }], limitations: '材料有限' }), usage: { outputTokens: 50 }, checkpoint: 'checkpoint' })
-  await new Promise(resolve => setTimeout(resolve, 10))
-  // 单批仍需最终汇总；两次请求使用同一验证后的结构。
-  if (!completed && runs === 2) release({ text: JSON.stringify({ summary: '示例观察', observations: [], limitations: '材料有限' }), usage: {}, checkpoint: 'cp-final' })
+  await vi.waitFor(() => expect(runs).toBe(1))
+  release(undefined)
   await service.idle()
+  expect(runs).toBe(2)
   expect(completed).toBe(true)
   expect(task.state).toBe('failed')
 })
@@ -130,34 +133,6 @@ test('a long thread keeps its recent complete turns and rebuilds Pi context inst
   expect(state.turn.state).toBe('completed')
 })
 
-test('long analysis merges bounded report groups rather than failing after all source batches complete', async () => {
-  const model = { id: 'm', label: '示例', model: 'm', baseUrl: 'http://127.0.0.1:9999/v1', contextWindow: 4096, maxTokens: 512, version: 1, enabled: true, hasCredential: false }
-  const task: AnalysisTask = { id: '1', conversationId: '1', modelId: 'm', state: 'queued', analyzedMessages: 0, totalMessages: 24, skippedMessages: 0, usage: {}, valid: true, eventSequence: 1 }
-  const messages = Array.from({ length: 24 }, (_, index) => ({ id: String(index + 1), senderName: '本人', text: 'a'.repeat(1100), isSelf: true, kind: 'text' }))
-  const covered = new Set<string>(), saved: any[] = []
-  let requests = 0
-  const service = createAiService({ storage: async (method, args) => {
-    if (method === 'confirmAnalysis' || method === 'getAnalysis') return task
-    if (method === 'analysisContext') return { task, model, selfFingerprint: 'self', messages, batches: saved, checkpoint: null }
-    if (method === 'modelSecret') return { model, encryptedKey: null }
-    if (method === 'saveAnalysis') return Object.assign(task, args[1])
-    if (method === 'recordUsage') return task
-    if (method === 'commitBatch') { const batch = args[1] as any; saved.push(batch); batch.messageIds.forEach((id: string) => covered.add(id)); task.analyzedMessages = covered.size; return task }
-    if (method === 'completeAnalysis') { task.state = 'completed'; task.report = args[1] as any; return task }
-    throw new Error(method)
-  }, runtime: { run: async input => {
-    requests++
-    const source = input.prompt.startsWith('{') ? JSON.parse(input.prompt).messages : undefined
-    return { text: JSON.stringify({ summary: source ? 's'.repeat(300) : '合并观察', observations: [{ text: '观察', evidenceMessageIds: [source?.[0]?.id ?? '1'], limitations: '范围有限' }], limitations: '仅限材料' }), usage: {}, checkpoint: 'cp' }
-  } }, secrets: { encrypt: value => value, decrypt: value => value } })
-  await service.confirmAnalysis({ token: 't', requestId: 'r' })
-  await service.idle()
-  expect(task.state).toBe('completed')
-  expect(task.analyzedMessages).toBe(24)
-  expect(requests).toBeGreaterThan(25)
-  expect(saved.filter(batch => !batch.messageIds.length).length).toBeGreaterThan(0)
-})
-
 test('processing protects questions, references, profile and old history and discards an incompatible checkpoint', async () => {
   const state = turnStorage()
   state.turn.prompt = '示例甲的邮箱是 example@example.com'
@@ -169,7 +144,7 @@ test('processing protects questions, references, profile and old history and dis
     storage: async (method, args) => {
       const value = await original(method, args)
       if (method !== 'turnContext') return value
-      return { ...value, references: [raw], profile: { summary: '示例甲 example@example.com', observations: [], limitations: '' }, history: [{ role: 'user', text: JSON.stringify({ id: 'example@example.com', sourceIds: ['13800138000'] }), references: [raw] }, { role: 'assistant', text: '示例甲 13800138000' }], checkpoint: JSON.stringify({ processing: 'old-rules', checkpoint: 'unprocessed-native-history' }) }
+      return { ...value, references: [raw], profile: { format: 'conversation-insights-v1', aboutYou: [{ content: [{ text: '示例甲 example@example.com' }] }], relationship: [], citations: [], limitations: [] }, history: [{ role: 'user', text: JSON.stringify({ id: 'example@example.com', sourceIds: ['13800138000'] }), references: [raw] }, { role: 'assistant', text: '示例甲 13800138000' }], checkpoint: JSON.stringify({ processing: 'old-rules', checkpoint: 'unprocessed-native-history' }) }
     },
     runtime: { run: async input => { sent = input; return { text: '合成回答', usage: {}, checkpoint: 'fresh-native-history' } } },
     secrets: { encrypt: value => value, decrypt: value => value },
@@ -213,53 +188,6 @@ test('independent input and output ceilings share the context budget without rew
   const model = { contextWindow: 128000, maxTokens: 16000, maxInputTokens: 128000 }
   expect(resolveModelLimits(model)).toEqual({ contextWindow: 128000, maxTokens: 16000, maxInputTokens: 112000 })
   expect(model.maxInputTokens).toBe(128000)
-})
-
-async function runBoundedAnalysis(maxInputTokens: number, text: string, senderName = '本人') {
-  const model: AiModel = { id: 'bounded', label: '示例限制模型', model: 'bounded', baseUrl: 'http://127.0.0.1:9999/v1', contextWindow: 8000, maxTokens: 1000, maxInputTokens, version: 1, enabled: true, hasCredential: false }
-  const task: AnalysisTask = { id: '1', conversationId: '1', modelId: model.id, state: 'queued', analyzedMessages: 0, totalMessages: 1, skippedMessages: 0, usage: {}, valid: true, eventSequence: 1 }
-  const requests: { systemPrompt: string; prompt: string }[] = []
-  const saved: any[] = []
-  const service = createAiService({ storage: async (method, args) => {
-    if (method === 'confirmAnalysis' || method === 'getAnalysis') return task
-    if (method === 'analysisContext') return { task, model, selfFingerprint: 'self', messages: [{ id: '1', text, senderName, isSelf: true, kind: 'text' }], batches: saved, checkpoint: null }
-    if (method === 'modelSecret') return { model, encryptedKey: null }
-    if (method === 'saveAnalysis') return Object.assign(task, args[1])
-    if (method === 'recordUsage') return task
-    if (method === 'commitBatch') { const batch = args[1] as any; saved.push(batch); task.analyzedMessages += batch.messageIds.length; return task }
-    if (method === 'completeAnalysis') { task.state = 'completed'; task.report = args[1] as any; return task }
-    throw new Error(method)
-  }, runtime: { run: async input => {
-    requests.push(input)
-    return { text: JSON.stringify({ summary: '示例', observations: [], limitations: '有限' }), usage: {}, checkpoint: 'cp' }
-  } }, secrets: { encrypt: value => value, decrypt: value => value } })
-  await service.confirmAnalysis({ token: 'bounded-token', requestId: 'bounded-request' })
-  await service.idle()
-  return { task, requests }
-}
-
-test('analysis with a tiny declared input limit fails actionably before any model request', async () => {
-  const { task, requests } = await runBoundedAnalysis(128, '示例消息')
-  expect(requests).toHaveLength(0)
-  expect(task).toMatchObject({ state: 'failed', error: expect.stringContaining('原文分片超出本机最大输入长度') })
-})
-
-test('analysis does not send a message whose metadata cannot fit the declared input budget', async () => {
-  const { task, requests } = await runBoundedAnalysis(2000, '示例', '示例发送者'.repeat(1000))
-  expect(requests).toHaveLength(0)
-  expect(task.state).toBe('failed')
-  expect(task.error).toContain('最大输入长度')
-})
-
-test('analysis fragments account for metadata and Unicode while keeping complete message coverage', async () => {
-  const text = '😀'.repeat(300)
-  const { task, requests } = await runBoundedAnalysis(2000, text)
-  expect(task).toMatchObject({ state: 'completed', analyzedMessages: 1 })
-  expect(requests.length).toBeGreaterThan(2)
-  expect(requests.every(input => Buffer.byteLength(input.systemPrompt + input.prompt, 'utf8') + 1000 <= 2000)).toBe(true)
-  const fragments = requests.filter(input => input.prompt.startsWith('{')).flatMap(input => JSON.parse(input.prompt).messages.map((message: { text: string }) => message.text))
-  expect(fragments.join('')).toBe(text)
-  expect(fragments.every(fragment => !/[\ud800-\udbff]$|^[\udc00-\udfff]/.test(fragment))).toBe(true)
 })
 
 test('connection testing rejects an input limit too small for its test prompt before sending', async () => {
