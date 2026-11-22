@@ -236,8 +236,11 @@ export function MessageVirtualList<T>({
     }
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented || !isKeyboardScrollIntent(event, scrollerElement)) return
-      if (event.key === 'Home' && event.target === scrollerElement &&
-          !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
+      if (
+        event.key === 'Home' && event.target === scrollerElement &&
+        !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey &&
+        scrollerElement.scrollHeight > scrollerElement.clientHeight
+      ) {
         // A native Home animation can race the virtualizer while it measures restored messages.
         event.preventDefault()
         scrollToTop()
