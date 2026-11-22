@@ -44,6 +44,15 @@
       "failed": 1,
       "skipped": 0,
       "flaky": 0
+    },
+    {
+      "run": "pr43-drag-full-20261122-181334-342585",
+      "commit": "6d72ceb6723fc6b1c574474a1dd0e3c27b26d53c",
+      "exitCode": 0,
+      "passed": 77,
+      "failed": 0,
+      "skipped": 1,
+      "flaky": 0
     }
   ],
   "originalFailures": [
@@ -84,12 +93,7 @@
       "final": "passed"
     }
   ],
-  "finalFailures": [
-    {
-      "file": "tests/desktop/window-shell.spec.mjs",
-      "title": "desktop shell preserves bounds and the right conversation strip moves the native window"
-    }
-  ],
+  "finalFailures": [],
   "finalSkipped": [
     {
       "file": "tests/desktop/upgrade.spec.mjs",

@@ -1,0 +1,48 @@
+{
+  "run": "pr43-drag-geometry-focused-20261122-180910-162486",
+  "commit": "49ec2c8bbeeefc7bb020e6753b6e1877ffc2f579",
+  "requestedPoint": {
+    "x": 940.0859375,
+    "y": 18
+  },
+  "atRequest": {
+    "time": 11429.20000000007,
+    "geometry": {
+      "left": 901.359375,
+      "right": 940,
+      "top": 0,
+      "bottom": 36
+    },
+    "hit": "conversation-ai-panel",
+    "panelLeft": 900.359375,
+    "animations": [
+      {
+        "state": "running",
+        "time": 27.700000000001168
+      }
+    ]
+  },
+  "settled": {
+    "time": 11682.900000000023,
+    "geometry": {
+      "left": 629,
+      "right": 940,
+      "top": 0,
+      "bottom": 36
+    },
+    "hit": "conversation-ai-panel",
+    "panelLeft": 628,
+    "animations": []
+  },
+  "windowAfterInput": {
+    "focused": true,
+    "minimized": false,
+    "maximized": false,
+    "bounds": {
+      "x": 373,
+      "y": 152,
+      "width": 1080,
+      "height": 700
+    }
+  }
+}
