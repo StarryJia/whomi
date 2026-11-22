@@ -35,7 +35,7 @@ export function createSettingsRepository(store: Store, write: WriterQueue) {
   function models(providerId?: string): SettingsModel[] { const metadata = setting<Record<string, Pick<SettingsModel, 'group' | 'maxInputTokens'>>>('modelMetadata', {}); return modelRows(providerId).map(row => ({ protocol: defaultModelProtocol, ...JSON.parse(row.data) as AiModel, ...metadata[row.model_id], providerId: row.provider_id, enabled: row.enabled === 1n })) }
   function model(id: string): SettingsModel { settingsId(id); const value = models().find(item => item.id === id); if (!value) failSettings('INVALID_MODEL', '请重新选择模型。'); return value }
   function idle(ids: string[]) {
-    const query = db.prepare("SELECT 1 FROM ai_analysis_tasks WHERE model_id=? AND state IN ('queued','running','summarizing') UNION ALL SELECT 1 FROM ai_turns WHERE model_id=? AND state IN ('queued','running','summarizing') LIMIT 1")
+    const query = db.prepare("SELECT 1 FROM ai_analysis_tasks WHERE model_id=? AND state IN ('queued','running') UNION ALL SELECT 1 FROM ai_turns WHERE model_id=? AND state IN ('queued','running') LIMIT 1")
     if (ids.some(id => query.get(id, id))) failSettings('MODEL_BUSY', '请停止使用该模型的任务后重试。')
   }
   function secret(value: unknown) { if (value !== undefined && value !== null && (typeof value !== 'string' || !value.length || value.length > 65536)) failSettings('INVALID_PROVIDER') }
@@ -109,7 +109,7 @@ export function createSettingsRepository(store: Store, write: WriterQueue) {
         if (!db.prepare('SELECT 1 FROM ai_analysis_tasks WHERE id=?').get(BigInt(taskId))) failSettings('INVALID_TASK')
         const previous = db.prepare('SELECT signature FROM settings_analysis_processing WHERE task_id=?').get(BigInt(taskId)) as { signature: string } | undefined
         if (previous && previous.signature !== signature) failSettings('PROCESSING_CHANGED', '消息处理设置已更新，请重新发起分析。')
-        if (!previous && db.prepare('SELECT 1 FROM ai_analysis_batches WHERE task_id=? LIMIT 1').get(BigInt(taskId))) failSettings('PROCESSING_CHANGED', '请重新发起分析以应用当前消息处理设置。')
+        if (!previous && db.prepare('SELECT 1 FROM ai_analysis_coverage WHERE task_id=? LIMIT 1').get(BigInt(taskId))) failSettings('PROCESSING_CHANGED', '请重新发起分析以应用当前消息处理设置。')
         if (!previous) db.prepare('INSERT INTO settings_analysis_processing(task_id,signature) VALUES(?,?)').run(BigInt(taskId), signature)
       })())
     },

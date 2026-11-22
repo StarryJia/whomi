@@ -2,7 +2,7 @@ import { afterEach, expect, test } from 'vitest'
 import { openStore } from '../../electron/data/db/open'
 import { createAiRepository } from '../../electron/data/ai/repository'
 import { createSettingsRepository } from '../../electron/data/settings/repository'
-import { temporaryStore, useLegacyAnalysisFixture } from './helpers'
+import { temporaryStore } from './helpers'
 import { defaultProcessing, presetAccountId } from '../../src/shared/settings-contract'
 import { purgeConversation } from '../../electron/data/db/purge'
 
@@ -178,7 +178,6 @@ test('running work blocks changes and failed writes retain every linked model an
 
 test('analysis processing is pinned per task and removed with its conversation', async () => {
   const { settings, ai, store } = await setup()
-  useLegacyAnalysisFixture(store)
   const provider = await settings.saveProvider(providerInput), model = await settings.saveModel({ ...modelInput, providerId: provider.id })
   store.writer.exec(`INSERT INTO conversations(id,title,kind,created_at_ms) VALUES(1,'示例','direct',0);
     INSERT INTO source_conversations(id,conversation_id,platform,namespace) VALUES(1,1,'example','one');
@@ -186,12 +185,12 @@ test('analysis processing is pinned per task and removed with its conversation',
     INSERT INTO self_confirmations(conversation_id,member_id,status,source) VALUES(1,1,'confirmed','user');
     INSERT INTO messages(id,conversation_id,member_id,sender_kind,sender_name,kind,text,ordinal,sent_at_ms) VALUES(1,1,1,'member','本人','text','示例正文',0,1234)`)
   const prepared = await ai.prepareAnalysis({ conversationId: '1', modelId: model.id }), task = await ai.confirmAnalysis({ token: prepared.token, requestId: 'analysis' })
-  expect(ai.analysisContext(task.id).messages[0]).toMatchObject({ sentAtMs: 1234, memberId: '1' })
+  expect(ai.readInsightSources({ taskId: task.id, messageIds: ['1'] })[0]).toMatchObject({ sentAtMs: 1234, memberId: '1' })
   await settings.claimProcessing(task.id, 'first-processing')
   await settings.claimProcessing(task.id, 'first-processing')
   await expect(settings.claimProcessing(task.id, 'different-processing')).rejects.toMatchObject({ code: 'PROCESSING_CHANGED' })
   await expect(settings.claimProcessing('999', 'first-processing')).rejects.toMatchObject({ code: 'INVALID_TASK' })
-  await ai.commitBatch(task.id, { index: 0, messageIds: ['1'], report: { events: [{ key: '示例', text: '示例观察', evidenceMessageIds: ['1'], signals: [] }] }, usage: {} })
+  await ai.saveInsightCheckpoint(task.id, 'checkpoint', ['1'], 1000)
   store.writer.prepare('DELETE FROM settings_analysis_processing WHERE task_id=?').run(BigInt(task.id))
   await expect(settings.claimProcessing(task.id, 'new-version')).rejects.toMatchObject({ code: 'PROCESSING_CHANGED' })
   purgeConversation(store, '1')

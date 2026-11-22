@@ -1,13 +1,22 @@
 import type { AnalysisTask } from './ai-contract'
-import { isInsightReport, type InsightSourceRef } from './conversation-insights'
-import { currentMemoryContributions, dimensionKeys, type MemoryDimensions } from './memory'
+import { dimensionKeys, type InsightDimensions, type InsightSourceRef } from './conversation-insights'
 
 export type OverviewContribution = {
   conversationId: string
   taskId: string
   sourceTaskIds: string[]
-  dimensions: MemoryDimensions
-  evidence: Record<keyof MemoryDimensions, (InsightSourceRef & { conversationId: string })[]>
+  dimensions: InsightDimensions
+  evidence: Record<keyof InsightDimensions, (InsightSourceRef & { conversationId: string })[]>
+}
+
+export function aggregateRelationships(relations: readonly { dimensions: InsightDimensions }[]) {
+  const count = (pair: keyof InsightDimensions) => {
+    const letters = relations.map(relation => relation.dimensions[pair]).filter(letter => letter !== null)
+    if (letters.length < 2) return null
+    const left = letters.filter(letter => letter === pair[0]).length, right = letters.length - left
+    return left === right ? 'tie' : left > right ? pair[0] : pair[1]
+  }
+  return { EI: count('EI'), SN: count('SN'), TF: count('TF'), JP: count('JP') }
 }
 
 export function currentOverviewContributions(tasks: readonly AnalysisTask[]): OverviewContribution[] {
@@ -18,7 +27,7 @@ export function currentOverviewContributions(tasks: readonly AnalysisTask[]): Ov
   }
   const valid = [...unique.values()].filter(task => task.valid && task.state === 'completed' && task.report)
   const relations = new Map<string, OverviewContribution & {
-    directions: Record<keyof MemoryDimensions, Set<string | null>>
+    directions: Record<keyof InsightDimensions, Set<string | null>>
   }>()
   function relation(conversationId: string, taskId: string) {
     let entry = relations.get(conversationId)
@@ -31,15 +40,8 @@ export function currentOverviewContributions(tasks: readonly AnalysisTask[]): Ov
     if (!entry.sourceTaskIds.includes(taskId)) entry.sourceTaskIds.push(taskId)
     return entry
   }
-  // 旧格式沿用原有效性规则，不从旧正文伪造精确来源。
-  for (const legacy of currentMemoryContributions(valid)) {
-    if (!dimensionKeys.some(axis => legacy.dimensions[axis])) continue
-    const entry = relation(legacy.conversationId, legacy.taskId)
-    for (const axis of dimensionKeys) if (legacy.dimensions[axis]) entry.directions[axis].add(legacy.dimensions[axis])
-  }
   for (const task of valid) {
-    if (!isInsightReport(task.report)) continue
-    for (const judgment of task.report.judgments ?? []) {
+    for (const judgment of task.report?.judgments ?? []) {
       if (!judgment.supportingSources.length) continue
       const entry = relation(task.conversationId, task.id), axis = judgment.dimension
       entry.directions[axis].add(judgment.direction)

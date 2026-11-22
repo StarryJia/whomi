@@ -1,13 +1,11 @@
 import { createHash } from 'node:crypto'
 import { afterEach, expect, test, vi } from 'vitest'
 import { createAiRepository } from '../../electron/data/ai/repository'
-import { ANALYSIS_PROMPT_VERSION } from '../../electron/data/ai/prompt-version'
 import { openStore } from '../../electron/data/db/open'
 import { purgeConversation } from '../../electron/data/db/purge'
-import { schemaVersion } from '../../electron/data/db/schema'
 import { validateAiCall, validateAiResult } from '../../src/shared/ai-validation'
 import type { InsightReport } from '../../src/shared/conversation-insights'
-import { removeInsightSchemaForMigrationTest, temporaryStore, useLegacyAnalysisFixture } from './helpers'
+import { temporaryStore } from './helpers'
 
 const cleanup: (() => void)[] = []
 afterEach(() => { for (const operation of cleanup.splice(0).reverse()) operation() })
@@ -229,45 +227,6 @@ test('断点及已完整读取的消息一起保存，恢复后延续覆盖率�
   await expect(restored.saveInsightCheckpoint(task.id, 'regressed', ['4'], 2000)).rejects.toHaveProperty('code', 'INVALID_INSIGHT_CHECKPOINT')
   await restored.saveInsightCheckpoint(task.id, 'complete', ['1', '4'], 2400)
   expect(restored.analysisContext(task.id)).toMatchObject({ checkpoint: 'complete', task: { analyzedMessages: 2, elapsedMs: 2400 } })
-})
-
-test('版本 8 的已保存报告和分析断点升级后仍可读取和续跑', async () => {
-  const { store, repository, temp } = await setup()
-  useLegacyAnalysisFixture(store)
-  async function begin(requestId: string) {
-    const preparation = await repository.prepareAnalysis({ conversationId: '1', modelId: 'example' })
-    return repository.confirmAnalysis({ token: preparation.token, requestId })
-  }
-  const completed = await begin('v8-report')
-  const oldReport = {
-    format: 'memory-v4' as const, events: [], relationship: '保留旧正文。',
-    dimensions: { EI: null, SN: null, TF: null, JP: null },
-    eventVotes: { EI: [0, 0], SN: [0, 0], TF: [0, 0], JP: [0, 0] },
-    dimensionExplanations: { EI: null, SN: null, TF: null, JP: null },
-  } satisfies import('../../src/shared/memory').SavedReport
-  await repository.commitBatch(completed.id, { index: 0, messageIds: ['1', '2', '3', '4'], report: { events: [] }, usage: {} })
-  await repository.completeAnalysis(completed.id, oldReport)
-  const interrupted = await begin('v8-interrupted')
-  await repository.commitBatch(interrupted.id, { index: 0, messageIds: ['1'], report: { events: [] }, usage: {} })
-  await repository.saveAnalysis(interrupted.id, { state: 'interrupted', checkpoint: '历史断点' })
-  const historicalPrompts = { memorySource: '版本 8 的阅读指令' }
-  store.writer.prepare('UPDATE ai_analysis_tasks SET prompt_snapshot=? WHERE id=?').run(JSON.stringify(historicalPrompts), BigInt(interrupted.id))
-  removeInsightSchemaForMigrationTest(store)
-  store.close()
-
-  const reopened = openStore(temp.path)
-  cleanup.push(() => reopened.close())
-  const restored = createAiRepository(reopened, async operation => operation())
-  expect(reopened.reader.pragma('user_version', { simple: true })).toBe(BigInt(schemaVersion))
-  expect(restored.getReport(completed.id)).toEqual(oldReport)
-  expect(restored.getAnalysis(completed.id)).not.toHaveProperty('scope')
-  expect(await restored.readInsightCitation({ taskId: completed.id, citationId: 'old', fragmentIndex: 0 })).toEqual({ status: 'unavailable' })
-  expect((await restored.resumeAnalysis(interrupted.id)).state).toBe('queued')
-  expect(restored.analysisContext(interrupted.id)).toMatchObject({
-    systemPrompts: historicalPrompts, checkpoint: '历史断点', promptVersion: ANALYSIS_PROMPT_VERSION,
-    batches: [{ index: 0, messageIds: ['1'] }],
-  })
-  expect(reopened.reader.pragma('foreign_key_check')).toEqual([])
 })
 
 test('报告拒绝未完整覆盖、跨会话或版本不符的来源', async () => {

@@ -4,11 +4,11 @@ import { createServer } from 'node:http'
 import { mkdtemp, writeFile, rm, mkdir } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import { memoryModelReply } from './fixtures/memory-model.mjs'
+import { insightModelPrompt, simpleInsightReply } from './fixtures/insight-model.mjs'
 
 test('real Pi process persists analysis reports and dialogue through the isolated desktop bridge', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'whomi-runtime-'))
-  const evidence = resolve('release/conversation-threads-20261031')
+  const evidence = test.info().outputPath('screenshots')
   await mkdir(evidence, { recursive: true })
   const requests = []
   const server = createServer((request, response) => {
@@ -16,7 +16,8 @@ test('real Pi process persists analysis reports and dialogue through the isolate
     request.on('data', chunk => { body += chunk })
     request.on('end', () => {
       const input = JSON.parse(body); requests.push({ input, authorization: request.headers.authorization })
-      const text = memoryModelReply(input.messages) ?? '这段示例中，你约定了一个明确的时间。'
+      const prompt = insightModelPrompt(input)
+      const text = prompt.stage ? JSON.stringify(simpleInsightReply(prompt)) : '这段示例中，你约定了一个明确的时间。'
       response.writeHead(200, { 'Content-Type': 'text/event-stream' })
       response.write(`data: ${JSON.stringify({ id: 'example', choices: [{ index: 0, delta: { content: text }, finish_reason: null }] })}\n\n`)
       response.end(`data: ${JSON.stringify({ id: 'example', choices: [{ index: 0, delta: {}, finish_reason: 'stop' }], usage: { prompt_tokens: 20, completion_tokens: 10, total_tokens: 30 } })}\n\ndata: [DONE]\n\n`)
@@ -65,7 +66,7 @@ test('real Pi process persists analysis reports and dialogue through the isolate
     expect(requests).toHaveLength(0)
     const task = await page.evaluate(token => window.whomi.ai.confirmAnalysis({ token, requestId: 'analysis-one' }), preparation.token)
     await expect.poll(() => page.evaluate(id => window.whomi.ai.getAnalysis(id), task.id), { timeout: 30000 }).toMatchObject({ state: 'completed', analyzedMessages: 1, usage: { inputTokens: 40, outputTokens: 20 } })
-    expect(await page.evaluate(id => window.whomi.ai.getReport(id), task.id)).toMatchObject({ format: 'memory-v4', events: [{ title: '约好通话' }] })
+    expect(await page.evaluate(id => window.whomi.ai.getReport(id), task.id)).toMatchObject({ format: 'conversation-insights-v1', relationship: [{ content: [{ text: '你们商量了见面的时间。' }] }] })
     const thread = await page.evaluate(() => window.whomi.ai.openThread('1'))
     await page.getByRole('button', { name: '选择消息', exact: true }).click()
     const reference = page.getByRole('option', { name: '本人：明晚九点我听你讲' })
@@ -152,7 +153,7 @@ test('real Pi process persists analysis reports and dialogue through the isolate
     const restarted = await application.firstWindow()
     expect((await restarted.evaluate(id => window.whomi.ai.getThread(id), thread.id)).turns).toHaveLength(1)
     expect(await restarted.evaluate(() => window.whomi.ai.listThreads('1'))).toHaveLength(2)
-    expect(await restarted.evaluate(id => window.whomi.ai.getReport(id), task.id)).toMatchObject({ format: 'memory-v4', events: [{ title: '约好通话' }] })
+    expect(await restarted.evaluate(id => window.whomi.ai.getReport(id), task.id)).toMatchObject({ format: 'conversation-insights-v1', relationship: [{ content: [{ text: '你们商量了见面的时间。' }] }] })
   } finally {
     await application?.close()
     server.closeAllConnections(); await new Promise(resolve => server.close(resolve))

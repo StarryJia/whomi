@@ -6,8 +6,8 @@ import { openStore } from '../../electron/data/db/open'
 import { createAiRepository } from '../../electron/data/ai/repository'
 import { createSettingsRepository } from '../../electron/data/settings/repository'
 import { createAiService } from '../../electron/main/ai-service'
-import { temporaryStore, useLegacyAnalysisFixture } from './helpers'
-import { memoryModelReply } from '../desktop/fixtures/memory-model.mjs'
+import { temporaryStore } from './helpers'
+import { simpleInsightReply } from '../desktop/fixtures/insight-model.mjs'
 
 type ModelRequest = { messages: { role: string; content: string | { type: string; text?: string }[] }[] }
 
@@ -140,17 +140,19 @@ describe('processed messages in actual model requests', () => {
     expect(JSON.stringify(requests)).not.toMatch(/testtoken1234567890|abcdefghijklmnopqrstuv|4111111111111111|378282246310005|<appmsg>/)
   }, 20000)
 
-  test('memory source and final requests use processed materials without rewriting the original messages', async () => {
-    useLegacyAnalysisFixture(store)
+  test('洞察读取发送脱敏内容，保存的原文保持完整', async () => {
     const originals = seedSources()
-    answer = request => memoryModelReply(request.messages, { title: '合成事件', text: 'U5约U6明天见；示例甲 example@example.com 13800138000' })
+    answer = request => JSON.stringify(simpleInsightReply(userPayload(request)))
     const prepared = await service.prepareAnalysis({ conversationId: '1', modelId: 'model' })
-    const task = await service.confirmAnalysis({ token: prepared.token, requestId: 'memory-processing' })
+    const task = await service.confirmAnalysis({ token: prepared.token, requestId: 'insight-processing' })
     await service.idle()
     expect(repository.getAnalysis(task.id)).toMatchObject({ state: 'completed', analyzedMessages: 6 })
     expect(requests).toHaveLength(2)
-    expectProcessedSources(userPayload(requests[0]).messages)
-    expect(userPayload(requests[1]).events[0].text).toBe('U5约U6明天见；U2 [邮箱] [手机号]')
+    const sent = userPayload(requests[0]).messages
+    expect(sent.map((message: { text: string }) => message.text)).toEqual([
+      '[授权令牌]', '[接口密钥]', 'U5约U6明天见', '[银行卡号] 123', '示例标题\nhttps://example.invalid', '[银行卡号] [银行卡号]',
+    ])
+    expect(userPayload(requests[1]).stage).toBe('writing')
     expect(JSON.stringify(requests)).not.toMatch(/testtoken1234567890|abcdefghijklmnopqrstuv|4111111111111111|378282246310005|<appmsg>|示例甲|example@example\.com|13800138000/)
     expect(store.reader.prepare('SELECT text FROM messages ORDER BY id').all()).toEqual(originals.map(({ text }) => ({ text })))
   }, 20000)

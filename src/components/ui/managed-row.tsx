@@ -40,8 +40,8 @@ export function actionError(error: unknown) {
   return '操作失败，请重试。'
 }
 
-export function DeleteListItem({ title, thread, memory, description, onDelete, onDismiss, returnFocus }: {
-  title: string; thread?: boolean; memory?: boolean; onDelete: () => Promise<void> | void; onDismiss: () => void
+export function DeleteListItem({ title, thread, description, onDelete, onDismiss, returnFocus }: {
+  title: string; thread?: boolean; onDelete: () => Promise<void> | void; onDismiss: () => void
   description?: { heading: string; content: ReactNode }
   returnFocus: RefObject<HTMLButtonElement | null>
 }) {
@@ -56,8 +56,8 @@ export function DeleteListItem({ title, thread, memory, description, onDelete, o
   return <ReaderDialog busy={busy} onDismiss={onDismiss} returnFocus={returnFocus} labelledBy="delete-modal-title">
     <div className="reader-modal-overlay" onClick={e => { if (e.target === e.currentTarget && !busy) onDismiss() }}>
       <div className="reader-modal-card">
-        <h2 id="delete-modal-title">{description?.heading ?? (memory ? '删除记忆' : thread ? '删除 AI 对话' : '删除会话')}</h2>
-        {description?.content ?? <p className="reader-modal-description">{memory ? `将删除「${title}」及其整理进度，保留原始聊天和其他记忆。` : thread ? `将删除「${title}」的全部提问与回答。` : `将删除「${title}」的原文、成员、本人设置、关联 AI 对话、记忆成稿和此会话的全部洞察报告。`}此操作无法撤销。</p>}
+        <h2 id="delete-modal-title">{description?.heading ?? (thread ? '删除 AI 对话' : '删除会话')}</h2>
+        {description?.content ?? <p className="reader-modal-description">{thread ? `将删除「${title}」的全部提问与回答。` : `将删除「${title}」的原文、成员、本人设置、关联 AI 对话和此会话的全部洞察报告。`}此操作无法撤销。</p>}
         {error && <ExceptionNotice title={description?.heading ? `${description.heading}失败` : '删除失败'} detail={error} className="import-error" />}
         <div className="reader-modal-footer">
           <button type="button" className="reader-modal-btn" disabled={busy} onClick={onDismiss} autoFocus>取消</button>
@@ -69,10 +69,10 @@ export function DeleteListItem({ title, thread, memory, description, onDelete, o
 }
 
 type Row = { id: string; title: string; pinned?: boolean }
-export function ManagedRow({ item, scope, className, active, disabled, children, onSelect, arrange, remove, rename, deleteDescription, memory, expanded, controls, hasPopup }: {
+export function ManagedRow({ item, scope, className, active, disabled, children, onSelect, arrange, remove, rename, deleteDescription, expanded, controls, hasPopup }: {
   item: Row; scope: string; className?: string; active: boolean; disabled?: boolean; children: ReactNode
   onSelect: () => void; arrange?: (change: ListArrangement) => Promise<void>; remove?: () => Promise<void>
-  memory?: boolean; expanded?: boolean; controls?: string; hasPopup?: 'dialog'
+  expanded?: boolean; controls?: string; hasPopup?: 'dialog'
   rename?: () => void
   deleteDescription?: Parameters<typeof DeleteListItem>[0]['description']
 }) {
@@ -133,6 +133,6 @@ export function ManagedRow({ item, scope, className, active, disabled, children,
       </ContextMenu.Content></ContextMenu.Portal>
     </ContextMenu.Root>
     {failure && <div className="conversation-list-error"><ExceptionNotice title="无法保存列表顺序" detail={failure.message} /><button type="button" onClick={() => void save(failure.change)}>重试</button></div>}
-    {deleting && remove && <DeleteListItem title={item.title} thread={scope !== 'conversations'} memory={memory} description={deleteDescription} returnFocus={button} onDismiss={() => setDeleting(false)} onDelete={remove} />}
+    {deleting && remove && <DeleteListItem title={item.title} thread={scope !== 'conversations'} description={deleteDescription} returnFocus={button} onDismiss={() => setDeleting(false)} onDelete={remove} />}
   </>
 }

@@ -1,10 +1,10 @@
 import { test, expect, _electron as electron } from '@playwright/test'
-import { mkdtemp, rm, writeFile, readFile } from 'node:fs/promises'
+import { cp, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { setTimeout as delay } from 'node:timers/promises'
-import { insightModelPrompt, insightModelReply, syntheticInsightMessages, syntheticInsightReportTitle, syntheticInsightScope } from './fixtures/insight-model.mjs'
+import { insightModelPrompt, insightModelReply, syntheticInsightConversation, syntheticInsightMessages, syntheticInsightReportTitle, syntheticInsightScope } from './fixtures/insight-model.mjs'
 
 function writeCompletion(response, result) {
   response.writeHead(200, { 'Content-Type': 'text/event-stream' })
@@ -12,8 +12,8 @@ function writeCompletion(response, result) {
   response.end(`data: ${JSON.stringify({ id: 'synthetic-insight', choices: [{ index: 0, delta: {}, finish_reason: 'stop' }], usage: { prompt_tokens: 20, completion_tokens: 10, total_tokens: 30 } })}\n\ndata: [DONE]\n\n`)
 }
 
-test('isolated Electron resumes a scoped insight, retries writing, and preserves exact citations through rename and deletion', async ({}, testInfo) => {
-  test.setTimeout(60_000)
+test('从空库导入聊天并确认本人，按日期生成洞察、暂停和重试，重启后从报告回查原文', async ({}, testInfo) => {
+  test.setTimeout(90_000)
   const directory = resolve(await mkdtemp(join(tmpdir(), 'whomi-runtime-insight-')))
   const requests = []
   const requestArrivals = []
@@ -50,42 +50,81 @@ test('isolated Electron resumes a scoped insight, retries writing, and preserves
     })
   })
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve))
-  let application
+  let application, page
+  const button = name => page.getByRole('button', { name, exact: true })
   try {
-    const fixture = await readFile(new URL('./fixtures/insight-model.mjs', import.meta.url), 'utf8')
-    await writeFile(join(directory, 'insight-model.mjs'), fixture)
-    await writeFile(join(directory, 'probe.cjs'), `module.exports = writer => async method => {
-      if (method !== 'probe.seedInsight') throw new Error('Unsupported synthetic probe')
-      const { seedSyntheticInsight } = await import('./insight-model.mjs')
-      return writer.transaction(() => seedSyntheticInsight(writer))()
-    }`)
-    const launch = () => electron.launch({
-      args: [resolve('out/main/index.cjs'), '--whomi-runtime-test'],
-      env: { ...process.env, WHOMI_RUNTIME_TEST: directory },
-    })
-    application = await launch()
-    let page = await application.firstWindow()
-    await application.evaluate(() => globalThis.__whomiRuntimeProbe.request('probe.seedInsight', null))
-    const model = await page.evaluate(async baseUrl => {
+    const members = [{ platformId: 'self', accountName: '合成本人' }, { platformId: 'peer', accountName: '合成对方' }]
+    const file = join(directory, 'conversation.json')
+    await writeFile(file, JSON.stringify({
+      chatlab: { version: '0.0.2' },
+      meta: { name: syntheticInsightConversation, platform: 'discord', type: 'direct', groupId: 'insight-test', ownerId: 'self' },
+      members,
+      messages: syntheticInsightMessages.map(({ id, member, at, text }) => ({
+        sender: members[member - 1].platformId, accountName: members[member - 1].accountName, type: 0,
+        timestamp: at / 1000, content: text, platformMessageId: id, ...(id === '3' ? { replyToMessageId: '1' } : {}),
+      })),
+    }))
+    await writeFile(join(directory, 'probe.cjs'), 'module.exports = () => async () => true')
+    async function launch() {
+      application = await electron.launch({
+        args: [resolve('out/main/index.cjs'), '--whomi-runtime-test'],
+        env: { ...process.env, WHOMI_RUNTIME_TEST: directory },
+      })
+      page = await application.firstWindow()
+      await page.emulateMedia({ reducedMotion: 'reduce' })
+      await expect(page.locator('.hello-cover')).toBeAttached({ timeout: 15_000 })
+      await expect(page.locator('.startup-intro')).toHaveCount(0)
+    }
+    async function restart() {
+      await application.close()
+      await launch()
+    }
+    await launch()
+    expect((await page.evaluate(() => window.whomi.listConversations({}))).items).toEqual([])
+    expect(await page.evaluate(() => window.whomi.ai.listAnalyses())).toEqual([])
+    await page.evaluate(async baseUrl => {
       const provider = await window.whomi.settings.saveProvider({ name: '合成本地服务', baseUrl, enabled: true, apiKey: 'test-only-key' })
-      return window.whomi.settings.saveModel({ providerId: provider.id, label: '合成洞察模型', model: 'example', contextWindow: 12000, maxTokens: 1000, enabled: true })
+      await window.whomi.settings.saveModel({ providerId: provider.id, label: '合成洞察模型', model: 'example', contextWindow: 12000, maxTokens: 1000, enabled: true })
     }, `http://127.0.0.1:${server.address().port}/v1`)
-    const preview = await page.evaluate(scope => window.whomi.ai.previewInsightScope({ conversationId: '1', scope }), syntheticInsightScope)
+    await restart()
+    const session = await page.context().newCDPSession(page)
+    await session.send('Emulation.setTimezoneOverride', { timezoneId: syntheticInsightScope.timezone })
+    await application.evaluate(({ dialog }, path) => {
+      dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [path] })
+    }, file)
+    await button('导入会话').click()
+    await button('选择文件').click()
+    await button('打开会话').click()
+    const identity = page.getByRole('dialog', { name: '选择本人' })
+    await identity.getByRole('radio', { name: /合成本人/ }).check()
+    await identity.getByRole('button', { name: '设为本人' }).click()
+    await expect(identity).toHaveCount(0)
+    const { items: [conversation] } = await page.evaluate(() => window.whomi.listConversations({}))
+    const preview = await page.evaluate(input => window.whomi.ai.previewInsightScope(input), { conversationId: conversation.id, scope: syntheticInsightScope })
     expect(preview).toMatchObject({ scope: syntheticInsightScope, totalMessages: 3, analyzableMessages: 3 })
-    await page.evaluate(async ({ modelId, scope }) => {
+    await button('会话洞察').click()
+    await page.getByRole('combobox', { name: '分析模型' }).click()
+    await page.getByRole('option', { name: /合成洞察模型/ }).click()
+    await page.getByRole('radio', { name: '日期范围' }).check()
+    await page.getByLabel('开始日期', { exact: true }).fill(syntheticInsightScope.startDate)
+    await page.getByLabel('结束日期', { exact: true }).fill(syntheticInsightScope.endDate)
+    await expect(page.getByRole('group', { name: '范围' }).getByText('3 条消息')).toBeVisible()
+    await expect(button('开始洞察')).toBeEnabled()
+    await page.evaluate(() => {
       window.syntheticInsightStarted = []
       window.whomi.ai.onEvent(event => {
         if (event.kind !== 'analysis') return
         const { state, analyzedMessages, eventSequence } = event.snapshot
         window.syntheticInsightStarted.push({ receivedAt: Date.now(), state, analyzedMessages, eventSequence })
       })
-      window.syntheticInsightPreparation = await window.whomi.ai.prepareAnalysis({ conversationId: '1', modelId, scope })
-    }, { modelId: model.id, scope: syntheticInsightScope })
+    })
     expect(requests).toHaveLength(0)
     const confirmStartedAt = Date.now()
-    const task = await page.evaluate(() => window.whomi.ai.confirmAnalysis({ token: window.syntheticInsightPreparation.token, requestId: 'synthetic-insight' }))
-    expect(task).toMatchObject({ title: '会话洞察', totalMessages: 3, scope: syntheticInsightScope })
+    await button('开始洞察').click()
     const confirmedAt = Date.now()
+    await expect.poll(() => page.evaluate(() => window.whomi.ai.listAnalyses())).toHaveLength(1)
+    const [task] = await page.evaluate(() => window.whomi.ai.listAnalyses())
+    expect(task).toMatchObject({ title: '会话洞察', conversationId: conversation.id, totalMessages: 3, scope: syntheticInsightScope })
     try {
       await expect.poll(() => requests.map(request => request.prompt.stage), { timeout: 15_000 }).toEqual(['reading', 'checking'])
     } catch (error) {
@@ -116,9 +155,7 @@ test('isolated Electron resumes a scoped insight, retries writing, and preserves
     expect(paused).toMatchObject({ state: 'stopped', analyzedMessages: 3 })
     await expect(page.evaluate(id => window.whomi.ai.getReport(id), task.id)).rejects.toThrow()
 
-    await application.close()
-    application = await launch()
-    page = await application.firstWindow()
+    await restart()
     expect(await page.evaluate(id => window.whomi.ai.getAnalysis(id), task.id)).toMatchObject({
       state: 'stopped', elapsedMs: paused.elapsedMs, analyzedMessages: 3,
     })
@@ -158,20 +195,34 @@ test('isolated Electron resumes a scoped insight, retries writing, and preserves
       taskId: task.id, title: syntheticInsightReportTitle,
     })
     expect(renamed).toMatchObject({ title: syntheticInsightReportTitle, scope: syntheticInsightScope, report })
+    await restart()
+    await button('对话洞察').click()
+    await page.getByRole('button', { name: new RegExp(syntheticInsightReportTitle + ' #' + task.id) }).click()
+    await button('你一开始就给了三个办法').click()
+    const citation = page.getByRole('region', { name: '引用聊天记录' }).locator('[data-citation=true]')
+    await expect(citation.getByText(syntheticInsightMessages[0].text, { exact: true })).toBeVisible()
+    await testInfo.attach('重启后回查导入原文', { body: await page.screenshot(), contentType: 'image/png' })
     await page.evaluate(() => {
       window.syntheticInsightEvents = []
       window.whomi.ai.onEvent(event => window.syntheticInsightEvents.push(event))
     })
     await page.evaluate(id => window.whomi.ai.deleteAnalysis(id), task.id)
     await expect.poll(() => page.evaluate(() => window.syntheticInsightEvents)).toContainEqual({
-      kind: 'analysis-deleted', taskId: task.id, conversationId: '1',
+      kind: 'analysis-deleted', taskId: task.id, conversationId: conversation.id,
     })
-    expect(await page.evaluate(() => window.whomi.ai.listAnalyses('1'))).toEqual([])
+    expect(await page.evaluate(id => window.whomi.ai.listAnalyses(id), conversation.id)).toEqual([])
     expect(await page.evaluate(taskId => window.whomi.ai.readInsightCitation({ taskId, citationId: 'suggestion-shift', fragmentIndex: 0 }), task.id))
       .toEqual({ status: 'unavailable' })
-    const preserved = await page.evaluate(() => window.whomi.readMessages({ conversationId: '1', direction: 'before', limit: 10 }))
+    const preserved = await page.evaluate(conversationId => window.whomi.readMessages({ conversationId, direction: 'before', limit: 10 }), conversation.id)
     expect(preserved.items.map(message => message.text)).toEqual(syntheticInsightMessages.map(message => message.text))
     expect(requests).toHaveLength(6)
+  } catch (error) {
+    if (page && !page.isClosed()) await page.screenshot({ path: testInfo.outputPath('failure.png'), timeout: 3000 }).catch(() => {})
+    for (const name of ['logs', 'Crashpad']) {
+      await cp(join(directory, name), testInfo.outputPath(name), { recursive: true })
+        .catch(cause => { if (cause.code !== 'ENOENT') console.warn('Could not copy ' + name, cause) })
+    }
+    throw error
   } finally {
     await application?.close()
     server.closeAllConnections()

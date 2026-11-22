@@ -134,7 +134,7 @@ describe('个人总览', () => {
     await userEvent.setup().click(screen.getByRole('button', { name: '导入聊天记录' }))
     expect(importCount).toBe(1)
     rerender(<Harness overview={{ materialStatus: 'unanalysed', discoveries: [] }} />)
-    expect(screen.getByText('选择一段聊天，整理你们的第一份记忆。')).toBeInTheDocument()
+    expect(screen.getByText('选择一段聊天，生成第一份会话洞察。')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '开始分析' })).not.toBeInTheDocument()
   })
 })

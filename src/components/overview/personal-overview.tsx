@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, type RefObject, type ReactNode } from 'react'
 import { ArrowLeft, ArrowRight, ChevronRight, FileInput, MessageSquare, Sparkles, ThumbsDown, ThumbsUp } from 'lucide-react'
 import type { OverviewData, PreferenceEstimate, SourceReference, SparkDiscovery, SparkScene } from './types'
 import type { useOverviewFeedback } from './use-overview-feedback'
-import { dimensionKeys, type MemoryDimensions } from '../../shared/memory'
+import { dimensionKeys, type InsightDimensions } from '../../shared/conversation-insights'
 import { personalityDimensions } from '../personality-dimensions'
 import { ExceptionNotice } from '../ui/exception-notices'
 import './personal-overview.css'
@@ -19,7 +19,7 @@ interface PersonalOverviewProps {
   hasRelationshipObservations?: boolean
   conversationTitle?: string
   onOpenConversation?: () => void
-  onOpenMemory?: () => void
+  onOpenReport?: () => void
   onImport: () => void
   onOpenSource: (source: SourceReference) => void
   isSourceAvailable: (source: SourceReference) => boolean
@@ -29,7 +29,7 @@ interface PersonalOverviewProps {
 const unknownEstimate: PreferenceEstimate = { status: 'unknown' }
 const noDiscoveries: readonly SparkDiscovery[] = []
 
-function PreferenceRow({ axis, estimate }: { axis: keyof MemoryDimensions; estimate: PreferenceEstimate }) {
+function PreferenceRow({ axis, estimate }: { axis: keyof InsightDimensions; estimate: PreferenceEstimate }) {
   const { name, left, right } = personalityDimensions[axis]
   let result = '尚待了解'
   let evidence: ReactNode
@@ -133,7 +133,7 @@ function SparkArticle({ discovery, scenes, feedback, onOpenSource, isSourceAvail
   </article>
 }
 
-export function PersonalOverview({ data, concealed = false, status = 'ready', readingError, retry, headingRef, onReturnToCover, onImport, onOpenConversation, conversationTitle, hasRelationshipObservations, children, onOpenMemory, onOpenSource, isSourceAvailable, feedback }: PersonalOverviewProps) {
+export function PersonalOverview({ data, concealed = false, status = 'ready', readingError, retry, headingRef, onReturnToCover, onImport, onOpenConversation, conversationTitle, hasRelationshipObservations, children, onOpenReport, onOpenSource, isSourceAvailable, feedback }: PersonalOverviewProps) {
   const discoveries = data?.discoveries ?? noDiscoveries
   const initialize = feedback.initialize
   useEffect(() => { initialize(discoveries) }, [discoveries, initialize])
@@ -163,14 +163,14 @@ export function PersonalOverview({ data, concealed = false, status = 'ready', re
       : status !== 'ready' ? <div className="overview-start" role={status === 'loading' ? 'status' : undefined}>
         {status === 'loading' ? '正在读取个人总览…' : <>{readingError !== null && <ExceptionNotice {...(readingError ?? { title: '读取总览失败。' })} />} <button className="page-secondary" type="button" onClick={retry}>重试</button></>}
       </div> : <>{noRecords || noAnalysis ? <div className="overview-start">
-        <p>{noRecords ? '导入一段聊天，回看自己在不同关系里的习惯。' : conversationTitle ? <>从「{conversationTitle}」开始，整理你们的第一份记忆。</> : '选择一段聊天，整理你们的第一份记忆。'}</p>
+        <p>{noRecords ? '导入一段聊天，回看自己在不同关系里的习惯。' : conversationTitle ? <>从「{conversationTitle}」开始，生成第一份会话洞察。</> : '选择一段聊天，生成第一份会话洞察。'}</p>
         {(noRecords || onOpenConversation) && <button type="button" className="page-primary" onClick={noRecords ? onImport : onOpenConversation}>
           {noRecords ? <FileInput aria-hidden="true" /> : <ArrowRight aria-hidden="true" />}{noRecords ? '导入聊天记录' : '打开会话整理'}</button>}
       </div> : data?.materialStatus === 'partial' && <p className="overview-material-note">当前观察仅来自已分析的部分记录。</p>}
       <div className="overview-preferences">
         {dimensionKeys.map(axis => <PreferenceRow key={axis} axis={axis} estimate={data?.preferences?.[personalityDimensions[axis].id] ?? unknownEstimate} />)}
       </div>
-      {!noRecords && onOpenMemory && !hasRelationshipObservations && <button className="overview-return" type="button" onClick={onOpenMemory}>查看记忆<ChevronRight aria-hidden="true" /></button>}
+      {!noRecords && onOpenReport && !hasRelationshipObservations && <button className="overview-return" type="button" onClick={onOpenReport}>查看对话洞察<ChevronRight aria-hidden="true" /></button>}
       {children}</>}
       </section>
       <section className="overview-sparks" aria-labelledby="overview-sparks-title">

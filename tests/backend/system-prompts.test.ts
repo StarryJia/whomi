@@ -1,9 +1,8 @@
 import { afterEach, expect, test } from 'vitest'
-import { createHash } from 'node:crypto'
 import { openStore } from '../../electron/data/db/open'
 import { createSettingsRepository } from '../../electron/data/settings/repository'
 import { createAiRepository } from '../../electron/data/ai/repository'
-import { removeInsightSchemaForMigrationTest, temporaryStore, useLegacyAnalysisFixture } from './helpers'
+import { temporaryStore } from './helpers'
 import { createAiService } from '../../electron/main/ai-service'
 import { defaultPrompts } from '../../src/shared/system-prompts'
 
@@ -29,9 +28,9 @@ async function setup() {
 test('提示词逐项保存、拒绝空值和超限，恢复默认并在重启后保留', async () => {
   const { temp, store, settings, write } = await setup()
   const defaults = settings.getPrompts()
-  expect(Object.keys(defaults).sort()).toEqual(['dialogue', 'insightChecking', 'insightReading', 'insightWriting', 'memoryFinal', 'memoryMerge', 'memorySource'])
+  expect(Object.keys(defaults).sort()).toEqual(['dialogue', 'insightChecking', 'insightReading', 'insightWriting'])
   await settings.savePrompt('dialogue', '用具体情境回答。')
-  await settings.savePrompt('memoryFinal', '保留我的表达方式。')
+  await settings.savePrompt('insightWriting', '保留我的表达方式。')
   await expect(settings.savePrompt('dialogue', '  ')).rejects.toThrow()
   await expect(settings.savePrompt('dialogue', '字'.repeat(20001))).rejects.toThrow()
   await expect(settings.savePrompt('unknown' as any, 'test')).rejects.toThrow()
@@ -39,30 +38,28 @@ test('提示词逐项保存、拒绝空值和超限，恢复默认并在重启�
   store.close()
   const reopened = openStore(temp.path); cleanup.push(() => reopened.close())
   const restored = createSettingsRepository(reopened, write); await restored.initialize()
-  expect(restored.getPrompts()).toMatchObject({ dialogue: '用具体情境回答。', memoryFinal: '保留我的表达方式。' })
+  expect(restored.getPrompts()).toMatchObject({ dialogue: '用具体情境回答。', insightWriting: '保留我的表达方式。' })
   await restored.savePrompt('dialogue', defaults.dialogue)
-  expect(restored.getPrompts()).toEqual({ ...defaults, memoryFinal: '保留我的表达方式。' })
+  expect(restored.getPrompts()).toEqual({ ...defaults, insightWriting: '保留我的表达方式。' })
 })
 
-test('记忆任务创建时冻结提示词，续跑和重启不会读取后来的设置', async () => {
+test('洞察任务创建时冻结提示词，续跑和重启不会读取后来的设置', async () => {
   const { temp, store, settings, ai, write } = await setup()
-  useLegacyAnalysisFixture(store)
-  await settings.savePrompt('memorySource', '取材甲')
+  await settings.savePrompt('insightReading', '取材甲')
   const preparation = await ai.prepareAnalysis({ conversationId: '1', modelId: 'm' })
   const task = await ai.confirmAnalysis({ token: preparation.token, requestId: 'one' })
   await ai.saveAnalysis(task.id, { state: 'stopped' })
-  await settings.savePrompt('memorySource', '取材乙')
-  expect(ai.analysisContext(task.id).systemPrompts?.memorySource).toBe('取材甲')
+  await settings.savePrompt('insightReading', '取材乙')
+  expect(ai.analysisContext(task.id).systemPrompts?.insightReading).toBe('取材甲')
   store.close()
   const reopened = openStore(temp.path); cleanup.push(() => reopened.close())
-  useLegacyAnalysisFixture(reopened)
   const restored = createAiRepository(reopened, write)
   await restored.resumeAnalysis(task.id)
-  expect(restored.analysisContext(task.id).systemPrompts?.memorySource).toBe('取材甲')
+  expect(restored.analysisContext(task.id).systemPrompts?.insightReading).toBe('取材甲')
   await restored.saveAnalysis(task.id, { state: 'stopped' })
   const next = await restored.prepareAnalysis({ conversationId: '1', modelId: 'm' })
   const second = await restored.confirmAnalysis({ token: next.token, requestId: 'two' })
-  expect(restored.analysisContext(second.id).systemPrompts?.memorySource).toBe('取材乙')
+  expect(restored.analysisContext(second.id).systemPrompts?.insightReading).toBe('取材乙')
 })
 
 test('对话修改提示词后不复用旧上下文，失败重试仍使用原轮次提示词', async () => {
@@ -80,41 +77,8 @@ test('对话修改提示词后不复用旧上下文，失败重试仍使用原�
   expect(ai.turnContext(next.id).systemPrompt).toBe('对话乙')
 })
 
-test('升级已有资料库后可按旧断点继续对话，旧记忆任务不使用新配置', async () => {
-  const { store, temp, ai, write } = await setup()
-  useLegacyAnalysisFixture(store)
-  const thread = await ai.createThread('1')
-  const prior = await ai.createTurn({ threadId: thread.id, requestId: 'before', modelId: 'm', prompt: '原问题', referenceIds: [] })
-  const { selfFingerprint, model } = ai.turnContext(prior.id)
-  const oldKey = createHash('sha256').update(JSON.stringify(['thread', thread.id, selfFingerprint, model.id, model.version, null, null, null])).digest('hex')
-  await ai.saveTurn(prior.id, { state: 'completed', text: '原回答', checkpoint: oldKey })
-  const prep = await ai.prepareAnalysis({ conversationId: '1', modelId: 'm' })
-  const task = await ai.confirmAnalysis({ token: prep.token, requestId: 'old-task' })
-  removeInsightSchemaForMigrationTest(store)
-  store.writer.exec('ALTER TABLE ai_analysis_tasks DROP COLUMN prompt_snapshot; ALTER TABLE ai_turns DROP COLUMN system_prompt; PRAGMA user_version=7')
-  store.close()
-  const reopened = openStore(temp.path); cleanup.push(() => reopened.close())
-  const upgraded = createAiRepository(reopened, write)
-  const config = createSettingsRepository(reopened, write)
-  await config.savePrompt('memorySource', '这是升级后才保存的取材规则。')
-  expect(upgraded.analysisContext(task.id).systemPrompts).toBeUndefined()
-  const service = createAiService({
-    storage: async (method, args) => (upgraded[method as keyof typeof upgraded] as (...values: any[]) => unknown)(...args),
-    secrets: { encrypt: value => value, decrypt: value => value },
-    runtime: { run: async input => {
-      if (input.checkpoint !== oldKey || input.key !== oldKey) throw new Error('旧断点目录不匹配')
-      return { text: '新回答', usage: {}, checkpoint: oldKey }
-    } },
-  })
-  const turn = await service.sendTurn({ threadId: thread.id, requestId: 'after', modelId: 'm', prompt: '继续', referenceIds: [] })
-  await service.idle()
-  expect(upgraded.turnContext(turn.id).turn.state).toBe('completed')
-  await service.close()
-})
-
-test('保存的对话和记忆提示词进入模型请求，连接检测保持固定指令', async () => {
-  const { settings, ai, store } = await setup()
-  useLegacyAnalysisFixture(store)
+test('保存的对话和洞察提示词进入模型请求，连接检测保持固定指令', async () => {
+  const { settings, ai } = await setup()
   const requests: { systemPrompt: string; prompt: string }[] = []
   const service = createAiService({
     storage: async (method, args) => (ai[method as keyof typeof ai] as (...values: any[]) => unknown)(...args),
@@ -122,8 +86,8 @@ test('保存的对话和记忆提示词进入模型请求，连接检测保持�
     runtime: { run: async input => {
       requests.push(input)
       const payload = input.prompt.startsWith('{') ? JSON.parse(input.prompt) : {}
-      const text = payload.messages ? { events: [{ key: 'walk', text: '周末散步', evidenceMessageIds: ['1'], signals: [] }] }
-        : payload.events ? { groups: [['walk']], events: [{ key: 'walk', title: '散步', text: '周末散步。' }], relationship: '一起度过周末。', dimensionExplanations: { EI: null, SN: null, TF: null, JP: null } }
+      const text = payload.stage === 'reading' ? { observations: [], openThreads: [], candidates: [] }
+        : payload.stage === 'writing' ? { aboutYou: [], relationship: [], citations: [], limitations: ['材料有限。'] }
         : '测试回答'
       return { text: typeof text === 'string' ? text : JSON.stringify(text), usage: {}, checkpoint: 'checkpoint' }
     } },
@@ -133,16 +97,15 @@ test('保存的对话和记忆提示词进入模型请求，连接检测保持�
   await service.sendTurn({ threadId: thread.id, requestId: 'dialogue', modelId: 'm', prompt: '你好', referenceIds: [] })
   await service.idle()
   expect(requests[0].systemPrompt).toContain('对话用简短句子。')
-  await settings.savePrompt('memorySource', '记录具体动作。')
-  await settings.savePrompt('memoryMerge', '仅在材料超长时归并。'.repeat(1000))
-  await settings.savePrompt('memoryFinal', '成稿保留细节。')
+  await settings.savePrompt('insightReading', '记录具体动作。')
+  await settings.savePrompt('insightWriting', '成稿保留细节。')
   const prep = await service.prepareAnalysis({ conversationId: '1', modelId: 'm' })
-  const task = await service.confirmAnalysis({ token: prep.token, requestId: 'memory' })
+  const task = await service.confirmAnalysis({ token: prep.token, requestId: 'insight' })
   await service.idle()
   expect(ai.getAnalysis(task.id).state).toBe('completed')
   expect(requests[1].systemPrompt).toContain('记录具体动作。')
   expect(requests[2].systemPrompt).toContain('成稿保留细节。')
-  expect(requests[2].systemPrompt).toContain('dimensionExplanations')
+  expect(JSON.parse(requests[2].prompt).stage).toBe('writing')
   await service.testModel('m')
   expect(requests.at(-1)).toMatchObject({ systemPrompt: 'Reply OK.', prompt: 'OK' })
   expect(defaultPrompts.dialogue).not.toBe('对话用简短句子。')

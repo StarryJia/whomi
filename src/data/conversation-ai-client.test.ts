@@ -566,13 +566,13 @@ describe('正式会话 AI 适配器', () => {
   })
   it('继续时后台已经运行则改为观察该任务，展示已有或最终的报告', async () => {
     const { methods, client } = api()
-    const active: AnalysisTask = { id: 'saved', conversationId: 'c', modelId: 'm', state: 'summarizing',
+    const active: AnalysisTask = { id: 'saved', conversationId: 'c', modelId: 'm', state: 'running',
       analyzedMessages: 7, totalMessages: 7, skippedMessages: 0, usage: {}, valid: true, eventSequence: 5 }
     methods.continueAnalysis.mockRejectedValue({ code: 'INVALID_STATE' })
     methods.getAnalysis.mockResolvedValueOnce(active).mockResolvedValue({ ...active, state: 'completed', eventSequence: 6 })
     const adapter = await createConversationAiClient(client), progress = vi.fn()
     const result = await adapter.continueAnalysis!('saved', new AbortController().signal, progress)
-    expect(progress.mock.calls.map(([value]) => value.task.state)).toEqual(['summarizing', 'completed'])
+    expect(progress.mock.calls.map(([value]) => value.task.state)).toEqual(['running', 'completed'])
     expect(result.task?.state).toBe('completed')
     expect(methods.continueAnalysis).toHaveBeenCalledTimes(1)
     expect(methods.confirmAnalysis).not.toHaveBeenCalled()

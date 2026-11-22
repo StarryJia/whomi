@@ -12,7 +12,6 @@ export function purgeThread(db: Database, threadId: bigint) {
 }
 
 export function purgeAnalysis(db: Database, taskId: bigint) {
-  db.prepare('DELETE FROM ai_analysis_batches WHERE task_id=?').run(taskId)
   db.prepare('DELETE FROM ai_analysis_coverage WHERE task_id=?').run(taskId)
   db.prepare('DELETE FROM ai_reports WHERE task_id=?').run(taskId)
   db.prepare("DELETE FROM ai_request_usage WHERE owner_kind='analysis' AND owner_id=?").run(taskId)

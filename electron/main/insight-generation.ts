@@ -3,7 +3,7 @@ import type {
   InsightCitation, InsightInline, InsightJudgment, InsightParagraph, InsightReport, InsightSnapshot, InsightSourceMessage, InsightSourceRef,
 } from '../../src/shared/conversation-insights'
 import { BoundaryError } from '../../src/shared/desktop-validation'
-import { dimensionKeys } from '../../src/shared/memory'
+import { dimensionKeys } from '../../src/shared/conversation-insights'
 import { buildInsightPrompt, INSIGHT_PROMPT_VERSION, type InsightPrompts } from '../data/ai/insight-prompts'
 import type { RuntimeInput, RuntimeResult, RuntimeRunner } from './ai-service'
 import {

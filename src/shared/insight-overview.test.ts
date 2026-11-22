@@ -45,13 +45,11 @@ test('失败、无效、未保存报告不贡献，重复完成按报告编号�
   expect(relation.dimensions.JP).toBe('J')
 })
 
-test('不同会话分别保留来源，旧报告在新报告移除后仍有效', () => {
-  const legacy = task('10', [], { report: { format: 'memory-v4', dimensions: { EI: null, SN: null, TF: null, JP: 'J' },
-    eventVotes: { EI: [0, 0], SN: [0, 0], TF: [0, 0], JP: [3, 0] }, events: [], relationship: '旧报告',
-    dimensionExplanations: { EI: null, SN: null, TF: null, JP: { text: '提前安排', evidenceMessageIds: ['1'] } } } })
-  const entries = currentOverviewContributions([legacy, task('24', [judgment('P', ['2'])]), task('30', [judgment('J')], { conversationId: '2' })])
+test('不同会话分别保留来源，移除冲突报告后恢复其余判断', () => {
+  const first = task('10', [judgment('J')])
+  const entries = currentOverviewContributions([first, task('24', [judgment('P', ['2'])]), task('30', [judgment('J')], { conversationId: '2' })])
   expect(entries.map(item => [item.conversationId, item.dimensions.JP])).toEqual([['1', null], ['2', 'J']])
-  expect(currentOverviewContributions([legacy])[0]).toMatchObject({ dimensions: { JP: 'J' }, sourceTaskIds: ['10'] })
+  expect(currentOverviewContributions([first])[0]).toMatchObject({ dimensions: { JP: 'J' }, sourceTaskIds: ['10'] })
 })
 
 test('改名不改变判断，明确的不确定判断不会被同来源多数报告淹没', () => {

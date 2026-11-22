@@ -17,7 +17,7 @@ function fixture(run?: RuntimeRunner['run'], logError?: (entry: AppError) => voi
   const storage = async (method: string, args: any[]) => {
     if (method === 'confirmAnalysis' || method === 'getAnalysis') return { ...task }
     if (method === 'modelSecret') return { model, encryptedKey: 'encrypted' }
-    if (method === 'analysisContext') return { task, model, promptVersion: 'conversation-insights-v1', snapshot, messages: [], batches: [], checkpoint, systemPrompts: { ...defaultPrompts, insightReading: '自定义阅读' } }
+    if (method === 'analysisContext') return { task, model, snapshot, checkpoint, systemPrompts: { ...defaultPrompts, insightReading: '自定义阅读' } }
     if (method === 'readInsightSources') { expect(args[0]).toEqual({ taskId: '1', messageIds: [message.id] }); return [message] }
     if (method === 'saveAnalysis') {
       if (args[1].state === 'stopped') beforeStopWrite?.()
