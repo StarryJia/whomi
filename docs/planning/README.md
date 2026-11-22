@@ -22,7 +22,7 @@
 | 001 | [不同关系中的对照](ideas/001-cross-relationship-comparison.md) | 待评估 |
 | 002 | [大众熟知人物的白话示例剧本](ideas/002-familiar-character-demo.md) | 待验收 |
 | 003 | [AI 对话模块对齐 Cherry](ideas/003-cherry-chat-alignment.md) | 待验收 |
-| 004 | [对话洞察](ideas/004-conversation-insights.md) | 实施中，事实保留真实对照部分通过，剩余未知与引用问题见主记录 |
+| 004 | [对话洞察](ideas/004-conversation-insights.md) | 已验收同版本新库的报告与总览联动，真实模型质量部分通过，预约样本的洞察未成稿 |
 | 005 | [问一问](ideas/005-ask.md) | 后续独立计划，待需求与选型 |
 | 006 | [心事屋](ideas/006-heart-room.md) | 后续独立计划，待需求与选型 |
 

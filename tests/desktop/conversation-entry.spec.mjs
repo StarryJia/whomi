@@ -11,7 +11,7 @@ for (const width of [1440, 360]) {
     const evidence = test.info().outputPath('screenshots')
     await mkdir(evidence, { recursive: true })
     await writeFile(join(data, 'probe.cjs'), `module.exports = writer => {
-      writer.exec("INSERT INTO conversations(id,title,kind,created_at_ms) VALUES(1,'虚构 · 周末出行','direct',0); INSERT INTO source_conversations(id,conversation_id,platform,namespace) VALUES(1,1,'fixture','trip'); INSERT INTO memberships(id,conversation_id,source_conversation_id,source_key,display_name) VALUES(1,1,1,'me','小禾'); INSERT INTO self_confirmations(conversation_id,member_id,status,source) VALUES(1,1,'confirmed','user'); INSERT INTO messages(id,conversation_id,member_id,sender_kind,sender_name,kind,text,ordinal) VALUES(1,1,1,'member','小禾','text','周六十点在车站见。',0);")
+      writer.exec("INSERT INTO conversations(id,title,kind,created_at_ms) VALUES(1,'虚构 · 周末出行','direct',0); INSERT INTO source_conversations(id,conversation_id,platform,namespace) VALUES(1,1,'fixture','trip'); INSERT INTO memberships(id,conversation_id,source_conversation_id,source_key,display_name) VALUES(1,1,1,'me','小禾'); INSERT INTO self_confirmations(conversation_id,member_id,status,source) VALUES(1,1,'confirmed','user'); INSERT INTO messages(id,conversation_id,member_id,sender_kind,sender_name,kind,text,ordinal,sent_at_ms,time_precision) VALUES(1,1,1,'member','小禾','text','周六十点在车站见。',0,1791561480000,'minute');")
       return async () => true
     }`)
     const app = await electron.launch({
@@ -48,6 +48,12 @@ for (const width of [1440, 360]) {
       expect(await page.evaluate(async () => (await window.whomi.ai.listThreads('1')).length)).toBe(1)
       await page.keyboard.press('Escape')
       await button('会话洞察').click()
+      await page.getByRole('radio', { name: '日期范围' }).check()
+      const start = page.getByLabel('开始日期', { exact: true })
+      const end = page.getByLabel('结束日期', { exact: true })
+      await start.fill('2026-10-09')
+      await end.fill('2026-10-10')
+      await expect(page.getByRole('group', { name: '范围' })).toContainText('1 条消息')
       await screenshot('确认去设置')
       await button('去配置').click()
       await expect(page.getByLabel('搜索服务商', {exact:true})).toBeVisible()
@@ -59,6 +65,9 @@ for (const width of [1440, 360]) {
       await expect(page.locator('.ms-model-row')).toHaveCount(1)
       await button('返回').click()
       await expect(page.getByRole('heading', {name:'会话洞察'})).toBeVisible()
+      await expect(page.getByRole('radio', { name: '日期范围' })).toBeChecked()
+      await expect(start).toHaveValue('2026-10-09')
+      await expect(end).toHaveValue('2026-10-10')
       const model = page.getByRole('combobox', {name:'分析模型'})
       await model.click()
       await page.getByRole('option', {name:/fictional-offline-model/}).click()

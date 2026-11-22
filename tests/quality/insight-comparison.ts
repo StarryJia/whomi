@@ -13,7 +13,7 @@ export type TrialOutboundAttempt = { outputLimit: number; call: number; outbound
 const comparisonHaltCodes = new Set([
   'UNAPPROVED_NETWORK_REQUEST', 'UNENFORCED_OUTPUT_LIMIT', 'OUTSIDE_EVIDENCE', 'INVALID_EVIDENCE', 'UNSAFE_RESPONSE',
   'TRIAL_CALL_LIMIT', 'TRIAL_BUDGET_LIMIT', 'INSIGHT_BUDGET_EXHAUSTED', 'COMPARISON_WRITING_REPAIR_DISABLED',
-  'INVALID_INSIGHT_OUTPUT', 'CONTEXT_TOO_LARGE',
+  'INVALID_INSIGHT_OUTPUT', 'CONTEXT_TOO_LARGE', 'TRIAL_COST_LIMIT', 'UNPRICED_TRIAL_REQUEST', 'INVALID_TRIAL_LEDGER',
 ])
 
 export const comparisonWritingPrompt = [
@@ -52,6 +52,7 @@ export function createTrialOutboundGuard(options: {
   authorizedOrigin: string
   modelName: string
   excludedText: string
+  reserveRequest?: (request: Request, body: Record<string, unknown>) => Request
   dispatch: (request: Request, attempt: TrialOutboundAttempt, outputLimit: number) => Promise<Response>
 }) {
   let rejection: (Error & { code: string }) | undefined
@@ -83,6 +84,12 @@ export function createTrialOutboundGuard(options: {
       return refuse('UNENFORCED_OUTPUT_LIMIT')
     }
     if (JSON.stringify(body).includes(options.excludedText) || body.tools?.length) return refuse('OUTSIDE_EVIDENCE')
+    if (options.reserveRequest) {
+      try { request = options.reserveRequest(request, body) } catch (error) {
+        const code = (error as { code?: string }).code
+        return refuse(code && comparisonHaltCodes.has(code) ? code : 'INVALID_TRIAL_LEDGER')
+      }
+    }
     return options.dispatch(request, attempt, cap)
   }
   function restoreError(error: unknown): unknown {

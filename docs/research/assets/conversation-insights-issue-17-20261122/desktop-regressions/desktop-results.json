@@ -1,0 +1,104 @@
+{
+  "runs": [
+    {
+      "run": "pr43-before-20261122-135724-101696",
+      "commit": "1d3b5e1ed278d77a1405540674eb5339c0932e19",
+      "exitCode": 1,
+      "passed": 1,
+      "failed": 6,
+      "skipped": 0,
+      "flaky": 0
+    },
+    {
+      "run": "pr43-desktop-full-20261122-140732-030434",
+      "commit": "82ce694ff6832e38ea6a5376d12fd69298a38845",
+      "exitCode": 1,
+      "passed": 76,
+      "failed": 1,
+      "skipped": 1,
+      "flaky": 0
+    },
+    {
+      "run": "pr43-window-replay-20261122-142122-036553",
+      "commit": "82ce694ff6832e38ea6a5376d12fd69298a38845",
+      "exitCode": 0,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "flaky": 0
+    },
+    {
+      "run": "pr43-reviewed-desktop-full-20261122-142351-379188",
+      "commit": "b3686a87e95eeb50cb48ad5f7a4078d65bd1173b",
+      "exitCode": 1,
+      "passed": 76,
+      "failed": 1,
+      "skipped": 1,
+      "flaky": 0
+    },
+    {
+      "run": "pr43-reviewed-window-replay-20261122-143715-458192",
+      "commit": "b3686a87e95eeb50cb48ad5f7a4078d65bd1173b",
+      "exitCode": 1,
+      "passed": 0,
+      "failed": 1,
+      "skipped": 0,
+      "flaky": 0
+    },
+    {
+      "run": "pr43-drag-full-20261122-181334-342585",
+      "commit": "6d72ceb6723fc6b1c574474a1dd0e3c27b26d53c",
+      "exitCode": 0,
+      "passed": 77,
+      "failed": 0,
+      "skipped": 1,
+      "flaky": 0
+    }
+  ],
+  "originalFailures": [
+    {
+      "file": "tests/desktop/account-model-lifecycle.spec.mjs",
+      "title": "订阅账号退出、重新登录和换账号在 1280 像素下结束旧模型界面",
+      "before": "failed",
+      "final": "passed"
+    },
+    {
+      "file": "tests/desktop/account-model-lifecycle.spec.mjs",
+      "title": "订阅账号退出、重新登录和换账号在 360 像素下结束旧模型界面",
+      "before": "failed",
+      "final": "passed"
+    },
+    {
+      "file": "tests/desktop/codex-quota.spec.mjs",
+      "title": "方案 C 在 1280 像素完成连接、刷新、重试、取消与来源切换（示例数据）",
+      "before": "failed",
+      "final": "passed"
+    },
+    {
+      "file": "tests/desktop/codex-quota.spec.mjs",
+      "title": "方案 C 在 960 像素完成连接、刷新、重试、取消与来源切换（示例数据）",
+      "before": "failed",
+      "final": "passed"
+    },
+    {
+      "file": "tests/desktop/codex-quota.spec.mjs",
+      "title": "方案 C 在 360 像素完成连接、刷新、重试、取消与来源切换（示例数据）",
+      "before": "failed",
+      "final": "passed"
+    },
+    {
+      "file": "tests/desktop/reading-polish.spec.mjs",
+      "title": "reading polish: fixed content, history, model identity, copy, retry and narrow windows",
+      "before": "failed",
+      "final": "passed"
+    }
+  ],
+  "finalFailures": [],
+  "finalSkipped": [
+    {
+      "file": "tests/desktop/upgrade.spec.mjs",
+      "title": "existing data and encrypted models survive the packaged upgrade and subsequent restart",
+      "reason": "需要提供旧版与新版安装包中的可执行程序。"
+    }
+  ]
+}

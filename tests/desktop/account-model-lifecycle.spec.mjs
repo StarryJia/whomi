@@ -4,13 +4,19 @@ import { tmpdir } from 'node:os'
 import { basename, dirname, join, resolve } from 'node:path'
 
 // 正式设置页面与预加载通信；只在测试进程替换账号和模型服务，无真实授权或凭据。
-for (const width of [1280, 360]) test(`订阅账号退出、重新登录和换账号在 ${width} 像素下结束旧模型界面`, async () => {
+for (const width of [1280, 360]) test(`订阅账号退出、重新登录和换账号在 ${width} 像素下结束旧模型界面`, async ({}, info) => {
   test.setTimeout(120000)
   const directory = await mkdtemp(join(tmpdir(), 'whomi-runtime-account-models-'))
-  const evidence = resolve(process.env.WHOMI_ACCOUNT_EVIDENCE || 'artifacts/account-model-lifecycle')
+  const evidence = info.outputPath('evidence')
+  const exportDirectory = process.env.WHOMI_ACCOUNT_EVIDENCE
   let app
   try {
     await mkdir(evidence, { recursive: true })
+    if (exportDirectory) await mkdir(exportDirectory, { recursive: true })
+    const saveEvidence = async (name, data) => {
+      await writeFile(join(evidence, name), data)
+      if (exportDirectory) await writeFile(join(exportDirectory, name), data)
+    }
     await writeFile(join(directory, 'probe.cjs'), 'module.exports = () => async () => true')
     app = await electron.launch({
       args: [resolve('out/main/index.cjs'), '--whomi-runtime-test'],
@@ -93,7 +99,7 @@ for (const width of [1280, 360]) test(`订阅账号退出、重新登录和换�
     const errors = []
     page.on('pageerror', error => errors.push(error.message))
     const button = name => page.getByRole('button', { name, exact: true })
-    const shot = name => page.screenshot({ path: join(evidence, `${width}-${name}.png`), animations: 'disabled' })
+    const shot = async name => saveEvidence(`${width}-${name}.png`, await page.screenshot({ animations: 'disabled' }))
     const models = page.locator('.ms-models')
     const enterSettings = async () => {
       if (await button('展开侧栏').isVisible()) await button('展开侧栏').click()
@@ -154,7 +160,10 @@ for (const width of [1280, 360]) test(`订阅账号退出、重新登录和换�
     await shot('05-login-cancelled')
     await button('使用 ChatGPT 登录').click()
     await app.evaluate(() => globalThis.accountModelFixture.fail())
-    await expect(page.getByRole('alert')).toContainText('登录失败，请重试。')
+    const notices = page.getByRole('region', { name: '异常提醒' })
+    await expect(notices.getByRole('alert')).toHaveText('账号操作失败')
+    await notices.getByRole('button', { name: '展开详情' }).click()
+    await expect(notices.getByText('登录失败，请重试。', { exact: true })).toBeVisible()
     await verifyDisconnected()
     await shot('06-login-failed')
     await button('使用 ChatGPT 登录').click()
@@ -194,11 +203,14 @@ for (const width of [1280, 360]) test(`订阅账号退出、重新登录和换�
     await shot('09-account-b-models')
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     expect(errors).toEqual([])
-    await writeFile(join(evidence, `${width}-results.json`), JSON.stringify({
+    await saveEvidence(`${width}-results.json`, JSON.stringify({
       width, runtimeErrors: errors,
       simulation: '正式 Electron 设置页面与既有预加载通信；测试进程模拟账号和模型调用。退出仍返回已保存模型与启用偏好，重新登录或换账号重绑定保留模型；未运行真实外部授权或真实凭据存储，也不模拟自动替换模型目录。',
       checks: ['退出取消保留模型搜索与检测', '退出立即卸载模型与额度', '退出后重新打开仍不显示保存模型', '登录取消恢复未登录界面', '登录失败可重试', '同账号恢复两项模型偏好且清理搜索检测', '换账号保留配置偏好且仅显示当前账号与额度'],
     }, null, 2))
+  } catch (error) {
+    await app?.windows()[0]?.screenshot({ path: info.outputPath('failure.png') }).catch(() => {})
+    throw error
   } finally {
     await app?.close()
     const target = resolve(directory)

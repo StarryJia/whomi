@@ -49,10 +49,10 @@ test('explicit safe webpage links reach the browser while executable schemes sta
   }
 })
 
-test('reading polish: fixed content, history, model identity, copy, retry and narrow windows', async () => {
+test('reading polish: fixed content, history, model identity, copy, retry and narrow windows', async ({}, info) => {
   test.setTimeout(180000)
   const directory = await mkdtemp(join(tmpdir(), 'whomi-runtime-'))
-  const evidence = resolve('artifacts/reading-polish')
+  const evidence = info.outputPath('evidence')
   await mkdir(evidence, { recursive: true })
   const fixture = await readFile(resolve('docs/designs/fixtures/conversation-reading-acceptance.md'), 'utf8')
   const answer = normalizeNewlines(fixture.match(/```markdown\r?\n([\s\S]*?)\r?\n```/)[1])
@@ -412,9 +412,14 @@ test('reading polish: fixed content, history, model identity, copy, retry and na
     await page.getByRole('navigation').getByRole('button', { name: firstThread.title, exact: true }).click()
     const restoredViewport = page.locator('[data-message-virtual-list-scroller]')
     await restoredViewport.press('Home')
+    await expect(restoredViewport.locator(`[data-message-id="${restored.turns[0].requestId}:user"]`)).toBeInViewport()
     await expect.poll(() => restoredViewport.evaluate(el => el.scrollTop)).toBeLessThan(4)
     await expect(page.locator(`[data-message-id="${restored.turns[0].requestId}:assistant"] .message-header`)).toContainText('评审模型甲')
     await shot('C11-whomi-restored-1280x800')
+    reading.restoredHome = await restoredViewport.evaluate(el => el.scrollTop)
+    expect(reading.restoredHome).toBeLessThan(4)
+    await restoredViewport.press('End')
+    await expect.poll(() => restoredViewport.evaluate(el => el.scrollHeight - el.clientHeight - el.scrollTop)).toBeLessThan(4)
     const version = await application.evaluate(({ app }) => ({ app: app.getVersion(), electron: process.versions.electron }))
     await writeFile(join(evidence, 'environment.json'), JSON.stringify({ synthetic: true, version, theme: 'light', zoom: await page.evaluate(() => devicePixelRatio), dimensions: [[1280, 800], [960, 720], [360, 800]], widths, answer, completed: new Date().toISOString() }, null, 2))
   } catch (error) {

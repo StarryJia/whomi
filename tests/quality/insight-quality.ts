@@ -25,12 +25,14 @@ import {
   type ComparisonCharge, type ComparisonPhaseResult,
 } from './insight-comparison-resume'
 import { insightQualityCases } from './insight-material.mjs'
+import { cappedTrialActions, reserveStandardTextRequest } from './insight-capped-pair.mjs'
 import { insightVerificationCases } from './insight-verification-material.mjs'
 import { prepareCompressionCoverageResume } from './insight-comparison-compression-resume'
 
 const selectedProvider = process.env.WHOMI_QUALITY_PROVIDER_ID
 const selectedModel = process.env.WHOMI_QUALITY_MODEL_ID
 const authorizedOrigin = 'https://api.openai.com'
+const cappedPair = process.env.WHOMI_CAPPED_PAIR === '1'
 const originalLimits = { maxChecks: 1, maxRoundsPerCheck: 3, maxCalls: 6, maxInputTokens: 80_000, maxOutputTokens: 6_000, maxElapsedMs: 300_000 }
 const distantReadingCap = 6_000
 const scratch = resolve(process.env.WHOMI_QUALITY_SCRATCH!)
@@ -111,7 +113,7 @@ function totalInput(usage: AiUsage): number | undefined {
 async function main() {
   const args = trialArgs
   const profile = trialProfile
-  if (!profile) return runTrial(args)
+  if (!profile && !cappedPair) return runTrial(args)
   mkdirSync(output, { recursive: true })
   const lock = join(output, '.active-comparison')
   try { mkdirSync(lock) } catch { return fault('COMPARISON_LOCK_UNAVAILABLE') }
@@ -132,6 +134,7 @@ async function runTrial(args: string[]) {
   const verification = args[0] === '--verification'
   const profile = trialProfile
   const comparison = !!profile
+  const guardedTrial = comparison || cappedPair
   const longComparison = args[0] === '--long-comparison'
   const totalRequestLimit = profile?.requestLimit ?? trialRequestLimit
   const perTaskLimits = profile?.perTaskLimits ?? verificationLimits
@@ -308,10 +311,10 @@ async function runTrial(args: string[]) {
   const signal = AbortSignal.timeout(limits.maxElapsedMs)
   const runtime = new PiRuntime(scratch)
   const privateValues = [apiKey, model.id, model.baseUrl, selectedProvider].filter((value): value is string => !!value)
-  const redact = (value: string) => comparison
+  const redact = (value: string) => guardedTrial
     ? privateValues.reduce((clean, secret) => clean.replaceAll(secret, '[redacted]'), value) : value
   const render = (value: unknown, indent?: number) => JSON.stringify(value,
-    comparison ? (_key, item) => typeof item === 'string' ? redact(item) : item : undefined, indent)
+    guardedTrial ? (_key, item) => typeof item === 'string' ? redact(item) : item : undefined, indent)
   const json = (name: string, value: unknown) => writeFileSync(prefix(name), render(value, 2) + '\n', { flag: comparison ? 'wx' : 'w' })
   const log = (value: unknown) => appendFileSync(prefix('attempts.jsonl'), render(value) + '\n')
   const event = (value: unknown) => appendFileSync(prefix('events.jsonl'), render(value) + '\n')
@@ -330,6 +333,7 @@ async function runTrial(args: string[]) {
   const outboundGuard = createTrialOutboundGuard({
     getActive: () => active, hasDispatchBudget: () => sent < limits.maxCalls && previousDispatched + sent < totalRequestLimit,
     authorizedOrigin, modelName: model.model, excludedText: excluded.text,
+    reserveRequest: cappedPair ? (request, body) => reserveStandardTextRequest(request, body, join(output, 'reservations.jsonl'), previousDispatched + sent) : undefined,
     dispatch: async (request, outbound, cap) => {
       log({ kind: 'dispatched', call: outbound.call, wireOutputLimit: cap, at: Date.now() })
       outbound.outbound++
@@ -347,6 +351,7 @@ async function runTrial(args: string[]) {
     },
   })
   globalThis.fetch = outboundGuard.fetch
+  const restoreFailure = (error: unknown) => guardedTrial ? outboundGuard.restoreError(error) : error
 
   function assertSources(request: RuntimeInput): string {
     if (request.prompt.includes(excluded.text)) return fault('OUTSIDE_EVIDENCE')
@@ -359,7 +364,7 @@ async function runTrial(args: string[]) {
       for (const part of payload[field] ?? []) {
         const original = byId.get(part.id)
         if (!original || part.revision !== original.revision || part.isSelf !== original.isSelf
-          || comparison && (part.sentAtMs !== original.sentAtMs || part.senderName !== original.senderName
+          || guardedTrial && (part.sentAtMs !== original.sentAtMs || part.senderName !== original.senderName
             || part.replyToMessageId !== original.replyToMessageId)) return fault('OUTSIDE_EVIDENCE')
         const text = part.fragment ? original.text.slice(part.fragment.start, part.fragment.end) : original.text
         if (text !== part.text) return fault('OUTSIDE_EVIDENCE')
@@ -397,7 +402,7 @@ async function runTrial(args: string[]) {
       || reservedOutput + outputCharged > limits.maxOutputTokens) return fault('TRIAL_BUDGET_LIMIT')
     const call = ++calls
     log({ kind: 'reserved', call, stage, inputEstimate: tokens, outputLimit: reservedOutput, at: Date.now() })
-    if (detailedArtifacts) json('request-' + String(call).padStart(2, '0') + '.json', {
+    if (detailedArtifacts || cappedPair) json('request-' + String(call).padStart(2, '0') + '.json', {
       stage, model: request.model.model, systemPrompt: request.systemPrompt, prompt: request.prompt,
       inputEstimate: tokens, outputLimit: reservedOutput,
     })
@@ -408,7 +413,7 @@ async function runTrial(args: string[]) {
     try {
       const result = await runtime.run({ ...request, apiKey }, { ...options, signal: AbortSignal.any([options.signal, signal]) })
       usage = result.usage
-      if (comparison) outboundGuard.assertApproved()
+      if (guardedTrial) outboundGuard.assertApproved()
       if (result.text.includes(apiKey)) return fault('UNSAFE_RESPONSE')
       returnedText = result.text
       writeFileSync(prefix('response-' + String(call).padStart(2, '0') + '.txt'), redact(result.text), { flag: comparison ? 'wx' : 'w' })
@@ -416,7 +421,7 @@ async function runTrial(args: string[]) {
       return result
     } catch (error) {
       usage ??= (error as { usage?: AiUsage })?.usage
-      const failure = comparison ? outboundGuard.restoreError(error) : error
+      const failure = restoreFailure(error)
       log({ kind: 'failed', call, code: errorCode(failure) })
       throw failure
     } finally {
@@ -597,12 +602,12 @@ async function runTrial(args: string[]) {
     json('result.json', outcome)
     console.log(render({ caseName, variant, ...outcome }))
   } catch (error) {
-    const failure = comparison ? outboundGuard.restoreError(error) : error
+    const failure = restoreFailure(error)
     const code = errorCode(failure)
     const incremental = { httpRequests: sent, elapsedMs: Date.now() - start, inputCharged, outputCharged }
     const outcome = { state: 'failed', error: code, calls, ...incremental, ...comparisonAccounting(incremental) }
     json('result.json', outcome)
-    if (comparison) {
+    if (guardedTrial) {
       recordComparisonHalt(output, code, render({ caseName, variant, ...outcome }))
     } else if (['OUTSIDE_EVIDENCE', 'INVALID_EVIDENCE', 'TRIAL_BUDGET_LIMIT', 'UNSAFE_RESPONSE'].includes(code)) {
       writeFileSync(join(output, 'halt.json'), render({ caseName, variant, ...outcome }))
@@ -615,6 +620,9 @@ async function runTrial(args: string[]) {
 }
 
 app.whenReady().then(main).then(() => app.exit(0), error => {
-  console.error(JSON.stringify({ state: 'stopped', code: errorCode(error) }))
+  const code = errorCode(error)
+  const actions: Record<string, string> = cappedTrialActions
+  const action = cappedPair ? actions[code] ?? '请核对试验配置和运行记录。' : undefined
+  console.error(JSON.stringify({ state: 'stopped', code, action }))
   app.exit(1)
 })

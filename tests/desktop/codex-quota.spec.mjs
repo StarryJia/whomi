@@ -3,9 +3,10 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, dirname, join, resolve } from 'node:path'
 
-for (const width of [1280, 960, 360]) test(`方案 C 在 ${width} 像素完成连接、刷新、重试、取消与来源切换（示例数据）`, async () => {
+for (const width of [1280, 960, 360]) test(`方案 C 在 ${width} 像素完成连接、刷新、重试、取消与来源切换（示例数据）`, async ({}, info) => {
   test.setTimeout(90000)
-  const directory = await mkdtemp(join(tmpdir(), 'whomi-runtime-quota-')), evidence = resolve('artifacts/codex-quota')
+  const directory = await mkdtemp(join(tmpdir(), 'whomi-runtime-quota-'))
+  const evidence = info.outputPath('evidence')
   let app
   try {
     await mkdir(evidence, { recursive: true })
@@ -72,12 +73,16 @@ for (const width of [1280, 960, 360]) test(`方案 C 在 ${width} 像素完成�
     await page.getByText('本机使用记录', { exact: true }).click()
     await mode('failure')
     await button('刷新额度').click()
-    await expect(page.getByRole('alert')).toContainText('上次结果')
-    await expect(page.getByRole('meter')).toHaveAttribute('aria-valuenow', '62')
+    const notices = page.getByRole('region', { name: '异常提醒' })
+    await expect(notices.getByRole('alert')).toHaveText('额度操作失败')
+    await notices.getByRole('button', { name: '展开详情' }).click()
+    await expect(notices.getByText('读取额度失败，请检查网络后重试。 当前显示上次结果。', { exact: true })).toBeVisible()
+    await expect(page.getByRole('meter', { name: '每周额度' })).toHaveAttribute('aria-valuenow', '62')
     await shot('retry')
     await mode('plus')
     await button('重试读取额度').click()
     await expect(page.getByRole('meter', { name: '5 小时额度' })).toHaveAttribute('aria-valuenow', '0')
+    await expect(notices.getByRole('alert')).toHaveCount(0)
     await expect(page.getByText('重置时间未提供')).toBeVisible()
     await shot('plus-zero')
     await page.emulateMedia({ reducedMotion: 'reduce' })
@@ -98,6 +103,9 @@ for (const width of [1280, 960, 360]) test(`方案 C 在 ${width} 像素完成�
     await mode('weekly')
     await button('连接本机 Codex 用量').click()
     await expect(page.getByRole('meter')).toHaveCount(1)
+  } catch (error) {
+    await app?.windows()[0]?.screenshot({ path: info.outputPath('failure.png') }).catch(() => {})
+    throw error
   } finally {
     await app?.close()
     if (dirname(resolve(directory)) === resolve(tmpdir()) && basename(directory).startsWith('whomi-runtime-quota-')) await rm(directory, { recursive: true, force: true })

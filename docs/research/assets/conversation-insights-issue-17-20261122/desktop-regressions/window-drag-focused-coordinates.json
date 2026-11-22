@@ -1,0 +1,162 @@
+[
+  {
+    "label": "left",
+    "before": {
+      "x": 360,
+      "y": 120,
+      "width": 1080,
+      "height": 700
+    },
+    "after": {
+      "x": 390,
+      "y": 120,
+      "width": 1080,
+      "height": 700
+    },
+    "strip": {
+      "x": 577,
+      "y": 0,
+      "width": 363,
+      "height": 36
+    },
+    "point": {
+      "x": 584,
+      "y": 18,
+      "toX": 618,
+      "toY": 18
+    },
+    "window": {
+      "focused": true,
+      "minimized": false,
+      "maximized": false
+    }
+  },
+  {
+    "label": "center",
+    "before": {
+      "x": 390,
+      "y": 120,
+      "width": 1080,
+      "height": 700
+    },
+    "after": {
+      "x": 360,
+      "y": 120,
+      "width": 1080,
+      "height": 700
+    },
+    "strip": {
+      "x": 577,
+      "y": 0,
+      "width": 363,
+      "height": 36
+    },
+    "point": {
+      "x": 758.5,
+      "y": 18,
+      "toX": 724.5,
+      "toY": 18
+    },
+    "window": {
+      "focused": true,
+      "minimized": false,
+      "maximized": false
+    }
+  },
+  {
+    "label": "right",
+    "before": {
+      "x": 360,
+      "y": 120,
+      "width": 1080,
+      "height": 700
+    },
+    "after": {
+      "x": 390,
+      "y": 120,
+      "width": 1080,
+      "height": 700
+    },
+    "strip": {
+      "x": 577,
+      "y": 0,
+      "width": 363,
+      "height": 36
+    },
+    "point": {
+      "x": 933,
+      "y": 18,
+      "toX": 967,
+      "toY": 18
+    },
+    "window": {
+      "focused": true,
+      "minimized": false,
+      "maximized": false
+    }
+  },
+  {
+    "label": "reopened-1080",
+    "before": {
+      "x": 390,
+      "y": 120,
+      "width": 1080,
+      "height": 700
+    },
+    "after": {
+      "x": 360,
+      "y": 120,
+      "width": 1080,
+      "height": 700
+    },
+    "strip": {
+      "x": 629,
+      "y": 0,
+      "width": 311,
+      "height": 36
+    },
+    "point": {
+      "x": 784.5,
+      "y": 18,
+      "toX": 750.5,
+      "toY": 18
+    },
+    "window": {
+      "focused": true,
+      "minimized": false,
+      "maximized": false
+    }
+  },
+  {
+    "label": "reopened-960",
+    "before": {
+      "x": 360,
+      "y": 120,
+      "width": 960,
+      "height": 700
+    },
+    "after": {
+      "x": 330,
+      "y": 120,
+      "width": 960,
+      "height": 700
+    },
+    "strip": {
+      "x": 240,
+      "y": 0,
+      "width": 580,
+      "height": 36
+    },
+    "point": {
+      "x": 530,
+      "y": 18,
+      "toX": 496,
+      "toY": 18
+    },
+    "window": {
+      "focused": true,
+      "minimized": false,
+      "maximized": false
+    }
+  }
+]

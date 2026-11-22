@@ -99,6 +99,26 @@ describe('Cherry 消息模块', () => {
     expect(viewport.scrollTop).toBe(760)
   })
 
+  it('回答尚未满一屏时按 Home、End，随后增长的同一回答仍跟随到底部', async () => {
+    const user = userEvent.setup()
+    const handle = createRef<{ scrollToBottom(): void }>()
+    const answer = (text: string) => <CherryMessages ref={handle} turns={[{ ...turn, text }]} scopeKey="short-answer"
+      running onRetry={onRetry} renderReferences={renderReferences} />
+    const view = render(answer('开头'))
+    await screen.findByText('开头')
+    const viewport = screen.getByRole('region', { name: '对话消息' })
+    let height = 640
+    Object.defineProperties(viewport, { scrollHeight: { get: () => height }, clientHeight: { value: 640 } })
+    act(() => { handle.current?.scrollToBottom(); viewport.focus() })
+    await user.keyboard('{Home}{End}')
+    expect(viewport.scrollTop).toBe(0)
+
+    height = 1000
+    view.rerender(answer('开头与后续内容'))
+    await screen.findByText('开头与后续内容')
+    await waitFor(() => expect(viewport.scrollTop).toBe(360))
+  })
+
   it('保存返回的持久编号并从流式移入历史时保留原问题和正文节点', async () => {
     const renderTurn = (value: CherryMessageTurn) => (
       <StrictMode>

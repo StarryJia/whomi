@@ -9,13 +9,20 @@ import { comparisonArguments, readingResumeOrdinal } from '../tests/quality/insi
 import { ensureComparisonRunProfile, readComparisonEngine } from '../tests/quality/insight-comparison-run.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const suppliedArgs = process.argv.slice(2)
+const cappedPair = process.argv[2] === '--capped-pair'
+const suppliedArgs = process.argv.slice(cappedPair ? 3 : 2)
 const { args, profile: comparison } = comparisonArguments(suppliedArgs)
 const verification = args[0] === '--verification'
-const output = join(root, 'release', 'conversation-insights-20261115', comparison?.outputDirectory ?? (verification ? 'verification' : 'quality'))
+const output = cappedPair ? join(root, 'release', 'conversation-insights-capped-pair-20261122')
+  : join(root, 'release', 'conversation-insights-20261115', comparison?.outputDirectory ?? (verification ? 'verification' : 'quality'))
 const runtime = join(dirname(output), comparison?.runtimeDirectory ?? '.quality-runtime')
 const validCases = ['later-counterexample', 'distant-reply']
 const validVariants = ['baseline', 'insight']
+if (cappedPair && !(args.length === 1 && args[0] === '--dry-run')
+  && !(args.length === 2 && validCases.includes(args[0]) && validVariants.includes(args[1]))) {
+  console.error('请选择样本 later-counterexample 或 distant-reply，再指定 baseline（直接通读）或 insight（洞察）。')
+  process.exit(1)
+}
 const verificationVariants = ['probe-original', 'probe-current', 'flow-original', 'flow-current']
 const dryRun = args.length === 1 && args[0] === '--dry-run' || verification && args.length === 2 && args[1] === '--dry-run'
 const verificationRun = verification && (args.length === 3 || args.length === 4 && args[2]?.startsWith('probe-') && /^--run=[12]$/.test(args[3]))
@@ -70,7 +77,7 @@ try {
   }
   // Initialize the isolated profile with the existing Windows-wrapped key only.
   await writeFile(join(scratch, 'Local State'), JSON.stringify({ os_crypt: { encrypted_key: encryptedKey } }), { flag: 'wx' })
-  const env = { ...process.env, WHOMI_QUALITY_OUTPUT: output, WHOMI_QUALITY_SCRATCH: scratch }
+  const env = { ...process.env, WHOMI_QUALITY_OUTPUT: output, WHOMI_QUALITY_SCRATCH: scratch, WHOMI_CAPPED_PAIR: cappedPair ? '1' : '0' }
   delete env.ELECTRON_RUN_AS_NODE
   const code = await new Promise((resolve, reject) => {
     const child = spawn(electron, [join(runtime, 'insight-quality.mjs'), ...suppliedArgs], { cwd: root, env, stdio: 'inherit', windowsHide: true })
