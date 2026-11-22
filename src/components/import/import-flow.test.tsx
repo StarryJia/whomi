@@ -98,11 +98,22 @@ it('会话标题相同时显示来源，同一来源的同名会话也可以区�
   await userEvent.click(screen.getByRole('button', { name: '导入所选会话' }))
   expect(api.startImport).toHaveBeenCalledWith({ kind: 'commit', plan: { jobId: 'job', candidateIds: ['c'], decisions: [] } })
 })
-it('等待解析显示不定进度和真实计数，取消立即恢复起点', async () => {
-  const { api, emit } = fakeImportApi(), pending = deferred<string>()
+it.each([
+  { button: '选择文件', kind: 'file', displayName: '聊天.json' },
+  { button: '选择文件夹', kind: 'directory', displayName: '聊天目录' },
+] as const)('$button 等待任务编号时禁用入口，解析时可以取消', async ({ button, kind, displayName }) => {
+  const { api, emit } = fakeImportApi(), preparation = deferred<string>(), pending = deferred<string>()
+  vi.mocked(api.chooseSources).mockResolvedValue([{ token: 'source', kind, displayName }])
+  vi.mocked(api.prepareImport).mockReturnValue(preparation.promise)
   vi.mocked(api.startImport).mockImplementation(async () => { emit(snapshot({ status: 'staging', counts: { seen: 12, validRecords: 11, invalidRecords: 1 } })); return pending.promise })
   render(<FileImport api={api} />)
-  await userEvent.click(screen.getByRole('button', { name: '选择文件' }))
+  await userEvent.click(screen.getByRole('button', { name: button }))
+  await waitFor(() => expect(api.prepareImport).toHaveBeenCalledOnce())
+  expect(screen.getByRole('button', { name: '选择文件' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: '选择文件夹' })).toBeDisabled()
+  expect(screen.queryByText('正在处理…')).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: '取消导入' })).not.toBeInTheDocument()
+  await act(async () => { preparation.resolve('job') })
   expect(await screen.findByRole('progressbar')).not.toHaveAttribute('value')
   expect(screen.getByText(/已检查 12 条记录/)).toBeVisible()
   await userEvent.click(screen.getByRole('button', { name: '取消导入' }))

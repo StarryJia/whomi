@@ -140,7 +140,7 @@
 - 洞察桌面检查首次 3 项通过、1 项在删除报告后没有恢复列表标题焦点。单独复测及后续分组复测通过，首轮焦点异常原因尚未确认。另经截图检查修正了原文弹窗标题和异常卡片的重叠。最终 4 项洞察检查通过，保留原文滚动位置。首次和最终记录分别位于 `release/issue-25-verification/insight-notices-20261119-103724860/` 和 `release/issue-25-verification/dialog-layout-final-20261119-104614713/`。
 - 最终构建再次通过 3 项导入定向检查，覆盖无可导入会话的日志、保存凭据缺失和会话统计错误。记录位于 `release/issue-25-verification/import-release-check-20261119-104926926/`。
 - 资源管理器鼠标拖放仍待现场复核。Windows 计算机操作工具启动被拒，补充系统输入测试在源和目标坐标都命中其他窗口，未发出鼠标事件。首轮记录保存在 `release/issue-25-verification/native-system-drag-20261119-103326986/`，补充窗口定位记录保存在 `release/issue-25-verification/native-system-drag-final-20261119-104100175/`。
-- 来源准备尚未取得任务编号时的反馈和取消方式，随原清单待确认事项保留。
+- 来源准备期间的提示与取消操作已于 2026-11-22 确认并验收，见[等待导入任务编号](#等待导入任务编号)。
 
 #### 合并请求 #29 的 12 项复审修复（2026-11-19，待用户验收）
 
@@ -195,3 +195,14 @@
 四组分别收到一次来自系统的放下事件。每组前后查询导入任务表，均只包含同一条已完成任务。事件、选择窗口返回值、任务编号和会话名称见[四组结果](evidence/issue25-native-drag/results.json)。确认备用来源后的界面见[文件结果](evidence/issue25-native-drag/file-confirmed.png)和[文件夹结果](evidence/issue25-native-drag/folder-confirmed.png)。
 
 首轮在文件拖入并保存后，测试工具定位到不支持调用的控件，未完成取消操作。该轮 1 项失败，3 项未运行，退出码为 1。改用原生对话框按钮后，独立复跑 4 项全部通过，退出码为 0。两轮完整命令、时间、输出、报告和截图分别保存在原工作区的 `release/issue-25-verification/explorer-four-20261122-185807532/` 和 `release/issue-25-verification/explorer-actions-20261122-185910007/`。
+
+#### 等待导入任务编号
+
+2026-11-22，在 Windows 原生窗口确认来源后，选择区保持原样并禁用重复选择，等待期间不显示「正在处理…」或「取消导入」。进入「正在解析」后可取消并回到选择起点。两组均使用独立空资料库，受控延迟后台回执以固定截图时刻。
+
+| 来源 | 等待任务编号 | 进入解析 | 点击取消后再次导入 |
+| --- | --- | --- | --- |
+| 单个聊天文件 | [等待画面](evidence/issue25-source-wait/file-waiting.png) | [取消按钮可用](evidence/issue25-source-wait/file-progress.png) | 取消后资料库为空，重新选择同一文件后有 1 个会话 |
+| 含一个聊天文件的文件夹 | [等待画面](evidence/issue25-source-wait/folder-waiting.png) | [取消按钮可用](evidence/issue25-source-wait/folder-progress.png) | 取消后资料库为空，重新选择同一文件夹后有 1 个会话 |
+
+首次启动验收脚本时未找到 Playwright，两组用例均未运行。调整脚本位置后，旧版两组均因仍显示「正在处理…」而失败。修改后两组均通过。完整记录分别位于原工作区 `release/issue-25-verification/` 下的 `wait-ui-before-20261122-202806359/`、`wait-ui-baseline-20261122-202845860/` 和 `wait-ui-after-20261122-203034015/`。
