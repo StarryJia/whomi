@@ -346,6 +346,8 @@ expect(highlightedIds).toEqual(['m10', 'm12']) // m11 仅为上下文
 
 ## Task 7：质量、兼容与完整流程验收（I07）
 
+2026-11-22 已按发布工单当前范围执行，开发和验收均从新库开始，同版本重启已验证。本节原清单中的跨版本兼容已移出本期。两种方法使用相同材料实测，真实模型结果部分通过；下方保留立项时的清单，逐项实测、失败和限制见[第 17 号验收记录](../../research/conversation-insights-issue-17-20261122.md)。
+
 **Files:** 创建 docs/research/conversation-insights-validation.md、tests/desktop/conversation-insights.spec.mjs 和 tests/fixtures/insights/ 下的虚构样本；修改 PRODUCT.md 中实际已交付能力，更新本计划与 004 主记录。
 **Interfaces:** 消费 I01 的设计状态清单和 I02—I06 已通过的契约；产出实际结果、截图、失败记录及建议发布的预算配置。未运行的项目明确写未运行。
 

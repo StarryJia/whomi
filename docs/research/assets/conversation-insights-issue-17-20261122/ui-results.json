@@ -1,0 +1,20 @@
+{
+  "pageErrors": [],
+  "requests": [
+    "reading",
+    "checking",
+    "checking",
+    "checking",
+    "writing",
+    "writing"
+  ],
+  "pagination": {
+    "initial": 100,
+    "beforeLater": 200,
+    "beforeShift": 0,
+    "afterShift": 0
+  },
+  "width": 960,
+  "height": 640,
+  "sidebar": 240
+}

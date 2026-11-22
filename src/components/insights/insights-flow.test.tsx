@@ -218,11 +218,12 @@ it('列表从无数据读取失败后重试，只有成功返回空结果才显�
   expect(listAnalyses).toHaveBeenCalledTimes(2)
 })
 
-it('本人尚未确认时由入口发起现有成员选择，成功后需要再次点击才显示范围', async () => {
+it('读取或保存本人失败时保留选择，成功后需再次点击洞察才显示范围', async () => {
   const user = userEvent.setup()
   const adapter = { ...baseAdapter, analyze: vi.fn() }
   const listMembers = vi.fn(async () => [{ id: '1', displayName: '小周', accountId: null, confirmedSelf: false, selfHint: true }])
-  const confirmSelf = vi.fn(async () => undefined)
+    .mockRejectedValueOnce({ action: '重新读取成员。' })
+  const confirmSelf = vi.fn(async () => undefined).mockRejectedValueOnce({ action: '重新保存本人。' })
   render(<ConversationReader conversation={{ id: '1', title: '小林', messages: [] }} messageCount={12}
     aiAdapter={adapter} api={{ listMembers, confirmSelf } as unknown as DesktopApi} />)
   await user.click(await screen.findByRole('button', { name: '取消' }))
@@ -230,7 +231,15 @@ it('本人尚未确认时由入口发起现有成员选择，成功后需要再�
   await user.click(entry)
   expect(screen.getByRole('dialog')).toHaveTextContent('请先选择本人，再开始会话洞察。')
   expect(screen.queryByRole('button', { name: '开始洞察' })).toBeNull()
+  await user.click(screen.getByRole('button', { name: '重新读取成员' }))
+  expect(await screen.findByText('来源推测')).toBeVisible()
+  expect(screen.getByRole('button', { name: '设为本人' })).toBeDisabled()
   await user.click(await screen.findByRole('radio', { name: /小周/ }))
+  expect(screen.queryByRole('button', { name: '开始洞察' })).toBeNull()
+  await user.click(screen.getByRole('button', { name: '设为本人' }))
+  expect(await screen.findByRole('alert')).toHaveTextContent('重新保存本人')
+  expect(screen.getByRole('radio', { name: /小周/ })).toBeChecked()
+  expect(screen.queryByRole('button', { name: '开始洞察' })).toBeNull()
   await user.click(screen.getByRole('button', { name: '设为本人' }))
   expect(confirmSelf).toHaveBeenCalledWith('1', '1')
   expect(screen.queryByRole('button', { name: '开始洞察' })).toBeNull()

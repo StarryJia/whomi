@@ -1,0 +1,95 @@
+{
+  "caseName": "later-counterexample",
+  "variant": "baseline",
+  "regression": false,
+  "scope": {
+    "kind": "dates",
+    "startDate": "2026-10-05",
+    "endDate": "2026-10-09",
+    "timezone": "Asia/Shanghai"
+  },
+  "messages": [
+    {
+      "id": "1",
+      "revision": "52fea378442e194cb048a9ff97b072567be8a0a1773d6e356d17b747515058f7",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "你讲到一半时，我直接给了三个解决办法。",
+      "sentAtMs": 1791187260000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "2",
+      "revision": "53dc384c3224443fea6f81c8a0ec1c5f2b3334ff87e2e67ed9e42c57f53c4d7d",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "我想先把事情说完，今天先不要建议。",
+      "sentAtMs": 1791187320000,
+      "replyToMessageId": "1"
+    },
+    {
+      "id": "3",
+      "revision": "6bedaacbf5241c1a7d79064c8d09dd9f0c7b51fddb24534045e763493e7c6ede",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "好，我先听。你想从最难开口的那段说起吗？",
+      "sentAtMs": 1791187380000,
+      "replyToMessageId": "2"
+    },
+    {
+      "id": "4",
+      "revision": "57be6f91528a8a18344b48ee3ac0d74da59e49149731dc422a37f7a4082e46be",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "谢谢你后来让我把那段讲完，我舒服多了。",
+      "sentAtMs": 1791187440000,
+      "replyToMessageId": "3"
+    },
+    {
+      "id": "5",
+      "revision": "9cf3e201850ba6b2560e1d5598618a13d486a220d1035da46a4520cdbfb22330",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "这一次不一样。我想听你的建议，你能给我两个选择吗？",
+      "sentAtMs": 1791360300000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "6",
+      "revision": "00b335af5d364e9496159efae53c079c82a7d87a0b359deb82465409c607e427",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "可以。我先说两个方案，你看看哪个符合你今天想要的。",
+      "sentAtMs": 1791360360000,
+      "replyToMessageId": "5"
+    },
+    {
+      "id": "7",
+      "revision": "bf1eb640bb45632fd2c6ffb22918701ce2a17aabadbcc49cada571d500609546",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "第二个更适合我。这次我确实需要你帮我想办法。",
+      "sentAtMs": 1791360420000,
+      "replyToMessageId": "6"
+    }
+  ],
+  "excluded": {
+    "id": "99",
+    "revision": "22106c20911afd52f44bbf7ea922a3df47c2eb6987babfa95b155149930ac6c5",
+    "senderName": "合成对方",
+    "isSelf": false,
+    "text": "合成范围外标记，只能留在本地核对。",
+    "sentAtMs": 1792489140000,
+    "replyToMessageId": null
+  },
+  "limits": {
+    "maxChecks": 1,
+    "maxRoundsPerCheck": 3,
+    "maxCalls": 6,
+    "maxInputTokens": 80000,
+    "maxOutputTokens": 6000,
+    "maxElapsedMs": 300000
+  },
+  "model": "gpt-6.1-sol",
+  "protocol": "openai-completions"
+}

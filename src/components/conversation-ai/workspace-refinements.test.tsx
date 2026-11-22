@@ -229,7 +229,7 @@ it('在历史栏创建第一条对话并聚焦输入，不发送消息', async (
   expect(adapter.respond).not.toHaveBeenCalled()
 })
 
-it('没有模型时从记忆确认进入设置，返回确认原会话且不自动生成', async () => {
+it('从洞察进入模型设置后返回原会话和手选日期，等待手动开始', async () => {
   const user=userEvent.setup(), adapter={ ...client(), models:[], analyze:vi.fn() }
   let back = () => {}
   const configure = vi.fn((restore: () => void) => {back=restore})
@@ -238,11 +238,17 @@ it('没有模型时从记忆确认进入设置，返回确认原会话且不自�
     {({analysisControl})=>analysisControl}
   </ConversationWorkspace>)
   await user.click(screen.getByRole('button',{name:'会话洞察'}))
+  expect(screen.getByText('24 条消息')).toBeVisible()
+  await user.click(screen.getByRole('radio', { name: '日期范围' }))
+  fireEvent.change(screen.getByLabelText('开始日期'), { target: { value: '2026-10-09' } })
+  fireEvent.change(screen.getByLabelText('结束日期'), { target: { value: '2026-10-10' } })
   await user.click(screen.getByRole('button',{name:'去配置'}))
   expect(configure).toHaveBeenCalledTimes(1)
   expect(screen.queryByText('当前会话：虚构会话')).not.toBeInTheDocument()
   act(()=>back())
   expect(await screen.findByText('当前会话：虚构会话')).toBeVisible()
-  expect(screen.getByText('24 条消息')).toBeVisible()
+  expect(screen.getByRole('radio', { name: '日期范围' })).toBeChecked()
+  expect(screen.getByLabelText('开始日期')).toHaveValue('2026-10-09')
+  expect(screen.getByLabelText('结束日期')).toHaveValue('2026-10-10')
   expect(adapter.analyze).not.toHaveBeenCalled()
 })

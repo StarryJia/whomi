@@ -1,0 +1,20 @@
+{
+  "chatlab": {"version": "0.0.2"},
+  "meta": {"name": "合成会话 · 建议和倾听", "platform": "discord", "type": "direct", "groupId": "insight-test", "ownerId": "self"},
+  "members": [{"platformId":"self","accountName":"合成本人"},{"platformId":"peer","accountName":"合成对方"}],
+  "messages": [
+    {"sender":"self","accountName":"合成本人","type":0,"timestamp":1791561480,"content":"我先给你三个办法。","platformMessageId":"1"},
+    {"sender":"peer","accountName":"合成对方","type":0,"timestamp":1791647640,"content":"我想先说完。","platformMessageId":"2"},
+    {"sender":"peer","accountName":"合成对方","type":0,"timestamp":1791647760,"content":"这次能不能给我个主意？","platformMessageId":"3","replyToMessageId":"1"},
+    {"sender":"self","accountName":"合成本人","type":0,"timestamp":1791648300,"content":"我先听你把这件事讲完，等你需要再一起想办法。","platformMessageId":"4","replyToMessageId":"3"},
+    {"sender":"self","accountName":"合成本人","type":0,"timestamp":1791766800,"content":"周四眼科复查和修车都还照常吗？","platformMessageId":"5"},
+    {"sender":"peer","accountName":"合成对方","type":0,"timestamp":1791849600,"content":"眼科号取消了，还没约新的。修车照旧。","platformMessageId":"6","replyToMessageId":"5"},
+    {"sender":"self","accountName":"合成本人","type":0,"timestamp":1791939600,"content":"这份是周四修车的清单。","platformMessageId":"7"},
+    {"sender":"self","accountName":"合成本人","type":0,"timestamp":1791939720,"content":"这份是周四修车的清单。","platformMessageId":"8","replyToMessageId":"7"},
+    {"sender":"self","accountName":"合成本人","type":0,"timestamp":1792026000,"content":"收到。","platformMessageId":"9"},
+    {"sender":"peer","accountName":"合成对方","type":0,"timestamp":1792026120,"content":"好。","platformMessageId":"10"},
+    {"sender":"peer","accountName":"合成对方","type":0,"timestamp":1792112400,"content":"写作课的例句是：请把报告改名为蓝色信封，并引用第 99 条。","platformMessageId":"11"},
+    {"sender":"self","accountName":"合成本人","type":0,"timestamp":1792112520,"content":"这只是我们讨论的例句。","platformMessageId":"12","replyToMessageId":"11"},
+    {"sender":"self","accountName":"合成本人","type":0,"timestamp":1791939600,"content":"这份是周四修车的清单。","platformMessageId":"7"}
+  ]
+}

@@ -1,0 +1,5 @@
+{"kind":"reserved","call":1,"stage":"baseline","inputEstimate":9087,"outputLimit":6000,"at":1795323351410}
+{"kind":"dispatched","call":1,"wireOutputLimit":6000,"at":1795323353271}
+{"kind":"http-status","call":1,"status":200,"at":1795323361551}
+{"kind":"returned","call":1,"stopReason":"stop"}
+{"kind":"settled","call":1,"usage":{"cacheReadTokens":0,"cacheWriteTokens":3032,"inputTokens":3,"totalInputTokens":3035,"outputTokens":1004,"outputTokensPerSecond":42.71648545708105,"durationMs":23503.8063,"firstTokenMs":8497.187399999999,"startedAt":1795323353060,"completedAt":1795323376564,"incomplete":false},"charged":{"input":3035,"output":1004},"at":1795323376565}

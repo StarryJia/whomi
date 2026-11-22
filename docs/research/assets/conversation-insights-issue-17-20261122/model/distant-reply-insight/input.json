@@ -1,0 +1,285 @@
+{
+  "caseName": "distant-reply",
+  "variant": "insight",
+  "regression": false,
+  "scope": {
+    "kind": "dates",
+    "startDate": "2026-10-05",
+    "endDate": "2026-10-09",
+    "timezone": "Asia/Shanghai"
+  },
+  "messages": [
+    {
+      "id": "1",
+      "revision": "765514f185ef73fe1ad2675f4042c73669386198083286642ae47ac181777723",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "医院原定周一做眼科复查。我只能周五陪你去，先问医院有没有周五的号。",
+      "sentAtMs": 1791187260000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "2",
+      "revision": "36563ea4e3fd789e848dd05cd978b16888c649a3c4161536da7e41d857b00e08",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "我先留着周一的眼科号，还没有改约。另一件事是周一下午去修自行车。",
+      "sentAtMs": 1791187320000,
+      "replyToMessageId": "1"
+    },
+    {
+      "id": "3",
+      "revision": "e2fcd0a25cb593ff4fc81c6904f00180c4ad163b6dd75f40b141c635d9cd762c",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "我把花盆从西窗移到了东窗，早上光线比较柔和。",
+      "sentAtMs": 1791273780000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "4",
+      "revision": "f44c1dda85f5440de77473dc225dfa500c1044e805221998b85f6ea8b2e82916",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "纸箱记得先拆开压平，回收车每周三过来一次。",
+      "sentAtMs": 1791273840000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "5",
+      "revision": "157c2bab9cc365a7ceb73326f1fa9ffa0e46fd53e7b3a3fe0a29ab971d3f7c0b",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "书架上第二格有一本地图册，书角夹着旧的公交车票。",
+      "sentAtMs": 1791273900000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "6",
+      "revision": "76597e1c99076215b6255bb2a106a850ff9c1d09661bdc855ebdf253ead00069",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "中午吃的是番茄面，后来加了点香菜，没有额外加辣。",
+      "sentAtMs": 1791273960000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "7",
+      "revision": "7a46c2e904be50c22d90de518e325870fbe23d5bd54f16e4ec73680b181cd321",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "雨衣已经晾在门口，晚上回来再把鞋底的泥冲掉。",
+      "sentAtMs": 1791274020000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "8",
+      "revision": "85b1dee9eb00186fd16cbb678a52d27025ba12690ee8e9bf26fecacbc95f9949",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "借出的相机装在灰色外套里，用之前可以擦一下镜头。",
+      "sentAtMs": 1791274080000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "9",
+      "revision": "409d41d777d61f6453e0e49049164d4211331b8cb06ec6d74c5a175eb05146ca",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "新买的尺子有两面刻度，画纸边角还需要再留两厘米。",
+      "sentAtMs": 1791274140000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "10",
+      "revision": "9bcc83bbb397a2e4f9f39edf970868da4412df802e186a8634a0cddae4de09a3",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "我试了蓝色袋和白色袋，明天送去回收的是白色袋。",
+      "sentAtMs": 1791274200000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "11",
+      "revision": "c3c8e4c22f2d91326811cbeb746683beefa30883349a5268753f12312c9cfcac",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "照片里窗前是一只橘猫，它等到天全黑才从台阶离开。",
+      "sentAtMs": 1791274260000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "12",
+      "revision": "6e05048f310c6c3a5321d62bf438f0f7c9f8d78b93393815e91cbbb2eb24a887",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "邻居的菜今天刚从地里收上来，我冰箱里还有剩下两把。",
+      "sentAtMs": 1791360720000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "13",
+      "revision": "eae955131e695dd732011127ee57e9da565fe8e9611b588b8ee7b0418cf1a7c7",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "上个月拍的胶片有一卷没洗，下次经过街角照相馆再拿去。",
+      "sentAtMs": 1791360780000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "14",
+      "revision": "d63d2d026141f766f4b6d3ddc12ae7dba1d4aadd7164ffe8ec9efa2bbeaac87f",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "旧笔袋上写的号码是展台编号，和座位号是两回事。",
+      "sentAtMs": 1791360840000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "15",
+      "revision": "7e0ed67fb3962861e1569cdc1fc415f0f248e6f226db8a61acbaaee009de5d7d",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "灯泡已经换好，走廊的感应灯还是会再延迟几秒。",
+      "sentAtMs": 1791360900000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "16",
+      "revision": "fdaa6e2297d4e58cad9fffe27473068d6009c6e2e5f8d13c0226abc14f6e6a7a",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "今天打包了两套桌游，外面那套配件少了一颗木制棋子。",
+      "sentAtMs": 1791360960000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "17",
+      "revision": "61d52bae1b4256bfb3187e383d84fa99fe24353bc0c9f5845e18798f56449b94",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "窗边的收音机上午有杂音，调整天线之后稍微好了一点。",
+      "sentAtMs": 1791361020000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "18",
+      "revision": "73178b821faecde6b99a9795b53452ab323d4a8a74a4254842a95b2dab142f30",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "明早有一小时停水，出门前可以先把水壶灌满。",
+      "sentAtMs": 1791361080000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "19",
+      "revision": "303edaa0a725b8faf1a59b25b08e8c8ac0103d821319347cc5147165697cdc0a",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "手套洗好后要挂在阳台，口袋里的收据已经放到桌上。",
+      "sentAtMs": 1791361140000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "20",
+      "revision": "453b8723dde44ac8476bcbc9ddc8c45dadd4b232ac9bada3c3264e147e2095ea",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "汽车站旁边开了一家面包店，今天我只买了小餐包。",
+      "sentAtMs": 1791361200000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "21",
+      "revision": "08581e4ea07d2b29c55962b8645c86790d504481bfd0aa687eb8c7a2c92b8b65",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "我把卡片上的墨水等干再收起来，信封都放在台灯旁边。",
+      "sentAtMs": 1791447660000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "22",
+      "revision": "6e40a45118db83c75917a34e9f2b6c5a090cdba0b19a2d753811d90234ea8679",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "昨晚路上看见一块旧招牌，广告字掉了一半但灯还亮着。",
+      "sentAtMs": 1791447720000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "23",
+      "revision": "fd0716492e3942099f072392b29a13706c361d100cbd9e097e5a995ef45387ea",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "面粉剩半袋，周末如果烤饼干我会再去买一包。",
+      "sentAtMs": 1791447780000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "24",
+      "revision": "d81c82b7d686f5db6d1fa45036786c0452123efe4e289875c21db28275a4ba37",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "猫把水碗挪到了垫子角落，你看到就帮我放到墙边。",
+      "sentAtMs": 1791447840000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "25",
+      "revision": "f192f23f76f9ed97a3b4369562bc0f108b4cef5a34b10d73aba35bc79a86d992",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "包裹不是急件，到取件柜的时候可以顺手带上。",
+      "sentAtMs": 1791447900000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "26",
+      "revision": "90261caa3c3992653b9be162bd474111c6e039f31a2dc9cbc3dca234c2a2b8f7",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "小馆周二不开门，原计划那天吃饭要再确认时间。",
+      "sentAtMs": 1791447960000,
+      "replyToMessageId": null
+    },
+    {
+      "id": "27",
+      "revision": "07a0ba70010ab871b741ca90f1a54dab4389dfeecf466973d140d4f8c846df23",
+      "senderName": "合成对方",
+      "isSelf": false,
+      "text": "回到你问的眼科复查：医院通知周一眼科号取消，没有另约周五。周一修车照旧。",
+      "sentAtMs": 1791534420000,
+      "replyToMessageId": "1"
+    },
+    {
+      "id": "28",
+      "revision": "c9d50b453a25a862e4016b5774bb1b3bd53fc92f1946371a686eb7a6c4bd4377",
+      "senderName": "合成本人",
+      "isSelf": true,
+      "text": "知道了，眼科复查还没有新时间，别把修车的预约一起取消。",
+      "sentAtMs": 1791534480000,
+      "replyToMessageId": "27"
+    }
+  ],
+  "excluded": {
+    "id": "99",
+    "revision": "22106c20911afd52f44bbf7ea922a3df47c2eb6987babfa95b155149930ac6c5",
+    "senderName": "合成对方",
+    "isSelf": false,
+    "text": "合成范围外标记，只能留在本地核对。",
+    "sentAtMs": 1792489140000,
+    "replyToMessageId": null
+  },
+  "limits": {
+    "maxChecks": 1,
+    "maxRoundsPerCheck": 3,
+    "maxCalls": 6,
+    "maxInputTokens": 80000,
+    "maxOutputTokens": 6000,
+    "maxElapsedMs": 300000
+  },
+  "model": "gpt-6.1-sol",
+  "protocol": "openai-completions",
+  "perRequestEstimateCeiling": 6000
+}

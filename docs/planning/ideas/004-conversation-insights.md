@@ -2,9 +2,15 @@
 
 - 提出日期：2026-11-11
 - 来源与原意：用户希望大模型像第三方连续阅读聊天，主动分析自己和双方关系，随证据修正理解；共同经历融入分析，替代独立回忆散文。
-- 状态：实施中；首期实现已通过拉取请求 #20 合入 main。用户于 2026-11-16 授权从最新 main 新建分支，修复同来源候选误去重、准备快照残留和进度更新打乱置顶顺序三项审查问题；本轮修复与回归已完成，随后获授权提交、推送并创建草稿拉取请求，见[修复验证及工单核对](../../research/conversation-insights-review-fixes-20261116.md)。真实模型语义质量仍仅部分通过，本轮未调用真实模型或发布安装包。
-- 下一步：处理[同容量新旧实现对照](../../research/conversation-insights-paired-capacity-20261116.md)仍暴露的未知范围扩大、成稿前后矛盾与引用语义不足，当前质量仅部分通过。例如改期原文已确认旧位取消，后续新店是否取消仍未定，报告不能把两者合称取消结果未知。结构化事实、完整来源、旧未知轮转和共同协调已实现；原模型及两组120条材料的本轮诊断与配对合计137次请求，全部关闭，未补抽报告。新版两组都完成成稿，分工事实覆盖改善，改期仍有假未知；旧版改期失败，没有同组新旧报告可比。[来源排序轮](../../research/conversation-insights-source-order-20261116.md)曾出现1个自然候选及2次后文解决更新；最终配对新版无候选或主动核查，未证明回读收益。此前[41次长对照](../../research/conversation-insights-long-comparison-20261115.md)、[12次短对照](../../research/conversation-insights-reread-comparison-20261115.md)、[17次质量试验](../../research/conversation-insights-quality-20261115.md)与[14次主动核查验证](../../research/conversation-insights-verification-20261115.md)分别保留。问一问、心事屋按005、006独立推进。
-- 工作分支：#11 桌面验收使用从远端 `main` 的 `9b4f6d9` 建立的本地分支 `codex/issue-11-insight-design-baseline`。此前审查修复使用 `codex/fix-insight-review`，首期开发分支 `codex/issue-10-conversation-insights` 已通过 #20 合入 `main`。
+- 当前状态　首期实现已通过拉取请求 #20 合入 main。2026-11-22 已从全新资料库验收报告与个人总览联动，真实模型质量部分通过。
+- 下一步　维护者可对照两组原文审阅三份成稿，并核对预约样本在成稿前耗尽预算的记录。[第 17 号验收与原始输出](../../research/conversation-insights-issue-17-20261122.md)
+- 本轮分支　`codex/issue-17-validation`，基线为远端 main 的 `f5c4f44`。
+
+## 前次实施记录
+
+- 2026-11-16 的审查修复。用户于 2026-11-16 授权从最新 main 新建分支，修复同来源候选误去重、准备快照残留和进度更新打乱置顶顺序三项审查问题；当轮修复与回归已完成，随后获授权提交、推送并创建草稿拉取请求，见[修复验证及工单核对](../../research/conversation-insights-review-fixes-20261116.md)。真实模型语义质量仍仅部分通过，当轮未调用真实模型或发布安装包。
+- 2026-11-16 的质量待办来自[同容量新旧实现对照](../../research/conversation-insights-paired-capacity-20261116.md)暴露的未知范围扩大、成稿前后矛盾与引用语义不足，当前质量仅部分通过。例如改期原文已确认旧位取消，后续新店是否取消仍未定，报告不能把两者合称取消结果未知。结构化事实、完整来源、旧未知轮转和共同协调已实现；原模型及两组120条材料的该轮诊断与配对合计137次请求，全部关闭，未补抽报告。新版两组都完成成稿，分工事实覆盖改善，改期仍有假未知；旧版改期失败，没有同组新旧报告可比。[来源排序轮](../../research/conversation-insights-source-order-20261116.md)曾出现1个自然候选及2次后文解决更新；最终配对新版无候选或主动核查，未证明回读收益。此前[41次长对照](../../research/conversation-insights-long-comparison-20261115.md)、[12次短对照](../../research/conversation-insights-reread-comparison-20261115.md)、[17次质量试验](../../research/conversation-insights-quality-20261115.md)与[14次主动核查验证](../../research/conversation-insights-verification-20261115.md)分别保留。问一问、心事屋按005、006独立推进。
+- 历史工作分支　#11 桌面验收使用从远端 `main` 的 `9b4f6d9` 建立的本地分支 `codex/issue-11-insight-design-baseline`。此前审查修复使用 `codex/fix-insight-review`，首期开发分支 `codex/issue-10-conversation-insights` 已通过 #20 合入 `main`。
 
 ## 已确认方向
 
@@ -29,6 +35,8 @@
 本轮核查 Whomi 容量默认、实际用量与现有超限缩片，并核查 Cherry Studio 固定提交的普通聊天与 Agent 行为，详见草案。用户于 2026-11-13 确认程序按上下文容量分批、模型结合日期理解事件；容量配置仍可选，超长拒绝后有限缩批。旧借书案例不作参考或验收依据。
 
 ## 最近决定
+
+- 2026-11-22，按第 17 号工单从空库导入，再重启回查原文并继续另一项暂停任务。冲突报告同时保留两份来源，删除一份后按另一份重评。9 次模型请求结束后，7 条建议样本的两种方法均成稿，28 条预约样本只有直接通读成稿。该报告把「不是急件」简写为带引号的「不急」，引用编号正确，措辞有误。[验收与原始输出](../../research/conversation-insights-issue-17-20261122.md)
 
 - 2026-11-20，#40 两项审查修复待维护者复核。旧报告的一处正文引用编号损坏时，仍可打开报告列表和其余有效原文。切段等待时选择「回到引用」，迟到的响应不会把阅读位置带到下一段。[回归与桌面证据](../../research/conversation-insights-issue-16-20261120.md#40-审查修复)
 

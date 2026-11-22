@@ -5,6 +5,41 @@ import { tmpdir } from 'node:os'
 import { basename, dirname, join, resolve } from 'node:path'
 import { insightModelPrompt, insightModelReply, syntheticInsightConversation, syntheticInsightScope } from './fixtures/insight-model.mjs'
 
+const designStates = {
+  'startup-current-conversation-v2': ['04-startup-dates'],
+  'startup-scope-states-v1': ['01-startup-all', '02-startup-invalid-dates', '03-startup-empty-range', '25-startup-no-model'],
+  'startup-self-required-v1': ['24-self-required'],
+  'progress-collapsed-v1': ['05-progress-collapsed'],
+  'progress-expanded-v1': ['06-progress-expanded'],
+  'progress-task-states-v1': ['07-progress-paused', '08-progress-failed', '09-progress-complete'],
+  'management-g-v2': ['20-management-running', '22-management-paused', '23-management-failed', '18-narrow-management'],
+  'management-task-details-v1': ['21-management-details'],
+  'management-list-read-states-v1': ['simulated-26-management-loading', 'simulated-27-management-read-failed'],
+  'report-reader-rename-v1': ['11-report-rename', 'simulated-rename-save-failed'],
+  'source-dialog-v2': ['12-source-first'],
+  'source-dialog-states-v1': ['13-source-browse-earlier', 'simulated-source-next-failed'],
+  'report-delete-confirm-v1': ['19-delete-confirm'],
+}
+
+async function captureDesignState(app, page, evidence, name) {
+  const design = Object.entries(designStates).find(([, states]) => states.includes(name))?.[0]
+  if (!design) return
+  const png = await readFile(resolve('docs/designs/conversation-insights/assets', design + '.png'))
+  const size = [png.readUInt32BE(16), png.readUInt32BE(20)]
+  const viewport = () => page.evaluate(() => [innerWidth, innerHeight])
+  const original = await viewport()
+  async function resize(dimensions) {
+    await app.evaluate(({ BrowserWindow }, [width, height]) => BrowserWindow.getAllWindows()[0].setContentSize(width, height), dimensions)
+    await expect.poll(viewport).toEqual(dimensions)
+  }
+  try {
+    await resize(size)
+    await page.screenshot({ path: join(evidence, 'design-' + name + '.png'), animations: 'disabled' })
+  } finally {
+    await resize(original)
+  }
+}
+
 async function failNext(app, method, fragmentIndex, channel = 'whomi:ai-call', hold = false) {
   await app.evaluate(({ ipcMain }, target) => {
     const { channel } = target
@@ -125,7 +160,11 @@ async function harness({ model = true, self = true, hold = true, reject = true, 
     }
     const btn = name => page.getByRole('button', { name, exact: true })
     if (await btn('展开侧栏').isVisible()) await btn('展开侧栏').click()
-    return { app, page, btn, shot: name => page.screenshot({ path: join(evidence, name + '.png'), animations: 'disabled' }) }
+    const shot = async name => {
+      await page.screenshot({ path: join(evidence, name + '.png'), animations: 'disabled' })
+      if (process.env.WHOMI_INSIGHT_DESIGN_SIZES === '1') await captureDesignState(app, page, evidence, name)
+    }
+    return { app, page, btn, shot }
   }
   const page = await openWindow()
   await app.evaluate(() => globalThis.__whomiRuntimeProbe.request('probe.seedInsight', null))
@@ -232,6 +271,8 @@ test('real Electron insight UI validates scope, pauses and retries, reads exact 
     await shot('01-startup-all')
     await btn('取消').click()
     expect(await page.evaluate(() => window.whomi.ai.listAnalyses('1'))).toEqual([])
+    await expect(btn('会话洞察')).toBeVisible()
+    await shot('startup-cancelled-in-conversation')
     await btn('会话洞察').click()
     await page.getByRole('radio', { name: '日期范围', exact: true }).check()
     await page.getByLabel('开始日期', { exact: true }).fill('2026-10-12')
@@ -285,6 +326,19 @@ test('real Electron insight UI validates scope, pauses and retries, reads exact 
     await expect(page.getByRole('heading', { name: '会话洞察', exact: true })).toBeVisible()
     await expect(page.getByRole('heading', { name: '关于你' })).toBeVisible()
     await shot('10-report-reader')
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setContentSize(1487, 1058))
+    await expect.poll(() => page.evaluate(() => [innerWidth, innerHeight])).toEqual([1487, 1058])
+    await shot('reader-at-design-size')
+    const appearance = await page.locator('.insight-citation').first().evaluate(link => {
+      let background = 'rgba(0, 0, 0, 0)'
+      for (let node = link; node && background === 'rgba(0, 0, 0, 0)'; node = node.parentElement) {
+        background = getComputedStyle(node).backgroundColor
+      }
+      return { width: innerWidth, height: innerHeight, background, link: getComputedStyle(link).color,
+        decoration: getComputedStyle(link).textDecorationLine, metadata: getComputedStyle(document.querySelector('.insight-reader-meta')).color }
+    })
+    await writeFile(join(evidence, 'report-appearance.json'), JSON.stringify(appearance, null, 2))
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setContentSize(1280, 900))
     await btn('重命名').click()
     await expect(page.getByLabel('报告名称')).toBeFocused()
     await page.getByLabel('报告名称').fill('取消的名称')
