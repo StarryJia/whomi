@@ -127,6 +127,7 @@ export interface ChatVirtualizerRuntime<T> {
   isScrollToBottomButtonVisible: boolean
   /** Enter reading mode for an explicit reading action and freeze its anchor. */
   takeUserControl(reason: ReadingReason, preferredAnchor?: Element | null): void
+  scrollToTop(): void
   scrollToBottom(): void
   /** Navigate within the outer message scroller under the reading-mode owner. */
   scrollToElement(element: HTMLElement): void
@@ -1183,6 +1184,7 @@ export function useChatVirtualizerRuntime<T>({
     scrollerProps,
     isScrollToBottomButtonVisible,
     takeUserControl,
+    scrollToTop,
     scrollToBottom,
     scrollToElement,
     notifyWheelIntent,

@@ -155,7 +155,7 @@ export function MessageVirtualList<T>({
     keepMountedKeys
   })
   const [scrollerElement, setScrollerElement] = useState<HTMLDivElement | null>(null)
-  const { beginScrollbarDrag, endScrollbarDrag, scrollToBottom, markUserInput, takeUserControl } = runtime
+  const { beginScrollbarDrag, endScrollbarDrag, scrollToBottom, scrollToTop, markUserInput, takeUserControl } = runtime
   const { onWheel } = runtime.scrollerProps
   const { armAutoscrollCandidate, confirmAutoscroll, dismissAutoscroll } = runtime
   // Latch the captured node like TabRouter does: a background tab detaches the
@@ -236,6 +236,13 @@ export function MessageVirtualList<T>({
     }
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented || !isKeyboardScrollIntent(event, scrollerElement)) return
+      if (event.key === 'Home' && event.target === scrollerElement &&
+          !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
+        // A native Home animation can race the virtualizer while it measures restored messages.
+        event.preventDefault()
+        scrollToTop()
+        return
+      }
       const nestedScroller = findNestedScroller(event.target, scrollerElement)
       const delta = getKeyboardScrollDelta(event)
       if (nestedScroller && canConsumeVerticalWheel(nestedScroller, delta)) return
@@ -327,6 +334,7 @@ export function MessageVirtualList<T>({
     dismissAutoscroll,
     endScrollbarDrag,
     markUserInput,
+    scrollToTop,
     scrollerElement
   ])
 
