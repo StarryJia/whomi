@@ -75,25 +75,39 @@ test('desktop shell preserves bounds and the right conversation strip moves the 
     const panelBounds = () => panel.boundingBox()
     const windowBounds = () => application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].getBounds())
     if (process.platform === 'win32') {
+      await application.evaluate(({ BrowserWindow }) => {
+        const window = BrowserWindow.getAllWindows()[0]
+        window.show()
+        window.focus()
+        window.webContents.focus()
+      })
       await expect(panel).toBeVisible()
       await expect.poll(async () => (await panelBounds()).width).toBeGreaterThan(300)
       const nativeClick = async locator => {
-        await expect(locator).toBeEnabled()
+        await locator.click({ trial: true })
         const { x, y, width, height } = await locator.boundingBox()
         await windowsMouse(application, x + width / 2, y + height / 2)
       }
       const snapshots = []
       const dragStrip = async (label, ratio, dx) => {
+        const strip = await page.locator('.conversation-ai-drag-strip').elementHandle()
+        // 原生鼠标使用固定坐标，取点前等待拖动条稳定。
+        await strip.waitForElementState('stable')
         const before = await windowBounds()
-        const { x: left } = await panelBounds()
-        const x = left + 7 + (before.width - 140 - left - 14) * ratio
-        await windowsMouse(application, x, 18, x + dx, 18)
-        await expect.poll(async () => {
-          const after = await windowBounds()
-          snapshots.push({ label, before, after })
+        const bounds = await strip.boundingBox()
+        const x = bounds.x + 7 + (bounds.width - 14) * ratio
+        const y = bounds.y + bounds.height / 2
+        try {
+          await windowsMouse(application, x, y, x + dx, y)
+          await expect.poll(async () => (await windowBounds()).x, { timeout: 1800 }).not.toBe(before.x)
+        } finally {
+          const window = await application.evaluate(({ BrowserWindow }) => {
+            const window = BrowserWindow.getAllWindows()[0]
+            return { focused: window.isFocused(), minimized: window.isMinimized(), maximized: window.isMaximized() }
+          })
+          snapshots.push({ label, before, after: await windowBounds(), strip: bounds, point: { x, y, toX: x + dx, toY: y }, window })
           await writeFile(info.outputPath('window-coordinates.json'), JSON.stringify(snapshots, null, 2))
-          return after.x
-        }, { timeout: 1800 }).not.toBe(before.x)
+        }
       }
       await page.screenshot({ path: join(evidence, 'open-ai-panel.png'), animations: 'disabled' })
       await dragStrip('left', 0, 34)
@@ -110,11 +124,14 @@ test('desktop shell preserves bounds and the right conversation strip moves the 
       await windowsMouse(application, x + width / 2, y + height / 2, x + width / 2 + 52, y + height / 2)
       await expect.poll(async () => (await panelBounds()).width).toBeLessThan(panelBeforeDivider.width)
       expect(await windowBounds()).toEqual(windowBeforeDivider)
-      await nativeClick(panel.getByRole('button', { name: '关闭 AI 对话' }))
-      await page.getByRole('button', { name: 'AI 对话', exact: true }).click()
-      await expect(panel).toBeVisible()
-      await dragStrip('reopened', 0.5, -34)
-      await page.screenshot({ path: join(evidence, 'dragged-and-reopened.png'), animations: 'disabled' })
+      for (const width of [1080, 960]) {
+        await application.evaluate(({ BrowserWindow }, width) => BrowserWindow.getAllWindows()[0].setSize(width, 700), width)
+        await expect.poll(() => page.evaluate(() => innerWidth)).toBe(width)
+        await nativeClick(panel.getByRole('button', { name: '关闭 AI 对话' }))
+        await page.getByRole('button', { name: 'AI 对话', exact: true }).click()
+        await dragStrip(`reopened-${width}`, 0.5, -34)
+        await page.screenshot({ path: join(evidence, `dragged-and-reopened-${width}.png`), animations: 'disabled' })
+      }
       const state = () => application.evaluate(({ BrowserWindow }) => {
         const window = BrowserWindow.getAllWindows()[0]
         return { maximized: window.isMaximized(), minimized: window.isMinimized() }
