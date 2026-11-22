@@ -30,26 +30,10 @@
 .aw-debug-content dl > div { display:flex; flex-wrap:wrap; justify-content:space-between; gap:8px 24px; margin:8px 0; }
 .aw-debug-content dt { color:var(--text-muted); }
 .aw-debug-content dd { margin:0; overflow-wrap:anywhere; }
-.aw-dialog { width: min(760px, calc(100vw - 32px)); max-height: min(780px, calc(100svh - 32px)); margin: auto; padding: 0; border: 0; border-radius: 16px; color: var(--text); background: var(--surface); box-shadow: 0 18px 64px #17213030; overflow: auto; scroll-padding-block: 88px 24px; }
-.aw-dialog::backdrop { background: #1c253b55; }
-.aw-dialog-content { padding: 0 28px 28px; }
-.aw-dialog-heading { position: sticky; top: 0; display: flex; align-items: center; justify-content: space-between; gap: 20px; min-height: 80px; padding-block: 18px; background: var(--surface); z-index: 1; }
-.aw-dialog-heading h2 { margin: 0; font-size: 19px; line-height: 1.5; font-weight: 650; }
-.aw-close { display: inline-grid; place-items: center; flex: 0 0 44px; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 8px; color: var(--text-muted); background: transparent; cursor: pointer; }
-.aw-close:hover { background: var(--hover); color: var(--text); }
-.aw-close:active { background: var(--pressed); }
-.aw-notices-source { margin: 0 0 22px; color: var(--text-muted); font-size: 12px; line-height: 1.75; overflow-wrap: anywhere; }
-.aw-notices-text { margin: 0; font: inherit; color: var(--text); font-size: 13px; line-height: 1.85; white-space: pre-wrap; overflow-wrap: anywhere; }
 @media (max-width: 680px) {
   .aw-page { padding: 24px 20px 36px; }
   .aw-page-heading h1 { font-size: 23px; }
   .aw-identity { padding-block: 32px; }
   .aw-information-row { gap: 16px; }
   .aw-link-value { font-size: 12px; }
-  .aw-dialog-content { padding-inline: 20px; }
 }
-.aw-notices-text h2,.aw-notices-text h3,.aw-notices-text h4 { margin:28px 0 12px; line-height:1.5; font-size:16px; font-family:inherit; }
-.aw-notices-text h2 { font-size:18px; }
-.aw-notices-text p { white-space:pre-wrap; margin:0 0 16px; }
-.aw-notices-text a { color:var(--focus); text-underline-offset:4px; overflow-wrap:anywhere; }
-.aw-notices-text code { font-family:inherit; font-size:inherit; padding:1px 4px; border-radius:3px; background:var(--hover); }

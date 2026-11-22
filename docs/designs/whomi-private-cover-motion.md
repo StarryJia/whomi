@@ -112,7 +112,7 @@ FORM：在既有客户端布局内扩展一次启动叙事，不重新开展整�
 
 用户明确要求问号自身不旋转，而是像搜索等待动画一样沿中心圆周移动；纠正过渡镜柄与句点的方向，并使用已安装的 GSAP 技能。继续在已确认的 main 完成，不扩展个人总览业务。
 
-采用 `gsap` 3.15.0 与 `@gsap/react` 2.1.2。MotionPath 仅改变位置，关闭自动旋转；一条时间轴协调两圈位移、MorphSVG 上弧形变、小脸靠近及原图归位，useGSAP 在卸载时恢复样式。方向参考 [Loading.io Magnify](https://loading.io/spinner/magnify/-searching-for-loading-icon)，未复制或打包其素材。运行依赖许可见[第三方说明](../../THIRD_PARTY_NOTICES.md)。
+采用 `gsap` 3.15.0 与 `@gsap/react` 2.1.2。MotionPath 仅改变位置，关闭自动旋转；一条时间轴协调两圈位移、MorphSVG 上弧形变、小脸靠近及原图归位，useGSAP 在卸载时恢复样式。方向参考 [Loading.io Magnify](https://loading.io/spinner/magnify/-searching-for-loading-icon)，未复制或打包其素材。运行依赖按包内声明的 [GSAP Standard License](https://gsap.com/standard-license) 提供。
 
 - 新测试先在旧实现得到失败结果，最终 42 项测试全部通过，其中 20 项开场测试使用真实 GSAP 时间轴推进，验证各象限位置、两圈对应位置、旋转始终为零、原柄恒定、第二圈放大，以及原图在归位前完全显示。保留跳过、Escape、Tab、减少动态效果、后台、尺寸变化、初始化失败、卸载与严格模式清理验证。
 - 最终类型检查、生产构建、设计检测通过；脚本产物约 394.95 千字节，压缩后约 134.87 千字节，新增两个运行依赖，原始品牌图片未修改。

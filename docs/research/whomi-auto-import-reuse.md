@@ -8,7 +8,7 @@
 - [message-deduplicator.ts](https://github.com/ChatLab/ChatLab/blob/bf8d5ac77443512b9973ff3a236f258424202bbc/packages/node-runtime/src/import/message-deduplicator.ts)：平台消息编号优先；不同编号的相同正文不能互相去重。
 - [incremental-importer.ts](https://github.com/ChatLab/ChatLab/blob/bf8d5ac77443512b9973ff3a236f258424202bbc/packages/node-runtime/src/import/incremental-importer.ts)：写入前固定历史消息范围，按出现次数消费无编号记录，保留重复消息数量。
 
-这些业务文件适用仓库根 [GNU Affero General Public License 第 3 版](https://github.com/ChatLab/ChatLab/blob/bf8d5ac77443512b9973ff3a236f258424202bbc/LICENSE)，原文件未带独立版权头。本轮是在 Whomi 现有数据库事务、成员与消息模型上适配相应机制，不是把 ChatLab 的整个导入运行环境直接安装进 Whomi。具体组合许可由项目第三方声明统一记录。
+这些业务文件适用仓库根 [GNU Affero General Public License 第 3 版](https://github.com/ChatLab/ChatLab/blob/bf8d5ac77443512b9973ff3a236f258424202bbc/LICENSE)，原文件未带独立版权头。本轮是在 Whomi 现有数据库事务、成员与消息模型上适配相应机制，不是把 ChatLab 的整个导入运行环境直接安装进 Whomi。原始许可证与来源记录保存在对应模块中。
 
 ## 已实现的流程
 

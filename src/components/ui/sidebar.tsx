@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from 'react'
 
-// Adapted from shadcn/ui Sidebar (MIT); see THIRD_PARTY_NOTICES.md.
+// Adapted from shadcn/ui Sidebar (MIT); see shadcn.LICENSE.
 const STORAGE_KEY = 'whomi:sidebar-open'
 const MOBILE_QUERY = '(max-width: 640px)'
 

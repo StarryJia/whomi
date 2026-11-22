@@ -77,7 +77,7 @@
 
 复用路径为按模块迁入，保留源模块的结构、状态和必要依赖，再接 Whomi 接口。当前已接通四种自定义文本协议，具体范围见[协议接入记录](docs/research/cherry-protocol-reuse.md)；自定义服务商编辑器可分别保存这些协议的端点。OpenAI Codex 以 Whomi 名义请求浏览器授权，管理套餐用量的入口在登录卡与模型选择器旁。Grok CLI 和 GitHub Copilot 接线需要各自认可的 Whomi 应用标识。图片端点、工具调用和附件仍待接入。
 
-许可证按实际文件与包分别记录：[Cherry 社区版根许可证](https://github.com/CherryHQ/cherry-studio/blob/f19aa72f969b782ed72f81be80976b237ae26605/LICENSE)为 GNU Affero General Public License 第 3 版（AGPL-3.0），其[共用界面包声明](https://github.com/CherryHQ/cherry-studio/blob/f19aa72f969b782ed72f81be80976b237ae26605/packages/ui/package.json)标为 MIT。业务代码、界面包和新增 Radix 依赖分别保留来源；完整许可证及本地打包清单见 `THIRD_PARTY_NOTICES.md`。本轮没有更改 Whomi 的整体许可证或进行公开发布。
+许可证按实际文件与包分别记录：[Cherry 社区版根许可证](https://github.com/CherryHQ/cherry-studio/blob/f19aa72f969b782ed72f81be80976b237ae26605/LICENSE)为 GNU Affero General Public License 第 3 版（AGPL-3.0），其[共用界面包声明](https://github.com/CherryHQ/cherry-studio/blob/f19aa72f969b782ed72f81be80976b237ae26605/packages/ui/package.json)标为 MIT。业务代码、界面包和新增 Radix 依赖分别保留来源；完整许可证保存在对应 vendor 目录及依赖包内，本地打包清单见 [electron-builder.yml](electron-builder.yml)。本轮没有更改 Whomi 的整体许可证或进行公开发布。
 
 ## 历史基线与已有实现
 

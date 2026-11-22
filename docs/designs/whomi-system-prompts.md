@@ -39,12 +39,6 @@
 
 个人总览的「Spark · 不一样的自己」和「问一问」目前均没有独立的模型生成调用，因此本页没有对应的可编辑指令。[版本映射](../../electron/data/ai/prompt-version.ts) · [实际请求组装](../../electron/main/ai-service.ts)
 
-## 桌面验收与旧界面截图
+## 历史桌面验收
 
-截图来自 Electron 桌面窗口，使用隔离的测试资料库、合成聊天和本机模拟模型服务。保存失败场景通过临时阻止设置写入复现；解除故障后，用原草稿重试，重启桌面应用，下一次新对话发给本机服务的请求包含已保存文字。此验收核对配置传递与操作流程，未评测外部付费模型的写作效果。[桌面验收脚本](../../tests/desktop/system-prompts.spec.mjs) · [任务兼容与请求检查](../../tests/backend/system-prompts.test.ts)
-
-| 桌面列表与抽屉 | 窄窗与失败恢复 |
-|---|---|
-| [旧版四项设置列表](assets/system-prompts/desktop-list.png) | [旧版 360 像素说明浮层](assets/system-prompts/narrow-help.png) |
-| [记忆成稿说明](assets/system-prompts/desktop-help.png) | [360 像素编辑抽屉](assets/system-prompts/narrow-editor.png) |
-| [记忆成稿编辑抽屉](assets/system-prompts/desktop-editor.png) | [保存失败保留草稿](assets/system-prompts/save-failure.png) |
+验收使用 Electron 桌面窗口、隔离的测试资料库、合成聊天和本机模拟模型服务。保存失败场景通过临时阻止设置写入复现；解除故障后，用原草稿重试，重启桌面应用，下一次新对话发给本机服务的请求包含已保存文字。此验收核对配置传递与操作流程，未评测外部付费模型的写作效果。旧记忆提示词界面的截图已清理，当前四项设置以本页正文为准。[桌面验收脚本](../../tests/desktop/system-prompts.spec.mjs) · [任务兼容与请求检查](../../tests/backend/system-prompts.test.ts)
