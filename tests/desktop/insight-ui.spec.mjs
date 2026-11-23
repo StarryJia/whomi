@@ -293,7 +293,11 @@ test('real Electron insight UI validates scope, pauses and retries, reads exact 
     }).toBe(true)
     await shot('05-progress-collapsed')
     await btn('详情').click()
-    await expect(page.getByRole('group', { name: '分析用量' })).toBeVisible()
+    const usageDetails = page.getByRole('group', { name: '分析用量' })
+    await expect(usageDetails).toBeVisible()
+    // 前两个模拟回执各报告输入 20、输出 10，第三个请求仍在等待。
+    await expect(usageDetails.locator('div').filter({ has: page.getByText('输入 token', { exact: true }) }).locator('dd')).toHaveText('40')
+    await expect(usageDetails.locator('div').filter({ has: page.getByText('输出 token', { exact: true }) }).locator('dd')).toHaveText('20')
     await shot('06-progress-expanded')
     await management('20-management-running')
     await btn('暂停生成').click()

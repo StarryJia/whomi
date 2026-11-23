@@ -206,7 +206,7 @@ describe('对话与后台分析', () => {
     await user.click(await screen.findByRole('button', { name: /输出 386 token/ }))
     const stats = await screen.findByRole('region', { name: '生成统计' })
     expect(within(stats).getByText('输入').nextElementSibling).toHaveTextContent('—')
-    expect(within(stats).getByText('输出').nextElementSibling).toHaveTextContent('386 Tokens')
+    expect(within(stats).getByText('输出').nextElementSibling).toHaveTextContent('386 token')
     expect(within(stats).getByText('模型生成速度').nextElementSibling).toHaveTextContent('—')
     expect(within(stats).queryByText('端到端耗时')).not.toBeInTheDocument()
     await user.keyboard('{Escape}')

@@ -73,8 +73,8 @@ const numberFormatter = new Intl.NumberFormat('zh-CN')
 const decimalFormatter = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 1 })
 const dateFormatter = new Intl.DateTimeFormat('zh-CN', { dateStyle: 'medium', timeStyle: 'medium' })
 
-const formatTokens = (value: number) => `${numberFormatter.format(value)} Tokens`
-const formatSpeed = (value: number) => `${decimalFormatter.format(value)} Token/秒`
+const formatTokens = (value: number) => `${numberFormatter.format(value)} token`
+const formatSpeed = (value: number) => `${decimalFormatter.format(value)} token/秒`
 const formatMilliseconds = (value: number) => `${decimalFormatter.format(value / 1000)} 秒`
 
 function knownMetric(value: number | undefined): value is number {
@@ -106,7 +106,7 @@ const MessageTokenDetailsCard = ({ message }: { message: MessageListItem }) => {
       ? { id: 'uncached', label: '未缓存', value: formatTokens(uncachedTokens) }
       : undefined,
     knownMetric(firstTokenMs)
-      ? { id: 'time-to-first-token', label: '首 Token 耗时', value: formatMilliseconds(firstTokenMs) }
+      ? { id: 'time-to-first-token', label: '首 token 耗时', value: formatMilliseconds(firstTokenMs) }
       : undefined,
     knownMetric(endToEndTokensPerSecond)
       ? { id: 'end-to-end-throughput', label: '端到端吞吐', value: formatSpeed(endToEndTokensPerSecond) }

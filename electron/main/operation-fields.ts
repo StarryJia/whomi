@@ -16,7 +16,7 @@ export const stageLabels: Readonly<Record<string, string>> = {
 
 export const fieldLabels: Readonly<Record<string, string>> = {
   contextWindow: '上下文容量', outputLimit: '单次输出上限', inputLimit: '单次输入上限',
-  estimatedContext: '上下文容量为估算', estimatedOutput: '输出长度为估算', requestLimit: '请求保护次数', inputProtection: '输入保护词元', outputProtection: '输出保护词元',
+  estimatedContext: '上下文容量为估算', estimatedOutput: '输出长度为估算', requestLimit: '请求保护次数', inputProtection: '输入保护 token', outputProtection: '输出保护 token',
   before: '向前条数', after: '向后条数', nextCursor: '后续游标', fromOffset: '起始偏移', endOffset: '结束偏移',
   targetOrdinal: '定位序号', action: '取文方式', kind: '请求类型', readStatus: '读取结果', repeated: '重复读取数',
   fromVersion: '原资料库版本', toVersion: '目标资料库版本',

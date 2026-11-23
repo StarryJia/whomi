@@ -357,7 +357,7 @@ it('指定暂停任务只显示进度，关窗和开窗都不自动续跑，开�
   expect(await screen.findByText('已暂停', { exact: true })).toBeVisible()
   expect(continueAnalysis).not.toHaveBeenCalled()
   await user.click(screen.getByRole('button', { name: '详情' }))
-  expect(screen.getByText('缓存写入').nextElementSibling).toHaveTextContent('0 词元')
+  expect(screen.getByText('缓存写入').nextElementSibling).toHaveTextContent('0 token')
   expect(screen.getByText('缓存读取').nextElementSibling).toHaveTextContent('—')
   await user.click(screen.getByRole('button', { name: '关闭会话洞察' }))
   await user.click(screen.getByRole('button', { name: '会话洞察' }))

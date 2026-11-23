@@ -214,6 +214,14 @@ export function createAiRepository(store: Store, write: WriterQueue) {
     const records = reader.prepare('SELECT data FROM ai_request_usage WHERE owner_kind=? AND owner_id=? ORDER BY request_id').all(kind, id(ownerId)) as { data: string }[]
     if (!records.length) return {}
     const values = records.map(row => parse<AiUsage>(row.data)), result: AnalysisUsage = {}
+    if (kind === 'analysis') {
+      for (const usage of values) {
+        // 旧回执逐笔补上已知缓存，再与提供总量的新回执累计。
+        if (usage.totalInputTokens === undefined && usage.inputTokens !== undefined) {
+          usage.totalInputTokens = usage.inputTokens + (usage.cacheReadTokens ?? 0) + (usage.cacheWriteTokens ?? 0)
+        }
+      }
+    }
     for (const field of [...tokenFields, 'durationMs'] as const) {
       const reported = values.filter(value => value[field] !== undefined)
       if (!reported.length) continue

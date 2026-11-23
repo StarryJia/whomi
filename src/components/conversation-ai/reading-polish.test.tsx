@@ -89,8 +89,8 @@ describe('回答阅读排版', () => {
     expect(summary).toHaveTextContent('100 token/秒')
     await user.click(summary)
     const stats = screen.getByRole('region', { name: '生成统计' })
-    expect(stats).toHaveTextContent('100 Token/秒')
-    expect(stats).toHaveTextContent('10 Token/秒')
+    expect(stats).toHaveTextContent('100 token/秒')
+    expect(stats).toHaveTextContent('10 token/秒')
   })
   it('未知模型速度只显示已知输出', async () => {
     mount(async () => ({ text: answer, usage: { outputTokens: 100, durationMs: 10000, outputTokensPerSecond: 10 } }))

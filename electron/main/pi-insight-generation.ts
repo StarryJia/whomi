@@ -106,8 +106,8 @@ export async function generatePiInsight(options: Options): Promise<InsightReport
       if (event.type === 'requestStart') {
         signal.throwIfAborted()
         const protections = [
-          ['maxCalls', '请求次数', state.requests, limits.requests], ['maxInputTokens', '输入词元', state.input, limits.input],
-          ['maxOutputTokens', '输出词元', state.output, limits.output],
+          ['maxCalls', '请求次数', state.requests, limits.requests], ['maxInputTokens', '输入 token', state.input, limits.input],
+          ['maxOutputTokens', '输出 token', state.output, limits.output],
         ] as const
         for (const [budget, label, count, limit] of protections) {
           if (count < limit) continue

@@ -71,6 +71,22 @@ test.each([
   expect(() => validateAiResult('getAnalysis', snapshot)).not.toThrow()
 })
 
+test('新旧回执累计已知输入，待返回请求补齐后只计一次', async () => {
+  const { repository } = await setup()
+  const preparation = await repository.prepareAnalysis({ conversationId: '1', modelId: 'example' })
+  const task = await repository.confirmAnalysis({ token: preparation.token, requestId: 'mixed-usage' })
+  const owner = { ownerKind: 'analysis' as const, ownerId: task.id }
+  await repository.recordUsage({ ...owner, requestId: 'old', usage: { inputTokens: 40, cacheReadTokens: 10 } })
+  await repository.recordUsage({ ...owner, requestId: 'new', usage: { totalInputTokens: 100, inputTokens: 75, cacheReadTokens: 25 } })
+  await repository.recordUsage({ ...owner, requestId: 'pending', usage: { incomplete: true } })
+  expect(repository.getAnalysis(task.id).usage?.totalInputTokens).toBe(150)
+
+  const receipt = { ...owner, requestId: 'pending', usage: { totalInputTokens: 20, inputTokens: 20, outputTokens: 5 } }
+  await repository.recordUsage(receipt)
+  await repository.recordUsage(receipt)
+  expect(repository.getAnalysis(task.id).usage?.totalInputTokens).toBe(170)
+})
+
 test('取消准备释放完整快照，重复取消和迟到取消不删除已确认任务', async () => {
   const { repository, store } = await setup()
   const cancelled = await repository.prepareAnalysis({ conversationId: '1', modelId: 'example' })
