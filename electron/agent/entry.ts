@@ -1,12 +1,30 @@
 import { PiRuntime } from './runtime'
-import type { AgentRequest, AgentResponse } from './protocol'
+import type { AgentRequest, AgentResponse, InsightHostCall } from './protocol'
+import type { InsightReadResult } from '../../src/shared/insight-reader'
 import type { AiUsage } from '../../src/shared/ai-contract'
 
 const runtime = new PiRuntime(process.argv[2])
 const parent = (process as unknown as { parentPort: { on(event: string, listener: (event: { data: AgentRequest }) => void): void; postMessage(message: AgentResponse): void } }).parentPort
 const active = new Map<number, AbortController>()
+const pendingCalls = new Map<number, { id: number; resolve(result?: InsightReadResult): void; reject(error: Error): void }>()
+let nextCall = 0
+function callHost(id: number, call: InsightHostCall) {
+  const callId = ++nextCall
+  return new Promise<InsightReadResult | undefined>((resolve, reject) => {
+    pendingCalls.set(callId, { id, resolve, reject })
+    parent.postMessage({ event: 'insight', id, callId, call })
+  })
+}
 const cancelAll = () => { for (const controller of active.values()) controller.abort() }
 parent.on('message', ({ data }) => {
+  if (data.method === 'insightReply') {
+    const pending = pendingCalls.get(data.callId)
+    if (pending?.id !== data.id) return
+    pendingCalls.delete(data.callId)
+    if (data.error) pending.reject(Object.assign(new Error(data.error.action), data.error))
+    else pending.resolve(data.result)
+    return
+  }
   if (data.method === 'cancel') { active.get(data.id)?.abort(); return }
   if (data.method === 'close') { cancelAll(); return }
   if (data.method !== 'run') return
@@ -15,7 +33,14 @@ parent.on('message', ({ data }) => {
   active.set(data.id, controller)
   void runtime.run(data.payload, { signal: controller.signal, onText: text => {
     if (!controller.signal.aborted) parent.postMessage({ event: 'text', id: data.id, text })
-  } }).then(result => {
+  }, insight: data.payload.insightSession ? {
+    read: async (request, availableTokens) => {
+      const result = await callHost(data.id, { type: 'read', request, availableTokens })
+      if (!result) throw new Error('未收到聊天记录。')
+      return result
+    },
+    record: async event => { await callHost(data.id, { type: 'record', event }) },
+  } : undefined }).then(result => {
     if (controller.signal.aborted) parent.postMessage({ id: data.id, error: { code: 'AI_STOPPED', action: '回答已停止。' } })
     else parent.postMessage({ id: data.id, result })
   }).catch((error: unknown) => {

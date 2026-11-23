@@ -4,6 +4,15 @@ import { defaultModelProtocol, modelProtocolBaseUrl } from '../../src/shared/mod
 const maximumCatalogBytes = 1024 * 1024
 function object(value: unknown): value is Record<string, unknown> { return !!value && typeof value === 'object' && !Array.isArray(value) }
 
+export function catalogLimits(entry: Record<string, unknown>): Pick<CatalogModel, 'contextWindow' | 'maxTokens' | 'maxInputTokens'> {
+  const model: Record<string, number> = {}
+  for (const [field, aliases] of Object.entries({ contextWindow: ['context_length', 'contextWindow', 'context_window', 'max_context_window_tokens'], maxTokens: ['max_output_tokens', 'maxTokens', 'maxOutputTokens', 'outputTokenLimit', 'max_output_length'], maxInputTokens: ['max_input_tokens', 'maxInputTokens', 'inputTokenLimit', 'max_prompt_tokens'] })) {
+    const value = aliases.map(alias => entry[alias]).find(value => Number.isSafeInteger(value) && (value as number) > 0 && (value as number) <= 2000000)
+    if (value !== undefined) model[field] = Number(value)
+  }
+  return model
+}
+
 export async function fetchModelCatalog(provider: Provider, key: string | null, fetcher: typeof fetch, signal: AbortSignal): Promise<CatalogModel[]> {
   const protocol = provider.protocol ?? defaultModelProtocol
   const base = modelProtocolBaseUrl(provider.baseUrl, protocol)
@@ -36,10 +45,7 @@ export async function fetchModelCatalog(provider: Provider, key: string | null, 
       const label = protocol === 'google-generative-ai' ? entry.displayName : entry.display_name ?? entry.name ?? entry.label
       if (typeof label === 'string' && label.trim() && label.length <= 256) model.label = label.trim()
       if (typeof entry.group === 'string' && entry.group.length <= 256) model.group = entry.group
-      for (const [field, aliases] of Object.entries({ contextWindow: ['context_length', 'contextWindow', 'context_window'], maxTokens: ['max_output_tokens', 'maxTokens', 'maxOutputTokens', 'outputTokenLimit'], maxInputTokens: ['max_input_tokens', 'maxInputTokens', 'inputTokenLimit'] })) {
-        const value = aliases.map(alias => entry[alias]).find(value => Number.isSafeInteger(value) && (value as number) > 0 && (value as number) <= 2000000)
-        if (value !== undefined) (model as Record<string, unknown>)[field] = value
-      }
+      Object.assign(model, catalogLimits(entry))
       entries.set(model.id, { ...model, ...entries.get(model.id) })
     }
     const cursor = protocol === 'google-generative-ai' ? catalog.nextPageToken : protocol === 'anthropic-messages' && catalog.has_more === true ? catalog.last_id : undefined

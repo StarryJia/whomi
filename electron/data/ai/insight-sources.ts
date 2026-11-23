@@ -90,7 +90,8 @@ export function captureInsightSources(db: Store['reader'], conversationId: bigin
     const { id, revision, originalRevision } = sourceMessage(row)
     return { messageId: id, revision, originalRevision }
   })
-  return { ...preview, conversationMessages, snapshotMaxId, sources }
+  const sourceTextBytes = analyzable.reduce((bytes, row) => bytes + Buffer.byteLength(row.text), 0)
+  return { ...preview, conversationMessages, snapshotMaxId, sources, sourceTextBytes }
 }
 
 export function readCurrentInsightSources(db: Store['reader'], conversationId: bigint, messageIds: readonly string[]): InsightSourceMessage[] {

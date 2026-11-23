@@ -36,6 +36,9 @@ export function migrateStore(store: Pick<Store, 'writer'>): void {
         ALTER TABLE ai_turns ADD COLUMN system_prompt TEXT;`)
       if (version < 9n) db.exec(insightSchema)
       if (version < 10n) db.exec(messageKindSchema)
+      if (version < 11n) db.exec(`ALTER TABLE ai_insight_snapshots ADD COLUMN source_text_bytes INTEGER CHECK(source_text_bytes >= 0);
+        ALTER TABLE ai_model_versions ADD COLUMN change_source TEXT NOT NULL DEFAULT 'settings' CHECK(change_source IN ('settings','catalog','account'));
+        ALTER TABLE ai_analysis_tasks ADD COLUMN processing_snapshot TEXT CHECK(processing_snapshot IS NULL OR json_valid(processing_snapshot));`)
       if ((db.pragma('foreign_key_check') as unknown[]).length) throw new Error('资料库迁移失败，请从备份恢复后重试。')
       db.pragma(`user_version = ${schemaVersion}`)
     }).immediate()

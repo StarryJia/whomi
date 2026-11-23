@@ -3,7 +3,8 @@ import { createHash } from 'node:crypto'
 import { mkdirSync, realpathSync, existsSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { performance } from 'node:perf_hooks'
-import type { AgentRunInput, AgentRunResult } from './protocol'
+import type { AgentRunInput, AgentRunResult, InsightRuntimeCallbacks } from './protocol'
+import { createInsightTool, observeInsightSession } from './insight-session'
 import type { AiUsage } from '../../src/shared/ai-contract'
 import { modelContextLimit, resolveModelLimits } from '../../src/shared/model-limits'
 import { defaultModelProtocol, isModelProtocol, modelProtocolBaseUrl } from '../../src/shared/model-protocol'
@@ -19,7 +20,7 @@ function abortError() { return new DOMException('回答已停止。', 'AbortErro
 
 export class PiRuntime {
   constructor(readonly directory: string) {}
-  async run(input: AgentRunInput, options: { signal: AbortSignal; onText: (text: string) => void }): Promise<AgentRunResult> {
+  async run(input: AgentRunInput, options: { signal: AbortSignal; onText: (text: string) => void; insight?: InsightRuntimeCallbacks }): Promise<AgentRunResult> {
     options.signal.throwIfAborted()
     const api = input.model.protocol ?? defaultModelProtocol
     if (!isModelProtocol(api)) throw failure('INVALID_MODEL', '请选择连接协议后重试。')
@@ -52,11 +53,14 @@ export class PiRuntime {
       modelsPath: null, refreshOnCreate: false, allowModelNetwork: false,
     })
     const limits = resolveModelLimits(input.model)
+    const autonomous = input.insightSession
+    if (autonomous && (!options.insight || input.history !== undefined)) throw failure('INVALID_INSIGHT_SESSION', '请重新打开洞察任务。')
     const capabilities = await reasoningCapabilities(input.model)
     const thinkingLevel = await acceptedThinking(input.model, input.thinkingLevel)
     modelRuntime.registerProvider(provider, {
       baseUrl: modelProtocolBaseUrl(input.model.baseUrl, api),
       api,
+      ...(autonomous?.headers ? { headers: autonomous.headers } : {}),
       apiKey: 'whomi-runtime-credential',
       models: [{ id: input.model.model, name: input.model.label, reasoning: !!thinkingLevel, ...(capabilities?.model?.thinkingLevelMap ? { thinkingLevelMap: capabilities.model.thinkingLevelMap } : {}), input: ['text'], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: limits.contextWindow, maxTokens: limits.maxTokens }],
     })
@@ -71,7 +75,12 @@ export class PiRuntime {
         else manager.appendMessage({ role: 'assistant', content: [{ type: 'text', text: item.text }], api, provider, model: model.id, usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } }, stopReason: 'stop', timestamp: Date.now() })
       }
     }
-    const settingsManager = SettingsManager.inMemory({ compaction: { enabled: false }, retry: { enabled: false, provider: { maxRetries: 0 } }, cacheWarming: 'off' })
+    const compaction = autonomous ? {
+      enabled: true,
+      reserveTokens: limits.contextWindow - limits.maxInputTokens + Math.ceil(limits.maxInputTokens / 5),
+      keepRecentTokens: Math.floor(limits.maxInputTokens / 4),
+    } : { enabled: false }
+    const settingsManager = SettingsManager.inMemory({ compaction, retry: { enabled: false, provider: { maxRetries: 0 } }, cacheWarming: 'off' })
     const extensions = { extensions: [], errors: [], runtime: createExtensionRuntime() }
     const loader: ResourceLoader = {
       getExtensions: () => extensions,
@@ -86,7 +95,15 @@ export class PiRuntime {
       extendResources: () => {},
       reload: async () => {},
     }
-    const { session } = await createAgentSession({ cwd, agentDir, modelRuntime, model, resourceLoader: loader, settingsManager, sessionManager: manager, tools: [], customTools: [], thinkingLevel: thinkingLevel ?? 'off' })
+    const reader = autonomous && options.insight ? createInsightTool(options.insight, limits.maxInputTokens, () => {
+      // When usage is unreported, our conservative page estimate can run out before Pi's threshold.
+      settingsManager.applyOverrides({ compaction: { ...compaction, reserveTokens: limits.contextWindow } })
+    }) : undefined
+    const { session } = await createAgentSession({ cwd, agentDir, modelRuntime, model, resourceLoader: loader, settingsManager, sessionManager: manager,
+      tools: reader ? ['read_messages'] : [], customTools: reader ? [reader.tool] : [], thinkingLevel: thinkingLevel ?? 'off' })
+    const observed = autonomous && options.insight && reader
+      ? observeInsightSession(session, manager, options.insight, autonomous.processing, input.systemPrompt, options.signal, reader, limits.maxTokens, api)
+      : undefined
     let text = ''
     let firstTokenMs: number | undefined
     let reported: AiUsage = {}
@@ -102,6 +119,7 @@ export class PiRuntime {
       reported = protocolUsage(api, data, reported)
     }
     const unsubscribe = session.subscribe(event => {
+      if (reader && event.type === 'compaction_end') settingsManager.applyOverrides({ compaction })
       if (event.type === 'message_update' && event.assistantMessageEvent.type === 'text_delta') {
         if (options.signal.aborted) return
         const delta = event.assistantMessageEvent.delta
@@ -129,6 +147,7 @@ export class PiRuntime {
     try {
       if (options.signal.aborted) throw abortError()
       await session.prompt(input.prompt, { expandPromptTemplates: false })
+      await observed?.flush()
       if (options.signal.aborted || stopReason === 'aborted') throw abortError()
       if (contextExceeded) throw modelContextLimit()
       if (timedOut) throw modelTimeout()
@@ -137,7 +156,7 @@ export class PiRuntime {
       const sessionFile = manager.getSessionFile()
       const leafId = manager.getLeafId()
       if (!sessionFile || !leafId) throw failure('SESSION_SAVE_FAILED', '请重试保存对话。')
-      return { ...(stopReason === 'length' ? { stopReason: 'length' as const } : {}), text: text || session.getLastAssistantText() || '', usage, checkpoint: JSON.stringify({ sessionFile, leafId }) }
+      return { ...(stopReason === 'length' ? { stopReason: 'length' as const } : {}), text: observed ? observed.lastText() : text || session.getLastAssistantText() || '', usage, checkpoint: JSON.stringify({ sessionFile, leafId }) }
     } catch (error) {
       if (!options.signal.aborted && input.purpose === 'insight' && error instanceof Error && isProviderTimeout(error)) {
         throw Object.assign(modelTimeout(), { usage: usageSnapshot() })

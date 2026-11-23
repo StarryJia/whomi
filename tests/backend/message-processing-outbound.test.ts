@@ -7,7 +7,8 @@ import { createAiRepository } from '../../electron/data/ai/repository'
 import { createSettingsRepository } from '../../electron/data/settings/repository'
 import { createAiService } from '../../electron/main/ai-service'
 import { temporaryStore } from './helpers'
-import { simpleInsightReply } from '../desktop/fixtures/insight-model.mjs'
+import { completeModel, readTurns } from '../desktop/fixtures/pi-insight-model.mjs'
+import type { InsightReadRequest } from '../../src/shared/insight-reader'
 
 type ModelRequest = { messages: { role: string; content: string | { type: string; text?: string }[] }[] }
 
@@ -25,7 +26,7 @@ describe('processed messages in actual model requests', () => {
   let service: ReturnType<typeof createAiService>
   let server: ReturnType<typeof createServer>
   let requests: ModelRequest[]
-  let answer: string | ((request: ModelRequest) => string)
+  let answer: string | ((request: ModelRequest) => string | { read: InsightReadRequest; note?: string })
   let threadId: string
   const members = [{ id: '1', displayName: '本人' }, { id: '2', displayName: '示例甲' },
     { id: '3', displayName: 'Bearer' }, { id: '4', displayName: 'sk' }, { id: '5', displayName: '小林' }, { id: '6', displayName: 'U5' }]
@@ -61,6 +62,7 @@ describe('processed messages in actual model requests', () => {
         const payload = JSON.parse(body)
         requests.push(payload)
         const content = typeof answer === 'function' ? answer(payload) : answer
+        if (typeof content === 'object') return completeModel(response, content)
         response.writeHead(200, { 'Content-Type': 'text/event-stream' })
         response.end(`data: ${JSON.stringify({ id: 'example', choices: [{ index: 0, delta: { content }, finish_reason: 'stop' }], usage: { prompt_tokens: 12, completion_tokens: 3, total_tokens: 15 } })}\n\ndata: [DONE]\n\n`)
       })
@@ -171,25 +173,30 @@ describe('processed messages in actual model requests', () => {
   test('洞察读取发送脱敏内容，保存的原文保持完整', async () => {
     const originals = seedSources()
     answer = request => {
-      const payload = userPayload(request)
-      if (payload.stage === 'reading') return JSON.stringify({
-        observations: [{ text: '小林留下联系方式 example@example.com，password="Blue Bird 42!"', sourceIds: ['3'] }],
-        openThreads: [], candidates: [],
+      const turns = readTurns(request)
+      if (!turns.length) return { read: {} }
+      if (turns.length === 1) return { read: { messageId: '3' }, note: '小林留下联系方式 example@example.com，password="Blue Bird 42!"' }
+      return JSON.stringify({
+        aboutYou: [{ content: [{ text: '你发了一条号码记录。', citationId: 'a' }] }],
+        relationship: [{ content: [{ text: '对方在聊天里约了见面。', citationId: 'b' }] }],
+        citations: [{ id: 'a', fragments: [{ messageIds: ['6'] }] }, { id: 'b', fragments: [{ messageIds: ['3'] }] }],
+        judgments: [], limitations: [],
       })
-      return JSON.stringify(simpleInsightReply(payload))
     }
     const prepared = await service.prepareAnalysis({ conversationId: '1', modelId: 'model' })
     const task = await service.confirmAnalysis({ token: prepared.token, requestId: 'insight-processing' })
     await service.idle()
     expect(repository.getAnalysis(task.id)).toMatchObject({ state: 'completed', analyzedMessages: 6 })
-    expect(requests).toHaveLength(2)
-    const sent = userPayload(requests[0]).messages
+    expect(requests).toHaveLength(3)
+    const [firstPage, revisit] = readTurns(requests[2])
+    const sent = firstPage.result.messages
     expect(sent.map((message: { text: string }) => message.text)).toEqual([
       '[授权令牌]', '[接口密钥]', '小林约U5明天见。密码：[密码]，明早见', '[银行卡号] 123', '示例标题\nhttps://example.invalid', '[银行卡号] [银行卡号]',
     ])
-    expect(userPayload(requests[1])).toMatchObject({ stage: 'writing', observations: [
-      { text: '小林留下联系方式 [邮箱]，password="[密码]"', sourceIds: ['3'] },
-    ] })
+    expect(revisit.result.messages).toEqual([sent[2]])
+    expect(requests[2].messages.filter(message => message.role === 'assistant')).toContainEqual(
+      expect.objectContaining({ content: '小林留下联系方式 [邮箱]，password="[密码]"' }),
+    )
     expect(JSON.stringify(requests)).not.toMatch(/Blue Bird 42|Cedar!42|testtoken1234567890|abcdefghijklmnopqrstuv|4111111111111111|378282246310005|<appmsg>|example@example\.com|13800138000/)
     expect(store.reader.prepare('SELECT text FROM messages ORDER BY id').all()).toEqual(originals.map(({ text }) => ({ text })))
   }, 20000)

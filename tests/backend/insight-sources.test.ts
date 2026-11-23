@@ -129,6 +129,7 @@ test('日期范围包含上海时区首日零点和最后一日最后一毫秒',
   expect(task).toMatchObject({ title: '会话洞察', scope: october, sourceStartTimeMs: start, sourceEndTimeMs: end })
   const snapshot = repository.analysisContext(task.id).snapshot!
   expect(snapshot.sources.map(source => source.messageId)).toEqual(['1', '4'])
+  expect(snapshot.sourceTextBytes).toBe(Buffer.byteLength('我们几点开始？今天九点。'))
   expect(repository.readInsightSources({ taskId: task.id, messageIds: ['4', '1'] })).toMatchObject([
     { id: '4', text: '今天九点。', sentAtMs: end, replyToMessageId: '1' },
     { id: '1', text: '我们几点开始？', sentAtMs: start, replyToMessageId: null },

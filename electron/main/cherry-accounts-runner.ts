@@ -10,6 +10,11 @@ export const grokBaseUrl = 'https://cli-chat-proxy.grok.com/v1'
 export const copilotBaseUrl = 'https://api.githubcopilot.com'
 export type RuntimeAccess = { token:string; baseUrl:string }
 
+export function subscriptionHeaders(provider: CherrySubscription, model: string): Record<string, string> {
+  return provider === 'grok-cli' ? {'User-Agent':'Whomi/' + version,'x-grok-client-identifier':'whomi','x-grok-client-version':version,'x-xai-token-auth':'xai-grok-cli',
+    'x-authenticateresponse':'authenticate-response','x-grok-client-mode':'interactive','x-grok-model-override':model} : { 'User-Agent':'Whomi' }
+}
+
 export function cherryAccountRunner(provider: CherrySubscription, access: (id: string, signal: AbortSignal) => Promise<RuntimeAccess>, request: typeof fetch): RuntimeRunner {
   return { async run(input, { signal, onText }) {
     const isGrok = provider === 'grok-cli', model = input.model
@@ -17,8 +22,7 @@ export function cherryAccountRunner(provider: CherrySubscription, access: (id: s
       model.protocol !== (isGrok ? 'openai-responses' : 'openai-completions')) throw new BoundaryError('INVALID_MODEL','请重新选择此账户的模型。')
     const credential = await access(model.planAccount, signal)
     const client = new OpenAI({ apiKey:credential.token, baseURL:credential.baseUrl, organization:null, project:null, fetch:request, fetchOptions:{redirect:'error'}, maxRetries:0,
-      logLevel:'off', defaultHeaders:isGrok ? {'User-Agent':'Whomi/' + version,'x-grok-client-identifier':'whomi','x-grok-client-version':version,'x-xai-token-auth':'xai-grok-cli',
-        'x-authenticateresponse':'authenticate-response','x-grok-client-mode':'interactive','x-grok-model-override':model.model} : {'User-Agent':'Whomi'} })
+      logLevel:'off', defaultHeaders:subscriptionHeaders(provider, model.model) })
     const history = (input.history ?? []).map(item => ({role:item.role,content:item.text}))
     const messages = [...history,{role:'user' as const,content:input.prompt}]
     const startedAt = Date.now()

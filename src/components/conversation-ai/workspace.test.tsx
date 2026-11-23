@@ -151,7 +151,7 @@ describe('对话与后台分析', () => {
       state: 'interrupted', analyzedMessages: 3, totalMessages: 7, skippedMessages: 0, usage: { outputTokens: 20 }, valid: true, eventSequence: 2 }))
     render(<Workspace adapter={adapter} />)
     await user.click(screen.getByRole('button', { name: '会话洞察' }))
-    expect(screen.getByText('已处理 3 / 7 条')).toBeInTheDocument()
+    expect(screen.getByText('已提交分析 3 / 7 条')).toBeInTheDocument()
     expect(screen.getByRole('status')).toHaveTextContent('生成失败')
     expect(adapter.continueAnalysis).not.toHaveBeenCalled()
     await user.click(screen.getByRole('button', { name: '重试' }))

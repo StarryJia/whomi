@@ -4,33 +4,20 @@ import { createServer } from 'node:http'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { setTimeout as delay } from 'node:timers/promises'
-import { insightModelPrompt, insightModelReply, syntheticInsightReportTitle, syntheticInsightScope } from './fixtures/insight-model.mjs'
+import { mockReadAction, suggestionReport, syntheticInsightReportTitle, syntheticInsightScope } from './fixtures/insight-model.mjs'
+import { completeModel } from './fixtures/pi-insight-model.mjs'
 
-function replyForScope(prompt) {
-  const reply = insightModelReply(prompt)
-  if (prompt.stage === 'reading' && prompt.messages.some(message => message.id === '4')) {
-    reply.candidates[0].supportingIds.push('4')
-  }
-  if (prompt.stage === 'checking' && reply.action === 'finish' && prompt.check.supportingIds.includes('4')) {
-    reply.supportingIds.push('4')
-  }
-  if (prompt.stage === 'writing') {
-    const includesLaterReply = prompt.checks.some(check => check.finding?.supportingIds.includes('4'))
-    Object.assign(reply.judgments[0], includesLaterReply
-      ? { direction: 'F', text: '你这一次先回应了 ta 想被倾听的需要。', supportingIds: ['4'] }
-      : { direction: 'T', text: '你起初先给出了解决办法。' })
-    if (includesLaterReply) {
-      reply.aboutYou.push({ content: [{ text: '你先听 ta 讲完', citationId: 'later-listening' }] })
-      reply.citations.push({ id: 'later-listening', fragments: [{ messageIds: ['4'] }] })
-    }
+function replyForScope(messages) {
+  const reply = suggestionReport()
+  const includesLaterReply = messages.some(message => message.id === '4')
+  Object.assign(reply.judgments[0], includesLaterReply
+    ? { direction: 'F', text: '你这一次先回应了 ta 想被倾听的需要。', supportingIds: ['4'] }
+    : { direction: 'T', text: '你起初先给出了解决办法。' })
+  if (includesLaterReply) {
+    reply.aboutYou.push({ content: [{ text: '你先听 ta 讲完', citationId: 'later-listening' }] })
+    reply.citations.push({ id: 'later-listening', fragments: [{ messageIds: ['4'] }] })
   }
   return reply
-}
-
-function writeCompletion(response, result) {
-  response.writeHead(200, { 'Content-Type': 'text/event-stream' })
-  response.write(`data: ${JSON.stringify({ id: 'synthetic-insight', choices: [{ index: 0, delta: { content: JSON.stringify(result) }, finish_reason: null }] })}\n\n`)
-  response.end(`data: ${JSON.stringify({ id: 'synthetic-insight', choices: [{ index: 0, delta: {}, finish_reason: 'stop' }], usage: { prompt_tokens: 20, completion_tokens: 10, total_tokens: 30 } })}\n\ndata: [DONE]\n\n`)
 }
 
 test('空库导入后保留一份报告与另一项暂停任务，重启回查原文、续跑并重评总览', async ({}, testInfo) => {
@@ -49,21 +36,21 @@ test('空库导入后保留一份报告与另一项暂停任务，重启回查�
       arrival.bodyReceivedAt = Date.now()
       try {
         const input = JSON.parse(body)
-        const prompt = insightModelPrompt(input)
+        const prompt = mockReadAction(input)
         requests.push({ input, prompt, authorization: request.headers.authorization })
-        if (prompt.stage === 'checking' && !interruptedCheck) {
+        if (prompt.action === 'report' && !interruptedCheck) {
           interruptedCheck = true
           response.writeHead(200, { 'Content-Type': 'text/event-stream' })
           response.flushHeaders()
           return
         }
-        if (prompt.stage === 'writing' && !rejectedWriting) {
+        if (prompt.action === 'report' && !rejectedWriting) {
           rejectedWriting = true
           response.writeHead(500, { 'Content-Type': 'application/json' })
           response.end(JSON.stringify({ error: { message: 'Synthetic retry fixture', type: 'server_error' } }))
           return
         }
-        writeCompletion(response, replyForScope(prompt))
+        completeModel(response, prompt.read ? { read: prompt.read } : { text: JSON.stringify(replyForScope(prompt.messages)) })
       } catch (error) {
         fixtureErrors.push(String(error))
         response.end()
@@ -138,12 +125,12 @@ test('空库导入后保留一份报告与另一项暂停任务，重启回查�
     const [task] = await page.evaluate(() => window.whomi.ai.listAnalyses())
     expect(task).toMatchObject({ title: '会话洞察', conversationId: conversation.id, totalMessages: 3, scope: syntheticInsightScope })
     try {
-      await expect.poll(() => requests.map(request => request.prompt.stage), { timeout: 15_000 }).toEqual(['reading', 'checking'])
+      await expect.poll(() => requests.map(request => request.prompt.action), { timeout: 15_000 }).toEqual(['open', 'check-source', 'report'])
     } catch (error) {
       const timeline = {
         confirmStartedAt, confirmedAt, timedOutAt: Date.now(),
         requestArrivals: requestArrivals.map(arrival => ({ ...arrival })),
-        parsedStages: requests.map(request => request.prompt.stage), fixtureErrorCount: fixtureErrors.length,
+        parsedStages: requests.map(request => request.prompt.action), fixtureErrorCount: fixtureErrors.length,
       }
       const [renderer, screenshot] = await Promise.allSettled([
         Promise.race([page.evaluate(async id => {
@@ -178,13 +165,12 @@ test('空库导入后保留一份报告与另一项暂停任务，重启回查�
     await page.evaluate(id => window.whomi.ai.continueAnalysis(id), task.id)
     await expect.poll(() => page.evaluate(id => window.whomi.ai.getAnalysis(id), task.id), { timeout: 15_000 })
       .toMatchObject({ state: 'completed', analyzedMessages: 3, title: '会话洞察' })
-    expect(requests.map(request => request.prompt.stage)).toEqual(['reading', 'checking', 'checking', 'checking', 'writing', 'writing'])
-    expect(requests.filter(request => request.prompt.stage === 'checking').map(request => request.prompt.check.round)).toEqual([1, 2, 3])
-    expect(requests[0].prompt.messages.map(message => message.id)).toEqual(['1', '2', '3'])
-    expect(requests[0].prompt.messages[2].replyToMessageId).toBe('1')
+    expect(requests.filter(request => request.prompt.action === 'open')).toHaveLength(1)
+    expect(requests[1].prompt.messages.map(message => message.id)).toEqual(['1', '2', '3'])
+    expect(requests[1].prompt.messages[2].replyToMessageId).toBe('1')
     for (const message of messages.slice(3)) expect(JSON.stringify(requests)).not.toContain(message.content)
     expect(requests.every(request => request.authorization === 'Bearer test-only-key')).toBe(true)
-    expect(requests.every(request => !(request.input.tools?.length))).toBe(true)
+    expect(requests.every(request => request.input.tools?.length === 1 && request.input.tools[0].function.name === 'read_messages')).toBe(true)
     expect(fixtureErrors).toEqual([])
 
     const report = await page.evaluate(id => window.whomi.ai.getReport(id), task.id)
@@ -208,16 +194,17 @@ test('空库导入后保留一份报告与另一项暂停任务，重启回查�
     })
     expect(renamed).toMatchObject({ title: syntheticInsightReportTitle, scope: syntheticInsightScope, report })
     interruptedCheck = false
+    const secondStart = requests.length
     const second = await page.evaluate(async ({ conversationId, modelId }) => {
       const prepared = await window.whomi.ai.prepareAnalysis({ conversationId, modelId, scope: { kind: 'all' } })
       return window.whomi.ai.confirmAnalysis({ token: prepared.token, requestId: 'all-after-date-report' })
     }, task)
     expect(second.id).not.toBe(task.id)
-    const secondStages = () => requests.slice(6).map(request => request.prompt.stage)
-    await expect.poll(secondStages, { timeout: 15_000 }).toEqual(['reading', 'checking'])
+    const secondStages = () => requests.slice(secondStart).map(request => request.prompt.action)
+    await expect.poll(secondStages, { timeout: 15_000 }).toEqual(['open', 'check-source', 'report'])
     const stopped = await page.evaluate(id => window.whomi.ai.stopAnalysis(id), second.id)
     expect(stopped).toMatchObject({ state: 'stopped', analyzedMessages: 12 })
-    const allInput = requests[6].prompt.messages
+    const allInput = requests[secondStart + 1].prompt.messages
     expect(allInput.map(message => message.text)).toEqual(messages.slice(0, 12).map(message => message.content))
     expect(allInput[3]).toMatchObject({ isSelf: true, replyToMessageId: '3' })
     expect(allInput[5]).toMatchObject({ isSelf: false, replyToMessageId: '5' })
@@ -262,10 +249,10 @@ test('空库导入后保留一份报告与另一项暂停任务，重启回查�
         analyzedMessages: saved.analyzedMessages, eventSequence: saved.eventSequence, report: saved.report,
       }),
     })
-    const resumedStages = secondStages().slice(2)
-    expect(resumedStages[0]).toBe('checking')
-    expect(resumedStages).not.toContain('reading')
-    expect(resumedStages.at(-1)).toBe('writing')
+    const resumedStages = secondStages().slice(3)
+    expect(resumedStages.length).toBeGreaterThan(0)
+    expect(resumedStages).not.toContain('open')
+    expect(resumedStages.at(-1)).toBe('report')
     const requestsAtCompletion = requests.length
     await testInfo.attach('两份报告方向冲突', { body: await page.screenshot(), contentType: 'image/png' })
     await page.evaluate(id => window.whomi.ai.deleteAnalysis(id), task.id)

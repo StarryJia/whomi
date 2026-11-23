@@ -1,0 +1,131 @@
+{
+  "count": 4600,
+  "startedAt": 1795446768610,
+  "completedAt": 1795446790998,
+  "paused": {
+    "id": "1",
+    "usage": {
+      "inputTokens": 873,
+      "totalInputTokens": 873,
+      "outputTokens": 35,
+      "durationMs": 1051,
+      "incomplete": true,
+      "outputTokensPerSecond": 33.301617507136065,
+      "startedAt": 1795446770455,
+      "completedAt": 1795446771569
+    }
+  },
+  "task": {
+    "id": "1",
+    "conversationId": "1",
+    "conversationTitle": "合成会话 · 聚会分工",
+    "title": "会话洞察",
+    "scope": {
+      "kind": "dates",
+      "timezone": "Asia/Shanghai",
+      "startDate": "2026-10-07",
+      "endDate": "2026-10-07"
+    },
+    "timezone": "Asia/Shanghai",
+    "insightSelfFingerprint": "152fa303a7209cf95521016d2fe34e21185afe748b7c1218649fa8513b33d6a8",
+    "elapsedMs": 19877,
+    "insightContentRevision": "351a772ee777d06047c3e514f775a76b6c5a57a5ec80e60d338d7902d2bdcd03",
+    "modelId": "7d3a0782-7522-40b7-8f01-579114a027cf",
+    "modelIdentity": {
+      "id": "7d3a0782-7522-40b7-8f01-579114a027cf",
+      "version": 1,
+      "label": "聚会模拟模型",
+      "model": "example"
+    },
+    "createdAtMs": 1795446768633,
+    "completedAtMs": 1795446790959,
+    "sourceStartTimeMs": 1791324010000,
+    "sourceEndTimeMs": 1791370000000,
+    "pinned": false,
+    "state": "completed",
+    "analyzedMessages": 4600,
+    "totalMessages": 4600,
+    "skippedMessages": 0,
+    "usage": {
+      "inputTokens": 1284352,
+      "totalInputTokens": 1284352,
+      "outputTokens": 10150,
+      "durationMs": 2365,
+      "incomplete": true,
+      "outputTokensPerSecond": 4291.754756871035,
+      "startedAt": 1795446770455,
+      "completedAt": 1795446790834
+    },
+    "valid": true,
+    "eventSequence": 881,
+    "report": {
+      "format": "conversation-insights-v1",
+      "aboutYou": [
+        {
+          "content": [
+            {
+              "text": "你说这次张罗聚会让你累了",
+              "citationId": "early"
+            },
+            {
+              "text": "。这句话能说明你当时的感受。"
+            }
+          ]
+        }
+      ],
+      "relationship": [
+        {
+          "content": [
+            {
+              "text": "ta 回忆上次由自己联系场地和约人",
+              "citationId": "later"
+            },
+            {
+              "text": "。可以把两次聚会分开讨论，再约定下次谁来联系。"
+            }
+          ]
+        }
+      ],
+      "citations": [
+        {
+          "id": "early",
+          "conversationId": "1",
+          "fragments": [
+            {
+              "sources": [
+                {
+                  "messageId": "2",
+                  "revision": "6e5daa54467d7af72c51ac62db5f05beae42b77652cafa4bfcd1a7b8098b0ffb"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "later",
+          "conversationId": "1",
+          "fragments": [
+            {
+              "sources": [
+                {
+                  "messageId": "3128",
+                  "revision": "062b64e5a0d652486bd943e4085d5232393b6aea02bc00c2232126b43adfec8d"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "limitations": [
+        "两次聚会不足以判断更长时间里的分工。"
+      ],
+      "judgments": []
+    }
+  },
+  "modelRequests": 291,
+  "firstReadRequestMs": 2184,
+  "elapsedMs": 22388,
+  "messagesPerActiveSecond": 231.42325300598682,
+  "modelOutputTokensPerSecond": 4291.754756871035,
+  "fixtureUsage": "Synthetic service, deterministic receipts"
+}

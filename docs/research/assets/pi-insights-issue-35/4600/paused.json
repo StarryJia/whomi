@@ -1,0 +1,43 @@
+{
+  "id": "1",
+  "conversationId": "1",
+  "conversationTitle": "合成会话 · 聚会分工",
+  "title": "会话洞察",
+  "scope": {
+    "kind": "dates",
+    "timezone": "Asia/Shanghai",
+    "startDate": "2026-10-07",
+    "endDate": "2026-10-07"
+  },
+  "timezone": "Asia/Shanghai",
+  "insightSelfFingerprint": "152fa303a7209cf95521016d2fe34e21185afe748b7c1218649fa8513b33d6a8",
+  "elapsedMs": 2867,
+  "modelId": "7d3a0782-7522-40b7-8f01-579114a027cf",
+  "modelIdentity": {
+    "id": "7d3a0782-7522-40b7-8f01-579114a027cf",
+    "version": 1,
+    "label": "聚会模拟模型",
+    "model": "example"
+  },
+  "createdAtMs": 1795446768633,
+  "completedAtMs": null,
+  "sourceStartTimeMs": 1791324010000,
+  "sourceEndTimeMs": 1791370000000,
+  "pinned": false,
+  "state": "stopped",
+  "analyzedMessages": 0,
+  "totalMessages": 4600,
+  "skippedMessages": 0,
+  "usage": {
+    "inputTokens": 873,
+    "totalInputTokens": 873,
+    "outputTokens": 35,
+    "durationMs": 1051,
+    "incomplete": true,
+    "outputTokensPerSecond": 33.301617507136065,
+    "startedAt": 1795446770455,
+    "completedAt": 1795446771569
+  },
+  "valid": true,
+  "eventSequence": 9
+}

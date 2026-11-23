@@ -1,13 +1,15 @@
+import { withInsightClock } from './insight-clock'
+import { generatePiInsight, type PiInsightCheckpoint } from './pi-insight-generation'
+import type { AgentRunInput, AgentRunResult, InsightRuntimeCallbacks } from '../agent/protocol'
 import { defaultPrompts } from '../../src/shared/system-prompts'
 import type { AnalysisContext, TurnContext } from '../data/ai/repository'
 import { acceptedThinking, reasoningCapabilities } from '../agent/reasoning-capabilities'
-import type { ThinkingLevel } from '../../src/shared/thinking'
 import { createHash, randomUUID } from 'node:crypto'
 import type { AiEvent, AiMethods, AiModel, AiThread, AiTurn, AiUsage, AnalysisTask } from '../../src/shared/ai-contract'
 import { BoundaryError } from '../../src/shared/desktop-validation'
 import { resolveModelLimits } from '../../src/shared/model-limits'
 import { createMessageProcessor, type ProcessingMember } from './message-processing'
-import type { ProcessingSettings } from '../../src/shared/settings-contract'
+import { defaultProcessing, type ProcessingSettings } from '../../src/shared/settings-contract'
 import type { InsightSourceMessage } from '../../src/shared/conversation-insights'
 import { generateInsight } from './insight-generation'
 import { defaultInsightPrompts, INSIGHT_PROMPT_VERSION, type InsightPrompts } from '../data/ai/insight-prompts'
@@ -16,11 +18,12 @@ import { defaultInsightRunLimits } from './insight-policy'
 import { diagnosticErrorCode, type AppError } from './app-error-logs'
 import { aiOperation, runDiagnosedModel, type AiDiagnostics, type AiOperation, type ModelRetry } from './ai-operation-diagnostics'
 
-export type RuntimeInput = { purpose?: 'insight'; thinkingLevel?: ThinkingLevel; key: string; model: AiModel; apiKey?: string; systemPrompt: string; prompt: string; history?: { role: 'user' | 'assistant'; text: string }[]; checkpoint?: string | null; outputTokenLimit?: number }
-export type RuntimeResult = { stopReason?: 'length'; text: string; usage: AiUsage; checkpoint: string }
-export type RuntimeRunner = { run(input: RuntimeInput, options: { signal: AbortSignal; onText: (text: string) => void }): Promise<RuntimeResult> }
+export type RuntimeInput = AgentRunInput & { outputTokenLimit?: number }
+export type RuntimeResult = AgentRunResult
+export type RuntimeRunner = { run(input: RuntimeInput, options: { signal: AbortSignal; onText: (text: string) => void; insight?: InsightRuntimeCallbacks }): Promise<RuntimeResult> }
 export type AiServiceOptions = { storage(method: string, args: unknown[]): Promise<unknown>; runtime: RuntimeRunner; secrets: { encrypt(value: string): string; decrypt(value: string): string }; changed?: (event: AiEvent) => void;
   logError?: (entry: AppError) => void;
+  deleteInsightSessions?: (taskIds: readonly string[], removeRecords: () => Promise<void>) => Promise<void>;
   diagnostics?: AiDiagnostics;
   processing?: (conversationId: string) => Promise<{ settings: ProcessingSettings; members: ProcessingMember[] }>;
   claimProcessing?: (taskId: string, signature: string) => Promise<void> }
@@ -158,13 +161,13 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
     }
   }
   async function saveTurn(id: string, patch: unknown) { const snapshot = await storage<AiTurn>('saveTurn', id, patch); publish({ kind: 'turn', snapshot }); return snapshot }
-  async function analysisProcessor(id: string, conversationId: string) {
+  async function analysisProcessor(id: string, conversationId: string, frozen?: ProcessingSettings) {
     const processing = await options.processing?.(conversationId)
-    if (!processing) return undefined
-    await options.claimProcessing?.(id, hash(processing.settings))
-    return createMessageProcessor(processing.settings, processing.members)
+    const settings = frozen ?? processing?.settings ?? defaultProcessing
+    if (processing || frozen) await options.claimProcessing?.(id, hash(settings))
+    return { settings, ...createMessageProcessor(settings, processing?.members ?? []) }
   }
-  async function executeAnalysis(id: string, signal: AbortSignal, operation: AiOperation, resumeProcessor?: ReturnType<typeof createMessageProcessor>) {
+  async function executeAnalysis(id: string, signal: AbortSignal, operation: AiOperation, resumeProcessor?: Awaited<ReturnType<typeof analysisProcessor>>) {
     let phase = 'prepare'
     let analyzedMessages: number | undefined
     let batch: number | undefined
@@ -173,33 +176,57 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
     try {
       const initial = await storage<AnalysisContext>('analysisContext', id)
       analyzedMessages = initial.task.analyzedMessages
-      const processor = resumeProcessor ?? await analysisProcessor(id, initial.task.conversationId)
+      const checkpoint: InsightCheckpoint | PiInsightCheckpoint | null = initial.checkpoint ? JSON.parse(initial.checkpoint) : null
+      const processor = resumeProcessor ?? await analysisProcessor(id, initial.task.conversationId,
+        checkpoint?.version === 'pi-insight-v1' ? checkpoint.processing : initial.processing)
       if (signal.aborted) return
       const values = initial.systemPrompts
       const prompts: InsightPrompts = values ? { version: INSIGHT_PROMPT_VERSION, reading: values.insightReading, checking: values.insightChecking, writing: values.insightWriting } : defaultInsightPrompts
-      const checkpoint: InsightCheckpoint | null = initial.checkpoint ? JSON.parse(initial.checkpoint) : null
-      if (checkpoint && !['reading', 'checking', 'writing'].includes(checkpoint.stage)) {
+      const legacy = checkpoint && checkpoint.version !== 'pi-insight-v1' ? checkpoint : null
+      if (legacy && !['reading', 'checking', 'writing'].includes(legacy.stage)) {
         throw new BoundaryError('INVALID_INSIGHT_CHECKPOINT', '洞察进度无法恢复，请重新生成。')
       }
-      phase = checkpoint?.stage ?? 'reading'
+      phase = legacy?.stage ?? 'reading'
       operation.event(phase, { messageCount: initial.snapshot.sources.length, readCount: analyzedMessages })
       const running = await storage<AnalysisTask>('saveAnalysis', id, { state: 'running', error: undefined })
       const elapsedSample = { elapsedMs: running.elapsedMs ?? 0, sampledAtMs: Date.now() }
       elapsedSamples.set(id, elapsedSample)
       publish({ kind: 'analysis', snapshot: running })
-      const report = await generateInsight({ snapshot: initial.snapshot, conversationId: initial.task.conversationId, model: initial.model,
-        prompts, limits: defaultInsightRunLimits, checkpoint, elapsedMs: running.elapsedMs, thinkingLevel: initial.task.thinkingLevel }, {
+      const read = async (messageIds: readonly string[]) => {
+        const sources = await storage<InsightSourceMessage[]>('readInsightSources', { taskId: id, messageIds })
+        return sources.map(({ memberId, ...source }) => {
+          const protectedSource = processor.prepare([{ ...source, memberId, kind: 'text' }])[0]
+          return { ...source, text: protectedSource?.text ?? '', senderName: protectedSource?.senderName ?? '' }
+        })
+      }
+      async function saveElapsed(elapsedMs: number, sampledAtMs: number) {
+        const snapshot = await storage<AnalysisTask>('saveInsightElapsed', id, elapsedMs)
+        if (snapshot.state === 'running' && snapshot.elapsedMs === elapsedMs) {
+          elapsedSample.elapsedMs = elapsedMs
+          elapsedSample.sampledAtMs = sampledAtMs
+          publish({ kind: 'analysis', snapshot })
+        }
+      }
+      const report = !legacy ? await withInsightClock(elapsedSample.elapsedMs, signal, saveElapsed, (sample, persist) => generatePiInsight({
+        snapshot: initial.snapshot, model: initial.model, conversationId: initial.task.conversationId, thinkingLevel: initial.task.thinkingLevel,
+        prompts, processing: processor.settings, checkpoint: checkpoint?.version === 'pi-insight-v1' ? checkpoint : null, signal, operation, read,
+        save: (state, receipt) => persist(async () => {
+          const { elapsedMs, sampledAtMs } = sample()
+          const task = await storage<AnalysisTask>('saveInsightCheckpoint', id, JSON.stringify(state), state.coverage.coveredMessageIds, elapsedMs, ...(receipt ? [receipt] : []))
+          elapsedSample.elapsedMs = elapsedMs
+          elapsedSample.sampledAtMs = sampledAtMs
+          analyzedMessages = task.analyzedMessages
+          publish({ kind: 'analysis', snapshot: task })
+        }),
+        run: (input, insight) => schedule(0, async () => options.runtime.run({ ...input, apiKey: await modelSecret(initial.model) },
+          { signal, insight, onText: () => {} }), signal),
+      })) : await generateInsight({ snapshot: initial.snapshot, conversationId: initial.task.conversationId, model: initial.model,
+        prompts, limits: defaultInsightRunLimits, checkpoint: legacy, elapsedMs: running.elapsedMs, thinkingLevel: initial.task.thinkingLevel }, {
         signal, onText: () => {},
         prepareNotes: processor?.data,
         onRetryPlanned: (shrink, error) => { pendingRetry = { stage: shrink ? 'shrink' : 'retry', code: diagnosticErrorCode(error) } },
         onUnknown: (stage, index) => operation.event('requestUnknown', { phase: stage, attempt: index }),
-        read: async messageIds => {
-          const sources = await storage<InsightSourceMessage[]>('readInsightSources', { taskId: id, messageIds })
-          return sources.map(({ memberId, ...source }) => {
-            const protectedSource = processor?.prepare([{ ...source, memberId, kind: 'text' }])[0]
-            return protectedSource ? { ...source, text: protectedSource.text, senderName: protectedSource.senderName } : source
-          })
-        },
+        read,
         saveCheckpoint: async (state, sampledAtMs) => {
           const snapshot = await storage<AnalysisTask>('saveInsightCheckpoint', id, JSON.stringify(state), state.coveredMessageIds, state.elapsedMs)
           elapsedSample.elapsedMs = state.elapsedMs
@@ -213,14 +240,7 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
           phase = state.stage
           publish({ kind: 'analysis', snapshot })
         },
-        saveElapsed: async (elapsedMs, sampledAtMs) => {
-          const snapshot = await storage<AnalysisTask>('saveInsightElapsed', id, elapsedMs)
-          if (snapshot.state === 'running' && snapshot.elapsedMs === elapsedMs) {
-            elapsedSample.elapsedMs = elapsedMs
-            elapsedSample.sampledAtMs = sampledAtMs
-            publish({ kind: 'analysis', snapshot })
-          }
-        },
+        saveElapsed,
         run: (input, runtimeOptions) => schedule(0, async () => {
           await storage('analysisContext', id)
           const retry = pendingRetry
@@ -379,7 +399,9 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
       for (const item of targets) item.abort.abort()
       await Promise.allSettled(targets.map(item => item.task))
       if (['queued', 'running'].includes(task.state)) await saveAnalysis(id, { state: 'stopped' })
-      await storage('deleteAnalysis', id)
+      const remove = () => storage<void>('deleteAnalysis', id)
+      if (options.deleteInsightSessions) await options.deleteInsightSessions([task.id], remove)
+      else await remove()
       publish({ kind: 'analysis-deleted', taskId: id, conversationId: task.conversationId })
     }),
     stopAnalysis: id => control(async () => {
@@ -403,7 +425,9 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
       const operation = aiOperation(options.diagnostics, 'insight', 'generate', recoveredId)
       operation.bind(id, current.createdAtMs)
       try {
-        const processor = await analysisProcessor(id, current.conversationId)
+        const context = await storage<AnalysisContext>('analysisContext', id)
+        const saved = context.checkpoint ? JSON.parse(context.checkpoint) : null
+        const processor = await analysisProcessor(id, current.conversationId, saved?.version === 'pi-insight-v1' ? saved.processing : context.processing)
         const task = await storage<AnalysisTask>('resumeAnalysis', id)
         operation.event('recovered', { messageCount: task.totalMessages, readCount: task.analyzedMessages })
         if (!launch(key, task.conversationId, signal => executeAnalysis(id, signal, operation, processor), task.modelId)) operation.end('interrupted')
@@ -469,7 +493,10 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
           if (kind === 'analysis') await saveAnalysis(owner, { state: 'stopped' })
           else await saveTurn(owner, { state: 'stopped' })
         }
-        await remove()
+        if (options.deleteInsightSessions) {
+          const tasks = await storage<AnalysisTask[]>('listAnalyses', id)
+          await options.deleteInsightSessions(tasks.map(task => task.id), remove)
+        } else await remove()
       } finally { deleting.delete(id) }
     }),
     subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener) } },

@@ -1,3 +1,6 @@
+import { createInsightCheckpoint } from '../../electron/main/insight-checkpoint'
+import { defaultInsightRunLimits } from '../../electron/main/insight-policy'
+import { defaultInsightPrompts } from '../../electron/data/ai/insight-prompts'
 import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -18,7 +21,7 @@ function fixture(run?: RuntimeRunner['run'], logError?: (entry: AppError) => voi
   const snapshot = { taskId: '1', scope: { kind: 'all' }, timezone: 'Asia/Shanghai', createdAtMs: 1000, sourceStartTimeMs: 1000, sourceEndTimeMs: 1000, sources: [{ messageId: message.id, revision: message.revision }] }
   task.createdAtMs = snapshot.createdAtMs
   const saved: any[] = [], usage: any[] = [], requests: RuntimeInput[] = []
-  let checkpoint: string | null = null
+  let checkpoint = JSON.stringify(createInsightCheckpoint(task.id, model, { ...defaultInsightPrompts, reading: '自定义阅读' }, defaultInsightRunLimits))
   let completed = 0
   const storage = async (method: string, args: any[]) => {
     if (method === 'confirmAnalysis' || method === 'getAnalysis') return { ...task }
@@ -57,7 +60,7 @@ function fixture(run?: RuntimeRunner['run'], logError?: (entry: AppError) => voi
   return { service: createService(diagnostics), createService, model, task, requests, saved, usage, message, completed: () => completed }
 }
 
-test('new insight tasks use frozen sources, protected text and saved prompts through completion', async () => {
+test('legacy checkpoints resume with frozen sources, protected text and saved prompts through completion', async () => {
   const f = fixture()
   await f.service.confirmAnalysis({ token: 't', requestId: 'r' })
   await f.service.idle()

@@ -1,4 +1,6 @@
 import { readPromptValues } from './system-prompts'
+import { defaultProcessing, type ProcessingSettings } from '../../../src/shared/settings-contract'
+import { validateProcessing } from '../settings/validation'
 import { defaultPrompts, type PromptValues } from '../../../src/shared/system-prompts'
 import { isThinkingLevel, type ThinkingLevel } from '../../../src/shared/thinking'
 import { arrangeList, threadOrder } from '../db/list-order'
@@ -20,7 +22,7 @@ import { threadTitle } from './thread-title'
 import { captureInsightSources, previewInsightScope, readCurrentInsightSources, readInsightCitationIds, readInsightSources, type StoredInsightSnapshot, type StoredInsightSourceRef } from './insight-sources'
 
 export type AiSourceMessage = { id: string; senderName: string; text: string; isSelf: boolean; kind: string; sentAtMs: number | null; memberId: string | null }
-export type AnalysisContext = { systemPrompts?: PromptValues; task: AnalysisTask; model: AiModel; checkpoint: string | null; snapshot: InsightSnapshot }
+export type AnalysisContext = { processing?: ProcessingSettings; systemPrompts?: PromptValues; task: AnalysisTask; model: AiModel; checkpoint: string | null; snapshot: InsightSnapshot }
 export type RegisteredSkill = AiSkill & { content: string; enabled?: boolean }
 type TurnReferences = { references: AiSourceMessage[]; referenceBreaks?: string[] }
 export type TurnContext = TurnReferences & { systemPrompt?: string; turn: AiTurn; threadId: string; conversationId: string; model: AiModel; selfFingerprint: string; history: ({ role: 'user' | 'assistant'; text: string } & Partial<TurnReferences>)[]; profile: InsightReport | null; skill: RegisteredSkill | null; checkpoint: string | null }
@@ -30,7 +32,7 @@ export type NewTurn = { thinkingLevel?: ThinkingLevel; threadId: string; request
 export type ModelInput = Omit<AiModel, 'version' | 'hasCredential'>
 export type UsageRecord = { ownerKind: 'analysis' | 'turn'; ownerId: string; requestId: string; usage: AiUsage }
 type AnalysisRow = { title: string | null; elapsed_ms: bigint; prompt_snapshot: string | null; thinking_level: ThinkingLevel | null; id: bigint; conversation_id: bigint; model_id: string; model_version: bigint; created_at_ms: bigint | null; completed_at_ms: bigint | null; pinned: bigint; prompt_version: string; self_fingerprint: string; snapshot_max_id: bigint; state: AiState; total_messages: bigint; skipped_messages: bigint; event_sequence: bigint; error: string | null; checkpoint: string | null }
-type InsightSnapshotRow = { scope: string; timezone: string; source_start_time_ms: bigint | null; source_end_time_ms: bigint | null; created_at_ms: bigint; sources: string }
+type InsightSnapshotRow = { scope: string; timezone: string; source_start_time_ms: bigint | null; source_end_time_ms: bigint | null; source_text_bytes: bigint | null; created_at_ms: bigint; sources: string }
 type ReportRow = { data: string; content_revision: string | null }
 function readInsightReport(data: string, conversationId: bigint): InsightReport {
   const report = parse<InsightReport>(data)
@@ -88,12 +90,12 @@ function usage(value: AiUsage): AiUsage {
   if (value.incomplete !== undefined && typeof value.incomplete !== 'boolean') fail('INVALID_USAGE')
   return value
 }
-export function saveAiModelVersion(db: Store['writer'], input: ModelInput, encryptedKey?: string | null): AiModel {
+export function saveAiModelVersion(db: Store['writer'], input: ModelInput, encryptedKey?: string | null, source: 'settings' | 'catalog' | 'account' = 'settings'): AiModel {
   const previous = db.prepare('SELECT version,encrypted_key FROM ai_models WHERE id=?').get(input.id) as { version: bigint; encrypted_key: string | null } | undefined
   const secret = encryptedKey === undefined ? previous?.encrypted_key ?? null : encryptedKey
   const model: AiModel = { ...(input.thinkingLevels ? { thinkingLevels: input.thinkingLevels } : {}), ...(input.planAccount ? { planAccount: input.planAccount, planProvider: input.planProvider } : {}), id: input.id, label: input.label, model: input.model, baseUrl: input.baseUrl, protocol: input.protocol ?? defaultModelProtocol, contextWindow: input.contextWindow, maxTokens: input.maxTokens, ...(input.maxInputTokens !== undefined ? { maxInputTokens: input.maxInputTokens } : {}), enabled: input.enabled, version: Number(previous?.version ?? 0n) + 1, hasCredential: secret !== null }
   db.prepare('INSERT INTO ai_models(id,version,data,encrypted_key) VALUES(?,?,?,?) ON CONFLICT(id) DO UPDATE SET version=excluded.version,data=excluded.data,encrypted_key=excluded.encrypted_key').run(model.id, model.version, JSON.stringify(model), secret)
-  db.prepare('INSERT INTO ai_model_versions(model_id,version,data,encrypted_key) VALUES(?,?,?,?)').run(model.id, model.version, JSON.stringify(model), secret)
+  db.prepare('INSERT INTO ai_model_versions(model_id,version,data,encrypted_key,change_source) VALUES(?,?,?,?,?)').run(model.id, model.version, JSON.stringify(model), secret, source)
   return model
 }
 
@@ -126,15 +128,18 @@ export function createAiRepository(store: Store, write: WriterQueue) {
   function sameModelConfiguration(id: string, version: number) {
     const current = enabledModel(id)
     if (current.version === version) return true
-    if (!current.planAccount) return false
     const original = modelSecret(id, version).model
+    // 自动补全容量、原套餐重新登录后，旧任务仍使用冻结版本。
+    const manualChange = reader.prepare("SELECT 1 FROM ai_model_versions WHERE model_id=? AND version>? AND change_source='settings' LIMIT 1").get(id, version)
+    if (!manualChange) return current.planAccount === original.planAccount
+    if (!current.planAccount) return false
     // 同一套餐账号重新授权只改变可用状态；任务仍使用保存时的完整配置。
     const { thinkingLevels: _snapshotLevels, ...snapshotConfig } = original
     const { thinkingLevels: _currentLevels, ...currentConfig } = current
     return isDeepStrictEqual({ ...snapshotConfig, version: current.version, enabled: current.enabled }, currentConfig)
   }
-  function analysisRow(taskId: string): AnalysisRow {
-    const row = reader.prepare('SELECT * FROM ai_analysis_tasks WHERE id=?').get(id(taskId)) as AnalysisRow | undefined
+  function analysisRow(taskId: string) {
+    const row = reader.prepare('SELECT * FROM ai_analysis_tasks WHERE id=?').get(id(taskId)) as (AnalysisRow & { processing_snapshot: string | null }) | undefined
     if (!row) fail('INVALID_TASK', '请刷新分析任务后重试。')
     return row
   }
@@ -144,6 +149,7 @@ export function createAiRepository(store: Store, write: WriterQueue) {
     return {
       taskId: String(row.id), scope: parse<InsightScope>(saved.scope), timezone: saved.timezone, createdAtMs: Number(saved.created_at_ms),
       sourceStartTimeMs: optionalNumber(saved.source_start_time_ms), sourceEndTimeMs: optionalNumber(saved.source_end_time_ms),
+      ...(saved.source_text_bytes === null ? {} : { sourceTextBytes: Number(saved.source_text_bytes) }),
       sources: parse<StoredInsightSourceRef[]>(saved.sources),
     }
   }
@@ -367,12 +373,16 @@ export function createAiRepository(store: Store, write: WriterQueue) {
         if (db.prepare("SELECT 1 FROM ai_analysis_tasks WHERE conversation_id=? AND state IN ('queued','running')").get(id(preparation.conversationId))) fail('ANALYSIS_BUSY', '请先完成或停止当前分析。')
         const snapshot = row.insight_snapshot ? parse<Omit<StoredInsightSnapshot, 'taskId'>>(row.insight_snapshot) : null
         if (!snapshot) fail('INSIGHT_SNAPSHOT_UNAVAILABLE', '请重新准备分析。')
-        const taskId = db.prepare(`INSERT INTO ai_analysis_tasks(conversation_id,request_id,preparation_token,model_id,model_version,prompt_version,self_fingerprint,snapshot_max_id,state,total_messages,skipped_messages,created_at_ms,thinking_level,prompt_snapshot,title)
-          VALUES(?,?,?,?,?,?,?,?,'queued',?,?,?,?,?,?)`).run(id(preparation.conversationId), input.requestId, input.token, model.id, model.version, row.prompt_version, self.fingerprint,
+        const hasSettings = db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='app_settings'").get()
+        const saved = hasSettings ? db.prepare("SELECT data FROM app_settings WHERE key='processing'").get() as { data: string } | undefined : undefined
+        const processing = saved ? parse<ProcessingSettings>(saved.data) : defaultProcessing
+        validateProcessing(processing)
+        const taskId = db.prepare(`INSERT INTO ai_analysis_tasks(conversation_id,request_id,preparation_token,model_id,model_version,prompt_version,self_fingerprint,snapshot_max_id,state,total_messages,skipped_messages,created_at_ms,thinking_level,prompt_snapshot,title,processing_snapshot)
+          VALUES(?,?,?,?,?,?,?,?,'queued',?,?,?,?,?,?,?)`).run(id(preparation.conversationId), input.requestId, input.token, model.id, model.version, row.prompt_version, self.fingerprint,
           BigInt(preparation.snapshotMaxId), preparation.analyzableMessages, preparation.totalMessages - preparation.analyzableMessages,
-          now, preparation.thinkingLevel ?? null, JSON.stringify(readPromptValues(db)), defaultInsightTitle).lastInsertRowid
-        db.prepare('INSERT INTO ai_insight_snapshots(task_id,scope,timezone,created_at_ms,source_start_time_ms,source_end_time_ms,sources) VALUES(?,?,?,?,?,?,?)')
-          .run(taskId, JSON.stringify(snapshot.scope), snapshot.timezone, snapshot.createdAtMs, snapshot.sourceStartTimeMs, snapshot.sourceEndTimeMs, JSON.stringify(snapshot.sources))
+          now, preparation.thinkingLevel ?? null, JSON.stringify(readPromptValues(db)), defaultInsightTitle, JSON.stringify(processing)).lastInsertRowid
+        db.prepare('INSERT INTO ai_insight_snapshots(task_id,scope,timezone,created_at_ms,source_start_time_ms,source_end_time_ms,sources,source_text_bytes) VALUES(?,?,?,?,?,?,?,?)')
+          .run(taskId, JSON.stringify(snapshot.scope), snapshot.timezone, snapshot.createdAtMs, snapshot.sourceStartTimeMs, snapshot.sourceEndTimeMs, JSON.stringify(snapshot.sources), snapshot.sourceTextBytes ?? null)
         db.prepare('UPDATE ai_preparations SET insight_snapshot=NULL WHERE token=?').run(input.token)
         return String(taskId)
       })())
@@ -449,6 +459,7 @@ export function createAiRepository(store: Store, write: WriterQueue) {
       const model = modelSecret(row.model_id, Number(row.model_version)).model
       const { sources, ...snapshot } = insightSnapshot(row)
       return {
+        processing: row.processing_snapshot ? parse<ProcessingSettings>(row.processing_snapshot) : undefined,
         systemPrompts: row.prompt_snapshot ? parse<PromptValues>(row.prompt_snapshot) : undefined,
         task: taskView(row), model, checkpoint: row.checkpoint,
         snapshot: { ...snapshot, sources: sources.map(({ messageId, revision }) => ({ messageId, revision })) },
@@ -474,7 +485,7 @@ export function createAiRepository(store: Store, write: WriterQueue) {
       })
       return repository.getAnalysis(taskId)
     },
-    async saveInsightCheckpoint(taskId: string, checkpoint: string, completedMessageIds: readonly string[], elapsedMs?: number): Promise<AnalysisTask> {
+    async saveInsightCheckpoint(taskId: string, checkpoint: string, completedMessageIds: readonly string[], elapsedMs?: number, receipt?: Pick<UsageRecord, 'requestId' | 'usage'>): Promise<AnalysisTask> {
       if (!text(checkpoint, 16 * 1024 * 1024) || !Array.isArray(completedMessageIds) || completedMessageIds.some(messageId => !localId(messageId)) ||
         (elapsedMs !== undefined && (!Number.isSafeInteger(elapsedMs) || elapsedMs < 0))) fail('INVALID_INSIGHT_CHECKPOINT', '请继续分析。')
       const coverage = new Set(completedMessageIds)
@@ -491,7 +502,8 @@ export function createAiRepository(store: Store, write: WriterQueue) {
         const added = completedMessageIds.filter(messageId => !previous.has(messageId))
         if (added.length) checkedInsightSources(row, snapshot, added)
         const elapsed = elapsedMs ?? row.elapsed_ms
-        if (!added.length && checkpoint === row.checkpoint && BigInt(elapsed) === row.elapsed_ms) return
+        if (receipt) insertUsage({ ownerKind: 'analysis', ownerId: taskId, requestId: receipt.requestId, usage: receipt.usage })
+        if (!receipt && !added.length && checkpoint === row.checkpoint && BigInt(elapsed) === row.elapsed_ms) return
         const cover = db.prepare('INSERT INTO ai_analysis_coverage(task_id,message_id) VALUES(?,?)')
         for (const messageId of added) cover.run(row.id, id(messageId))
         db.prepare('UPDATE ai_analysis_tasks SET checkpoint=?,elapsed_ms=?,event_sequence=event_sequence+1 WHERE id=?').run(checkpoint, elapsed, row.id)

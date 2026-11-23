@@ -1,3 +1,4 @@
+import { readTurns } from './pi-insight-model.mjs'
 export const syntheticInsightConversation = '合成会话 · 建议和倾听'
 export const syntheticInsightReportTitle = '合成报告 · 建议与倾听'
 export const syntheticInsightMessages = [
@@ -32,9 +33,13 @@ export function seedSyntheticInsight(writer) {
   return true
 }
 
-export function insightModelPrompt(input) {
-  const content = input.messages.at(-1).content
-  return JSON.parse(typeof content === 'string' ? content : content.map(part => part.text ?? '').join(''))
+export function mockReadAction(input) {
+  const turns = readTurns(input)
+  const first = turns.find(turn => turn.result.messages?.length)?.result
+  if (!first) return { action: 'open', read: {}, messages: [] }
+  const messages = first.messages
+  if (!turns.some(turn => turn.args?.messageId === '3')) return { action: 'check-source', read: { messageId: '3' }, messages }
+  return { action: 'report', messages }
 }
 
 export function simpleInsightReply(prompt) {
@@ -46,45 +51,18 @@ export function simpleInsightReply(prompt) {
   throw new Error('Unexpected synthetic insight stage')
 }
 
-export function insightModelReply(prompt) {
-  if (prompt.stage === 'reading') {
-    return {
-      observations: [
-        { text: '你先给了三个办法。', sourceIds: ['1'] },
-        { text: 'ta 想先说完，稍后主动求助。', sourceIds: ['2', '3'] },
-      ],
-      openThreads: [],
-      candidates: [{ observation: '直接给建议可能打断 ta 的表达。', supportingIds: ['1'] }],
-    }
+export function suggestionReport() {
+  return {
+    aboutYou: [{ content: [{ text: '你一开始就给了三个办法', citationId: 'suggestion-shift' }] }],
+    relationship: [{ content: [{ text: 'ta 也会主动问你有没有主意。', citationId: 'asked-later' }] }],
+    citations: [
+      { id: 'suggestion-shift', fragments: [{ messageIds: ['1'] }, { messageIds: ['3'] }] },
+      { id: 'asked-later', fragments: [{ messageIds: ['3'] }] },
+    ],
+    limitations: ['你可以先问 ta 想听建议，还是想接着说。'],
+    judgments: [{
+      dimension: 'TF', direction: null, text: '不同阶段对建议的需要不同。',
+      supportingIds: ['1'], counterexampleIds: ['3'], alternativeExplanations: ['有时 ta 只想先说完。'], limitations: ['仅限该次聊天。'],
+    }],
   }
-  if (prompt.stage === 'checking') {
-    const checkId = prompt.check.id
-    if (!prompt.evidence.some(message => message.id === '3')) {
-      return {
-        action: 'read', checkId, messageIds: ['3'], purpose: '核查 ta 是否主动询问建议。',
-        evidenceNotes: [{ sourceId: '1', quote: '我先给你三个办法。', text: '你先给出了几个办法。' }],
-      }
-    }
-    return {
-      action: 'finish', checkId, revisedObservation: '直接给建议是否合适取决于 ta 当时的需要。',
-      supportingIds: ['1'], counterexampleIds: ['3'], alternativeExplanations: ['两个时刻的目标不同。'],
-      limitations: ['这里只能看到两次具体互动。'],
-    }
-  }
-  if (prompt.stage === 'writing') {
-    return {
-      aboutYou: [{ content: [{ text: '你一开始就给了三个办法', citationId: 'suggestion-shift' }] }],
-      relationship: [{ content: [{ text: 'ta 也会主动问你有没有主意。', citationId: 'asked-later' }] }],
-      citations: [
-        { id: 'suggestion-shift', fragments: [{ messageIds: ['1'] }, { messageIds: ['3'] }] },
-        { id: 'asked-later', fragments: [{ messageIds: ['3'] }] },
-      ],
-      limitations: ['你可以先问 ta 想听建议，还是想接着说。'],
-      judgments: [{
-        dimension: 'TF', direction: null, text: '不同阶段对建议的需要不同。',
-        supportingIds: ['1'], counterexampleIds: ['3'], alternativeExplanations: ['有时 ta 只想先说完。'], limitations: ['仅限该次聊天。'],
-      }],
-    }
-  }
-  throw new Error('Unexpected synthetic insight stage')
 }

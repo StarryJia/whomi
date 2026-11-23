@@ -797,7 +797,7 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
     })
   }
   const coverageDescription = completed !== undefined && total !== undefined
-    ? `${statusTitle}，已处理 ${formatInsightNumber(completed)} / ${formatInsightNumber(total)} 条`
+    ? `${statusTitle}，已提交分析 ${formatInsightNumber(completed)} / ${formatInsightNumber(total)} 条`
     : analysisState === 'idle' ? undefined : statusTitle
   const runDuration = useInsightRunDuration(analysisOpen ? activeTask : undefined)
   const failure = analysisState === 'failed' || analysisState === 'interrupted'
@@ -876,7 +876,7 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
           <div className="analysis-meter">
             <strong>消息处理进度</strong>
             <div className="analysis-meter-values"><span>{completed !== undefined && total !== undefined
-              ? `已处理 ${formatInsightNumber(completed)} / ${formatInsightNumber(total)} 条` : '—'}</span>
+              ? `已提交分析 ${formatInsightNumber(completed)} / ${formatInsightNumber(total)} 条` : '—'}</span>
               {percentText && <strong>{percentText}</strong>}</div>
             <div role="progressbar" aria-label="消息处理进度" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percentage}
               className="analysis-track"><span style={{ width: `${percentage ?? 0}%` }} /></div>

@@ -1,0 +1,117 @@
+{
+  "count": 8,
+  "startedAt": 1795446758464,
+  "completedAt": 1795446761341,
+  "task": {
+    "id": "1",
+    "conversationId": "1",
+    "conversationTitle": "合成会话 · 聚会分工",
+    "title": "会话洞察",
+    "scope": {
+      "kind": "dates",
+      "timezone": "Asia/Shanghai",
+      "startDate": "2026-10-07",
+      "endDate": "2026-10-07"
+    },
+    "timezone": "Asia/Shanghai",
+    "insightSelfFingerprint": "152fa303a7209cf95521016d2fe34e21185afe748b7c1218649fa8513b33d6a8",
+    "elapsedMs": 2071,
+    "insightContentRevision": "c2575deee657d93e0548654476e3dfec051aa887c7e249a6923cf51da3890b71",
+    "modelId": "e4785902-e55a-467d-809e-d435ea97955a",
+    "modelIdentity": {
+      "id": "e4785902-e55a-467d-809e-d435ea97955a",
+      "version": 1,
+      "label": "聚会模拟模型",
+      "model": "example"
+    },
+    "createdAtMs": 1795446758482,
+    "completedAtMs": 1795446760576,
+    "sourceStartTimeMs": 1791324010000,
+    "sourceEndTimeMs": 1791324080000,
+    "pinned": false,
+    "state": "completed",
+    "analyzedMessages": 8,
+    "totalMessages": 8,
+    "skippedMessages": 0,
+    "usage": {
+      "inputTokens": 5167,
+      "totalInputTokens": 5167,
+      "outputTokens": 140,
+      "durationMs": 274,
+      "outputTokensPerSecond": 510.94890510948903,
+      "startedAt": 1795446760184,
+      "completedAt": 1795446760545
+    },
+    "valid": true,
+    "eventSequence": 17,
+    "report": {
+      "format": "conversation-insights-v1",
+      "aboutYou": [
+        {
+          "content": [
+            {
+              "text": "你说这次张罗聚会让你累了",
+              "citationId": "early"
+            },
+            {
+              "text": "。这句话能说明你当时的感受。"
+            }
+          ]
+        }
+      ],
+      "relationship": [
+        {
+          "content": [
+            {
+              "text": "ta 回忆上次由自己联系场地和约人",
+              "citationId": "later"
+            },
+            {
+              "text": "。可以把两次聚会分开讨论，再约定下次谁来联系。"
+            }
+          ]
+        }
+      ],
+      "citations": [
+        {
+          "id": "early",
+          "conversationId": "1",
+          "fragments": [
+            {
+              "sources": [
+                {
+                  "messageId": "2",
+                  "revision": "6e5daa54467d7af72c51ac62db5f05beae42b77652cafa4bfcd1a7b8098b0ffb"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "later",
+          "conversationId": "1",
+          "fragments": [
+            {
+              "sources": [
+                {
+                  "messageId": "6",
+                  "revision": "4053710790e42726dbd7445c9608d32827dc0cddc2cecc142438865256492d03"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "limitations": [
+        "两次聚会不足以判断更长时间里的分工。"
+      ],
+      "judgments": []
+    }
+  },
+  "modelRequests": 4,
+  "firstReadRequestMs": 2003,
+  "elapsedMs": 2877,
+  "messagesPerActiveSecond": 3.86286817962337,
+  "modelOutputTokensPerSecond": 510.94890510948903,
+  "fixtureUsage": "Synthetic service, deterministic receipts"
+}

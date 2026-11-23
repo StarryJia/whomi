@@ -10,6 +10,8 @@ import type { AiModel } from '../../src/shared/ai-contract'
 import { generateInsight } from '../../electron/main/insight-generation'
 import { defaultInsightRunLimits } from '../../electron/main/insight-policy'
 import { defaultInsightPrompts } from '../../electron/data/ai/insight-prompts'
+import { defaultProcessing } from '../../src/shared/settings-contract'
+import type { InsightRuntimeEvent } from '../../electron/agent/protocol'
 
 describe('Pi runtime over a controlled OpenAI compatible service', () => {
   beforeAll(async () => { await import('@earendil-works/pi-coding-agent') }, 30000)
@@ -47,6 +49,67 @@ describe('Pi runtime over a controlled OpenAI compatible service', () => {
   const options = () => ({ signal: new AbortController().signal, onText: () => {} })
   const input = (model: AiModel, prompt = '示例提问') => ({ key: 'example-thread', model, systemPrompt: '仅依据本轮许可材料回答。', prompt })
 
+  it('opens the first user-message checkpoint in a new runtime when the first model request gets no answer', async () => {
+    const runInput = { ...input(model), purpose: 'insight' as const, insightSession: { processing: defaultProcessing } }
+    const events: InsightRuntimeEvent[] = []
+    const callbacks = { read: vi.fn(), record: async (event: InsightRuntimeEvent) => { events.push(event) } }
+    const success = answer
+    answer = response => { response.writeHead(503); response.end() }
+    await expect(new PiRuntime(directory).run(runInput, { ...options(), insight: callbacks })).rejects.toMatchObject({ code: 'MODEL_REQUEST_FAILED' })
+    const checkpoint = events.find(e => e.type === 'checkpoint')?.checkpoint
+    expect(checkpoint).toBeTruthy()
+    expect(existsSync(JSON.parse(checkpoint!).sessionFile)).toBe(true)
+    expect(events.filter(e => e.type === 'request')).toMatchObject([{ success: false, spans: [], usage: { incomplete: true } }])
+    answer = success
+    const resumed = await new PiRuntime(directory).run({ ...runInput, checkpoint, prompt: '继续同一项洞察。' }, { ...options(), insight: callbacks })
+    expect(JSON.parse(resumed.checkpoint).sessionFile).toBe(JSON.parse(checkpoint!).sessionFile)
+    expect(requests[1].messages.filter(message => message.role === 'user')).toMatchObject([
+      { content: [{ text: '示例提问' }] }, { content: [{ text: '继续同一项洞察。' }] },
+    ])
+    expect(callbacks.read).not.toHaveBeenCalled()
+  }, 20000)
+
+  it('resumes the same Pi tool result after pausing before inference and confirms it only after a successful request', async () => {
+    const events: InsightRuntimeEvent[] = []
+    const span = { messageId: 'm3', start: 0, end: 3, length: 3 }
+    const controller = new AbortController()
+    const runInput = { ...input(model), purpose: 'insight' as const, insightSession: { processing: defaultProcessing } }
+    const read = vi.fn(async () => ({ page: { status: 'ok' as const, nextCursor: null, messages: [{ id: 'm3', text: '周五见', sentAtMs: 0, senderName: '本人', isSelf: true, replyToMessageId: null }] }, spans: [span] }))
+    const normalAnswer = answer
+    answer = response => {
+      if (requests.length === 1) {
+        response.writeHead(200, { 'Content-Type': 'text/event-stream' })
+        const delta = { role: 'assistant', content: '回查邮箱 pi-note@example.org', tool_calls: [
+          { index: 0, id: 'call1', type: 'function', function: { name: 'read_messages', arguments: '{}' } },
+        ] }
+        response.end('data: ' + JSON.stringify({ choices: [{ index: 0, delta, finish_reason: 'tool_calls' }], usage: { prompt_tokens: 11, completion_tokens: 4 } }) + '\n\ndata: [DONE]\n\n')
+      } else if (requests.length === 2) controller.abort()
+      else normalAnswer(response)
+    }
+    const callbacks = { read, record: async (event: InsightRuntimeEvent) => { events.push(event) } }
+    const runtime = new PiRuntime(directory)
+    await expect(runtime.run(runInput, { ...options(), signal: controller.signal, insight: callbacks })).rejects.toMatchObject({ name: 'AbortError' })
+    expect(events.filter(e => e.type === 'request' && e.success).flatMap(e => e.type === 'request' ? e.spans : [])).toEqual([])
+    const checkpoint = events.filter(e => e.type === 'checkpoint').at(-1)?.checkpoint
+    expect(checkpoint).toBeTruthy()
+    const result = await runtime.run({ ...runInput, checkpoint }, { ...options(), insight: callbacks })
+    expect(result.text).toBe('已收到')
+    expect(read).toHaveBeenCalledTimes(1)
+    expect(requests).toHaveLength(3)
+    expect(requests[0].tools).toMatchObject([{ function: { name: 'read_messages' } }])
+    for (const req of requests.slice(1)) {
+      expect(JSON.stringify(req)).toContain('周五见')
+      expect(JSON.stringify(req)).toContain('[邮箱]')
+      expect(JSON.stringify(req)).not.toContain('pi-note@example.org')
+    }
+    expect(events.filter(e => e.type === 'request')).toMatchObject([
+      { success: true, spans: [], usage: { inputTokens: 11, outputTokens: 4 } },
+      { success: false, spans: [], usage: { incomplete: true } },
+      { success: true, spans: [span], usage: { inputTokens: 12, outputTokens: 3 } },
+    ])
+    expect(JSON.parse(result.checkpoint).sessionFile).toBe(JSON.parse(checkpoint!).sessionFile)
+  }, 30000)
+
   it('recognizes an upstream gateway timeout for insights while keeping normal dialogue errors unchanged', async () => {
     answer = response => {
       response.writeHead(504, { 'Content-Type': 'application/json' })
@@ -57,6 +120,44 @@ describe('Pi runtime over a controlled OpenAI compatible service', () => {
       await expect(result).rejects.toMatchObject({ code: purpose ? 'MODEL_TIMEOUT' : 'MODEL_REQUEST_FAILED' })
     }
   }, 20000)
+
+  it('counts native compaction requests and protects the model-written summary before continuing with the read result', async () => {
+    const events: InsightRuntimeEvent[] = []
+    const longMessage = '约在周五。'.repeat(1800)
+    const span = { messageId: 'm1', start: 0, end: longMessage.length, length: longMessage.length }
+    let ordinaryRequests = 0
+    answer = response => {
+      response.writeHead(200, { 'Content-Type': 'text/event-stream' })
+      const compacting = JSON.stringify(requests.at(-1)?.messages[0]).includes('context summarization assistant')
+      if (!compacting) ordinaryRequests++
+      const tool = !compacting && ordinaryRequests === 1
+      const delta = tool ? { role: 'assistant', content: '先查看发言。', tool_calls: [{ index: 0, id: 'call-a', type: 'function', function: { name: 'read_messages', arguments: '{}' } }] }
+        : { role: 'assistant', content: compacting ? '压缩笔记：示例联系值 summary@example.org。' : '首次报告' }
+      response.end('data: ' + JSON.stringify({ choices: [{ index: 0, delta, finish_reason: tool ? 'tool_calls' : 'stop' }],
+        usage: { prompt_tokens: tool ? 5800 : 20, completion_tokens: 12 } }) + '\n\ndata: [DONE]\n\n')
+    }
+    const privateFolder = 'synthetic-personal-insight-folder'
+    const result = await new PiRuntime(join(directory, privateFolder)).run({ ...input({ ...model, contextWindow: 8000 }), insightSession: { processing: defaultProcessing } }, {
+      ...options(), insight: {
+        read: async () => ({ page: { status: 'ok', messages: [{ id: 'm1', isSelf: true, senderName: '本人', text: longMessage, replyToMessageId: null, sentAtMs: 0 }], nextCursor: null }, spans: [span] }),
+        record: async event => { events.push(event) },
+      },
+    })
+    expect(result.text).toBe('首次报告')
+    const receipts = events.filter(e => e.type === 'request')
+    expect(receipts.filter(e => e.kind === 'compaction').length).toBeGreaterThan(0)
+    expect(receipts.length).toBe(requests.length)
+    expect(receipts.every(e => e.success && e.usage.outputTokens === 12)).toBe(true)
+    for (const request of requests) {
+      expect(JSON.stringify(request.messages[0])).toContain('仅依据本轮许可材料回答')
+      expect(JSON.stringify(request)).not.toContain(privateFolder)
+      expect(JSON.stringify(request)).not.toContain('<cwd>')
+    }
+    expect(receipts.at(-1)?.spans).toEqual([span])
+    expect(JSON.stringify(requests.at(-1))).toContain('压缩笔记')
+    expect(JSON.stringify(requests.at(-1))).toContain('仅依据本轮许可材料回答')
+    expect(JSON.stringify(requests.at(-1))).not.toContain('summary@example.org')
+  }, 30000)
 
   it('keeps an ordinary Google validation error out of the timeout retry', async () => {
     answer = response => {

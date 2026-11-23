@@ -78,7 +78,7 @@ function TaskRow({ task, onOpen, onStop, onContinue }: {
     : task.state === 'stopped' ? '已暂停' : '生成中'
   const failed = status === '生成失败'
   const elapsed = useInsightRunDuration(task)
-  const count = formatInsightNumber(task.analyzedMessages) + ' / ' + formatInsightNumber(task.totalMessages) + ' 条'
+  const count = '已提交分析 ' + formatInsightNumber(task.analyzedMessages) + ' / ' + formatInsightNumber(task.totalMessages) + ' 条'
   const number = insightTaskNumber(task)
   const start = status === '生成中' ? onStop : task.valid ? onContinue : undefined
   async function run() {

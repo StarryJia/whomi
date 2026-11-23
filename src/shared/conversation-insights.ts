@@ -55,6 +55,7 @@ export type InsightSourceMessage = {
 
 export type InsightSnapshot = {
   taskId: string
+  sourceTextBytes?: number
   scope: InsightScope
   timezone: string
   sourceStartTimeMs: number | null

@@ -3,7 +3,8 @@ import { mkdir, mkdtemp, rm, writeFile, readFile } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import { tmpdir } from 'node:os'
 import { basename, dirname, join, resolve } from 'node:path'
-import { insightModelPrompt, insightModelReply, syntheticInsightConversation, syntheticInsightScope } from './fixtures/insight-model.mjs'
+import { mockReadAction, suggestionReport, syntheticInsightConversation, syntheticInsightScope } from './fixtures/insight-model.mjs'
+import { completeModel } from './fixtures/pi-insight-model.mjs'
 
 const designStates = {
   'startup-current-conversation-v2': ['04-startup-dates'],
@@ -61,12 +62,6 @@ async function failNext(app, method, fragmentIndex, channel = 'whomi:ai-call', h
   }, { method, fragmentIndex, channel, hold })
 }
 
-function completion(response, result) {
-  response.writeHead(200, { 'Content-Type': 'text/event-stream' })
-  response.write(`data: ${JSON.stringify({ id: 'synthetic-ui', choices: [{ index: 0, delta: { content: JSON.stringify(result) }, finish_reason: null }] })}\n\n`)
-  response.end(`data: ${JSON.stringify({ id: 'synthetic-ui', choices: [{ index: 0, delta: {}, finish_reason: 'stop' }], usage: { prompt_tokens: 20, completion_tokens: 10, total_tokens: 30 } })}\n\ndata: [DONE]\n\n`)
-}
-
 async function harness({ model = true, self = true, hold = true, reject = true, longReport = false, extraConversations = 0, distinctOverviewJudgments = false, conversationTitle = syntheticInsightConversation } = {}) {
   const evidence = test.info().outputPath('screenshots')
   const directory = resolve(await mkdtemp(join(tmpdir(), 'whomi-runtime-insight-ui-')))
@@ -78,33 +73,28 @@ async function harness({ model = true, self = true, hold = true, reject = true, 
     request.on('data', chunk => { body += chunk })
     request.on('end', () => {
       try {
-        const prompt = insightModelPrompt(JSON.parse(body))
+        const prompt = mockReadAction(JSON.parse(body))
         requests.push(prompt)
-        if (prompt.stage === 'checking' && holdCheck) {
+        if (prompt.action === 'report' && holdCheck) {
           holdCheck = false
           response.writeHead(200, { 'Content-Type': 'text/event-stream' }); response.flushHeaders(); return
         }
-        if (prompt.stage === 'writing' && rejectWriting) {
+        if (prompt.action === 'report' && rejectWriting) {
           rejectWriting = false
           response.writeHead(500, { 'Content-Type': 'application/json' })
           response.end(JSON.stringify({ error: { message: 'Synthetic UI retry fixture', type: 'server_error' } })); return
         }
-        const result = insightModelReply(prompt)
-        if (distinctOverviewJudgments && prompt.stage === 'reading' && prompt.messages?.some(message => message.id === '4')) {
-          result.candidates[0].supportingIds.push('4')
-        }
-        if (distinctOverviewJudgments && prompt.stage === 'checking' && result.action === 'finish' && prompt.check.supportingIds.includes('4')) {
-          result.supportingIds.push('4')
-        }
-        if (distinctOverviewJudgments && prompt.stage === 'writing' && prompt.checks.some(check => check.finding?.supportingIds.includes('4'))) {
+        if (prompt.read) return completeModel(response, { read: prompt.read })
+        const result = suggestionReport()
+        if (distinctOverviewJudgments && prompt.messages.some(message => message.id === '4')) {
           result.judgments.push({ dimension: 'JP', direction: 'J', text: '你提前定好了见面时间。', supportingIds: ['4'],
             counterexampleIds: [], alternativeExplanations: [], limitations: ['仅限这次见面。'] })
         }
-        if (longReport && prompt.stage === 'writing') {
+        if (longReport) {
           result.aboutYou.push(...Array.from({ length: 10 }, (_, index) => ({ content: [{ text: `合成阅读段落 ${index + 1}：你先给出三个办法，ta 表示想先说完，之后又主动询问主意。这些片段显示不同时间对建议的需要有所变化；仅凭本次聊天，不能把这种表达理解为固定的性格。` }] })))
           result.citations[0].fragments[0].messageIds = ['1', '3']
         }
-        completion(response, result)
+        completeModel(response, { text: JSON.stringify(result) })
       } catch (error) { fixtureErrors.push(String(error)); response.end() }
     })
   })
@@ -119,6 +109,7 @@ async function harness({ model = true, self = true, hold = true, reject = true, 
   try {
   await mkdir(evidence, { recursive: true })
   await writeFile(join(directory, 'insight-model.mjs'), await readFile(new URL('./fixtures/insight-model.mjs', import.meta.url), 'utf8'))
+  await writeFile(join(directory, 'pi-insight-model.mjs'), await readFile(new URL('./fixtures/pi-insight-model.mjs', import.meta.url), 'utf8'))
   await writeFile(join(directory, 'probe.cjs'), `module.exports = writer => async method => {
     if (method !== 'probe.seedInsight') throw Error('Unsupported synthetic UI probe')
     const { seedSyntheticInsight } = await import('./insight-model.mjs')
@@ -204,7 +195,7 @@ test('task row opens its progress from mouse and keyboard while actions stay on 
     await page.getByLabel('开始日期', { exact: true }).fill(syntheticInsightScope.startDate)
     await page.getByLabel('结束日期', { exact: true }).fill(syntheticInsightScope.endDate)
     await btn('开始洞察').click()
-    await expect.poll(() => h.requests.map(request => request.stage), { timeout: 20_000 }).toEqual(['reading', 'checking'])
+    await expect.poll(() => h.requests.map(request => request.action), { timeout: 20_000 }).toEqual(['open', 'check-source', 'report'])
     await showList()
     const id = await task.getAttribute('data-insight-task')
     const title = task.getByRole('button', { name: new RegExp('会话洞察') })
@@ -291,7 +282,7 @@ test('real Electron insight UI validates scope, pauses and retries, reads exact 
     await expect(btn('开始洞察')).toBeEnabled()
     await shot('04-startup-dates')
     await btn('开始洞察').click()
-    await expect.poll(() => h.requests.map(request => request.stage), { timeout: 20_000 }).toEqual(['reading', 'checking'])
+    await expect.poll(() => h.requests.map(request => request.action), { timeout: 20_000 }).toEqual(['open', 'check-source', 'report'])
     await expect(btn('暂停生成')).toBeVisible()
     const runtimeStats = page.locator('.insight-task-runtime dd')
     const elapsed = runtimeStats.first()
@@ -511,7 +502,7 @@ test('real Electron insight UI validates scope, pauses and retries, reads exact 
     expect(await page.evaluate(async () => (await window.whomi.ai.previewInsightScope({ conversationId: '1', scope: { kind: 'all' } })).totalMessages)).toBe(284)
     expect(h.errors).toEqual([]); expect(h.fixtureErrors).toEqual([])
     expect(h.requests.flatMap(request => request.messages ?? []).every(message => ['1', '2', '3'].includes(message.id))).toBe(true)
-    await writeFile(join(evidence, 'ui-results.json'), JSON.stringify({ pageErrors: h.errors, requests: h.requests.map(request => request.stage), pagination: { initial: initialIds.length, beforeLater, beforeShift, afterShift }, width: 960, height: 640, sidebar: 240 }, null, 2))
+    await writeFile(join(evidence, 'ui-results.json'), JSON.stringify({ pageErrors: h.errors, requests: h.requests.map(request => request.action), pagination: { initial: initialIds.length, beforeLater, beforeShift, afterShift }, width: 960, height: 640, sidebar: 240 }, null, 2))
   } catch (error) {
     await shot('failure-ui')
     await writeFile(join(evidence, 'failure-ui.txt'), await page.locator('body').innerText())
@@ -787,7 +778,7 @@ test('real Electron retains elapsed insight time across abrupt exit', async ({},
       const prepared = await window.whomi.ai.prepareAnalysis({ conversationId: '1', modelId: model.id, scope })
       return window.whomi.ai.confirmAnalysis({ token: prepared.token, requestId: 'synthetic-crash-running-insight' })
     }, syntheticInsightScope)
-    await expect.poll(() => h.requests.map(request => request.stage), { timeout: 20_000 }).toEqual(['reading', 'checking'])
+    await expect.poll(() => h.requests.map(request => request.action), { timeout: 20_000 }).toEqual(['open', 'check-source', 'report'])
     const readTask = target => target.evaluate(id => window.whomi.ai.getAnalysis(id), task.id)
     const beforeWait = await readTask(page)
     await btn('对话洞察').click()

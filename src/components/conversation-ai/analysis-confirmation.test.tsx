@@ -53,7 +53,7 @@ describe('会话洞察确认与任务用量', () => {
     expect(screen.getByRole('status')).toHaveTextContent(pending)
     expect(screen.getByRole('button', { name: action })).toBeDisabled()
     expect(screen.getByRole('button', { name: '再次洞察' })).toBeDisabled()
-    expect(screen.getByText('已处理 8 / 24 条')).toBeVisible()
+    expect(screen.getByText('已提交分析 8 / 24 条')).toBeVisible()
 
     await act(async () => rejectResume(new Error('请重试。')))
     expect(screen.getByRole('status')).toHaveTextContent(previous)
@@ -144,7 +144,7 @@ describe('会话洞察确认与任务用量', () => {
 
     if (state === 'failed' || state === 'stopped') {
       await user.click(screen.getByRole('button', { name: '返回上次任务' }))
-      expect(screen.getByText('已处理 8 / 24 条')).toBeVisible()
+      expect(screen.getByText('已提交分析 8 / 24 条')).toBeVisible()
       expect(screen.getByRole('button', { name: state === 'stopped' ? '继续洞察' : '重试' })).toBeEnabled()
       expect(adapter.continueAnalysis).not.toHaveBeenCalled()
     }
@@ -166,7 +166,7 @@ describe('会话洞察确认与任务用量', () => {
     await user.click(screen.getByRole('button', { name: '会话洞察' }))
     await user.click(screen.getByRole('button', { name: '继续洞察' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('请恢复原消息处理设置或重新生成。')
-    expect(screen.getByText('已处理 8 / 24 条')).toBeVisible()
+    expect(screen.getByText('已提交分析 8 / 24 条')).toBeVisible()
     expect(screen.queryByRole('button', { name: '继续洞察' })).toBeNull()
     await user.click(screen.getByRole('button', { name: '再次洞察' }))
     expect(screen.getByRole('button', { name: '开始洞察' })).toBeEnabled()
@@ -276,7 +276,7 @@ it('对话洞察列表只订阅选中的任务，新建洞察独立启动', asyn
       {({ analysisControl }) => analysisControl}</ConversationWorkspace>
   }
   const { rerender } = render(workspace('7'))
-  expect(await screen.findByText('已处理 9 / 16 条')).toBeVisible()
+  expect(await screen.findByText('已提交分析 9 / 16 条')).toBeVisible()
   expect(adapter.watchAnalysis).toHaveBeenCalledWith('c', expect.any(Function), expect.any(AbortSignal), '7')
   expect(adapter.continueAnalysis).not.toHaveBeenCalled()
   rerender(workspace())

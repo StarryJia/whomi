@@ -2,7 +2,7 @@ import { isDiagnosticCode } from './app-error-logs'
 import { importCodes } from './import-diagnostics'
 
 export const stageLabels: Readonly<Record<string, string>> = {
-  step: '阶段', start: '开始', finish: '结束', resume: '恢复', bind: '关联后台任务', gap: '记录不完整',
+  estimate: '工作量估算', step: '阶段', start: '开始', finish: '结束', resume: '恢复', bind: '关联后台任务', gap: '记录不完整',
   startup: '启动', databaseOpen: '打开数据库', windowReady: '窗口就绪', workerExit: '后台退出',
   databaseUpgrade: '升级资料库',
   read: '读取', locate: '定位', display: '展示', write: '写入', refresh: '刷新', settingsSave: '保存设置',
@@ -15,6 +15,10 @@ export const stageLabels: Readonly<Record<string, string>> = {
 }
 
 export const fieldLabels: Readonly<Record<string, string>> = {
+  contextWindow: '上下文容量', outputLimit: '单次输出上限', inputLimit: '单次输入上限',
+  estimatedContext: '上下文容量为估算', estimatedOutput: '输出长度为估算', requestLimit: '请求保护次数', inputProtection: '输入保护词元', outputProtection: '输出保护词元',
+  before: '向前条数', after: '向后条数', nextCursor: '后续游标', fromOffset: '起始偏移', endOffset: '结束偏移',
+  targetOrdinal: '定位序号', action: '取文方式', kind: '请求类型', readStatus: '读取结果', repeated: '重复读取数',
   fromVersion: '原资料库版本', toVersion: '目标资料库版本',
   count: '数量', hasMore: '还有下一页', found: '找到目标', fileCount: '文件数', bytes: '字节数', totalBytes: '总字节数',
   category: '设置类别', sourceLocation: '来源目录', targetLocation: '目标目录', code: '错误码', reason: '原因',
@@ -28,6 +32,8 @@ export const fieldLabels: Readonly<Record<string, string>> = {
   phase: '阶段', merged: '合并进度次数', fromCount: '起始计数', fromAt: '起始时间',
 }
 const enumValues: Record<string, readonly string[]> = {
+  action: ['first','locate','continue'], kind: ['inference','compaction'],
+  readStatus: ['ok','out_of_scope','source_changed','invalid_request','insufficient_capacity'],
   source: ['picker','drop'], sourceKind: ['file','directory','mixed'], result: ['requested','success','failed','unknown','cancelled','interrupted'],
   sourceLocation: ['original','new','install'], targetLocation: ['original','new','install'],
   provider: ['openai-codex','grok-cli','copilot','openai-completions','openai-responses','anthropic-messages','google-generative-ai'],
@@ -35,7 +41,7 @@ const enumValues: Record<string, readonly string[]> = {
   phase: ['prepare','reading','checking','writing','saving','generate','source','scan','parse','save','confirm','statistics','cancel'],
   category: ['prompt','processing','debug','model','provider','account'],
 }
-const booleans = new Set(['hasMore','found','customService'])
+const booleans = new Set(['hasMore','found','customService','estimatedContext','estimatedOutput'])
 const extraCodes = new Set([
   'OPERATION_FAILED', 'WORKER_EXIT', 'SETTINGS_SAVE_FAILED', 'CONVERSATION_READ_FAILED', 'CONVERSATION_WRITE_FAILED',
   'UNKNOWN_SENDER', 'UNKNOWN_TIME', 'UNKNOWN_TYPE', 'UPSTREAM_SKIPPED_RECORDS', 'OWNER_CONFLICT',
@@ -48,6 +54,8 @@ export function safeFields(input?: Record<string, unknown>): SafeFields {
     if (value == null || !Object.hasOwn(fieldLabels, key)) continue
     if (key === 'code' || key === 'reason') {
       fields[key] = typeof value === 'string' && (isDiagnosticCode(value) || importCodes.has(value) || extraCodes.has(value)) ? value : 'OPERATION_FAILED'
+    } else if (key === 'nextCursor') {
+      if (typeof value === 'string' && value.length <= 100 && /^\d+(?:\.\d+){3}$/.test(value)) fields[key] = value
     } else if (key === 'ordinals' && Array.isArray(value)) {
       fields[key] = value.filter(n => Number.isSafeInteger(n) && n >= 0).slice(0, 3)
     } else if (Object.hasOwn(enumValues, key)) {

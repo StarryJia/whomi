@@ -99,7 +99,7 @@ export function createSettingsRepository(store: Store, write: WriterQueue) {
         db.prepare('INSERT INTO settings_providers(id,data,encrypted_key) VALUES(?,?,NULL) ON CONFLICT(id) DO UPDATE SET data=excluded.data,encrypted_key=NULL')
           .run(providerId, JSON.stringify(provider))
         for (const item of linked) saveAiModelVersion(db, { ...item, enabled: active && item.enabled,
-          planAccount: accountId ?? item.planAccount, baseUrl: config.baseUrl, protocol: config.protocol, planProvider: service }, null)
+          planAccount: accountId ?? item.planAccount, baseUrl: config.baseUrl, protocol: config.protocol, planProvider: service }, null, 'account')
       })())
     },
     async claimProcessing(taskId: string, signature: string): Promise<void> {
@@ -151,7 +151,7 @@ export function createSettingsRepository(store: Store, write: WriterQueue) {
         db.prepare('DELETE FROM settings_providers WHERE id=?').run(id)
       })())
     },
-    async saveModel(input: SettingsModelInput): Promise<SettingsModel> {
+    async saveModel(input: SettingsModelInput, source?: 'catalog'): Promise<SettingsModel> {
       validateSettingsModel(input)
       return write(() => db.transaction(() => {
         const { provider, encryptedKey } = providerSecret(input.providerId), previous = input.id ? model(input.id) : null
@@ -159,7 +159,7 @@ export function createSettingsRepository(store: Store, write: WriterQueue) {
         if (models(provider.id).some(value => value.id !== input.id && value.model === input.model.trim())) failSettings('DUPLICATE_MODEL', '该模型已添加，请修改已有模型。')
         if (previous) idle([previous.id])
         if (getSubscriptionId(provider.id) && !provider.planAccount) failSettings('ACCOUNT_LOGIN', '请先登录服务商账户。')
-        const saved = saveAiModelVersion(db, { ...(provider.planAccount ? { planAccount: provider.planAccount, planProvider: getSubscriptionId(provider.id) } : {}), ...(input.thinkingLevels ? { thinkingLevels: input.thinkingLevels } : {}), id: input.id ?? randomUUID(), label: input.label.trim(), model: input.model.trim(), baseUrl: provider.baseUrl, protocol: provider.protocol, contextWindow: input.contextWindow, maxTokens: input.maxTokens, ...(input.maxInputTokens === undefined ? {} : { maxInputTokens: input.maxInputTokens }), enabled: provider.enabled && input.enabled }, encryptedKey)
+        const saved = saveAiModelVersion(db, { ...(provider.planAccount ? { planAccount: provider.planAccount, planProvider: getSubscriptionId(provider.id) } : {}), ...(input.thinkingLevels ? { thinkingLevels: input.thinkingLevels } : {}), id: input.id ?? randomUUID(), label: input.label.trim(), model: input.model.trim(), baseUrl: provider.baseUrl, protocol: provider.protocol, contextWindow: input.contextWindow ?? null, maxTokens: input.maxTokens ?? null, ...(input.maxInputTokens === undefined ? {} : { maxInputTokens: input.maxInputTokens }), enabled: provider.enabled && input.enabled }, encryptedKey, source)
         db.prepare('INSERT INTO settings_models(model_id,provider_id,enabled) VALUES(?,?,?) ON CONFLICT(model_id) DO UPDATE SET enabled=excluded.enabled').run(saved.id, provider.id, input.enabled ? 1 : 0)
         const metadata = setting<Record<string, Pick<SettingsModel, 'group' | 'maxInputTokens'>>>('modelMetadata', {})
         metadata[saved.id] = { ...(input.group === undefined ? {} : { group: input.group }), ...(input.maxInputTokens === undefined ? {} : { maxInputTokens: input.maxInputTokens }) }

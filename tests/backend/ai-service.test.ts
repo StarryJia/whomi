@@ -3,7 +3,6 @@ import { performance } from 'node:perf_hooks'
 import { createAiService } from '../../electron/main/ai-service'
 import { defaultProcessing } from '../../src/shared/settings-contract'
 import type { AiModel, AnalysisTask } from '../../src/shared/ai-contract'
-import { simpleInsightReply } from '../desktop/fixtures/insight-model.mjs'
 import { resolveModelLimits } from '../../src/shared/model-limits'
 
 function captureDiagnostics() {
@@ -30,10 +29,17 @@ test('preparing and duplicate confirmation do not duplicate a model run; complet
     throw new Error(method)
   }
   const diagnostics = captureDiagnostics()
-  const service = createAiService({ storage, diagnostics, runtime: { run: async input => {
+  const service = createAiService({ storage, diagnostics, runtime: { run: async (_input, { insight }) => {
     runs++
-    if (runs === 1) await new Promise(resolve => { release = resolve })
-    return { text: JSON.stringify(simpleInsightReply(JSON.parse(input.prompt))), usage: { outputTokens: 50 }, checkpoint: '' }
+    await new Promise(resolve => { release = resolve })
+    const result = await insight!.read({}, 4000)
+    expect(result.page.status).toBe('ok')
+    await insight!.record({ type: 'requestStart', kind: 'inference', requestId: 'second' })
+    await insight!.record({ type: 'request', kind: 'inference', requestId: 'second', success: true,
+      spans: result.spans, usage: { outputTokens: 50 }, checkpoint: 'test-leaf' })
+    const section = [{ content: [{ text: '明天听你讲', citationId: 'c1' }] }]
+    return { text: JSON.stringify({ aboutYou: section, relationship: section, citations: [{ id: 'c1', fragments: [{ messageIds: ['1'] }] }], limitations: [] }),
+      usage: {}, checkpoint: 'test-leaf' }
   } }, secrets: { encrypt: value => value, decrypt: value => value } })
   await service.prepareAnalysis({ conversationId: '1', modelId: 'm' })
   expect(runs).toBe(0)
@@ -44,9 +50,9 @@ test('preparing and duplicate confirmation do not duplicate a model run; complet
   await service.idle()
   expect(diagnostics.discardUnstarted).toHaveBeenCalledWith(diagnostics.begin.mock.results[1].value)
   const operation = diagnostics.begin.mock.results[0].value
-  expect(diagnostics.event.mock.calls.map(call => call[1])).toEqual(expect.arrayContaining(['reading', 'checking', 'writing', 'request', 'returned', 'saving']))
+  expect(diagnostics.event.mock.calls.map(call => call[1])).toEqual(expect.arrayContaining(['reading', 'request', 'returned', 'saving']))
   expect(diagnostics.end).toHaveBeenCalledWith(operation, 'failed', expect.objectContaining({ phase: 'saving' }))
-  expect(runs).toBe(2)
+  expect(runs).toBe(1)
   expect(completed).toBe(true)
   expect(task.state).toBe('failed')
 })
