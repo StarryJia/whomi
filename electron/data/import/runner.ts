@@ -132,6 +132,8 @@ export async function runImport(store: Store, staged: StagedImport, plan: Import
           if (db.inTransaction) db.close()
           throw new ImportFailure('ROLLBACK_STORAGE_ERROR', 'cancel')
         }
+        try { db.prepare("UPDATE import_jobs SET metadata=json_set(metadata,'$.rolledBack',json('true')) WHERE id=?").run(BigInt(id)) }
+        catch { /* 保留原始导入错误，未写入的撤回状态留为未知。 */ }
       }
       if (!signal.aborted) {
         const code = error instanceof ImportFailure ? error.code

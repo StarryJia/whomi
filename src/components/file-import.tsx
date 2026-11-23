@@ -177,9 +177,8 @@ export function ImportWorkspace({ api, onOpenConversation, controller }: Pick<Im
         <button ref={guideButton} className="import-guide" type="button" disabled={busy || pickerOpen} onClick={() => setReadingGuide(true)}>
           <BookOpen size={19} strokeWidth={1.7} aria-hidden="true" />操作指引
         </button>
-        {(busy || !api) && <div className="import-picker-feedback">
-          {busy && <p className="import-muted" role="status">正在处理…</p>}
-          {!api && <p className="import-muted">请在桌面应用中导入；此处仅预览文件选择。</p>}
+        {!api && <div className="import-picker-feedback">
+          <p className="import-muted">请在桌面应用中导入；此处仅预览文件选择。</p>
           {filename && <p role="status"><span className="selected-filename">{filename}</span><span className="file-selection-note">已选择 · 尚未导入</span></p>}
         </div>}
       </>

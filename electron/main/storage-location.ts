@@ -5,6 +5,12 @@ import { basename, dirname, isAbsolute, join, parse, relative, resolve, sep } fr
 import Database from 'better-sqlite3'
 import { BoundaryError } from '../../src/shared/desktop-validation'
 import type { StorageChoice, StorageLocation } from '../../src/shared/settings-contract'
+import { isOperationId } from '../../src/shared/operation-diagnostics'
+
+type MigrationObserver = {
+  id: string
+  stage(name: 'copy' | 'verify' | 'switchDirectory', counts?: { fileCount: number; bytes: number }): void
+}
 
 export type StorageLocationOptions = {
   userDataPath: string
@@ -17,6 +23,7 @@ export type StorageLocationOptions = {
 const pointerName = 'storage-location.json'
 const managedNames = ['whomi.db', 'whomi.db-wal', 'whomi.db-shm', 'whomi.db-journal', 'ai-runtime', 'import-staging']
 type Entry = { path: string; info: BigIntStats }
+type CopiedFile = { source: Entry; target: Entry; checksum: string }
 type Grant = { owner: number; path: string; identity: string; expires: number }
 const pathKey = (path: string) => process.platform === 'win32' ? resolve(path).toLowerCase() : resolve(path)
 const identity = (info: BigIntStats) => `${info.dev}:${info.ino}`
@@ -54,7 +61,7 @@ function retainedDirectory(value: unknown): value is string {
     && resolve(value) === value && basename(value) === 'logs'
 }
 
-export async function resolveStorageSelection(userDataPath: string): Promise<StorageSelection> {
+export async function resolveStorageSelection(userDataPath: string, onMigration?: (id: string) => void): Promise<StorageSelection> {
   try {
     await checkedPath(userDataPath, true)
     await fs.mkdir(userDataPath, { recursive: true })
@@ -65,6 +72,7 @@ export async function resolveStorageSelection(userDataPath: string): Promise<Sto
     if (!info.isFile() || info.size > 16_384n) throw new Error('Invalid storage pointer')
     const data = JSON.parse(await fs.readFile(pointer, 'utf8')) as { version?: unknown; path?: unknown; hasDatabase?: unknown; retainedErrorLogDirectories?: unknown }
     if (data.version !== 1 || typeof data.path !== 'string' || typeof data.hasDatabase !== 'boolean') throw new Error('Invalid storage pointer')
+    if ('operationId' in data && isOperationId(data.operationId)) onMigration?.(data.operationId)
     await checkedDirectory(data.path)
     if (data.hasDatabase) {
       const databasePath = join(data.path, 'whomi.db'), databaseInfo = await checkedPath(databasePath)
@@ -123,7 +131,7 @@ async function digest(handle: fs.FileHandle) {
   return hash.digest('hex')
 }
 
-async function copyEntry(source: string, target: string, entry: Entry, created: Entry[]) {
+async function copyEntry(source: string, target: string, entry: Entry, created: Entry[]): Promise<CopiedFile | undefined> {
   const from = join(source, entry.path), to = join(target, entry.path)
   const current = await checkedPath(from)
   if (!current || !unchanged(entry.info, current)) throw new Error('Source changed')
@@ -138,7 +146,8 @@ async function copyEntry(source: string, target: string, entry: Entry, created: 
   try {
     if (!unchanged(entry.info, await input.stat({ bigint: true }))) throw new Error('Source changed')
     output = await fs.open(to, constants.O_RDWR | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600)
-    created.push({ path: to, info: await output.stat({ bigint: true }) })
+    const targetEntry = { path: to, info: await output.stat({ bigint: true }) }
+    created.push(targetEntry)
     const buffer = Buffer.alloc(256 * 1024), hash = createHash('sha256')
     let offset = 0
     for (;;) {
@@ -155,12 +164,20 @@ async function copyEntry(source: string, target: string, entry: Entry, created: 
       if (BigInt(offset) > entry.info.size) throw new Error('Source changed')
     }
     await output.sync()
-    const expected = hash.digest('hex')
-    if (BigInt(offset) !== entry.info.size || expected !== await digest(input) || expected !== await digest(output)
-      || !unchanged(entry.info, await input.stat({ bigint: true }))) throw new Error('Copy verification failed')
-    const final = await checkedPath(from)
-    if (!final || !unchanged(entry.info, final)) throw new Error('Source changed')
+    return { source: { path: from, info: entry.info }, target: targetEntry, checksum: hash.digest('hex') }
   } finally { await output?.close(); await input.close() }
+}
+
+async function verifyFileContents(entry: Entry, size: bigint, checksum: string) {
+  const current = await checkedPath(entry.path)
+  if (!current?.isFile() || current.nlink !== 1n || identity(current) !== identity(entry.info)) invalidPath()
+  const handle = await fs.open(entry.path, constants.O_RDONLY | constants.O_NOFOLLOW)
+  try {
+    if (!unchanged(current, await handle.stat({ bigint: true })) || current.size !== size
+      || await digest(handle) !== checksum || !unchanged(current, await handle.stat({ bigint: true }))) {
+      throw new Error('Copy verification failed')
+    }
+  } finally { await handle.close() }
 }
 
 async function cleanupCreated(target: string, targetIdentity: string, created: Entry[]) {
@@ -239,12 +256,12 @@ function rebaseCheckpoint(value: string, source: string, target: string, depth =
   return changed ? JSON.stringify(checkpoint) : value
 }
 
-async function publishPointer(userDataPath: string, target: string, retainedErrorLogDirectories: string[]) {
+async function publishPointer(userDataPath: string, target: string, retainedErrorLogDirectories: string[], operationId?: string) {
   await checkedDirectory(userDataPath)
   const pointer = join(userDataPath, pointerName), temporary = join(userDataPath, `.storage-location-${randomUUID()}.tmp`)
   try {
     const hasDatabase = Boolean((await checkedPath(join(target, 'whomi.db'), true))?.isFile())
-    const contents = JSON.stringify({ version: 1, path: target, hasDatabase,
+    const contents = JSON.stringify({ version: 1, path: target, hasDatabase, operationId,
       ...(retainedErrorLogDirectories.length && { retainedErrorLogDirectories }) }) + '\n'
     if (Buffer.byteLength(contents) > 16_384) throw new Error('Storage pointer too large')
     const handle = await fs.open(temporary, 'wx', 0o600)
@@ -305,7 +322,7 @@ export function createStorageLocationService(options: StorageLocationOptions) {
       return { token, path: resolve(path) }
     },
     revokeOwner,
-    async relocateStorage(owner: number, token: string): Promise<StorageLocation> {
+    async relocateStorage(owner: number, token: string, observer?: MigrationObserver): Promise<StorageLocation> {
       requireAvailable()
       const grant = grants.get(token)
       if (!grant || grant.owner !== owner || grant.expires <= now()) throw new BoundaryError('INVALID_STORAGE_CHOICE', '请重新选择保存目录。')
@@ -319,7 +336,20 @@ export function createStorageLocationService(options: StorageLocationOptions) {
         await options.stopServices()
         await destination(grant.path, source, grant.identity)
         const entries = await manifest(source)
-        for (const entry of entries) await copyEntry(source, grant.path, entry, created)
+        if (observer) {
+          const files = entries.filter(entry => entry.info.isFile())
+          observer.stage('copy', { fileCount: files.length, bytes: files.reduce((sum, entry) => sum + Number(entry.info.size), 0) })
+        }
+        const copies: CopiedFile[] = []
+        for (const entry of entries) {
+          const file = await copyEntry(source, grant.path, entry, created)
+          if (file) copies.push(file)
+        }
+        observer?.stage('verify')
+        for (const file of copies) {
+          await verifyFileContents(file.source, file.source.info.size, file.checksum)
+          await verifyFileContents(file.target, file.source.info.size, file.checksum)
+        }
         const remaining = await manifest(source)
         if (!sameManifest(entries, remaining)) throw new Error('Source changed')
         await verifyCreated(grant.path, grant.identity, created)
@@ -332,7 +362,8 @@ export function createStorageLocationService(options: StorageLocationOptions) {
         // 旧版把错误日志放在数据目录中，迁移后继续按原位置查找。
         const hasOldLogs = await fs.lstat(oldLogs).then(() => true, error => !missing(error))
         if (hasOldLogs && !retained.some(path => pathKey(path) === pathKey(oldLogs))) retained.push(oldLogs)
-        await publishPointer(options.userDataPath, grant.path, retained)
+        observer?.stage('switchDirectory')
+        await publishPointer(options.userDataPath, grant.path, retained, observer?.id)
         selection = { path: grant.path, retainedErrorLogDirectories: retained }
         restartRequired = true
         grants.clear()

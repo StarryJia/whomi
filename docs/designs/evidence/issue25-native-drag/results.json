@@ -1,0 +1,122 @@
+[
+  {
+    "sourceKind": "file",
+    "pickerAction": "cancel",
+    "dropEvents": [
+      {
+        "trusted": true,
+        "entries": [
+          "Mouse-file.json"
+        ]
+      }
+    ],
+    "beforePickerReturn": [
+      {
+        "id": 1,
+        "status": "completed"
+      }
+    ],
+    "canceled": true,
+    "returnedNames": [],
+    "afterPickerReturn": [
+      {
+        "id": 1,
+        "status": "completed"
+      }
+    ],
+    "conversationTitles": [
+      "Mouse-file"
+    ]
+  },
+  {
+    "sourceKind": "file",
+    "pickerAction": "complete",
+    "dropEvents": [
+      {
+        "trusted": true,
+        "entries": [
+          "Mouse-file.json"
+        ]
+      }
+    ],
+    "beforePickerReturn": [
+      {
+        "id": 1,
+        "status": "completed"
+      }
+    ],
+    "canceled": false,
+    "returnedNames": [
+      "Picker-file.json"
+    ],
+    "afterPickerReturn": [
+      {
+        "id": 1,
+        "status": "completed"
+      }
+    ],
+    "conversationTitles": [
+      "Mouse-file"
+    ]
+  },
+  {
+    "sourceKind": "folder",
+    "pickerAction": "cancel",
+    "dropEvents": [
+      {
+        "trusted": true,
+        "entries": [
+          "Mouse-folder"
+        ]
+      }
+    ],
+    "beforePickerReturn": [
+      {
+        "id": 1,
+        "status": "completed"
+      }
+    ],
+    "canceled": true,
+    "returnedNames": [],
+    "afterPickerReturn": [
+      {
+        "id": 1,
+        "status": "completed"
+      }
+    ],
+    "conversationTitles": [
+      "Mouse-folder"
+    ]
+  },
+  {
+    "sourceKind": "folder",
+    "pickerAction": "complete",
+    "dropEvents": [
+      {
+        "trusted": true,
+        "entries": [
+          "Mouse-folder"
+        ]
+      }
+    ],
+    "beforePickerReturn": [
+      {
+        "id": 1,
+        "status": "completed"
+      }
+    ],
+    "canceled": false,
+    "returnedNames": [
+      "Picker-folder"
+    ],
+    "afterPickerReturn": [
+      {
+        "id": 1,
+        "status": "completed"
+      }
+    ],
+    "conversationTitles": [
+      "Mouse-folder"
+    ]
+  }
+]

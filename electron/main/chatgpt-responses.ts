@@ -1,4 +1,5 @@
 import { acceptedThinking, reasoningCapabilities } from '../agent/reasoning-capabilities'
+import { isProviderTimeout, modelTimeout } from '../agent/model-timeout'
 import OpenAI from 'openai'
 import { chatgptBaseUrl } from '../../src/shared/chatgpt-plan'
 import { isContextLimitCode, modelContextLimit } from '../../src/shared/model-limits'
@@ -60,14 +61,17 @@ export function createChatgptRunner(accessToken: (accountId: string, signal: Abo
             ...(outputTokens === undefined ? {} : { outputTokens, outputTokensPerSecond: outputTokens / Math.max(.001, durationMs / 1000) }),
             ...(inputTokens === undefined || outputTokens === undefined ? { incomplete: true } : {}) } }
         } else if (event.type === 'response.failed') {
+          if (input.purpose === 'insight' && isProviderTimeout({ code: event.response.error?.code })) throw modelTimeout()
           throw planError(event.response.error?.code)
         } else if (event.type === 'error') {
+          if (input.purpose === 'insight' && isProviderTimeout({ code: event.code })) throw modelTimeout()
           throw planError(event.code)
         } else if (event.type === 'response.incomplete') break
       }
     } catch (error) {
       if (signal.aborted) throw signal.reason
       if (error instanceof BoundaryError) throw error
+      if (input.purpose === 'insight' && error instanceof OpenAI.APIError && isProviderTimeout(error)) throw modelTimeout()
       if (error instanceof OpenAI.APIError) throw planError(error.code, error.status)
       throw planError()
     }

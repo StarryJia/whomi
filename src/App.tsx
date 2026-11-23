@@ -21,7 +21,9 @@ import { createPreviewClient } from './data/preview-client'
 import { createConversationAiClient } from './data/conversation-ai-client'
 import { useConversations, type ConversationClient } from './data/use-conversations'
 import { useImportWorkflow } from './data/use-import'
+import { traceConversation } from './data/conversation-diagnostics'
 import type { DesktopApi } from './shared/desktop-api'
+import type { ImportSnapshot } from './shared/import-contract'
 import type { ConversationAiAdapter } from './components/conversation-ai/types'
 import type { AnalysisTask } from './shared/ai-contract'
 import { currentOverviewContributions } from './shared/insight-overview'
@@ -91,6 +93,7 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
   }, [api?.ai, api?.settings, preview, conversationAiAdapter, settingsRevision])
   const queryClient = useMemo(() => client ?? (conversations ? createPreviewClient(conversations) : api), [client, conversations, api])
   const reader = useConversations(queryClient)
+  const deletionTraces = useRef(new Map<string, { operation: ReturnType<typeof traceConversation>; written: boolean; refreshed: boolean }>())
   const previewing = preview || !!conversations
   const [fromImport, setFromImport] = useState(false)
   const { open, isMobile, toggle, closeMobile } = useSidebar()
@@ -181,8 +184,11 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
   const preferences = useMemo(() => relationshipPreferences(contributions), [contributions])
   const [coverKey, setCoverKey] = useState(0)
   const [importKey, setImportKey] = useState(0)
-  const refreshAfterImport = useCallback(() => { void reader.refresh({ preserveReader: true }) }, [reader.refresh])
-  const importSession = useImportWorkflow(api, { onSaved: refreshAfterImport, onCancelled: refreshAfterImport })
+  const refreshAfterImport = useCallback(async (snapshot: ImportSnapshot) => {
+    const result = await reader.refresh({ preserveReader: true })
+    await api?.operationDiagnostics?.importRefresh(snapshot.jobId, snapshot.jobCreatedAt, result).catch(() => {})
+  }, [api, reader.refresh])
+  const importSession = useImportWorkflow(api, { onRefresh: refreshAfterImport })
   const [activeId, setActiveId] = useState<string | undefined>(preview ? previewConversationId : undefined)
   const [source, setSource] = useState<SourceReference>()
   const [sourceOrigin, setSourceOrigin] = useState<'overview' | 'clarification'>('overview')
@@ -310,8 +316,23 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
 
   async function handleDeleteConversation(id: string) {
     if (!api) return
-    await api.deleteConversation(id)
-    if (!api.onConversationDeleted) forgetConversation(id)
+    const operation = traceConversation('delete')
+    const trace = { operation, written: false, refreshed: false }
+    deletionTraces.current.set(id, trace)
+    operation.step('write')
+    try {
+      await api.deleteConversation(id)
+      trace.written = true
+      if (!api.onConversationDeleted) forgetConversation(id)
+      else if (trace.refreshed) {
+        operation.end('success')
+        deletionTraces.current.delete(id)
+      }
+    } catch (error) {
+      operation.end('failed', error)
+      deletionTraces.current.delete(id)
+      throw error
+    }
   }
 
   const onConversationDeleted = useEffectEvent((id: string) => forgetConversation(id))
@@ -330,6 +351,15 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
       if (view === 'conversation') enterOverview()
     }
     reader.forgetConversation(id)
+    const trace = deletionTraces.current.get(id)
+    if (trace) {
+      trace.refreshed = true
+      trace.operation.step('refresh')
+      if (trace.written) {
+        trace.operation.end('success')
+        deletionTraces.current.delete(id)
+      }
+    }
   }
 
   function openConversation(id: string, entry?: { origin:'overview'|'library'; taskId?:string }) {
@@ -494,7 +524,16 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
           <UnavailableDestination label="心事屋" icon={<HeartRoomIcon className="sidebar-icon" aria-hidden="true" />} />
           <ConversationNavigation wide={open} conversations={reader.conversations} activeId={!settingsOpen && view === 'conversation' ? activeId : undefined}
             openRequest={conversationNavigationRequest}
-            arrange={api?.arrangeConversation && (async change => { await api.arrangeConversation(change); await reader.refresh({ preserveReader: true }) })}
+            arrange={api?.arrangeConversation && (async change => {
+              const operation = traceConversation('arrange')
+              operation.step('write')
+              try {
+                await api.arrangeConversation(change)
+                operation.step('refresh')
+                const result = await reader.refresh({ preserveReader: true })
+                operation.end(result === 'success' ? 'success' : result === 'failed' ? 'failed' : 'unknown')
+              } catch (error) { operation.end('failed', error); throw error }
+            })}
             remove={api?.deleteConversation && handleDeleteConversation}
             onImport={() => navigateFromSidebar(startNewImport)} onSelect={id => navigateFromSidebar(() => openConversation(id))} hasMore={!!reader.listCursor} loading={reader.listLoading}
             error={reader.listError} onLoadMore={() => { void reader.loadMore() }} onRefresh={() => { void reader.refresh() }} />
@@ -517,7 +556,16 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
             conversations={reader.conversations} onReturn={returnFromReport} onTask={(id, taskId) => openConversation(id, { origin: 'library', taskId })}
             onConversations={revealConversations}
             arrange={api?.ai?.arrangeAnalysis && (async change => { await api.ai!.arrangeAnalysis(change); refreshReports() })}
-            rename={api?.ai?.renameAnalysis && (async (taskId, title) => publishTask(await api.ai!.renameAnalysis({ taskId, title })))}
+            rename={api?.ai?.renameAnalysis && (async (taskId, title) => {
+              const operation = traceConversation('rename')
+              operation.step('write')
+              try {
+                const task = await api.ai!.renameAnalysis({ taskId, title })
+                operation.step('refresh')
+                publishTask(task)
+                operation.end('success')
+              } catch (error) { operation.end('failed', error); throw error }
+            })}
             onRenameBusy={busy => { renameBusy.current = busy }}
             remove={api?.ai?.deleteAnalysis && (async id => {
               await api.ai!.deleteAnalysis(id)

@@ -1413,6 +1413,20 @@ test('capacity failures halve the saved fragment within eight retries without co
   expect(state.checkpoint?.pendingRead?.depth).toBe(dispatched - 1)
 })
 
+test.each([false, true])('a model timeout is retryable only once and cancellation stops the retry (cancel=%s)', async cancel => {
+  let requests = 0
+  const controller = new AbortController()
+  const { input, deps, state } = setup([source('1', true, '正文')], async () => {
+    requests++
+    if (cancel) controller.abort()
+    throw Object.assign(new Error('timeout'), { code: 'MODEL_TIMEOUT' })
+  })
+  deps.signal = controller.signal
+  await expect(generateInsight(input, deps)).rejects.toMatchObject(cancel ? { name: 'AbortError' } : { code: 'MODEL_TIMEOUT' })
+  expect(requests).toBe(cancel ? 1 : 2)
+  expect(state.checkpoint?.attempts.map(attempt => attempt.status)).toEqual(cancel ? ['failed'] : ['failed', 'failed'])
+})
+
 test('truncated manuscripts spend the shared allowance and cannot become successful reports', async () => {
   const { input, deps, state } = setup([source('1', true, '正文')], async request => {
     if (JSON.parse(request.prompt).stage === 'reading') return result(noObservations)

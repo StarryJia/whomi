@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { FolderOpen } from 'lucide-react'
+import { ExternalLink, FolderOpen } from 'lucide-react'
 import type { SettingsApi, StorageChoice, StorageLocation } from '../../shared/settings-contract'
 import { errorText, Modal } from './common'
 import { ExceptionNotice } from '../ui/exception-notices'
@@ -66,7 +66,11 @@ export function StorageSettings({ api, canManageData, onBusy, onRestartRequired 
       {error && !choice && <ExceptionNotice title="保存目录操作失败" detail={error} className="ms-error" />}
     </section>)}
     <div className="settings-log-action">
-      <button type="button" className="ms-text-button" disabled={busy} onClick={() => void openLogs()}><FolderOpen size={16} aria-hidden="true" />打开错误日志目录</button>
+      <div className="settings-log-links">
+        <button type="button" className="ms-text-button" disabled={busy} onClick={() => void openLogs()}><FolderOpen size={16} aria-hidden="true" />打开错误日志目录</button>
+        <a className="ms-text-button" href="https://github.com/StarryJia/whomi/issues/new?template=bug_report.md" target="_blank" rel="noopener noreferrer"><ExternalLink size={16} aria-hidden="true" />创建问题工单</a>
+      </div>
+      <p className="ms-hint">在 operations 文件夹按时间和功能找到本次操作的 .txt 文件，可将它附到工单。</p>
       {logError && <ExceptionNotice title={logError} noticeKey="error-log-open" className="ms-error" />}
       {missedRecords > 0 && <p role="status" className="ms-hint">本次运行有 {missedRecords} 条错误日志未保存。</p>}
     </div>

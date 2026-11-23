@@ -6,6 +6,7 @@ import type { InsightCitationWindow } from '../../shared/conversation-insights'
 import { ReaderDialog } from '../ui/managed-row'
 import { ExceptionNotice } from '../ui/exception-notices'
 import { ReadOnlyMessages } from './read-only-messages'
+import { traceConversation } from '../../data/conversation-diagnostics'
 import './insight-source-dialog.css'
 
 type AvailableSource = Extract<InsightCitationWindow, { status: 'available' }>
@@ -25,6 +26,7 @@ export function InsightSourceDialog({ taskId, citationId, phrase, conversationTi
   const [away, setAway] = useState(false)
   const scroll = useRef<HTMLDivElement>(null)
   const active = useRef<PendingRead | null>(null)
+  const locating = useRef<ReturnType<typeof traceConversation> | null>(null)
   const source = useRef<AvailableSource>(undefined)
   const retry = useRef<() => void>(() => {})
   const restore = useRef<{ id: string; offset: number } | 'citation' | null>(null)
@@ -37,17 +39,26 @@ export function InsightSourceDialog({ taskId, citationId, phrase, conversationTi
   const jump = useCallback(async (target: number) => {
     if (active.current?.kind === 'fragment' && active.current.index === target) return
     const request: PendingRead = { kind: 'fragment', index: target }
+    locating.current?.end('unknown')
+    const operation = traceConversation('locate')
+    locating.current = operation
+    operation.step('read')
     track(request)
     setError('')
     retry.current = () => { void jump(target) }
     try {
       const next = await readCitation({ taskId, citationId, fragmentIndex: target })
       if (active.current !== request) return
-      if (next.status !== 'available') { setError('引用原文无法定位，请重试。'); return }
+      if (next.status !== 'available') {
+        operation.step('locate', { found: false }); operation.end('failed')
+        setError('引用原文无法定位，请重试。'); return
+      }
+      operation.step('read', { count: next.page.items.length })
       source.current = next
       restore.current = 'citation'
       setCurrent(next); setFragment(target); setAway(false)
-    } catch {
+    } catch (failure) {
+      operation.end('failed', failure)
       if (active.current === request) setError('原文读取失败，请重试。')
     } finally {
       if (active.current === request) track(null)
@@ -61,20 +72,27 @@ export function InsightSourceDialog({ taskId, citationId, phrase, conversationTi
     setAway(false)
     setFragment(0)
     void jump(0)
-    return () => { active.current = null }
+    return () => { active.current = null; locating.current?.end('unknown'); locating.current = null }
   }, [jump])
 
   function returnToCitation() {
     const element = scroll.current?.querySelector<HTMLElement>('[data-citation=true]')
     element?.scrollIntoView({ block: 'center', behavior: 'instant' })
     setAway(false)
+    return !!element
   }
 
   useLayoutEffect(() => {
     const anchor = restore.current, viewport = scroll.current
     if (!anchor || !viewport) return
     restore.current = null
-    if (anchor === 'citation') { returnToCitation(); return }
+    if (anchor === 'citation') {
+      const found = returnToCitation()
+      locating.current?.step('display', { found })
+      locating.current?.end(found ? 'success' : 'failed')
+      locating.current = null
+      return
+    }
     const message = [...viewport.querySelectorAll<HTMLElement>('[data-message-id]')].find(item => item.dataset.messageId === anchor.id)
     if (message) viewport.scrollTop += message.getBoundingClientRect().top - viewport.getBoundingClientRect().top - anchor.offset
   }, [current])

@@ -4,7 +4,11 @@
 
 统一跟踪工单为 [#25 导入流程完善](https://github.com/StarryJia/whomi/issues/25)，已包含后续确认的保存结果异常、统计更新失败处理以及 ChatLab 拖放参考。
 
+2026-11-23，第 3 项已确认。每次操作写一份可直接附工单的文本，设置提供日志目录和问题反馈模板入口，洞察请求第一次超时自动再试一次。[记录范围、清理规则和验收标准](whomi-operation-diagnostics.md)
+
 前 20 项保留 2026-11-17 的原审核要求和历史截图。2026-11-19 确认的实施方案、结果和本轮运行证据见文末。历史截图对应修改前的版本。
+
+2026-11-22 补验结果：第 6 项的 Windows 资源管理器鼠标拖放通过四种组合。见[原生选择窗口与资源管理器拖放](#原生选择窗口与资源管理器拖放)。
 
 本轮失败操作统一按第 15、17 项执行。第 7 项采纳的保存失败标题与提示调整纳入清单，原建议中的重试保存入口按第 15 项调整。第 10、11 项将取消的目标确定为整批恢复到导入前状态。
 
@@ -138,7 +142,7 @@
 - 洞察桌面检查首次 3 项通过、1 项在删除报告后没有恢复列表标题焦点。单独复测及后续分组复测通过，首轮焦点异常原因尚未确认。另经截图检查修正了原文弹窗标题和异常卡片的重叠。最终 4 项洞察检查通过，保留原文滚动位置。首次和最终记录分别位于 `release/issue-25-verification/insight-notices-20261119-103724860/` 和 `release/issue-25-verification/dialog-layout-final-20261119-104614713/`。
 - 最终构建再次通过 3 项导入定向检查，覆盖无可导入会话的日志、保存凭据缺失和会话统计错误。记录位于 `release/issue-25-verification/import-release-check-20261119-104926926/`。
 - 资源管理器鼠标拖放仍待现场复核。Windows 计算机操作工具启动被拒，补充系统输入测试在源和目标坐标都命中其他窗口，未发出鼠标事件。首轮记录保存在 `release/issue-25-verification/native-system-drag-20261119-103326986/`，补充窗口定位记录保存在 `release/issue-25-verification/native-system-drag-final-20261119-104100175/`。
-- 来源准备尚未取得任务编号时的反馈和取消方式，随原清单待确认事项保留。
+- 来源准备期间的提示与取消操作已于 2026-11-22 确认并验收，见[等待导入任务编号](#等待导入任务编号)。
 
 #### 合并请求 #29 的 12 项复审修复（2026-11-19，待用户验收）
 
@@ -178,3 +182,29 @@
 - 新回归用系统返回的真实显示器句柄启动 Whomi，并使用空白临时资料目录。原安装版报「句柄无效」且未显示窗口。修复后可显示窗口、创建数据库并正常退出。 [启动回归](../../tests/desktop/runtime.spec.mjs) · [原生启动辅助脚本](../../tests/desktop/fixtures/windows-monitor-startup.ps1)
 - 桌面回归首轮 9/10。提交后恢复用例原先在内部保存点释放时结束进程，实际整批事务尚未提交。修正测试触发点后，10/10 通过，覆盖启动、提交前后恢复、错误日志转发和取消后重导。旧安装版复现、首轮结果和最终桌面回归分别保存在本地 `release/issue-25-verification/windows-shortcut-packaged-red-20261119-170945129/`、`release/issue-25-verification/windows-shortcut-and-runtime-20261119-170819030/` 和 `release/issue-25-verification/windows-shortcut-and-runtime-final-20261119-171145526/`。
 - 类型检查、桌面构建和后端 745 项通过。前端首轮 642/644，富文本编辑器就绪与日志提醒先后顺序两项失败，相关文件单独复跑 24/24。首轮和复测输出保存在本地 `release/issue-25-verification/shortcut-startup-frontend.log` 与 `release/issue-25-verification/shortcut-startup-frontend-focused.log`。
+
+#### 原生选择窗口与资源管理器拖放
+
+2026-11-22，验收工单 #25 的来源选择。运行版本为 `67a383c`，其完整文件树与验收基线 `origin/main` 的 `b3fd6f0` 相同。每组使用独立空资料库和合成聊天。打开 Whomi 原生选择窗口后，由 Windows 系统鼠标输入从资源管理器拖入文件或文件夹。测试先核对鼠标起点和终点所属窗口，等待拖入会话保存，再操作仍然打开的选择窗口。确认用例给选择窗口预设了另一份有效聊天所在的文件或文件夹，并读取窗口实际返回的路径。
+
+| 资源管理器拖入项 | 原选择窗口的返回 | 窗口返回前 → 返回后，导入任务数 | 资料库中全部会话 |
+| --- | --- | --- | --- |
+| 文件 `Mouse-file.json` | 取消，返回空列表 | 1 → 1 | `Mouse-file` |
+| 文件 `Mouse-file.json` | 确认，返回 `Picker-file.json` | 1 → 1 | `Mouse-file` |
+| 文件夹 `Mouse-folder` | 取消，返回空列表 | 1 → 1 | `Mouse-folder` |
+| 文件夹 `Mouse-folder` | 确认，返回 `Picker-folder` | 1 → 1 | `Mouse-folder` |
+
+四组分别收到一次来自系统的放下事件。每组前后查询导入任务表，均只包含同一条已完成任务。事件、选择窗口返回值、任务编号和会话名称见[四组结果](evidence/issue25-native-drag/results.json)。确认备用来源后的界面见[文件结果](evidence/issue25-native-drag/file-confirmed.png)和[文件夹结果](evidence/issue25-native-drag/folder-confirmed.png)。
+
+首轮在文件拖入并保存后，测试工具定位到不支持调用的控件，未完成取消操作。该轮 1 项失败，3 项未运行，退出码为 1。改用原生对话框按钮后，独立复跑 4 项全部通过，退出码为 0。两轮完整命令、时间、输出、报告和截图分别保存在原工作区的 `release/issue-25-verification/explorer-four-20261122-185807532/` 和 `release/issue-25-verification/explorer-actions-20261122-185910007/`。
+
+#### 等待导入任务编号
+
+2026-11-22，在 Windows 原生窗口确认来源后，选择区保持原样并禁用重复选择，等待期间不显示「正在处理…」或「取消导入」。进入「正在解析」后可取消并回到选择起点。两组均使用独立空资料库，受控延迟后台回执以固定截图时刻。
+
+| 来源 | 等待任务编号 | 进入解析 | 点击取消后再次导入 |
+| --- | --- | --- | --- |
+| 单个聊天文件 | [等待画面](evidence/issue25-source-wait/file-waiting.png) | [取消按钮可用](evidence/issue25-source-wait/file-progress.png) | 取消后资料库为空，重新选择同一文件后有 1 个会话 |
+| 含一个聊天文件的文件夹 | [等待画面](evidence/issue25-source-wait/folder-waiting.png) | [取消按钮可用](evidence/issue25-source-wait/folder-progress.png) | 取消后资料库为空，重新选择同一文件夹后有 1 个会话 |
+
+首次启动验收脚本时未找到 Playwright，两组用例均未运行。调整脚本位置后，旧版两组均因仍显示「正在处理…」而失败。修改后两组均通过。完整记录分别位于原工作区 `release/issue-25-verification/` 下的 `wait-ui-before-20261122-202806359/`、`wait-ui-baseline-20261122-202845860/` 和 `wait-ui-after-20261122-203034015/`。

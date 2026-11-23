@@ -8,7 +8,7 @@ export type ParsedConversation = { sourceKey: string; title: string; kind: 'dire
 export type ParsedReply = { originalId: string | null; idNamespace: string | null; text: string | null; senderName: string | null; sentAtMs: number | null }
 export type ParsedAttachment = { kind: MessageKind; locator: string | null; name: string | null; state: 'unresolved' | 'missing' }
 export type ParsedMessage = { modelVersion: 1; conversationKey: string; ordinal: number; originalId: string | null; idNamespace: string | null; senderKey: string | null; senderKind: 'member' | 'system' | 'unknown'; senderName: string; sentAtMs: number | null; timeRaw: string | null; timePrecision: 'millisecond' | 'second' | 'minute' | 'unknown'; timezone: string | null; kind: MessageKind; text: string; sourceType: string | null; reply: ParsedReply | null; attachments: ParsedAttachment[]; extra: Record<string, unknown> }
-export type ImportIssue = { code: string; severity: 'warning' | 'blocking'; candidateId: string; ordinal?: number; action: string }
+export type ImportIssue = { code: string; severity: 'warning' | 'blocking'; candidateId: string; ordinal?: number; occurrences?: number; ordinals?: number[]; action: string }
 const kinds = new Set<string>(messageKinds)
 const attachmentKindSet = new Set<string>(attachmentKinds)
 function record(value: unknown): value is Record<string, unknown> { return value !== null && typeof value === 'object' && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype }

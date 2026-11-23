@@ -6,10 +6,10 @@ import type { GrantedSource } from '../data/import/discovery'
 import { BoundaryError, sourceHandle } from '../../src/shared/desktop-validation'
 
 export function createSourceGrants(now = Date.now) {
-  const records = new Map<string, { owner: number; rootPath: string; handle: SourceHandle; expires: number }>()
+  const records = new Map<string, { owner: number; rootPath: string; handle: SourceHandle; origin: 'picker' | 'drop'; expires: number }>()
   const invalid = (): never => { throw new BoundaryError('INVALID_SOURCE', '请重新选择文件或文件夹。') }
   return {
-    async issue(owner: number, paths: readonly string[]): Promise<SourceHandle[]> {
+    async issue(owner: number, paths: readonly string[], origin: 'picker' | 'drop' = 'drop'): Promise<SourceHandle[]> {
       if (!paths.length || paths.length > 10000) invalid()
       const issuedAt = now()
       for (const [token, entry] of records) if (entry.expires <= issuedAt) records.delete(token)
@@ -19,13 +19,13 @@ export function createSourceGrants(now = Date.now) {
           const info = await stat(rootPath)
           if (!info.isFile() && !info.isDirectory()) invalid()
           const handle: SourceHandle = { token: randomUUID(), displayName: basename(rootPath), kind: info.isDirectory() ? 'directory' : 'file' }
-          return { owner, rootPath, handle, expires: issuedAt + 30 * 60 * 1000 }
+          return { owner, rootPath, handle, origin, expires: issuedAt + 30 * 60 * 1000 }
         } catch { return invalid() }
       }))
       for (const entry of entries) records.set(entry.handle.token, entry)
       return entries.map(entry => ({ ...entry.handle }))
     },
-    consume(owner: number, handles: unknown): GrantedSource[] {
+    consume(owner: number, handles: unknown, accepted?: (source: 'picker' | 'drop') => void): GrantedSource[] {
       if (!Array.isArray(handles) || !handles.length || handles.length > 10000 || !handles.every(sourceHandle)) invalid()
       const tokens = (handles as SourceHandle[]).map(handle => {
         const entry = records.get(handle.token)
@@ -34,6 +34,7 @@ export function createSourceGrants(now = Date.now) {
       })
       if (new Set(tokens).size !== tokens.length) invalid()
       for (const entry of tokens) records.delete(entry.handle.token)
+      accepted?.(tokens[0].origin)
       return tokens.map(entry => ({ rootPath: entry.rootPath }))
     },
     revokeWindow(owner: number) { for (const [token, entry] of records) if (entry.owner === owner) records.delete(token) },

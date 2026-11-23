@@ -12,7 +12,7 @@ import { ImportFailure, issue } from './import/limits'
 import { rebuildSummary } from './import/summary'
 import type { ImportPreview, PreviewOptions } from '../../src/shared/desktop-api'
 export type DataServiceOptions = {store:Store;appDataDirectory:string;staging?:Omit<StagingOptions,'appDataDirectory'|'registerArea'>;runner?:Omit<RunnerDependencies,'write'|'changed'>;changed?:(snapshot:ImportSnapshot)=>void}
-type ActiveImport={id:string;signal:AbortController;discovery?:Discovery;staged?:StagedImport;progress?:ImportSnapshot['progress'];finishedCandidates?:Set<string>}
+type ActiveImport={id:string;operationId?:string;signal:AbortController;discovery?:Discovery;staged?:StagedImport;progress?:ImportSnapshot['progress'];finishedCandidates?:Set<string>}
 export function createDataService(options:DataServiceOptions) {
   const {store}=options
   let queue:Promise<unknown>=Promise.resolve(),task:Promise<unknown>=Promise.resolve(),active:ActiveImport|undefined,lastEvent=0
@@ -58,7 +58,7 @@ export function createDataService(options:DataServiceOptions) {
     }
     return snapshot.status === 'committing' && current?.progress ? {...snapshot,progress:current.progress}:snapshot
   }
-  function metadata(id:string, value:Record<string,unknown>) {store.writer.prepare('UPDATE import_jobs SET metadata=? WHERE id=?').run(JSON.stringify(value),BigInt(id))}
+  function metadata(id:string, value:Record<string,unknown>) {store.writer.prepare('UPDATE import_jobs SET metadata=? WHERE id=?').run(JSON.stringify({...value,operationId:active?.id === id ? active.operationId : undefined}),BigInt(id))}
   async function cleanup(current:ActiveImport) {
     const staged = current.staged
     current.staged = undefined
@@ -69,12 +69,12 @@ export function createDataService(options:DataServiceOptions) {
       } else await write(() => cleanupImportStaging(store, current.id))
     } catch { /* Registered directories remain available for cancellation and recovery. */ }
   }
-  async function prepareImport(grants:readonly GrantedSource[]):Promise<string> {
+  async function prepareImport(grants:readonly GrantedSource[],operationId?:string):Promise<string> {
     await ready
     if(active || cancelling.size) throw new ImportFailure('IMPORT_BUSY')
-    const current:ActiveImport={id:'',signal:new AbortController()};active=current
+    const current:ActiveImport={id:'',operationId,signal:new AbortController()};active=current
     try {
-      const id=await write(()=>store.writer.prepare("INSERT INTO import_jobs(status,phase,created_at_ms) VALUES ('pending','preparing',?)").run(Date.now()).lastInsertRowid.toString());current.id=id
+      const id=await write(()=>store.writer.prepare("INSERT INTO import_jobs(status,phase,created_at_ms,metadata) VALUES ('pending','preparing',?,?)").run(Date.now(),JSON.stringify({operationId})).lastInsertRowid.toString());current.id=id
       setJobState(store,id,'scanning');notify(id)
       current.discovery=await staging.discover(grants,current.signal.signal)
       metadata(id,{discovery:current.discovery,issues:current.discovery.issues})

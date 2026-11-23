@@ -14,7 +14,10 @@ import { ImportFailure, issue } from './import/limits'
 const probeEnabled = process.argv.includes('--runtime-probe')
 const directory = probeEnabled ? validateRuntimeTestDirectory(process.argv[2]) : process.argv[2]
 mkdirSync(directory, { recursive: true })
-const store = openStore(join(directory, 'whomi.db'))
+const parent = (process as unknown as { parentPort: { on(event: string, callback: (event: { data: { id: number; method: string; payload: unknown } }) => void): void; postMessage(value: unknown): void } }).parentPort
+const store = openStore(join(directory, 'whomi.db'), (fromVersion, toVersion) => {
+  parent.postMessage({ event: 'databaseUpgrade', value: { fromVersion, toVersion } })
+})
 const { writer: database, reader } = store
 const service = createDataService({store,appDataDirectory:directory,changed(snapshot) {
   validateSnapshot(snapshot)
@@ -25,7 +28,6 @@ const settingsRepository = createSettingsRepository(store, service.write)
 const ready = service.ready.then(async () => { await aiRepository.recover(); await settingsRepository.initialize() })
 const dispatch = createDataDispatcher(store, service, aiRepository, settingsRepository)
 const version = database.prepare('SELECT sqlite_version() AS version').get() as { version: string }
-const parent = (process as unknown as { parentPort: { on(event: string, callback: (event: { data: { id: number; method: string; payload: unknown } }) => void): void; postMessage(value: unknown): void } }).parentPort
 // 辅助探针来自测试临时目录，正式安装资源不包含探针。
 const probe = probeEnabled
   ? createRequire(join(directory, 'runtime.cjs'))(join(directory, 'probe.cjs'))(database, reader, {store,service,createDataService,createCommitter,directory}) as (method: string) => unknown

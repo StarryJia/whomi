@@ -1,10 +1,13 @@
 import { expect,test,beforeAll,afterAll } from 'vitest'
 import { fork } from 'node:child_process'
 import { once } from 'node:events'
-import { mkdtemp,writeFile,readFile,rm,symlink,rmdir,unlink } from 'node:fs/promises'
+import { mkdtemp,writeFile,readFile,readdir,rm,symlink,rmdir,unlink } from 'node:fs/promises'
 import { dirname,join,resolve } from 'node:path'
 import { tmpdir } from 'node:os'
 import { recoverImports } from '../../electron/data/import/recovery'
+import { createImportDiagnostics } from '../../electron/main/import-diagnostics'
+import type { PersistedImportFailure, StoredImportDiagnostic } from '../../src/shared/import-diagnostics'
+import { operationRetentionMs } from '../../src/shared/operation-diagnostics'
 import { openStore } from '../../electron/data/db/open'
 import { getSnapshot } from '../../electron/data/import/state'
 import { createSnapshotArea } from '../../electron/data/import/snapshot'
@@ -67,6 +70,55 @@ test('startup provides counted diagnostics for an interrupted import before the 
     expect(await restarted('unresolvedImportDiagnostics', null)).toEqual(expected)
     await service.cancelImport('1')
     expect(await restarted('unresolvedImportDiagnostics', null)).toEqual([])
+  } finally {
+    store.close()
+    await rm(directory, { recursive: true, force: true })
+  }
+})
+test('startup and a restored failure page retain the original expiry and never recreate a pruned attachment', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'whomi-import-replay-'))
+  const databasePath = join(directory, 'whomi.db')
+  let store = openStore(databasePath)
+  const logs = join(directory, 'import-errors')
+  try {
+    const recentlyEnded = Date.now() - operationRetentionMs + 86_400_000
+    const expired = Date.now() - operationRetentionMs - 86_400_000
+    const metadata = JSON.stringify({ failurePhase: 'scan', issues: [{ severity: 'blocking', code: 'SOURCE_UNREADABLE' }] })
+    const insert = store.writer.prepare("INSERT INTO import_jobs(id,status,phase,created_at_ms,completed_at_ms,metadata) VALUES(?,'failed','failed',?,?,?)")
+    insert.run(1, expired, expired, metadata)
+    insert.run(2, expired, recentlyEnded, metadata)
+    const connect = () => createDataDispatcher(store, createDataService({ store, appDataDirectory: directory }))
+    let dispatch = connect()
+    const lookup = async (id: string) => await dispatch('getImportDiagnosticFailure', id) as PersistedImportFailure
+    const outstanding = async () => await dispatch('unresolvedImportDiagnostics', null) as StoredImportDiagnostic[]
+    const reporter = () => createImportDiagnostics(directory, '1.0.0', async () => '', undefined, undefined, {
+      find: lookup, acknowledge: async receipt => { await dispatch('acknowledgeImportDiagnostic', receipt) },
+    })
+    const [recent] = await outstanding()
+    expect((await outstanding()).map(item => item.diagnostic.jobId)).toEqual(['2'])
+    await writeFile(logs, 'blocked')
+    await expect(reporter().report(recent.diagnostic)).rejects.toMatchObject({ code: 'IMPORT_LOG_WRITE_FAILED' })
+    expect(await outstanding()).toEqual([recent])
+    await unlink(logs)
+    const original = await lookup('2')
+    await reporter().report(recent.diagnostic)
+    const [filename] = await readdir(logs)
+    expect(filename).toMatch(new RegExp('^' + recentlyEnded + '-'))
+    expect(JSON.parse(await readFile(join(logs, filename), 'utf8')).recordedAt).toBe(new Date(recentlyEnded).toISOString())
+    await unlink(join(logs, filename))
+    for (let restart = 0; restart < 2; restart++) {
+      store.close()
+      store = openStore(databasePath)
+      dispatch = connect()
+      expect(await outstanding()).toEqual([])
+      const log = reporter()
+      await log.report((await lookup('1')).diagnostic)
+      await log.report(recent.diagnostic)
+      expect(await readdir(logs)).toEqual([])
+    }
+    store.writer.prepare("UPDATE import_jobs SET metadata=json_set(metadata,'$.failurePhase','cancel') WHERE id=2").run()
+    await dispatch('acknowledgeImportDiagnostic', original.receipt)
+    expect((await outstanding()).map(item => item.diagnostic.phase)).toEqual(['cancel'])
   } finally {
     store.close()
     await rm(directory, { recursive: true, force: true })

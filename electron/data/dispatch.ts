@@ -6,11 +6,12 @@ import { confirmedSelfSql } from './db/self'
 import type { createDataService } from './service'
 import type { ListArrangement, MemberView, PreviewOptions, ReadMessagesInput, ListConversationsInput, LocateSourceInput } from '../../src/shared/desktop-api'
 import type { StartImportRequest } from '../../src/shared/import-contract'
-import { BoundaryError, validateArguments, validateResult } from '../../src/shared/desktop-validation'
+import { BoundaryError, localId, validateArguments, validateResult } from '../../src/shared/desktop-validation'
 import type { GrantedSource } from './import/discovery'
-import { getInterruptedImport, unresolvedImportDiagnostics } from './import/recovery'
+import { acknowledgeImportDiagnostic, getImportDiagnosticFailure, getInterruptedImport, unresolvedImportDiagnostics } from './import/recovery'
 import type { AiRepository } from './ai/repository'
 import type { SettingsRepository } from './settings/repository'
+import { isOperationId } from '../../src/shared/operation-diagnostics'
 
 const aiStorageArity = {
   listModels: [0, 0], saveModel: [1, 2], modelSecret: [1, 2], listSkills: [0, 0], registerSkill: [1, 1],
@@ -32,6 +33,17 @@ export function createDataDispatcher(store: Store, service: ReturnType<typeof cr
     await service.ready
     if (method === 'storageState') return { importActive: service.importActive() }
     if (method === 'unresolvedImportDiagnostics') return unresolvedImportDiagnostics(store)
+    if (method === 'getImportDiagnosticFailure') {
+      if (typeof input !== 'string' || !localId(input)) throw new BoundaryError('INVALID_ARGUMENT')
+      return getImportDiagnosticFailure(store, input)
+    }
+    if (method === 'acknowledgeImportDiagnostic') {
+      if (!input || typeof input !== 'object' || !('jobId' in input) || typeof input.jobId !== 'string' || !localId(input.jobId) ||
+        !('jobCreatedAt' in input) || typeof input.jobCreatedAt !== 'number' || !Number.isSafeInteger(input.jobCreatedAt) ||
+        !('signature' in input) || typeof input.signature !== 'string') throw new BoundaryError('INVALID_ARGUMENT')
+      const receipt = { jobId: input.jobId, jobCreatedAt: input.jobCreatedAt, signature: input.signature }
+      return service.write(() => acknowledgeImportDiagnostic(store, receipt))
+    }
     if (method === 'settingsStorage') {
       if (!settings || !Array.isArray(input) || input.length !== 2 || typeof input[0] !== 'string' || !Object.hasOwn(settingsStorageArity, input[0]) || !Array.isArray(input[1])) throw new BoundaryError('INVALID_METHOD')
       const operation = input[0] as keyof typeof settingsStorageArity, args = input[1] as unknown[], [minimum, maximum] = settingsStorageArity[operation]
@@ -45,8 +57,8 @@ export function createDataDispatcher(store: Store, service: ReturnType<typeof cr
       return (ai[operation] as (...values: unknown[]) => unknown)(...args)
     }
     if (method === 'prepareImport') {
-      if (!Array.isArray(input) || input.length !== 1 || !Array.isArray(input[0]) || !input[0].length || input[0].length > 10000 || !input[0].every(value => value && typeof value === 'object' && Object.keys(value).length === 1 && typeof value.rootPath === 'string' && isAbsolute(value.rootPath))) throw new BoundaryError('INVALID_SOURCE')
-      const id = await service.prepareImport(input[0] as GrantedSource[]); validateResult('prepareImport', id); return id
+      if (!Array.isArray(input) || !(input.length === 1 || (input.length === 2 && isOperationId(input[1]))) || !Array.isArray(input[0]) || !input[0].length || input[0].length > 10000 || !input[0].every(value => value && typeof value === 'object' && Object.keys(value).length === 1 && typeof value.rootPath === 'string' && isAbsolute(value.rootPath))) throw new BoundaryError('INVALID_SOURCE')
+      const id = await service.prepareImport(input[0] as GrantedSource[], input[1]); validateResult('prepareImport', id); return id
     }
     validateArguments(method, input)
     const args = input as unknown[]

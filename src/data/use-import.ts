@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { DesktopApi, DesktopError, ImportPreview, SourceHandle } from '../shared/desktop-api'
+import { isOperationId } from '../shared/operation-diagnostics'
 import { currentImportIssue } from '../shared/import-diagnostics'
 import { importSnapshotStates, terminalImportStates, type ImportCandidateResult, type ImportFailurePhase, type ImportPlan, type ImportSnapshot } from '../shared/import-contract'
 
@@ -78,9 +79,10 @@ function remember(id: string | null) {
 type ImportCallbacks = {
   onSaved?: (conversationIds: string[]) => void
   onCancelled?: () => void
+  onRefresh?: (snapshot: ImportSnapshot) => void
 }
 
-export function useImport(api?: DesktopApi, { onSaved, onCancelled }: ImportCallbacks = {}) {
+export function useImport(api?: DesktopApi, { onSaved, onCancelled, onRefresh }: ImportCallbacks = {}) {
   const [snapshot, setSnapshot] = useState<ImportSnapshot | null>(null)
   const [error, setError] = useState<DesktopError | null>(null)
   const [operationFailure, setOperationFailure] = useState<ImportFailure | null>(null)
@@ -93,6 +95,7 @@ export function useImport(api?: DesktopApi, { onSaved, onCancelled }: ImportCall
   const picker = useRef(false)
   const restoring = useRef<Promise<void> | null>(null)
   const opening = useRef(false)
+  const rejectedOperation = useRef<string | undefined>(undefined)
   const lastResult = useRef<{ saved?: string; cancelled?: string }>({})
   const report = useRef<{ key: string; done: Promise<string | undefined> } | null>(null)
   const session = useRef({
@@ -109,17 +112,20 @@ export function useImport(api?: DesktopApi, { onSaved, onCancelled }: ImportCall
 
   useEffect(() => {
     if (!snapshot || failure || cancelling) return
-    if (onSaved && hasConfirmedImport(snapshot) && lastResult.current.saved !== snapshot.jobId) {
+    if ((onSaved || onRefresh) && hasConfirmedImport(snapshot) && lastResult.current.saved !== snapshot.jobId) {
       lastResult.current.saved = snapshot.jobId
-      onSaved([...new Set(snapshot.results.map(result => result.conversationId!))])
-    } else if (onCancelled && snapshot.status === 'cancelled' && !snapshot.results.some(isPersistedResult) &&
+      onSaved?.([...new Set(snapshot.results.map(result => result.conversationId!))])
+      onRefresh?.(snapshot)
+    } else if ((onCancelled || onRefresh) && snapshot.status === 'cancelled' && !snapshot.results.some(isPersistedResult) &&
       lastResult.current.cancelled !== snapshot.jobId) {
       lastResult.current.cancelled = snapshot.jobId
-      onCancelled()
+      onCancelled?.()
+      onRefresh?.(snapshot)
     }
-  }, [snapshot, failure, cancelling, onSaved, onCancelled])
+  }, [snapshot, failure, cancelling, onSaved, onCancelled, onRefresh])
 
   const reset = useCallback(() => {
+    rejectedOperation.current = undefined
     const current = session.current
     current.generation++
     current.jobId = null
@@ -294,6 +300,7 @@ export function useImport(api?: DesktopApi, { onSaved, onCancelled }: ImportCall
   }
 
   function beginSourceSelection() {
+    rejectedOperation.current = undefined
     const current = session.current
     current.jobId = null
     current.snapshot = null
@@ -329,7 +336,10 @@ export function useImport(api?: DesktopApi, { onSaved, onCancelled }: ImportCall
       if (early) accept(early)
       await refresh(jobId, valid)
     } catch (cause) {
-      if (valid()) setOperationFailure(phaseError(current.jobId ? 'scan' : 'source', cause))
+      if (valid()) {
+        if (cause && typeof cause === 'object' && 'operationId' in cause && isOperationId(cause.operationId)) rejectedOperation.current = cause.operationId
+        setOperationFailure(phaseError(current.jobId ? 'scan' : 'source', cause))
+      }
     } finally {
       if (valid()) { current.preparing = false; current.busy = false; setBusy(false) }
     }
@@ -442,11 +452,13 @@ export function useImport(api?: DesktopApi, { onSaved, onCancelled }: ImportCall
     try {
       writeError = await reportFailure()
       if (!valid() || (current.snapshot && (current.snapshot.status === 'cancelled' || hasConfirmedImport(current.snapshot)))) return
-      if (writeError && !failedJobId) {
+      const operationId = current.snapshot?.operationId ?? rejectedOperation.current
+      if (writeError && !failedJobId && !operationId) {
         setLogError(writeError)
         return
       }
-      await diagnostics.open(failedJobId ?? null)
+      if (operationId) await diagnostics.open(failedJobId ?? null, operationId)
+      else await diagnostics.open(failedJobId ?? null)
       if (valid()) setLogError('')
     } catch (cause) {
       if (valid()) {

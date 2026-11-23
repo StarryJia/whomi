@@ -1,9 +1,17 @@
 import { expect, test, vi } from 'vitest'
+import { performance } from 'node:perf_hooks'
 import { createAiService } from '../../electron/main/ai-service'
 import { defaultProcessing } from '../../src/shared/settings-contract'
 import type { AiModel, AnalysisTask } from '../../src/shared/ai-contract'
 import { simpleInsightReply } from '../desktop/fixtures/insight-model.mjs'
 import { resolveModelLimits } from '../../src/shared/model-limits'
+
+function captureDiagnostics() {
+  return {
+    begin: vi.fn(() => crypto.randomUUID()), bind: vi.fn(), findByTask: vi.fn(async () => null), resume: vi.fn(), discardUnstarted: vi.fn(),
+    event: vi.fn((_id: string, _stage: string, _fields?: Record<string, unknown>) => {}), end: vi.fn(),
+  }
+}
 
 test('preparing and duplicate confirmation do not duplicate a model run; completion waits for report storage', async () => {
   let runs = 0, release: (value: unknown) => void = () => {}, completed = false
@@ -21,7 +29,8 @@ test('preparing and duplicate confirmation do not duplicate a model run; complet
     if (method === 'recordUsage') return {}
     throw new Error(method)
   }
-  const service = createAiService({ storage, runtime: { run: async input => {
+  const diagnostics = captureDiagnostics()
+  const service = createAiService({ storage, diagnostics, runtime: { run: async input => {
     runs++
     if (runs === 1) await new Promise(resolve => { release = resolve })
     return { text: JSON.stringify(simpleInsightReply(JSON.parse(input.prompt))), usage: { outputTokens: 50 }, checkpoint: '' }
@@ -33,6 +42,10 @@ test('preparing and duplicate confirmation do not duplicate a model run; complet
   await vi.waitFor(() => expect(runs).toBe(1))
   release(undefined)
   await service.idle()
+  expect(diagnostics.discardUnstarted).toHaveBeenCalledWith(diagnostics.begin.mock.results[1].value)
+  const operation = diagnostics.begin.mock.results[0].value
+  expect(diagnostics.event.mock.calls.map(call => call[1])).toEqual(expect.arrayContaining(['reading', 'checking', 'writing', 'request', 'returned', 'saving']))
+  expect(diagnostics.end).toHaveBeenCalledWith(operation, 'failed', expect.objectContaining({ phase: 'saving' }))
   expect(runs).toBe(2)
   expect(completed).toBe(true)
   expect(task.state).toBe('failed')
@@ -87,10 +100,58 @@ function turnStorage() {
     throw new Error(method)
   } }
 }
+test.each(['send', 'confirm'] as const)('records %s before the database acknowledges the action and captures preparation failures', async action => {
+  const diagnostics = captureDiagnostics()
+  const storageEntered = Promise.withResolvers<void>()
+  const acknowledgement = Promise.withResolvers<never>()
+  const storage = async () => { storageEntered.resolve(); return acknowledgement.promise }
+  const runtime = { run: vi.fn() }
+  const service = createAiService({ storage, diagnostics, runtime, secrets: { encrypt: value => value, decrypt: value => value } })
+  const request = action === 'send'
+    ? service.sendTurn({ threadId: '1', requestId: 'same', prompt: '示例问题', referenceIds: [], modelId: 'm' })
+    : service.confirmAnalysis({ token: 'token', requestId: 'same' })
+  await storageEntered.promise
+  const startedBeforeFailure = diagnostics.begin.mock.calls.length
+  acknowledgement.reject(new Error('private storage failure'))
+  await expect(request).rejects.toThrow('private storage failure')
+  expect(startedBeforeFailure).toBe(1)
+  expect(diagnostics.end).toHaveBeenCalledWith(diagnostics.begin.mock.results[0].value,
+    'failed', { phase: 'prepare', code: 'OPERATION_FAILED' })
+  expect(runtime.run).not.toHaveBeenCalled()
+})
+test('a dialogue logs the first response once, the provider counts and the committed result, without message content', async ({ onTestFinished }) => {
+  const state = turnStorage()
+  const diagnostics = captureDiagnostics()
+  let clock = 1_000
+  const timer = vi.spyOn(performance, 'now').mockImplementation(() => clock)
+  onTestFinished(() => timer.mockRestore())
+  const service = createAiService({ storage: state.storage, diagnostics,
+    runtime: { run: async (_input, options) => {
+      options.onText('')
+      clock += 12_000
+      options.onText('私密')
+      clock += 28_000
+      options.onText('私密回答')
+      return { text: '私密回答', usage: { inputTokens: 12, outputTokens: 4 }, checkpoint: '私密断点' }
+    } }, secrets: { encrypt: value => value, decrypt: value => value } })
+  await service.sendTurn({ threadId: '1', requestId: 'request', prompt: '私密提问', referenceIds: [], modelId: 'm' })
+  await service.idle()
+  const stages = diagnostics.event.mock.calls.map(call => call[1])
+  expect(stages).toEqual(['queued', 'request', 'firstResponse', 'returned', 'saving', 'saved'])
+  expect(diagnostics.event.mock.calls.find(call => call[1] === 'firstResponse')?.[2]).toMatchObject({ firstTokenMs: 12_000 })
+  expect(diagnostics.event.mock.calls.find(call => call[1] === 'returned')?.[2]).toMatchObject({ attempt: 1, inputTokens: 12, outputTokens: 4, durationMs: 40_000 })
+  expect(diagnostics.end.mock.calls[0][1]).toBe('success')
+  expect(JSON.stringify(diagnostics.event.mock.calls)).not.toMatch(/私密|127\.0\.0|示例/)
+  await service.sendTurn({ threadId: '1', requestId: 'request', prompt: '私密提问', referenceIds: [], modelId: 'm' })
+  await service.idle()
+  expect(diagnostics.discardUnstarted).toHaveBeenCalledWith(diagnostics.begin.mock.results[1].value)
+  expect(diagnostics.end).toHaveBeenCalledTimes(1)
+})
 test('stopping and retrying before the old response settles still schedules the new attempt', async () => {
   const state = turnStorage()
+  const diagnostics = captureDiagnostics()
   let release: (value: any) => void = () => {}, runs = 0
-  const service = createAiService({ storage: state.storage, runtime: { run: async () => { runs++; if (runs === 1) return new Promise(resolve => { release = resolve }); return { text: '新回答', usage: {}, checkpoint: 'new' } } }, secrets: { encrypt: value => value, decrypt: value => value } })
+  const service = createAiService({ storage: state.storage, diagnostics, runtime: { run: async () => { runs++; if (runs === 1) return new Promise(resolve => { release = resolve }); return { text: '新回答', usage: {}, checkpoint: 'new' } } }, secrets: { encrypt: value => value, decrypt: value => value } })
   await service.sendTurn({ threadId: '1', requestId: 'request', prompt: '问题', referenceIds: [], modelId: 'm' })
   await new Promise(resolve => setTimeout(resolve, 5))
   await service.stopTurn('1')
@@ -100,6 +161,10 @@ test('stopping and retrying before the old response settles still schedules the 
   expect(runs).toBe(2)
   expect(state.turn.text).toBe('新回答')
   expect(state.turn.state).toBe('completed')
+  const [stopped, retried] = diagnostics.begin.mock.results.map(result => result.value)
+  expect(stopped).not.toBe(retried)
+  expect(diagnostics.event.mock.calls.filter(call => call[0] === stopped).map(call => call[1])).toContain('requestUnknown')
+  expect(diagnostics.end.mock.calls.map(([id, outcome]) => [id, outcome])).toEqual(expect.arrayContaining([[stopped, 'cancelled'], [retried, 'success']]))
 })
 test('a queued question rechecks identity before sending its authorized context to the model', async () => {
   const state = turnStorage()
