@@ -48,6 +48,12 @@ export function ChatMessageContent({ message, groupedByDate, firstUnknownTime, s
 }) {
   const date = messageDate(message)
   const time = date ? (groupedByDate ? clockFormat.format(date) : date.toLocaleString('zh-CN')) : message.timeRaw
+  if (message.kind === 'system') return <div className="message-notice">
+    {firstUnknownTime && <span>时间未知</span>}
+    {time && <span>{time}</span>}
+    <p className="message-notice-text">{message.text || '系统消息'}</p>
+    {sourceLabel && <span className="source-range-label">{sourceLabel}</span>}
+  </div>
   return <>
     <ConversationAvatar name={message.senderName} />
     <div className="message-content">

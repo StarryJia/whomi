@@ -1,0 +1,12 @@
+{
+  "exportInfo": { "exporter": "SIWX", "wxid": "example-self" },
+  "session": { "wxid": "example-peer", "displayName": "合成撤回通知", "type": "私聊", "messageCount": 6 },
+  "messages": [
+    { "serverId": "101", "localType": 1, "createTime": 1700000001, "isSend": 1, "senderUsername": "example-self", "senderDisplayName": "示例甲", "content": "请看这两条记录。" },
+    { "serverId": "102", "localType": 10000, "typeName": "文本消息", "createTime": 1700000002, "isSend": 1, "senderUsername": "example-placeholder", "senderDisplayName": "导出占位", "content": "你撤回了一条消息" },
+    { "serverId": "103", "localType": 10002, "typeName": "系统消息", "createTime": 1700000003, "senderUsername": "example-peer", "senderDisplayName": "示例乙", "content": "“示例乙”撤回了一条消息" },
+    { "serverId": "104", "localType": 1, "typeName": "文本消息", "createTime": 1700000004, "senderUsername": "example-peer", "senderDisplayName": "示例乙", "content": "你撤回了一条消息" },
+    { "serverId": "105", "localType": 1, "createTime": 1700000005, "isSend": 1, "senderUsername": "example-self", "senderDisplayName": "示例甲", "content": "你刚才说“示例乙撤回了一条消息”是什么意思？" },
+    { "serverId": "106", "localType": 49, "typeName": "引用消息", "createTime": 1700000006, "senderUsername": "example-peer", "senderDisplayName": "示例乙", "content": "我引用的是这句。", "quote": { "senderName": "示例乙", "content": "你撤回了一条消息" } }
+  ]
+}

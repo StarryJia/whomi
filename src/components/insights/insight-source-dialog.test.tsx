@@ -15,6 +15,16 @@ function source(ids = ['10', '11', '12'], highlightIds = ['10', '12']): InsightC
     start: { id: ids[0], timeBucket: 0, sortTime: 10 }, end: { id: ids.at(-1)!, timeBucket: 0, sortTime: 12 }, rangeEndCursor: 'end',
     page: { items: ids.map(message), beforeCursor: 'before', afterCursor: 'after', snapshotMaxId: '40' }, highlightIds }
 }
+test('旧报告的引用位置按系统通知展示，保留高亮和原文', async () => {
+  const data = source(['10'], ['10'])
+  if (data.status !== 'available') throw Error('缺少测试原文')
+  Object.assign(data.page.items[0], { kind: 'system', senderKind: 'system', memberId: null, senderName: '旧导出昵称', text: '你撤回了一条消息' })
+  render(<InsightSourceDialog {...props(vi.fn(async () => data))} />)
+  const notice = await screen.findByText('你撤回了一条消息')
+  expect(notice.closest('[data-citation="true"]')).toHaveAttribute('data-message-id', '10')
+  expect(notice.closest('li')?.querySelector('.conversation-avatar,.message-meta,.message-text')).toBeNull()
+  expect(screen.queryByText('旧导出昵称')).not.toBeInTheDocument()
+})
 function props(readCitation = vi.fn(async () => source())) {
   return { taskId: '7', citationId: 'e1', phrase: '那次准备', conversationTitle: '小林', onClose: vi.fn(), returnFocus: createRef<HTMLButtonElement>(), fragmentCount: 2,
     readCitation, client: { locateSource: vi.fn(), readMessages: vi.fn(async (input: { limit?: number }) => {

@@ -167,6 +167,45 @@ test('actual import UI preserves old messages, self identity, source bytes and s
   } finally { await application?.close(); await cleanup(directory) }
 })
 
+test('微信撤回通知在原文无发送方，普通转述仍可用于洞察', async ({}, info) => {
+  const directory = await mkdtemp(join(tmpdir(), 'whomi-runtime-recall-'))
+  let app, page
+  try {
+    await copyFile('tests/desktop/probe.cjs', join(directory, 'probe.cjs'))
+    app = await electron.launch({ args: [resolve(process.env.WHOMI_DESKTOP_TEST_ENTRY ?? 'out/main/index.cjs'), '--whomi-runtime-test'],
+      env: { ...process.env, WHOMI_RUNTIME_TEST: directory } })
+    page = await app.firstWindow()
+    await page.getByRole('button', { name: '导入会话' }).click()
+    await save(page, resolve('tests/fixtures/import/echotrace/recall.json'))
+    await page.getByRole('button', { name: '打开会话', exact: true }).click()
+    await dismissIdentity(page)
+    const rows = page.locator('li[data-message-id]')
+    await expect(rows).toHaveCount(6)
+    await page.screenshot({ path: info.outputPath('wechat-recall.png') })
+    const observed = await page.evaluate(async () => {
+      const [chat] = (await window.whomi.listConversations({})).items
+      const messages = (await window.whomi.readMessages({ conversationId: chat.id, direction: 'after' })).items
+      const members = await window.whomi.listMembers(chat.id)
+      const scope = await window.whomi.ai.previewInsightScope({ conversationId: chat.id, scope: { kind: 'all' } })
+      return { counts: [chat.messageCount, chat.memberCount], members: members.map(m => m.displayName).sort(),
+        kinds: messages.map(m => m.kind), notices: messages.slice(1, 3).map(m => [m.senderKind, m.memberId, m.senderName, m.isSelf]),
+        total: scope.totalMessages, analyzable: scope.analyzableMessages }
+    })
+    await writeFile(info.outputPath('observed.json'), JSON.stringify(observed, null, 2))
+    expect(observed).toEqual({ counts: [6, 2], members: ['示例乙', '示例甲'].sort(), kinds: ['text', 'system', 'system', 'text', 'text', 'reply'],
+      notices: [['system', null, '', false], ['system', null, '', false]], total: 6, analyzable: 4 })
+    for (const i of [1, 2]) {
+      await expect(rows.nth(i).locator('.message-notice-text')).toBeVisible()
+      await expect(rows.nth(i).locator('.conversation-avatar,.message-meta,.message-text')).toHaveCount(0)
+    }
+    await expect(rows.nth(3).locator('.message-meta')).toContainText('示例乙')
+    await expect(rows.nth(5).locator('.message-quote')).toContainText('你撤回了一条消息')
+  } catch (error) {
+    if (page) await page.screenshot({ path: info.outputPath('failure.png') }).catch(() => {})
+    throw error
+  } finally { await app?.close(); await cleanup(directory) }
+})
+
 test('SIWX import retains unknown records and reports their saved state after reimport', async ({}, testInfo) => {
   const directory = await mkdtemp(join(tmpdir(), 'whomi-runtime-'))
   let application

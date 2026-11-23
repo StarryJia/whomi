@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto'
 import { afterEach, expect, test, vi } from 'vitest'
 import { createAiRepository } from '../../electron/data/ai/repository'
 import { openStore } from '../../electron/data/db/open'
+import { migrateStore } from '../../electron/data/db/migrate'
 import { purgeConversation } from '../../electron/data/db/purge'
 import { validateAiCall, validateAiResult } from '../../src/shared/ai-validation'
 import type { InsightReport } from '../../src/shared/conversation-insights'
@@ -366,6 +367,47 @@ test('回复补全或重新确认本人后，旧报告仍能定位原文，未�
   await expect(repository.resumeAnalysis(inProgress.id)).rejects.toHaveProperty('code', 'IDENTITY_CHANGED')
   store.writer.exec("UPDATE messages SET text='异常修改的正文' WHERE id=4")
   expect(await read()).toEqual({ status: 'expired' })
+})
+
+test('旧微信撤回改作通知，已冻结的输入和报告引用仍可定位', async () => {
+  const { store, repository } = await setup()
+  store.writer.exec(`UPDATE messages SET text='你撤回了一条消息',source_type='文本消息',extra='{"localType":10000}' WHERE id=1;
+    UPDATE messages SET text='他说撤回了一条消息，十一月再联系。',source_type='文本消息',extra='{"localType":10000}' WHERE id=2;
+    INSERT INTO memberships(id,conversation_id,source_conversation_id,source_key,display_name) VALUES(4,1,1,'placeholder','导出占位');
+    INSERT INTO messages(id,conversation_id,member_id,sender_kind,sender_name,kind,text,ordinal,source_type,extra)
+      VALUES(6,1,4,'member','导出占位','text','对方撤回了一条消息',5,'文本消息','{"localType":10002}');
+    INSERT INTO import_jobs(id,status,created_at_ms) VALUES(1,'completed',0);
+    INSERT INTO import_results(id,job_id,candidate_id,conversation_id,status,committed_at_ms) VALUES(1,1,'demo',1,'committed',0);
+    INSERT INTO message_origins(message_id,conversation_id,import_result_id,file_fingerprint,source_conversation_key,ordinal,parser_id,parser_version)
+      VALUES(1,1,1,'synthetic','demo',0,'echotrace','f19beeadda27b-whomi.4'),
+        (2,1,1,'synthetic','demo',1,'echotrace','f19beeadda27b-whomi.4'),
+        (6,1,1,'synthetic','demo',5,'echotrace','f19beeadda27b-whomi.4');`)
+  async function begin(requestId: string) {
+    const prep = await repository.prepareAnalysis({ conversationId: '1', modelId: 'example', scope: october })
+    return repository.confirmAnalysis({ token: prep.token, requestId })
+  }
+  const ready = await begin('old-report')
+  const [old] = repository.readInsightSources({ taskId: ready.id, messageIds: ['1'] })
+  const report: InsightReport = { format: 'conversation-insights-v1', aboutYou: [{ content: [{ text: '旧报告的判断。', citationId: 'a' }] }],
+    relationship: [], limitations: [], citations: [{ id: 'a', conversationId: '1', fragments: [{ sources: [{ messageId: '1', revision: old.revision }] }] }] }
+  await repository.saveInsightCheckpoint(ready.id, 'ready', ['1', '4'])
+  await repository.completeAnalysis(ready.id, report)
+  const stopped = await begin('old-pause')
+  await repository.saveAnalysis(stopped.id, { state: 'stopped' })
+  store.writer.exec('DROP VIEW visible_memberships; DROP TABLE legacy_insight_source_classification; PRAGMA user_version=11')
+  migrateStore(store)
+  expect(store.reader.prepare('SELECT id FROM visible_memberships WHERE conversation_id=1 ORDER BY id').all()).toEqual([{ id: 1n }, { id: 2n }])
+  expect(store.reader.prepare('SELECT member_id,kind FROM messages WHERE id=2').get()).toEqual({ member_id: 2n, kind: 'text' })
+  expect(repository.getAnalysis(ready.id).report).toEqual(report)
+  expect(repository.readInsightSources({ taskId: stopped.id, messageIds: ['1'] })).toEqual([old])
+  const citation = await repository.readInsightCitation({ taskId: ready.id, citationId: 'a', fragmentIndex: 0 })
+  expect(citation).toMatchObject({ status: 'available', highlightIds: ['1'] })
+  if (citation.status === 'available') expect(citation.page.items.find(m => m.id === '1')).toMatchObject({
+    kind: 'system', senderKind: 'system', memberId: null, senderName: '', isSelf: false, text: old.text,
+  })
+  const fresh = await begin('after-recall-fix')
+  expect(repository.analysisContext(fresh.id).snapshot.sources.map(s => s.messageId)).toEqual(['4'])
+  expect(() => repository.readInsightSources({ taskId: fresh.id, messageIds: ['1'] })).toThrow()
 })
 
 test('保存后引用只高亮实际证据，报告删除和整会话删除撤回各自来源', async () => {

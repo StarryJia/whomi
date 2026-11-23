@@ -77,7 +77,7 @@ export function createDataDispatcher(store: Store, service: ReturnType<typeof cr
         const id = args[0] as string; conversation(id)
         const rows = db.prepare(`SELECT m.id,m.display_name,m.self_hint,
           ${confirmedSelfSql} AS confirmed
-          FROM memberships m WHERE m.conversation_id=? ORDER BY m.id`).all(BigInt(id)) as { id: bigint; display_name: string; self_hint: bigint | null; confirmed: bigint }[]
+          FROM visible_memberships m WHERE m.conversation_id=? ORDER BY m.id`).all(BigInt(id)) as { id: bigint; display_name: string; self_hint: bigint | null; confirmed: bigint }[]
         result = rows.map(row => ({ id: row.id.toString(), displayName: row.display_name, selfHint: row.self_hint === null ? null : row.self_hint === 1n, confirmedSelf: row.confirmed === 1n } satisfies MemberView))
         break
       }

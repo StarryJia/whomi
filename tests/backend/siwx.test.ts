@@ -1,6 +1,21 @@
 import { expect, it, vi } from 'vitest'
+import { readFile } from 'node:fs/promises'
 import { collect, parseSynthetic } from './parser-helpers'
 import { normalizeModel } from '../../src/shared/conversation-model'
+
+it.each(['echotrace', 'weflow'])('按微信结构标识处理撤回，不根据普通正文或引用内容猜测：%s', async id => {
+  const sample = JSON.parse(await readFile('tests/fixtures/import/echotrace/recall.json', 'utf8'))
+  if (id === 'weflow') { delete sample.exportInfo; sample.weflow = { version: '1' } }
+  sample.messages.push({ ...sample.messages[3], serverId: '107', localType: 10002, content: '他提过撤回了一条消息，周六再聊。' })
+  const events = await parseSynthetic(id, JSON.stringify(sample))
+  const messages = events.flatMap(event => event.type === 'message' ? [event.value] : [])
+  expect(messages.map(m => m.kind)).toEqual(['text', 'system', 'system', 'text', 'text', 'reply', 'text'])
+  expect(messages.slice(1, 3).map(m => [m.senderKind, m.senderKey, m.senderName, m.extra.selfHint])).toEqual([
+    ['system', null, '', undefined], ['system', null, '', undefined],
+  ])
+  expect(messages[3]).toMatchObject({ senderKey: 'example-peer', text: messages[1].text })
+  expect(messages[5].reply?.text).toBe(messages[1].text)
+})
 
 it('keeps SIWX kinds, whitespace, unresolved quote and one exact self hint', async () => {
   const events = await collect('echotrace')

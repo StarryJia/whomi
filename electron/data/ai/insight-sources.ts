@@ -40,10 +40,15 @@ function sourceMessage(row: SourceRow): InsightSourceMessage & Pick<StoredInsigh
 
 function insightRows(db: Store['reader'], conversationId: bigint, messageIds?: readonly string[]): SourceRow[] {
   const ids = messageIds === undefined ? '' : ' AND x.id IN (SELECT CAST(value AS INTEGER) FROM json_each(?))'
-  return db.prepare(`SELECT x.id,x.conversation_id,x.member_id,x.sender_kind,x.sender_name,x.kind,x.text,x.sent_at_ms,
-    coalesce((SELECT ${confirmedSelfSql} FROM memberships m WHERE m.id=x.member_id AND m.conversation_id=x.conversation_id),0) AS is_self,
+  // 逐条读取只来自任务启动时保存的来源清单。新任务选材直接使用当前分类。
+  const legacyJoin = messageIds === undefined ? '' : 'LEFT JOIN legacy_insight_source_classification l ON l.message_id=x.id'
+  const field = (column: 'member_id' | 'sender_kind' | 'sender_name' | 'kind') =>
+    messageIds === undefined ? `x.${column}` : `CASE WHEN l.message_id IS NULL THEN x.${column} ELSE l.${column} END`
+  return db.prepare(`SELECT x.id,x.conversation_id,${field('member_id')} AS member_id,${field('sender_kind')} AS sender_kind,
+    ${field('sender_name')} AS sender_name,${field('kind')} AS kind,x.text,x.sent_at_ms,
+    coalesce((SELECT ${confirmedSelfSql} FROM memberships m WHERE m.id=(${field('member_id')}) AND m.conversation_id=x.conversation_id),0) AS is_self,
     r.target_message_id AS reply_to_message_id, r.original_id AS reply_original_id, r.id_namespace AS reply_namespace
-    FROM messages x LEFT JOIN message_replies r ON r.message_id=x.id AND r.conversation_id=x.conversation_id
+    FROM messages x ${legacyJoin} LEFT JOIN message_replies r ON r.message_id=x.id AND r.conversation_id=x.conversation_id
     WHERE x.conversation_id=?${ids} ORDER BY x.time_bucket,x.sort_time,x.id`)
     .all(conversationId, ...(messageIds === undefined ? [] : [JSON.stringify(messageIds)])) as SourceRow[]
 }
