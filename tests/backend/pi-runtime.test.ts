@@ -7,6 +7,9 @@ import { homedir, tmpdir } from 'node:os'
 import { join, resolve, sep } from 'node:path'
 import { PiRuntime } from '../../electron/agent/runtime'
 import type { AiModel } from '../../src/shared/ai-contract'
+import { generateInsight } from '../../electron/main/insight-generation'
+import { defaultInsightRunLimits } from '../../electron/main/insight-policy'
+import { defaultInsightPrompts } from '../../electron/data/ai/insight-prompts'
 
 describe('Pi runtime over a controlled OpenAI compatible service', () => {
   beforeAll(async () => { await import('@earendil-works/pi-coding-agent') }, 30000)
@@ -53,6 +56,41 @@ describe('Pi runtime over a controlled OpenAI compatible service', () => {
       const result = new PiRuntime(directory).run({ ...input(model), purpose }, options())
       await expect(result).rejects.toMatchObject({ code: purpose ? 'MODEL_TIMEOUT' : 'MODEL_REQUEST_FAILED' })
     }
+  }, 20000)
+
+  it('keeps an ordinary Google validation error out of the timeout retry', async () => {
+    answer = response => {
+      response.writeHead(400, { 'Content-Type': 'application/json' })
+      response.end(JSON.stringify({ error: { code: 400, status: 'INVALID_ARGUMENT', message: 'private gateway detail' } }))
+    }
+    const result = new PiRuntime(directory).run({ ...input({ ...model, protocol: 'google-generative-ai' }), purpose: 'insight' }, options())
+    await expect(result).rejects.toMatchObject({ code: 'MODEL_REQUEST_FAILED' })
+    expect(requests).toHaveLength(1)
+  }, 20000)
+
+  it('retries the same Google reading request once after HTTP 504 and finishes the report', async () => {
+    answer = response => {
+      if (requests.length === 1) {
+        response.writeHead(504, { 'Content-Type': 'application/json' })
+        response.end(JSON.stringify({ error: { code: 504, status: 'DEADLINE_EXCEEDED', message: 'private gateway detail' } }))
+        return
+      }
+      const reply = requests.length === 2 ? { observations: [], openThreads: [], candidates: [] }
+        : { aboutYou: [], relationship: [], citations: [], judgments: [], limitations: ['材料有限。'] }
+      response.writeHead(200, { 'Content-Type': 'text/event-stream' })
+      const candidate = { content: { role: 'model', parts: [{ text: JSON.stringify(reply) }] }, finishReason: 'STOP' }
+      response.end('data: ' + JSON.stringify({ candidates: [candidate] }) + '\n\n')
+    }
+    const runtime = new PiRuntime(directory)
+    const message = { id: '1', revision: 'r1', senderName: '本人', isSelf: true, text: '周五见。', sentAtMs: 1000, replyToMessageId: null }
+    const report = await generateInsight({
+      snapshot: { taskId: '1', scope: { kind: 'all' }, timezone: 'UTC', createdAtMs: 1000, sourceStartTimeMs: 1000, sourceEndTimeMs: 1000,
+        sources: [{ messageId: message.id, revision: message.revision }] },
+      conversationId: '1', model: { ...model, protocol: 'google-generative-ai' }, prompts: defaultInsightPrompts, limits: defaultInsightRunLimits, checkpoint: null,
+    }, { ...options(), read: async () => [message], saveCheckpoint: async () => {}, run: (request, context) => runtime.run(request, context) })
+    expect(requests).toHaveLength(3)
+    expect(requests[1]).toEqual(requests[0])
+    expect(report.limitations).toEqual(['材料有限。'])
   }, 20000)
 
   it('uses the upstream request fallback without saving invented model capacities', async () => {

@@ -27,7 +27,7 @@ export type InsightGenerationDeps = {
   read: (ids: readonly string[]) => Promise<InsightSourceMessage[]>
   saveCheckpoint: (state: InsightCheckpoint, sampledAtMs: number) => Promise<void>
   saveElapsed?: (elapsedMs: number, sampledAtMs: number) => Promise<void>
-  onRetry?: (stage: InsightStage, shrink: boolean, error: unknown) => void
+  onRetryPlanned?: (shrink: boolean, error: unknown) => void
   onUnknown?: (stage: InsightStage, attempt: number) => void
   signal: AbortSignal
   onText: (text: string) => void
@@ -602,7 +602,7 @@ async function generateInsightReport(input: InsightGenerationInput, deps: Insigh
     } catch (error) {
       if (codeOf(error) !== 'MODEL_TIMEOUT') throw error
       await checkActive()
-      deps.onRetry?.(stage, false, error)
+      deps.onRetryPlanned?.(false, error)
       return dispatch(stage, payload, check, true)
     }
   }
@@ -740,13 +740,13 @@ async function generateInsightReport(input: InsightGenerationInput, deps: Insigh
         const to = shrinkInsightSources(messages, layout.from, layout.to)
         if (!to) throw insightCapacityError(true)
         state.pendingRead = { ...layout, to, depth: layout.depth + 1, repairs: 0 }
-        deps.onRetry?.('reading', true, error)
+        deps.onRetryPlanned?.(true, error)
         await save()
         continue
       }
       if (mayRepair(error, layout.repairs) && remainingInsightBudget(state).calls > 1) {
         layout.repairs++
-        deps.onRetry?.('reading', false, error)
+        deps.onRetryPlanned?.(false, error)
         await save()
         continue
       }
@@ -876,7 +876,7 @@ async function generateInsightReport(input: InsightGenerationInput, deps: Insigh
         } catch (error) {
           if (mayRepair(error, navigation.repairs) && remainingInsightBudget(state).calls > 1) {
             navigation.repairs++
-            deps.onRetry?.('reading', false, error)
+            deps.onRetryPlanned?.(false, error)
             await save()
             continue
           }
@@ -955,13 +955,13 @@ async function generateInsightReport(input: InsightGenerationInput, deps: Insigh
           if (!smaller) throw insightCapacityError(true)
           check.pendingThrough = smaller
           check.shrinkDepth++
-          deps.onRetry?.('checking', true, error)
+          deps.onRetryPlanned?.(true, error)
           await save()
           continue
         }
         if (mayRepair(error, check.repairs) && check.rounds < state.limits.maxRoundsPerCheck && remainingInsightBudget(state).calls > 1) {
           check.repairs++
-          deps.onRetry?.('checking', false, error)
+          deps.onRetryPlanned?.(false, error)
           await save()
           continue
         }
@@ -1016,7 +1016,7 @@ async function generateInsightReport(input: InsightGenerationInput, deps: Insigh
     } catch (error) {
       if (mayRepair(error, state.writingRepairs) && remainingInsightBudget(state).calls > 0) {
         state.writingRepairs++
-        deps.onRetry?.('writing', false, error)
+        deps.onRetryPlanned?.(false, error)
         await save()
         continue
       }

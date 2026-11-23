@@ -1,18 +1,19 @@
 import { randomUUID } from 'node:crypto'
-import { appendFile, readdir, rename, unlink, writeFile } from 'node:fs/promises'
-import { join, resolve } from 'node:path'
+import { appendFile, readdir, rename, truncate, unlink, writeFile } from 'node:fs/promises'
+import { basename, dirname, join, resolve } from 'node:path'
 import { BoundaryError, localId } from '../../src/shared/desktop-validation'
 import { isOperationId, operationActionLabels, operationAreaLabels, operationOutcomeLabels, operationRetentionMs,
   type OperationArea, type OperationSummary } from '../../src/shared/operation-diagnostics'
 import { localLogDirectory, writeLocalLog } from './app-error-logs'
-import { checkedSize, crashUsage, legacyFile, scanLegacy, taskBinding, type ArchiveFile } from './operation-archives'
+import { attachmentHolds, checkedSize, crashUsage, legacyFile, scanLegacy, taskBinding, type ArchiveFile } from './operation-archives'
 import { safeFields, stageLabels } from './operation-fields'
 import { encodeRow, filenameId, logFilename, readLog, summaryHeader, updateHeader, validVersion, type Outcome, type Row } from './operation-text'
 
 const day = 86_400_000
 const mib = 1_048_576
 type Entry = { summary: OperationSummary; size: number; version: string; retry: boolean; code?: string
-  attachmentUntil?: number
+  discardable?: boolean
+  partialAt?: number
   binding?: string; header: Row; missing: boolean; waitingForRestart: boolean; name: string }
 type Options = { now?: () => number; maxBytes?: number; targetBytes?: number; onWriteFailure?: (message: string) => void }
 type Waiting = { first: Row; last: Row; count: number }
@@ -29,9 +30,11 @@ function applyRow(entry: Entry, row: Row) {
   if (row.kind === 'end' && row.outcome && Object.hasOwn(operationOutcomeLabels, row.outcome)) {
     summary.outcome = row.outcome
     summary.endedAt = row.at
+    if (typeof row.fields?.code === 'string') summary.endCode = row.fields.code
+    else delete summary.endCode
   }
   if (row.kind === 'event' && row.stage === 'waitingForRestart' && summary.area === 'storage' && summary.action === 'migrate') entry.waitingForRestart = true
-  if (row.kind === 'resume') { summary.outcome = 'running'; summary.endedAt = null; entry.waitingForRestart = false }
+  if (row.kind === 'resume') { summary.outcome = 'running'; summary.endedAt = null; delete summary.endCode; entry.waitingForRestart = false }
   if (row.kind === 'gap' || row.incomplete) summary.complete = false
 }
 
@@ -52,6 +55,7 @@ export function createOperationDiagnostics(installDirectory: string, version: st
   const operationPath = (entry: Entry) => join(directory, entry.name)
   const entries = new Map<string, Entry>()
   const pins = new Map<string, number>()
+  const attachments = attachmentHolds(root, now)
   const progress = new Map<string, { stage: string; at: number; fields: string; waiting?: Waiting }>()
   let legacy = new Map<string, ArchiveFile>()
   let total = 0, warned = false
@@ -69,12 +73,14 @@ export function createOperationDiagnostics(installDirectory: string, version: st
     await localLogDirectory(root, true)
     await localLogDirectory(directory, true)
     legacy = await scanLegacy(root)
+    await attachments.load()
     total = [...legacy.values()].reduce((size, file) => size + file.size, 0)
     for (const file of await readdir(directory, { withFileTypes: true })) {
       const id = filenameId(file.name)
       if (!file.isFile() || !isOperationId(id)) continue
       let entry: Entry | undefined
       let size: number
+      let hasTerminalHistory = false
       try {
         const path = join(directory, file.name)
         size = await checkedSize(path)
@@ -84,17 +90,32 @@ export function createOperationDiagnostics(installDirectory: string, version: st
               || !row.action || !Object.hasOwn(operationActionLabels, row.action) || validVersion(row.version) !== row.version) throw Error('Foreign file')
             entry = newEntry(row)
             entry.name = file.name
-          } else applyRow(entry, row)
+          } else {
+            if (row.kind === 'end' || row.kind === 'resume') hasTerminalHistory = true
+            applyRow(entry, row)
+          }
         })
       } catch { if (!entry) continue; entry.summary.complete = false }
       if (!entry) continue
       entry.size = size!
+      // 追加结束行遇到磁盘满时，定长摘要仍可能保存结果。字节数可区分同一毫秒内随后追加的恢复行。
+      const recorded = entry.header.recordedEnd
+      if (entry.header.incomplete && recorded && (recorded.size === entry.size ||
+        (recorded.size === undefined && recorded.lastAt >= entry.summary.lastAt &&
+          (recorded.endedAt > entry.summary.lastAt || !hasTerminalHistory)))) {
+        if (entry.summary.endedAt !== recorded.endedAt || entry.summary.outcome !== recorded.outcome) delete entry.summary.endCode
+        entry.summary.outcome = recorded.outcome
+        entry.summary.endedAt = recorded.endedAt
+        entry.summary.lastAt = recorded.lastAt
+        entry.partialAt = recorded.partialAt
+        if (entry.partialAt !== undefined) entry.missing = true
+      }
       if (entry.summary.outcome === 'running') {
         entry.summary.outcome = 'interrupted'
         entry.summary.endedAt = entry.summary.lastAt
         // 已切换数据目录的迁移需重启后才能验证，正常交接期间没有缺失的阶段。
         if (!entry.waitingForRestart) entry.summary.complete = false
-        try { await updateHeader(operationPath(entry), entry.summary, entry.version) } catch { warn(entry) }
+        try { await updateHeader(operationPath(entry), entry.summary, entry.version, entry.size, entry.partialAt) } catch { warn(entry) }
       }
       entries.set(id, entry)
       total += entry.size
@@ -124,7 +145,8 @@ export function createOperationDiagnostics(installDirectory: string, version: st
     for (const [id, entry] of entries) {
       const s = entry.summary
       if (entry.binding) bound.set(entry.binding, id)
-      if (s.endedAt === null || pins.has(id) || (entry.attachmentUntil ?? 0) > now()) continue
+      if (s.endedAt === null || pins.has(id) ||
+        (s.endedAt + operationRetentionMs > now() && attachments.has(entry.name))) continue
       const healthy = s.outcome === 'success' || s.outcome === 'cancelled'
       const candidate = { id, files: [] as ArchiveFile[], at: s.endedAt, priority: healthy ? Number(entry.retry) : 3 }
       groups.set(id, candidate)
@@ -150,7 +172,8 @@ export function createOperationDiagnostics(installDirectory: string, version: st
       list[0].priority = 4
       list[list.length - 1].priority = 4
     }
-    return [...groups.values()]
+    return [...groups.values()].filter(group => !group.files.some(file => pins.has(file.path) ||
+      (group.at + operationRetentionMs > now() && attachments.has(basename(file.path)))))
   }
 
   async function remove(candidate: Candidate) {
@@ -194,6 +217,7 @@ export function createOperationDiagnostics(installDirectory: string, version: st
   }
 
   async function cleanup(incoming: number, expire = true, reserve = 0) {
+    if (expire) await attachments.prune()
     if (!expire && total + incoming + reserve <= maximum) return true
     const cutoff = now() - operationRetentionMs
     const pressure = total + incoming + reserve > maximum
@@ -206,9 +230,18 @@ export function createOperationDiagnostics(installDirectory: string, version: st
   }
 
   async function persist(entry: Entry, row: Row, ordinary = false) {
+    if (row.kind !== 'start') entry.discardable = false
     try {
       await initialize()
       await localLogDirectory(directory)
+      const path = operationPath(entry)
+      if (entry.partialAt !== undefined) {
+        await checkedSize(path)
+        await truncate(path, entry.partialAt)
+        total += entry.partialAt - entry.size
+        entry.size = entry.partialAt
+        delete entry.partialAt
+      }
       const header = entry.size === 0 ? summaryHeader(entry.summary, entry.version) : ''
       const gap = entry.missing ? encodeRow({ kind: 'gap', at: row.at }, entry.summary.lastAt) : ''
       const text = header + gap + encodeRow(row, entry.summary.lastAt)
@@ -219,10 +252,20 @@ export function createOperationDiagnostics(installDirectory: string, version: st
         if (ordinary) return false
         throw Error('Capacity')
       }
-      const path = operationPath(entry)
       await allocated(bytes, async () => {
         if (!entry.size) await writeFile(path, text, { flag: 'wx', mode: 0o600 })
-        else { await checkedSize(path); await appendFile(path, text) }
+        else {
+          const before = await checkedSize(path)
+          try { await appendFile(path, text) }
+          catch (error) {
+            // 磁盘满时可能已写入半行，下次追加前先恢复到上一条完整记录。
+            const actual = await checkedSize(path)
+            if (actual > before) entry.partialAt = before
+            total += actual - entry.size
+            entry.size = actual
+            throw error
+          }
+        }
       })
       total += bytes; entry.size += bytes; entry.missing = false; warned = false
       return true
@@ -234,9 +277,16 @@ export function createOperationDiagnostics(installDirectory: string, version: st
     const recorded = await persist(entry, row)
     applyRow(entry, row)
     if (!recorded) entry.summary.lastAt = previous
-    if (entry.size) {
-      try { await checkedSize(operationPath(entry)); await updateHeader(operationPath(entry), entry.summary, entry.version) } catch { warn(entry) }
-    }
+    await refreshHeader(entry)
+  }
+  async function refreshHeader(entry: Entry) {
+    if (!entry.size) return
+    try {
+      const path = operationPath(entry), actual = await checkedSize(path)
+      total += actual - entry.size
+      entry.size = actual
+      await updateHeader(path, entry.summary, entry.version, actual, entry.partialAt)
+    } catch { warn(entry) }
   }
   function hold(state: { waiting?: Waiting }, row: Row) {
     if (state.waiting) { state.waiting.last = row; state.waiting.count++ }
@@ -264,6 +314,7 @@ export function createOperationDiagnostics(installDirectory: string, version: st
     background(async () => {
       if (entries.has(id)) return
       const entry = newEntry(header)
+      entry.discardable = true
       entries.set(id, entry)
       await persist(entry, header)
     })
@@ -285,7 +336,9 @@ export function createOperationDiagnostics(installDirectory: string, version: st
       if (row.at - state.at >= 10_000) {
         const merged = takeProgress(state, row)!
         if (await persist(entry, merged, true)) {
-          applyRow(entry, merged); state.at = row.at; state.waiting = undefined; return
+          applyRow(entry, merged)
+          await refreshHeader(entry)
+          state.at = row.at; state.waiting = undefined; return
         }
       }
       hold(state, row)
@@ -313,7 +366,7 @@ export function createOperationDiagnostics(installDirectory: string, version: st
     background(async () => {
       const entry = entries.get(id)
       if (entry && (entry.summary.outcome === 'interrupted' || entry.summary.outcome === 'unknown'
-        || (entry.summary.area === 'import' && entry.summary.outcome === 'failed'))) {
+        || (['import', 'insight'].includes(entry.summary.area) && entry.summary.outcome === 'failed'))) {
         entry.summary.endedAt = null
         entry.summary.outcome = 'running'
         await write(entry, row)
@@ -321,9 +374,54 @@ export function createOperationDiagnostics(installDirectory: string, version: st
     })
   }
 
+  function discardUnstarted(id: string) {
+    return enqueue(async () => {
+      const entry = entries.get(id)
+      if (!entry?.discardable || entry.summary.outcome !== 'running' || pins.has(id) || attachments.has(entry.name)) return
+      try { await remove({ id, files: [], at: now(), priority: 0 }) }
+      catch {
+        warn(entry)
+        await write(entry, { kind: 'end', at: now(), outcome: 'unknown' })
+      }
+    })
+  }
+
+  function pin(key: string) {
+    pins.set(key, (pins.get(key) ?? 0) + 1)
+    return () => {
+      const count = pins.get(key)! - 1
+      if (count) pins.set(key, count)
+      else pins.delete(key)
+    }
+  }
+  async function keepAttachment(name: string, endedAt?: number | null) {
+    const at = now()
+    const until = Math.min(at + 10 * 60_000, (endedAt ?? at) + operationRetentionMs)
+    await enqueue(() => attachments.keep(name, until)).catch(() => warn())
+  }
+
+  async function openLegacyFile(path: string, openPath: (path: string) => Promise<string>) {
+    if (dirname(path) !== join(root, 'import-errors')) return openPath(path)
+    const release = pin(path)
+    try {
+      await pending
+      const file = legacy.get(path)
+      const result = await openPath(path)
+      if (file && !result) {
+        let endedAt: number | null = file.at
+        if (file.binding) {
+          for (const other of legacy.values()) if (other.binding === file.binding) endedAt = Math.max(endedAt, other.at)
+          for (const entry of entries.values()) if (entry.binding === file.binding) endedAt = entry.summary.endedAt
+        }
+        await keepAttachment(basename(path), endedAt)
+      }
+      return result
+    } finally { release() }
+  }
+
   async function withFile<T>(id: string, use: (path: string) => T | Promise<T>, preparingAttachment = false) {
     if (!isOperationId(id)) throw missingOperation()
-    pins.set(id, (pins.get(id) ?? 0) + 1)
+    const release = pin(id)
     try {
       const path = await enqueue(async () => {
         const entry = entries.get(id)
@@ -331,7 +429,7 @@ export function createOperationDiagnostics(installDirectory: string, version: st
         const path = operationPath(entry)
         try {
           await checkedSize(path)
-          await updateHeader(path, entry.summary, entry.version)
+          await updateHeader(path, entry.summary, entry.version, entry.size, entry.partialAt)
         } catch {
           warn(entry)
           await checkedSize(path).catch(() => { throw missingOperation() })
@@ -342,14 +440,10 @@ export function createOperationDiagnostics(installDirectory: string, version: st
       const entry = entries.get(id)
       if (preparingAttachment && entry) {
         // 系统查看器启动后，给用户留出切到浏览器并选择附件的时间。
-        entry.attachmentUntil = Math.min(now() + 10 * 60_000, (entry.summary.endedAt ?? now()) + operationRetentionMs)
+        await keepAttachment(entry.name, entry.summary.endedAt)
       }
       return result
-    } finally {
-      const count = (pins.get(id) ?? 1) - 1
-      if (count) pins.set(id, count)
-      else pins.delete(id)
-    }
+    } finally { release() }
   }
   function prune() { return enqueue(async () => { if (ready) await cleanup(0) }) }
   const timer = setInterval(() => { void prune().catch(() => warn()) }, day)
@@ -368,7 +462,7 @@ export function createOperationDiagnostics(installDirectory: string, version: st
     return closing
   }
   return {
-    begin, event, end, bind, resume, withFile,
+    begin, event, end, bind, resume, discardUnstarted, withFile, openLegacyFile,
     async findByTask(area: OperationArea, taskId: string, createdAt: number) {
       await pending
       const binding = taskBinding(area, taskId, createdAt)

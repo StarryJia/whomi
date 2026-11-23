@@ -16,6 +16,7 @@ export type OperationSummary = {
   endedAt: number | null
   lastAt: number
   outcome: OperationOutcome
+  endCode?: string
   complete: boolean
 }
 

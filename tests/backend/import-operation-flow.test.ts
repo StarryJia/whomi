@@ -151,6 +151,17 @@ it('preserves 800 missing timestamps and their first three ordinals when a save 
     tracker = createImportOperationTracker(log)
     const next = router()
     await next.invoke(1, 'getImport', [jobId])
+    db.writer.exec(`CREATE TEMP TRIGGER reject_cancel BEFORE UPDATE OF phase ON import_jobs WHEN NEW.phase = 'cancelled'
+      BEGIN SELECT RAISE(ABORT, 'cancel write failed'); END`)
+    for (let attempt = 0; attempt < 2; attempt++) {
+      await expect(next.invoke(1, 'cancelImport', [jobId])).rejects.toMatchObject({ code: 'CANCEL_FAILED' })
+      expect(await next.invoke(1, 'getImport', [jobId])).toMatchObject({ status: 'failed', failurePhase: 'cancel' })
+      expect(await log.list()).toMatchObject([{ id, outcome: 'failed' }])
+      const failed = await log.withFile(id, path => readFile(path, 'utf8'))
+      const receipts = failed.split('\n').filter(row => row.includes('阶段=整批撤回') && row.includes('结果=失败') && row.includes('错误码=CANCEL_FAILED'))
+      expect(receipts).toHaveLength(attempt + 1)
+    }
+    db.writer.exec('DROP TRIGGER reject_cancel')
     await next.invoke(1, 'cancelImport', [jobId])
     const cancelled = await next.invoke(1, 'getImport', [jobId]) as ImportSnapshot
     expect(cancelled).toMatchObject({ status: 'cancelled', operationId: id })
@@ -166,6 +177,60 @@ it('preserves 800 missing timestamps and their first three ordinals when a save 
     expect(text).not.toContain('Synthetic Telegram')
   } finally {
     await service.idle()
+    await log.close()
+    db.close()
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
+it('recovers a persisted import when the worker exits before returning its job ID', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'whomi-import-lost-ack-'))
+  const db = openStore(join(dir, 'test.db'))
+  let log = createOperationDiagnostics(dir, '0.1.11')
+  try {
+    const tracker = createImportOperationTracker(log)
+    const service = createDataService({ store: db, appDataDirectory: dir, changed: snapshot => tracker.observe(snapshot) })
+    const dispatch = createDataDispatcher(db, service)
+    const grants = createSourceGrants()
+    const first = createDesktopRouter({ grants, imports: tracker, request: async (method, payload) => {
+      const result = await dispatch(method, payload).catch(error => { throw new BoundaryError(error.code) })
+      if (method === 'prepareImport') throw new BoundaryError('SERVICE_UNAVAILABLE')
+      return result
+    } })
+    const file = join(dir, 'chat.json')
+    await writeFile(file, await readFile('tests/fixtures/import/telegram-native-single/positive.json'))
+    await expect(first.invoke(1, 'prepareImport', [await grants.issue(1, [file])])).rejects.toMatchObject({ code: 'SERVICE_UNAVAILABLE' })
+    const [pending] = await log.list()
+    expect(pending.outcome).toBe('unknown')
+
+    await expect(first.invoke(1, 'prepareImport', [await grants.issue(1, [file])])).rejects.toMatchObject({ code: 'IMPORT_BUSY' })
+    const rejected = (await log.list()).find(entry => entry.id !== pending.id)!
+    expect(rejected.outcome).toBe('failed')
+    expect(await log.withFile(rejected.id, path => readFile(path, 'utf8'))).toContain('错误码=IMPORT_BUSY')
+    await log.close()
+
+    log = createOperationDiagnostics(dir, '0.1.11')
+    const restarted = createDataService({ store: db, appDataDirectory: dir })
+    const next = createDesktopRouter({ grants, imports: createImportOperationTracker(log), request: createDataDispatcher(db, restarted) })
+    const jobId = await next.invoke(1, 'getInterruptedImport', [])
+    expect(await next.invoke(1, 'getImport', [jobId])).toMatchObject({ operationId: pending.id, status: 'failed' })
+    const interrupted = (await log.list()).find(entry => entry.id === pending.id)
+    expect(interrupted?.outcome).toBe('interrupted')
+    const document = await log.withFile(pending.id, path => readFile(path, 'utf8'))
+    expect(document.split('\n')).toEqual(expect.arrayContaining([
+      expect.stringContaining('阶段=准备  结果=尚未确认返回'),
+      expect.stringContaining('阶段=恢复  结果=中断'),
+      expect.stringContaining('错误码=INTERRUPTED'),
+    ]))
+    for (let launch = 0; launch < 2; launch++) {
+      await log.close()
+      log = createOperationDiagnostics(dir, '0.1.11')
+      const reader = createDesktopRouter({ grants, imports: createImportOperationTracker(log), request: createDataDispatcher(db, restarted) })
+      await reader.invoke(1, 'getImport', [jobId])
+      expect((await log.list()).find(entry => entry.id === pending.id)?.endedAt).toBe(interrupted?.endedAt)
+      expect(await log.withFile(pending.id, path => readFile(path, 'utf8'))).toBe(document)
+    }
+  } finally {
     await log.close()
     db.close()
     await rm(dir, { recursive: true, force: true })

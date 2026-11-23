@@ -10,6 +10,7 @@ type ImportTrace = {
   createdAt?: number
   lastStatus?: ImportSnapshot['status']
   lastCounts?: string
+  lastFailure?: string
   candidates?: number
   saved?: 'success' | 'cancelled'
   priorFailure?: 'failed' | 'interrupted'
@@ -22,12 +23,19 @@ function errorCode(cause: unknown) {
     ? cause.code.toUpperCase().replaceAll('-', '_') : 'OPERATION_FAILED'
 }
 
+function snapshotFailure(snapshot: ImportSnapshot) {
+  if (snapshot.status !== 'failed' && snapshot.status !== 'partially_completed') return
+  const phase = snapshot.failurePhase ?? 'save'
+  const code = (currentImportIssue(phase, snapshot.issues)?.code ?? 'IMPORT_FAILED').toUpperCase().replaceAll('-', '_')
+  return { phase, code, signature: phase + ':' + code }
+}
+
 export function createImportOperationTracker(log: Diagnostics) {
   const active = new Map<string, ImportTrace>()
   const jobs = new Map<string, string>()
 
   function begin(handles: SourceHandle[], source: 'picker' | 'drop') {
-    for (const [oldId, trace] of active) if (trace.ended && !trace.awaitingReceipt) forget(oldId)
+    for (const [oldId, trace] of active) if (trace.ended && (!trace.awaitingReceipt || !trace.jobId)) forget(oldId)
     const id = log.begin('import', 'import')
     const kinds = new Set(handles.map(handle => handle.kind))
     log.event(id, 'accepted', { source, sourceKind: kinds.size === 1 ? handles[0].kind : 'mixed', sourceCount: handles.length })
@@ -42,8 +50,18 @@ export function createImportOperationTracker(log: Diagnostics) {
     active.delete(id)
   }
   function prepareFailed(id: string, cause: unknown) {
-    log.end(id, 'failed', { code: errorCode(cause) })
-    forget(id)
+    const trace = active.get(id)
+    if (!trace || trace.ended || trace.saved) return
+    const code = errorCode(cause)
+    if (['SERVICE_UNAVAILABLE', 'DATA_PROCESS_GONE', 'INVALID_RESPONSE'].includes(code)) {
+      log.event(id, 'prepare', { result: 'unknown', code })
+      log.end(id, 'unknown', { code })
+      trace.ended = true
+      trace.awaitingReceipt = true
+    } else {
+      log.end(id, 'failed', { code })
+      forget(id)
+    }
   }
 
   function observe(snapshot: ImportSnapshot) {
@@ -58,17 +76,19 @@ export function createImportOperationTracker(log: Diagnostics) {
     }
     const { status, counts, progress, discovery } = snapshot
     if (trace.lastStatus && importSnapshotStates.indexOf(status) < importSnapshotStates.indexOf(trace.lastStatus)) return
+    const failure = snapshotFailure(snapshot)
+    const changed = trace.lastStatus !== status || failure?.signature !== trace.lastFailure
+    const fields = { validRecords: counts.validRecords, invalidRecords: counts.invalidRecords, processed: progress?.processed, total: progress?.total }
+    const signature = JSON.stringify(fields)
+    if (!changed && (trace.lastCounts === signature || !['staging','committing'].includes(status))) return
     if (trace.awaitingReceipt) {
       if (!terminalImportStates.has(status)) return
       log.resume(id)
       trace.awaitingReceipt = false
       trace.ended = false
     }
-    const changed = trace.lastStatus !== status
-    const fields = { validRecords: counts.validRecords, invalidRecords: counts.invalidRecords, processed: progress?.processed, total: progress?.total }
-    const signature = JSON.stringify(fields)
-    if (!changed && (trace.lastCounts === signature || !['staging','committing'].includes(status))) return
     trace.lastStatus = status
+    trace.lastFailure = failure?.signature
     trace.lastCounts = signature
     const scan = { fileCount: discovery?.fileCount, totalBytes: discovery?.totalBytes }
     if (status === 'scanning') log.event(id, 'scan', { result: 'requested' })
@@ -106,12 +126,11 @@ export function createImportOperationTracker(log: Diagnostics) {
       log.event(id, 'rollback', { result: 'success', inserted: snapshot.inserted, duplicates: snapshot.duplicates })
       trace.saved = 'cancelled'
     }
-    if (status === 'failed' || status === 'partially_completed') {
-      const phase = snapshot.failurePhase ?? 'save'
-      const code = (currentImportIssue(phase, snapshot.issues)?.code ?? 'IMPORT_FAILED').toUpperCase().replaceAll('-', '_')
+    if (failure) {
+      const { phase, code } = failure
       const stage = phase === 'source' ? 'prepare' : phase === 'cancel' ? 'rollback' : phase === 'scan' || phase === 'parse' ? phase : 'commit'
       log.event(id, stage, { result: 'failed', phase, code, ...fields })
-      if (snapshot.rolledBack) log.event(id, 'rollback', { result: 'success', inserted: snapshot.inserted })
+      if (snapshot.rolledBack && phase !== 'cancel') log.event(id, 'rollback', { result: 'success', inserted: snapshot.inserted })
       trace.priorFailure = code === 'INTERRUPTED' ? 'interrupted' : 'failed'
       log.end(id, trace.priorFailure, { code })
       trace.ended = true
@@ -123,15 +142,18 @@ export function createImportOperationTracker(log: Diagnostics) {
       const id = snapshot.operationId
       const entry = (await log.list()).find(operation => operation.id === id)
       if (!entry || active.has(id)) return
-      if (entry.outcome === 'unknown' || (snapshot.status !== 'failed' && entry.outcome === 'interrupted')) {
-        log.resume(id)
-        active.set(id, {})
-      } else if (snapshot.issues.some(issue => issue.code === 'INTERRUPTED') && ['running','interrupted'].includes(entry.outcome)) {
+      const failure = snapshotFailure(snapshot)
+      const interruptionRecorded = entry.outcome === 'interrupted' && entry.endCode === 'INTERRUPTED'
+      if (failure?.code === 'INTERRUPTED' && !interruptionRecorded && ['unknown','running','interrupted','failed'].includes(entry.outcome)) {
         log.resume(id)
         log.event(id, 'recovery', { result: 'interrupted', code: 'INTERRUPTED' })
         active.set(id, {})
+      } else if (entry.outcome === 'unknown' || (snapshot.status !== 'failed' && entry.outcome === 'interrupted')) {
+        log.resume(id)
+        active.set(id, {})
       } else if (snapshot.status === 'failed' && (entry.outcome === 'failed' || entry.outcome === 'interrupted')) {
-        active.set(id, { jobId: snapshot.jobId, createdAt: snapshot.jobCreatedAt, priorFailure: entry.outcome, lastStatus: 'failed', ended: true })
+        active.set(id, { jobId: snapshot.jobId, createdAt: snapshot.jobCreatedAt, priorFailure: entry.outcome, lastStatus: 'failed',
+          lastFailure: failure?.signature, ended: true })
         jobs.set(snapshot.jobId, id)
         return
       }
@@ -166,6 +188,15 @@ export function createImportOperationTracker(log: Diagnostics) {
     const trace = id && active.get(id)
     if (!id || !trace || trace.ended || trace.saved) return
     const code = errorCode(cause)
+    if (cancelling && code === 'CANCEL_FAILED') {
+      log.event(id, 'rollback', { result: 'failed', phase: 'cancel', code })
+      log.end(id, 'failed', { code })
+      trace.lastStatus = 'failed'
+      trace.lastFailure = 'cancel:' + code
+      trace.priorFailure = 'failed'
+      trace.ended = true
+      return
+    }
     log.event(id, 'requestFailed', { code })
     log.event(id, cancelling ? 'rollback' : request.kind === 'stage' ? 'parse' : 'commit', { result: 'unknown', code })
     trace.ended = true

@@ -5,6 +5,8 @@ import { join } from 'node:path'
 import { afterEach, expect, test, vi } from 'vitest'
 import { createOperationDiagnostics } from '../../electron/main/operation-diagnostics'
 import { createAppErrorLogs } from '../../electron/main/app-error-logs'
+import { createImportDiagnostics } from '../../electron/main/import-diagnostics'
+import { encodeRow, summaryHeader } from '../../electron/main/operation-text'
 
 vi.mock('node:fs/promises', async importActual => {
   const fs = await importActual<typeof import('node:fs/promises')>()
@@ -156,9 +158,12 @@ test('throttles changing progress, keeps final counts and always records retries
 test('keeps a handed-off attachment available during capacity cleanup without renewing its retention', async () => {
   const root = await directory()
   let time = 1_700_000_000_000
-  const log = create(root, { maxBytes: 4200, targetBytes: 2700, now: () => time })
-  const id = log.begin('conversation', 'open'); log.end(id, 'success')
-  const path = await log.withFile(id, path => path, true)
+  const options = { maxBytes: 4200, targetBytes: 2700, now: () => time }
+  const first = create(root, options)
+  const id = first.begin('conversation', 'open'); first.end(id, 'success')
+  const path = await first.withFile(id, path => path, true)
+  await first.close()
+  const log = create(root, options)
   for (let i = 0; i < 12; i++) {
     time += 1000
     const other = log.begin('conversation', 'open'); log.end(other, 'success')
@@ -168,6 +173,196 @@ test('keeps a handed-off attachment available during capacity cleanup without re
   time += 30 * 86_400_000
   await log.prune()
   await expect(readFile(path)).rejects.toMatchObject({ code: 'ENOENT' })
+})
+
+test.each([false, true])('a legacy import attachment protects its complete group through handoff and restart (bound: %s)', async bound => {
+  const root = await directory(), dir = join(root, 'logs', 'import-errors')
+  const started = Date.now()
+  let at = started
+  const options = { now: () => at, maxBytes: 4200, targetBytes: 2200 }
+  const store = create(root, options)
+  await store.flush()
+  await mkdir(dir)
+  let timeline: string | undefined
+  if (bound) {
+    const id = store.begin('import', 'import')
+    store.bind(id, '4', at)
+    store.end(id, 'failed')
+    timeline = await store.withFile(id, path => path)
+  }
+  const name = `${at}-${randomUUID()}-${bound ? at + '-' : ''}4.txt`
+  const record = { version: '0.1.10', recordedAt: new Date(at).toISOString(), phase: 'parse', code: 'INVALID_RECORD' }
+  await store.writeManagedLog(dir, name, record)
+  const path = join(dir, name), original = await readFile(path)
+  const viewer = vi.fn(async (selected: string) => {
+    expect(selected).toBe(path)
+    const active = store.begin('import', 'import')
+    for (let i = 0; i < 60; i++) store.event(active, 'read', { count: i })
+    await store.flush()
+    expect(await readFile(selected)).toEqual(original)
+    return ''
+  })
+  const app = createAppErrorLogs(root, root, '1.2.3', viewer)
+  await createImportDiagnostics(root, '1.2.3', file => store.openLegacyFile(file, viewer), undefined, app).open('4')
+  expect(viewer).toHaveBeenCalledOnce()
+  await store.close()
+
+  const next = create(root, options)
+  at += 9 * 60_000
+  const active = next.begin('import', 'import')
+  for (let i = 0; i < 90; i++) next.event(active, 'read', { count: i })
+  await next.flush()
+  expect(await readFile(path)).toEqual(original)
+  if (timeline) expect(await readFile(timeline, 'utf8')).toContain('结果：失败')
+  at = started + 10 * 60_000
+  for (let i = 0; i < 10; i++) next.event(active, 'read', { count: i })
+  await next.flush()
+  await expect(stat(path)).rejects.toMatchObject({ code: 'ENOENT' })
+  if (timeline) await expect(stat(timeline)).rejects.toMatchObject({ code: 'ENOENT' })
+})
+
+test('opening a legacy file just before its 30-day deadline cannot extend retention after restart', async () => {
+  const root = await directory(), start = Date.now()
+  let at = start
+  const store = create(root, { now: () => at }), dir = join(root, 'logs', 'import-errors')
+  await store.flush()
+  await mkdir(dir)
+  const name = start + '-' + randomUUID() + '-4.txt', path = join(dir, name)
+  await store.writeManagedLog(dir, name, { recordedAt: new Date(start).toISOString(), version: '1.2.3', phase: 'parse', code: 'INVALID_RECORD' })
+  at += 30 * 86_400_000 - 1000
+  await store.openLegacyFile(path, async () => '')
+  await store.close()
+  at += 1000
+  const reopened = create(root, { now: () => at })
+  await reopened.flush()
+  await expect(stat(path)).rejects.toMatchObject({ code: 'ENOENT' })
+})
+
+test('Explorer sees the latest persisted progress time and duration while the operation is running', async () => {
+  const root = await directory()
+  let at = Date.now()
+  const store = create(root, { now: () => at })
+  const id = store.begin('import', 'import')
+  const path = await store.withFile(id, path => path)
+  store.event(id, 'parse', { count: 1 }, { progress: true })
+  at += 12_000
+  store.event(id, 'parse', { count: 8 }, { progress: true })
+  await store.flush()
+  const text = await readFile(path, 'utf8')
+  expect(text).toContain('耗时：12000 ms')
+  expect(Date.parse(text.match(/最后已记录：(.+)/)![1])).toBe(at)
+  expect(text).toContain('数量=8')
+})
+
+test.each(['failed', 'success'] as const)('a confirmed %s survives restart when the end row could not be appended', async outcome => {
+  const root = await directory(), started = Date.now()
+  let at = started
+  const store = create(root, { now: () => at })
+  const id = store.begin('import', 'import')
+  const path = await store.withFile(id, path => path)
+  at += 100
+  vi.mocked(appendFile).mockRejectedValueOnce(Object.assign(new Error('full'), { code: 'ENOSPC' }))
+  store.end(id, outcome)
+  await store.close()
+  const original = await readFile(path, 'utf8')
+  expect(original).not.toContain('  结束  ')
+  const reopened = create(root, { now: () => at })
+  expect(await reopened.list()).toEqual([expect.objectContaining({ id, outcome, endedAt: at, lastAt: started, complete: false })])
+  expect(await readFile(path, 'utf8')).toBe(original)
+})
+
+test.each([false, true])('a newer durable resume wins over a same-millisecond stale terminal header (incomplete: %s)', async incomplete => {
+  const root = await directory(), at = Date.now()
+  const store = create(root, { now: () => at }), id = store.begin('import', 'import')
+  const path = await store.withFile(id, path => path)
+  if (incomplete) {
+    vi.mocked(appendFile).mockRejectedValueOnce(Object.assign(new Error('full'), { code: 'ENOSPC' }))
+    store.event(id, 'parse')
+  }
+  store.end(id, 'failed', { code: 'INVALID_RECORD' })
+  await store.close()
+  // 模拟恢复行已追加、但改写摘要前进程退出。
+  await appendFile(path, encodeRow({ kind: 'resume', at }, at))
+  const reopened = create(root, { now: () => at })
+  expect(await reopened.list()).toEqual([expect.objectContaining({ id, outcome: 'interrupted', complete: false })])
+})
+
+test('a newer confirmed summary supersedes the old terminal row when both resumed writes fail', async () => {
+  const root = await directory(), start = Date.now()
+  let at = start
+  const store = create(root, { now: () => at }), id = store.begin('import', 'import')
+  store.end(id, 'unknown', { code: 'INVALID_RECORD' })
+  await store.flush()
+  at += 100
+  const full = Object.assign(new Error('full'), { code: 'ENOSPC' })
+  vi.mocked(appendFile).mockRejectedValueOnce(full).mockRejectedValueOnce(full)
+  store.resume(id)
+  store.end(id, 'success')
+  await store.close()
+  const reopened = create(root, { now: () => at })
+  const [summary] = await reopened.list()
+  expect(summary).toMatchObject({ id, outcome: 'success', lastAt: start, endedAt: at, complete: false })
+  expect(summary.endCode).toBeUndefined()
+})
+
+test('a partial end-row write preserves its actual byte count, result and later recovery across two restarts', async () => {
+  const root = await directory(), start = Date.now()
+  let at = start
+  const store = create(root, { now: () => at }), id = store.begin('import', 'import')
+  const path = await store.withFile(id, path => path), before = (await stat(path)).size
+  const append = vi.mocked(appendFile).getMockImplementation()!
+  vi.mocked(appendFile).mockImplementationOnce(async (file, data) => {
+    await append(file, Buffer.from(String(data)).subarray(0, 13))
+    throw Object.assign(new Error('full'), { code: 'ENOSPC' })
+  })
+  at += 150
+  store.end(id, 'failed')
+  await store.close()
+  expect((await stat(path)).size).toBe(before + 13)
+  const reopened = create(root, { now: () => at })
+  expect(await reopened.list()).toEqual([expect.objectContaining({ id, complete: false, outcome: 'failed', lastAt: start, endedAt: at })])
+  expect(await readFile(path, 'utf8')).toContain('已记录字节数：' + (before + 13))
+  at += 50
+  reopened.resume(id)
+  reopened.end(id, 'success')
+  await reopened.close()
+  const again = create(root, { now: () => at })
+  expect(await again.list()).toEqual([expect.objectContaining({ id, complete: false, outcome: 'success', endedAt: at })])
+  const text = await readFile(path, 'utf8')
+  expect(text).toMatch(/(?:^|\n)\S+  \+\d+ ms  恢复\n/)
+  expect(text).not.toContain('完整行截止字节')
+})
+
+test('an older incomplete header with no byte count recovers a same-millisecond confirmed result', async () => {
+  const root = await directory(), at = Date.now()
+  const store = create(root, { now: () => at }), id = store.begin('import', 'import')
+  const path = await store.withFile(id, path => path)
+  vi.mocked(appendFile).mockRejectedValueOnce(Object.assign(new Error('full'), { code: 'ENOSPC' }))
+  store.end(id, 'failed')
+  await store.close()
+  const [summary] = await store.list()
+  const oldHeader = Buffer.from(summaryHeader(summary, '1.2.3'))
+  await writeFile(path, Buffer.concat([oldHeader, (await readFile(path)).subarray(oldHeader.length)]))
+  const reopened = create(root, { now: () => at })
+  expect(await reopened.list()).toEqual([expect.objectContaining({ id, outcome: 'failed', complete: false })])
+})
+
+test('discarding a duplicate removes only its untouched provisional log and releases its capacity', async () => {
+  const root = await directory(), store = create(root, { maxBytes: 3200, targetBytes: 2000 })
+  const confirmed = store.begin('insight', 'generate')
+  store.bind(confirmed, '1', Date.now())
+  const observed = store.begin('conversation', 'send')
+  store.event(observed, 'request')
+  await store.discardUnstarted(confirmed)
+  await store.discardUnstarted(observed)
+  for (let i = 0; i < 8; i++) {
+    const duplicate = store.begin('insight', 'generate')
+    await store.discardUnstarted(duplicate)
+  }
+  store.end(confirmed, 'success')
+  store.end(observed, 'success')
+  expect((await store.list()).map(entry => [entry.id, entry.complete])).toEqual(expect.arrayContaining([[confirmed, true], [observed, true]]))
+  expect(await readdir(join(root, 'logs', 'operations'))).toHaveLength(2)
 })
 
 test.each(['processed', 'readCount', 'validRecords'])('merges the actual starting and final progress counters for %s', async counter => {

@@ -8,7 +8,8 @@ import { fieldLabels, safeFields, stageLabels, type SafeFields } from './operati
 export type Outcome = Exclude<OperationOutcome, 'running'>
 export type Row = { at: number; kind: 'start' | 'event' | 'progress' | 'retry' | 'end' | 'resume' | 'bind' | 'gap'
   stage?: string; fields?: SafeFields; outcome?: Outcome; area?: OperationArea; action?: string; version?: string
-  taskId?: string; createdAt?: number; id?: string; incomplete?: boolean }
+  taskId?: string; createdAt?: number; id?: string; incomplete?: boolean
+  recordedEnd?: { outcome: Outcome; endedAt: number; lastAt: number; size?: number; partialAt?: number } }
 
 const kinds = { start: '开始', event: '阶段变化', progress: '进度', retry: '自动重试', end: '结束', resume: '恢复', bind: '关联任务', gap: '记录不完整' }
 const readableValues: Record<string, string> = { picker: '选择窗口', drop: '拖放', file: '文件', directory: '文件夹', mixed: '混合来源',
@@ -34,18 +35,20 @@ export function filenameId(name: string) {
   return match && areas.has(match[1]) && isOperationId(match[2]) ? match[2] : undefined
 }
 
-export function summaryHeader(s: OperationSummary, version: string) {
+export function summaryHeader(s: OperationSummary, version: string, size?: number, partialAt?: number) {
   const text = ['Whomi 操作诊断', '操作编号：' + s.id, '版本：' + version,
     '功能：' + operationAreaLabels[s.area] + ' · ' + operationActionLabels[s.action],
     '开始时间：' + localTimestamp(s.startedAt), '结果：' + operationOutcomeLabels[s.outcome],
     '耗时：' + Math.max(0, (s.endedAt ?? s.lastAt) - s.startedAt) + ' ms',
     '记录：' + (s.complete ? '完整' : '不完整'), '最后已记录：' + localTimestamp(s.lastAt),
+    ...(!s.complete && s.outcome !== 'running' && size !== undefined ? ['已记录字节数：' + size] : []),
+    ...(partialAt !== undefined ? ['完整行截止字节：' + partialAt] : []),
     '', '操作经过'].join('\n')
   return text + ' '.repeat(headerLength - Buffer.byteLength(text) - 1) + '\n'
 }
-export async function updateHeader(path: string, summary: OperationSummary, version: string) {
+export async function updateHeader(path: string, summary: OperationSummary, version: string, size: number, partialAt?: number) {
   const handle = await open(path, 'r+')
-  try { await handle.write(Buffer.from(summaryHeader(summary, version)), 0, headerLength, 0) } finally { await handle.close() }
+  try { await handle.write(Buffer.from(summaryHeader(summary, version, size, partialAt)), 0, headerLength, 0) } finally { await handle.close() }
 }
 
 export function encodeRow(row: Row, previous: number) {
@@ -99,7 +102,16 @@ export async function readLog(path: string, id: string, visit: (row: Row) => voi
       const area = areas.get(feature) as OperationArea, action = actions.get(actionLabel), version = value('版本'), at = Date.parse(value('开始时间'))
       if (header[0] !== 'Whomi 操作诊断' || value('操作编号') !== id || !area || !action || !Number.isSafeInteger(at)
         || validVersion(version) !== version) throw Error('Invalid header')
-      visit({ kind: 'start', id, at, area, action, version, incomplete: value('记录') === '不完整' })
+      const outcome = outcomes.get(value('结果')) as OperationOutcome | undefined
+      const elapsed = /^(\d+) ms$/.exec(value('耗时'))
+      const endedAt = elapsed ? at + Number(elapsed[1]) : NaN
+      const lastAt = Date.parse(value('最后已记录'))
+      const sizeText = value('已记录字节数'), size = /^\d+$/.test(sizeText) ? Number(sizeText) : undefined
+      const boundary = Number(value('完整行截止字节'))
+      const partialAt = size !== undefined && Number.isSafeInteger(boundary) && boundary >= headerLength && boundary < size ? boundary : undefined
+      const recordedEnd = outcome && outcome !== 'running' && Number.isSafeInteger(endedAt) && Number.isSafeInteger(lastAt)
+        ? { outcome, endedAt, lastAt, size, partialAt } : undefined
+      visit({ kind: 'start', id, at, area, action, version, incomplete: value('记录') === '不完整', recordedEnd })
       headerDone = true
     }
     if (!headerDone) throw Error('Missing header')

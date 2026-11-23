@@ -8,7 +8,7 @@ import type { AiUsage } from '../../src/shared/ai-contract'
 import { modelContextLimit, resolveModelLimits } from '../../src/shared/model-limits'
 import { defaultModelProtocol, isModelProtocol, modelProtocolBaseUrl } from '../../src/shared/model-protocol'
 import { protocolUsage } from './protocol-usage'
-import { isProviderTimeout, modelTimeout } from './model-timeout'
+import { isPiTimeout, isProviderTimeout, modelTimeout } from './model-timeout'
 import type { ResourceLoader } from '@earendil-works/pi-coding-agent'
 export type { AgentRunInput, AgentRunResult } from './protocol'
 
@@ -113,7 +113,7 @@ export class PiRuntime {
         final = event.message.usage
         stopReason = event.message.stopReason
         contextExceeded = stopReason === 'error' && isContextOverflow(event.message)
-        timedOut = input.purpose === 'insight' && stopReason === 'error' && isProviderTimeout({ message: event.message.errorMessage })
+        timedOut = input.purpose === 'insight' && stopReason === 'error' && isPiTimeout(api, event.message.errorMessage)
       }
     })
     const abort = () => { void session.abort() }

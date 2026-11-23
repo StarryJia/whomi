@@ -8,7 +8,7 @@ import { resolveModelLimits } from '../../src/shared/model-limits'
 
 function captureDiagnostics() {
   return {
-    begin: vi.fn(() => crypto.randomUUID()), bind: vi.fn(), findByTask: vi.fn(async () => null), resume: vi.fn(),
+    begin: vi.fn(() => crypto.randomUUID()), bind: vi.fn(), findByTask: vi.fn(async () => null), resume: vi.fn(), discardUnstarted: vi.fn(),
     event: vi.fn((_id: string, _stage: string, _fields?: Record<string, unknown>) => {}), end: vi.fn(),
   }
 }
@@ -42,7 +42,7 @@ test('preparing and duplicate confirmation do not duplicate a model run; complet
   await vi.waitFor(() => expect(runs).toBe(1))
   release(undefined)
   await service.idle()
-  expect(diagnostics.begin).toHaveBeenCalledTimes(1)
+  expect(diagnostics.discardUnstarted).toHaveBeenCalledWith(diagnostics.begin.mock.results[1].value)
   const operation = diagnostics.begin.mock.results[0].value
   expect(diagnostics.event.mock.calls.map(call => call[1])).toEqual(expect.arrayContaining(['reading', 'checking', 'writing', 'request', 'returned', 'saving']))
   expect(diagnostics.end).toHaveBeenCalledWith(operation, 'failed', expect.objectContaining({ phase: 'saving' }))
@@ -100,6 +100,25 @@ function turnStorage() {
     throw new Error(method)
   } }
 }
+test.each(['send', 'confirm'] as const)('records %s before the database acknowledges the action and captures preparation failures', async action => {
+  const diagnostics = captureDiagnostics()
+  const storageEntered = Promise.withResolvers<void>()
+  const acknowledgement = Promise.withResolvers<never>()
+  const storage = async () => { storageEntered.resolve(); return acknowledgement.promise }
+  const runtime = { run: vi.fn() }
+  const service = createAiService({ storage, diagnostics, runtime, secrets: { encrypt: value => value, decrypt: value => value } })
+  const request = action === 'send'
+    ? service.sendTurn({ threadId: '1', requestId: 'same', prompt: '示例问题', referenceIds: [], modelId: 'm' })
+    : service.confirmAnalysis({ token: 'token', requestId: 'same' })
+  await storageEntered.promise
+  const startedBeforeFailure = diagnostics.begin.mock.calls.length
+  acknowledgement.reject(new Error('private storage failure'))
+  await expect(request).rejects.toThrow('private storage failure')
+  expect(startedBeforeFailure).toBe(1)
+  expect(diagnostics.end).toHaveBeenCalledWith(diagnostics.begin.mock.results[0].value,
+    'failed', { phase: 'prepare', code: 'OPERATION_FAILED' })
+  expect(runtime.run).not.toHaveBeenCalled()
+})
 test('a dialogue logs the first response once, the provider counts and the committed result, without message content', async ({ onTestFinished }) => {
   const state = turnStorage()
   const diagnostics = captureDiagnostics()
@@ -123,6 +142,10 @@ test('a dialogue logs the first response once, the provider counts and the commi
   expect(diagnostics.event.mock.calls.find(call => call[1] === 'returned')?.[2]).toMatchObject({ attempt: 1, inputTokens: 12, outputTokens: 4, durationMs: 40_000 })
   expect(diagnostics.end.mock.calls[0][1]).toBe('success')
   expect(JSON.stringify(diagnostics.event.mock.calls)).not.toMatch(/私密|127\.0\.0|示例/)
+  await service.sendTurn({ threadId: '1', requestId: 'request', prompt: '私密提问', referenceIds: [], modelId: 'm' })
+  await service.idle()
+  expect(diagnostics.discardUnstarted).toHaveBeenCalledWith(diagnostics.begin.mock.results[1].value)
+  expect(diagnostics.end).toHaveBeenCalledTimes(1)
 })
 test('stopping and retrying before the old response settles still schedules the new attempt', async () => {
   const state = turnStorage()

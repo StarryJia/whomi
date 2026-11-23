@@ -1,5 +1,5 @@
 import { lstatSync, readdirSync } from 'node:fs'
-import { lstat, readFile, readdir, realpath } from 'node:fs/promises'
+import { lstat, readFile, readdir, realpath, unlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { isOperationId } from '../../src/shared/operation-diagnostics'
 import { localLogDirectory, logPathKey } from './app-error-logs'
@@ -20,6 +20,53 @@ export function legacyFile(root: string, name: string, isImport: boolean, size: 
   if (!parts || !isOperationId(parts[isImport ? 2 : 3])) return
   const binding = isImport && parts[3] && parts[4] !== 'none' ? taskBinding('import', parts[4], Number(parts[3])) : undefined
   return { path: join(root, name), size, at: Number(parts[1]), binding }
+}
+
+export function attachmentHolds(root: string, now: () => number) {
+  const deadlines = new Map<string, number>()
+  // 空文件的文件名包含到期时间，重启后可恢复，并且不增加按内容字节计算的日志占用。
+  const marker = (name: string, until: number) => join(root, `.whomi-${name}.${until}.attachment`)
+  async function remove(name: string, until: number) {
+    const path = marker(name, until)
+    try { if (await checkedSize(path) === 0) await unlink(path) } catch { /* 下次启动时重试。 */ }
+  }
+  return {
+    has: (name: string) => (deadlines.get(name) ?? 0) > now(),
+    async load() {
+      for (const file of await readdir(root, { withFileTypes: true })) {
+        const match = /^\.whomi-(.+)\.(\d{1,16})\.attachment$/.exec(file.name)
+        if (!file.isFile() || !match) continue
+        const [, name, stamp] = match, until = Number(stamp)
+        if ((!filenameId(name) && !legacyFile(root, name, true, 0)) || !Number.isSafeInteger(until)) continue
+        if (await checkedSize(join(root, file.name)).catch(() => -1) !== 0) continue
+        const previous = deadlines.get(name) ?? 0
+        if (until <= now() || until < previous) await remove(name, until)
+        else {
+          deadlines.set(name, until)
+          if (previous && previous !== until) await remove(name, previous)
+        }
+      }
+    },
+    async keep(name: string, until: number) {
+      const previous = deadlines.get(name)
+      if (until <= now()) return
+      deadlines.set(name, until)
+      const path = marker(name, until)
+      await localLogDirectory(root)
+      try { await writeFile(path, '', { flag: 'wx', mode: 0o600 }) }
+      catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'EEXIST' || await checkedSize(path) !== 0) throw error
+      }
+      if (previous && previous !== until) await remove(name, previous)
+    },
+    async prune() {
+      for (const [name, until] of deadlines) {
+        if (until > now()) continue
+        deadlines.delete(name)
+        await remove(name, until)
+      }
+    },
+  }
 }
 
 export async function scanLegacy(directory: string) {

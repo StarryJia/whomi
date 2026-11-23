@@ -14,7 +14,7 @@ import { defaultInsightPrompts, INSIGHT_PROMPT_VERSION, type InsightPrompts } fr
 import { InsightBudgetError, type InsightCheckpoint } from './insight-checkpoint'
 import { defaultInsightRunLimits } from './insight-policy'
 import { diagnosticErrorCode, type AppError } from './app-error-logs'
-import { aiOperation, runDiagnosedModel, type AiDiagnostics, type AiOperation } from './ai-operation-diagnostics'
+import { aiOperation, runDiagnosedModel, type AiDiagnostics, type AiOperation, type ModelRetry } from './ai-operation-diagnostics'
 
 type SourceMessage = ProcessingMessage & { isSelf: boolean }
 type TurnContext = { systemPrompt?: string; turn: AiTurn; conversationId: string; model: AiModel; selfFingerprint: string; references: SourceMessage[]; history: { role: 'user' | 'assistant'; text: string; references?: SourceMessage[] }[]; profile: InsightReport | null; skill: { id: string; version: string; content: string } | null; checkpoint: string | null }
@@ -95,7 +95,7 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
     if (secret.model.version !== model.version) throw new BoundaryError('MODEL_CHANGED', '模型配置已更新，请重新确认。')
     return secret.encryptedKey ? options.secrets.decrypt(secret.encryptedKey) : undefined
   }
-  async function runTrackedModel(ownerKind: 'analysis' | 'turn', ownerId: string, requestId: string, input: RuntimeInput, signal: AbortSignal, onText: (text: string) => void, operation: AiOperation, request: Record<string, unknown>) {
+  async function runTrackedModel(ownerKind: 'analysis' | 'turn', ownerId: string, requestId: string, input: RuntimeInput, signal: AbortSignal, onText: (text: string) => void, operation: AiOperation, request: Record<string, unknown>, retry?: ModelRetry) {
     if (signal.aborted) throw new DOMException('已停止', 'AbortError')
     if (input.thinkingLevel) {
       const { model: current } = await storage<{ model: AiModel }>('modelSecret', input.model.id)
@@ -105,7 +105,7 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
     await storage('recordUsage', { ...identity, usage: { incomplete: true } })
     if (signal.aborted) throw new DOMException('已停止', 'AbortError')
     try {
-      const result = await runDiagnosedModel(options.runtime, input, signal, onText, operation, request)
+      const result = await runDiagnosedModel(options.runtime, input, signal, onText, operation, request, retry)
       await storage('recordUsage', { ...identity, usage: result.usage })
       return result
     } catch (error) {
@@ -139,6 +139,26 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
     publish({ kind: 'analysis', snapshot })
     return snapshot
   }
+  async function submitTask<T extends AnalysisTask | AiTurn>(kind: 'analysis' | 'turn',
+    prepare: () => Promise<{ task: T; conversationId: string }>,
+    execute: (task: T, signal: AbortSignal, operation: AiOperation) => Promise<void>) {
+    const operation = kind === 'analysis' ? aiOperation(options.diagnostics, 'insight', 'generate')
+      : aiOperation(options.diagnostics, 'conversation', 'send')
+    try {
+      const { task, conversationId } = await prepare()
+      available(conversationId)
+      if (task.state === 'queued') {
+        if (launch(`${kind}:${task.id}`, conversationId, signal => execute(task, signal, operation), task.modelId)) return task
+        if (closing) { operation.end('interrupted'); return task }
+      }
+      // 同一提交可能从数据库取回已运行或已结束的任务。
+      await operation.discardUnstarted()
+      return task
+    } catch (error) {
+      operation.end('failed', { phase: 'prepare', code: diagnosticErrorCode(error) })
+      throw error
+    }
+  }
   async function saveTurn(id: string, patch: unknown) { const snapshot = await storage<AiTurn>('saveTurn', id, patch); publish({ kind: 'turn', snapshot }); return snapshot }
   async function analysisProcessor(id: string, conversationId: string) {
     const processing = await options.processing?.(conversationId)
@@ -151,6 +171,7 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
     let analyzedMessages: number | undefined
     let batch: number | undefined
     let attempt = 0
+    let pendingRetry: ModelRetry | undefined
     try {
       const initial = await storage<AnalysisContext>('analysisContext', id)
       analyzedMessages = initial.task.analyzedMessages
@@ -171,8 +192,7 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
       const report = await generateInsight({ snapshot: initial.snapshot, conversationId: initial.task.conversationId, model: initial.model,
         prompts, limits: defaultInsightRunLimits, checkpoint, elapsedMs: running.elapsedMs, thinkingLevel: initial.task.thinkingLevel }, {
         signal, onText: () => {},
-        onRetry: (stage, shrink, error) => operation.event(shrink ? 'shrink' : 'retry',
-          { phase: stage, attempt, batch, code: diagnosticErrorCode(error) }, { retry: true }),
+        onRetryPlanned: (shrink, error) => { pendingRetry = { stage: shrink ? 'shrink' : 'retry', code: diagnosticErrorCode(error) } },
         onUnknown: (stage, index) => operation.event('requestUnknown', { phase: stage, attempt: index }),
         read: async messageIds => {
           const sources = await storage<InsightSourceMessage[]>('readInsightSources', { taskId: id, messageIds })
@@ -204,7 +224,9 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
         },
         run: (input, runtimeOptions) => schedule(0, async () => {
           await storage('analysisContext', id)
-          return runTrackedModel('analysis', id, randomUUID(), { ...input, apiKey: await modelSecret(initial.model) }, runtimeOptions.signal, runtimeOptions.onText, operation, { phase, batch, attempt })
+          const retry = pendingRetry
+          pendingRetry = undefined
+          return runTrackedModel('analysis', id, randomUUID(), { ...input, apiKey: await modelSecret(initial.model) }, runtimeOptions.signal, runtimeOptions.onText, operation, { phase, batch, attempt }, retry)
         }, runtimeOptions.signal),
       })
       signal.throwIfAborted()
@@ -328,17 +350,14 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
     },
     listSkills: () => storage('listSkills'), prepareAnalysis: input => control(async () => { available(input.conversationId); const { model } = await storage<{ model: AiModel }>('modelSecret', input.modelId); return storage('prepareAnalysis', { ...input, thinkingLevel: await acceptedThinking(model, input.thinkingLevel) }) }),
     discardAnalysisPreparation: token => control(() => storage('discardAnalysisPreparation', token)),
-    confirmAnalysis: input => control(async () => {
+    confirmAnalysis: input => control(() => submitTask('analysis', async () => {
       const task = await storage<AnalysisTask>('confirmAnalysis', input)
-      available(task.conversationId)
-      if (task.state === 'queued') launch(`analysis:${task.id}`, task.conversationId, signal => {
-        const operation = aiOperation(options.diagnostics, 'insight', 'generate')
-        operation.bind(task.id, task.createdAtMs)
-        operation.event('queued', { messageCount: task.totalMessages })
-        return executeAnalysis(task.id, signal, operation)
-      }, task.modelId)
-      return task
-    }),
+      return { task, conversationId: task.conversationId }
+    }, (task, signal, operation) => {
+      operation.bind(task.id, task.createdAtMs)
+      operation.event('queued', { messageCount: task.totalMessages })
+      return executeAnalysis(task.id, signal, operation)
+    })),
     getAnalysis: async id => withElapsedSample(await storage<AnalysisTask>('getAnalysis', id)),
     listAnalyses: async id => (await storage<AnalysisTask[]>('listAnalyses', id)).map(withElapsedSample),
     getReport: id => storage('getReport', id),
@@ -409,16 +428,13 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
       for (const key of new Set(targets.map(item => item.key))) await saveTurn(key.slice(5), { state: 'stopped' })
       await storage('deleteThread', id, threadId)
     }),
-    sendTurn: input => control(async () => {
+    sendTurn: input => control(() => submitTask('turn', async () => {
       const thread = await storage<AiThread>('getThread', input.threadId)
       available(thread.conversationId)
       const { model } = await storage<{ model: AiModel }>('modelSecret', input.modelId)
       const turn = await storage<AiTurn>('createTurn', { ...input, thinkingLevel: await acceptedThinking(model, input.thinkingLevel) })
-      available(thread.conversationId)
-      if (turn.state === 'queued') launch(`turn:${turn.id}`, thread.conversationId,
-        signal => executeTurn(turn.id, signal, aiOperation(options.diagnostics, 'conversation', 'send')), turn.modelId)
-      return turn
-    }),
+      return { task: turn, conversationId: thread.conversationId }
+    }, (turn, signal, operation) => executeTurn(turn.id, signal, operation))),
     retryTurn: id => control(async () => {
       const context = await storage<TurnContext>('turnContext', id)
       available(context.conversationId)

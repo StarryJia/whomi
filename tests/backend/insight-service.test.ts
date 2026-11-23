@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { expect, test, vi } from 'vitest'
@@ -46,7 +46,7 @@ function fixture(run?: RuntimeRunner['run'], logError?: (entry: AppError) => voi
     if (method === 'completeAnalysis') { completed++; task.state = 'completed'; task.report = args[1]; return { ...task } }
     throw new Error(method)
   }
-  const createService = (diagnostics?: AiServiceOptions['diagnostics']) => createAiService({ storage, diagnostics, logError, processing: async () => ({ settings: defaultProcessing, members: [{ id: '2', displayName: '示例甲' }] }),
+  const createService = (diagnostics?: AiServiceOptions['diagnostics'], claimProcessing?: AiServiceOptions['claimProcessing']) => createAiService({ storage, diagnostics, logError, claimProcessing, processing: async () => ({ settings: defaultProcessing, members: [{ id: '2', displayName: '示例甲' }] }),
     secrets: { encrypt: x => x, decrypt: () => 'credential' }, runtime: { run: async (input, options) => {
       requests.push(input)
       if (run) return run(input, options)
@@ -107,8 +107,11 @@ test('the fourth reading batch times out once, retries in the same operation and
     await f.service.confirmAnalysis({ token: 't', requestId: 'fourth-batch' })
     await f.service.idle()
     expect(f.task.state).toBe('completed')
+    await f.service.confirmAnalysis({ token: 't', requestId: 'fourth-batch' })
     const operations = await diagnostics.list()
     expect(operations).toHaveLength(1)
+    expect(await readdir(join(directory, 'logs', 'operations'))).toHaveLength(1)
+    expect(f.completed()).toBe(1)
     const preview = await diagnostics.withFile(operations[0].id, path => readFile(path, 'utf8'))
     expect(preview).toMatch(/请求失败[^\n]*当前批次=4[^\n]*MODEL_TIMEOUT/)
     expect(preview).toMatch(/重试[^\n]*当前批次=4[^\n]*MODEL_TIMEOUT/)
@@ -142,7 +145,11 @@ test('reopening an interrupted insight appends to its original operation and pre
     expect(original.outcome).toBe('interrupted')
     await diagnostics.close()
     diagnostics = createOperationDiagnostics(directory, 'test')
-    const reopened = f.createService(diagnostics)
+    const claim = vi.fn(async () => {}).mockRejectedValueOnce(new BoundaryError('DATA_PROCESS_GONE'))
+    const reopened = f.createService(diagnostics, claim)
+    await expect(reopened.continueAnalysis(f.task.id)).rejects.toMatchObject({ code: 'DATA_PROCESS_GONE' })
+    expect(f.task.state).toBe('interrupted')
+    expect(await diagnostics.list()).toMatchObject([{ id: original.id, outcome: 'failed' }])
     await reopened.continueAnalysis(f.task.id)
     await reopened.idle()
     expect(await diagnostics.list()).toMatchObject([{ id: original.id, outcome: 'success' }])
@@ -150,6 +157,27 @@ test('reopening an interrupted insight appends to its original operation and pre
     expect(preview).toContain('尚未确认返回')
     expect(preview).toContain('已恢复')
     expect(preview).toContain('已保存')
+    expect(preview).toContain('DATA_PROCESS_GONE')
+  } finally { await diagnostics.close(); await rm(directory, { recursive: true, force: true }) }
+})
+
+test('an exhausted output budget stops the writing retry before it is recorded as dispatched', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'whomi-insight-retry-budget-'))
+  const diagnostics = createOperationDiagnostics(directory, 'test')
+  try {
+    const f = fixture(async input => {
+      if (JSON.parse(input.prompt).stage === 'writing') throw new BoundaryError('MODEL_TIMEOUT')
+      return { text: JSON.stringify({ observations: [], openThreads: [], candidates: [] }), usage: { outputTokens: 10 }, checkpoint: '' }
+    }, undefined, undefined, undefined, diagnostics)
+    f.model.contextWindow = 100_000
+    f.model.maxTokens = 40_000
+    await f.service.confirmAnalysis({ token: 'token', requestId: 'budget' })
+    await f.service.idle()
+    expect(f.requests.map(input => JSON.parse(input.prompt).stage)).toEqual(['reading', 'writing'])
+    const [operation] = await diagnostics.list()
+    const log = await diagnostics.withFile(operation.id, path => readFile(path, 'utf8'))
+    expect(log).toContain('maxOutputTokens')
+    expect(log).not.toContain('自动重试')
   } finally { await diagnostics.close(); await rm(directory, { recursive: true, force: true }) }
 })
 

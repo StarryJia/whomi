@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { link, mkdtemp, mkdir, readFile, readdir, rename, rm, stat, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { appendFileSync } from 'node:fs'
+import { appendFileSync, writeFileSync } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import Database from 'better-sqlite3'
@@ -24,6 +24,22 @@ it('records copied file totals and identifies a verification failure before swit
   } })).rejects.toMatchObject({ code: 'STORAGE_MIGRATION_FAILED' })
   expect(stages).toEqual([['copy', { fileCount: 1, bytes: 5 }], ['verify', undefined]])
   expect(await resolveStorageLocation(source)).toBe(source)
+})
+
+it('rejects copied contents that differ during the verification phase', async () => {
+  const { source, target, service, services } = await fixture()
+  const file = 'whomi.db-journal'
+  await writeFile(join(source, file), '12345')
+  const stages: string[] = []
+  const choice = await service.issueChoice(1, target)
+  await expect(service.relocateStorage(1, choice.token, { id: randomUUID(), stage(name) {
+    stages.push(name)
+    if (name === 'verify') writeFileSync(join(target, file), '12340')
+  } })).rejects.toMatchObject({ code: 'STORAGE_MIGRATION_FAILED' })
+  expect(stages).toEqual(['copy', 'verify'])
+  expect(services.resumed).toBe(source)
+  expect(await readFile(join(source, file), 'utf8')).toBe('12345')
+  expect(await readdir(target)).toEqual([])
 })
 
 it('keeps the operation number through restart including a failed reopen', async () => {

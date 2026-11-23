@@ -23,6 +23,7 @@ export type StorageLocationOptions = {
 const pointerName = 'storage-location.json'
 const managedNames = ['whomi.db', 'whomi.db-wal', 'whomi.db-shm', 'whomi.db-journal', 'ai-runtime', 'import-staging']
 type Entry = { path: string; info: BigIntStats }
+type CopiedFile = { source: Entry; target: Entry; checksum: string }
 type Grant = { owner: number; path: string; identity: string; expires: number }
 const pathKey = (path: string) => process.platform === 'win32' ? resolve(path).toLowerCase() : resolve(path)
 const identity = (info: BigIntStats) => `${info.dev}:${info.ino}`
@@ -130,7 +131,7 @@ async function digest(handle: fs.FileHandle) {
   return hash.digest('hex')
 }
 
-async function copyEntry(source: string, target: string, entry: Entry, created: Entry[]) {
+async function copyEntry(source: string, target: string, entry: Entry, created: Entry[]): Promise<CopiedFile | undefined> {
   const from = join(source, entry.path), to = join(target, entry.path)
   const current = await checkedPath(from)
   if (!current || !unchanged(entry.info, current)) throw new Error('Source changed')
@@ -145,7 +146,8 @@ async function copyEntry(source: string, target: string, entry: Entry, created: 
   try {
     if (!unchanged(entry.info, await input.stat({ bigint: true }))) throw new Error('Source changed')
     output = await fs.open(to, constants.O_RDWR | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600)
-    created.push({ path: to, info: await output.stat({ bigint: true }) })
+    const targetEntry = { path: to, info: await output.stat({ bigint: true }) }
+    created.push(targetEntry)
     const buffer = Buffer.alloc(256 * 1024), hash = createHash('sha256')
     let offset = 0
     for (;;) {
@@ -162,12 +164,20 @@ async function copyEntry(source: string, target: string, entry: Entry, created: 
       if (BigInt(offset) > entry.info.size) throw new Error('Source changed')
     }
     await output.sync()
-    const expected = hash.digest('hex')
-    if (BigInt(offset) !== entry.info.size || expected !== await digest(input) || expected !== await digest(output)
-      || !unchanged(entry.info, await input.stat({ bigint: true }))) throw new Error('Copy verification failed')
-    const final = await checkedPath(from)
-    if (!final || !unchanged(entry.info, final)) throw new Error('Source changed')
+    return { source: { path: from, info: entry.info }, target: targetEntry, checksum: hash.digest('hex') }
   } finally { await output?.close(); await input.close() }
+}
+
+async function verifyFileContents(entry: Entry, size: bigint, checksum: string) {
+  const current = await checkedPath(entry.path)
+  if (!current?.isFile() || current.nlink !== 1n || identity(current) !== identity(entry.info)) invalidPath()
+  const handle = await fs.open(entry.path, constants.O_RDONLY | constants.O_NOFOLLOW)
+  try {
+    if (!unchanged(current, await handle.stat({ bigint: true })) || current.size !== size
+      || await digest(handle) !== checksum || !unchanged(current, await handle.stat({ bigint: true }))) {
+      throw new Error('Copy verification failed')
+    }
+  } finally { await handle.close() }
 }
 
 async function cleanupCreated(target: string, targetIdentity: string, created: Entry[]) {
@@ -330,8 +340,16 @@ export function createStorageLocationService(options: StorageLocationOptions) {
           const files = entries.filter(entry => entry.info.isFile())
           observer.stage('copy', { fileCount: files.length, bytes: files.reduce((sum, entry) => sum + Number(entry.info.size), 0) })
         }
-        for (const entry of entries) await copyEntry(source, grant.path, entry, created)
+        const copies: CopiedFile[] = []
+        for (const entry of entries) {
+          const file = await copyEntry(source, grant.path, entry, created)
+          if (file) copies.push(file)
+        }
         observer?.stage('verify')
+        for (const file of copies) {
+          await verifyFileContents(file.source, file.source.info.size, file.checksum)
+          await verifyFileContents(file.target, file.source.info.size, file.checksum)
+        }
         const remaining = await manifest(source)
         if (!sameManifest(entries, remaining)) throw new Error('Source changed')
         await verifyCreated(grant.path, grant.identity, created)

@@ -89,7 +89,7 @@ else {
       try { return await dataHost!.request<T>(method, args) }
       catch (error) { void appErrorLogs.record({ area: 'data', phase: method, error }); throw error }
     }
-    const importDiagnostics = createImportDiagnostics(userDataPath, appVersion, path => shell.openPath(path),
+    const importDiagnostics = createImportDiagnostics(userDataPath, appVersion, path => operations.openLegacyFile(path, file => shell.openPath(file)),
       jobId => requestData('getImport', [jobId]), appErrorLogs, {
         find: jobId => dataHost!.request('getImportDiagnosticFailure', jobId),
         acknowledge: receipt => dataHost!.request('acknowledgeImportDiagnostic', receipt),

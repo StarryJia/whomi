@@ -66,12 +66,12 @@ test('写入错误日志失败后，可以通过查看入口再写入并打开',
   const { diagnostics, user } = setup(saved('a', '7', { summaryFailed: true }))
   diagnostics.report.mockRejectedValueOnce(new Error('disk unavailable'))
   await user.click(screen.getByRole('button', { name: '选择文件' }))
-  expect(await screen.findByRole('alert')).toHaveTextContent('错误日志不可用')
+  await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('错误日志不可用'))
 
   await user.click(screen.getByRole('button', { name: '查看错误日志' }))
   expect(diagnostics.report).toHaveBeenCalledTimes(2)
   expect(diagnostics.open).toHaveBeenCalledExactlyOnceWith('job')
-  expect(screen.getByRole('alert')).toHaveTextContent('导入遇到问题')
+  await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('导入遇到问题'))
 })
 
 test('安装日志目录只读时可从任务打开已有记录，找不到时显示实际路径', async () => {
