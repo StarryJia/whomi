@@ -3,6 +3,7 @@ import type { ImportSnapshot, StartImportRequest } from '../../src/shared/import
 import { terminalImportStates } from '../../src/shared/import-contract'
 import { BoundaryError, localId, validateArguments, validateResult, validateSnapshot } from '../../src/shared/desktop-validation'
 import type { SourceGrants } from './source-grants'
+import type { ImportOperationTracker } from './import-operation-tracker'
 
 type Caller = { sender: unknown; senderFrame: { url: string } | null }
 type TrustedWindow = { webContents: { mainFrame: { url: string } } }
@@ -15,10 +16,11 @@ export function isTrustedCaller(event: Caller, window: TrustedWindow, appUrl: st
   if (event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame || !event.senderFrame) return false
   try { return documentUrl(event.senderFrame.url) === documentUrl(appUrl) } catch { return false }
 }
-type RouterOptions = { grants: SourceGrants; request(method: string, payload: unknown): Promise<unknown>; chooseSources?(owner: number, kind: 'files' | 'directory'): Promise<SourceHandle[]> }
+type RouterOptions = { grants: SourceGrants; imports?: ImportOperationTracker; request(method: string, payload: unknown): Promise<unknown>; chooseSources?(owner: number, kind: 'files' | 'directory'): Promise<SourceHandle[]> }
 export function createDesktopRouter(options: RouterOptions) {
   const owners = new Map<string, number>(), subscribers = new Map<number, Set<(snapshot: ImportSnapshot) => void>>()
   const progress = new Map<number, { last: number; latest?: ImportSnapshot; timer?: ReturnType<typeof setTimeout> }>()
+  const recovered = new Set<string>()
   function ownJob(owner: number, id: string) {
     if (!localId(id)) throw new BoundaryError('INVALID_RESPONSE')
     owners.set(id, owner)
@@ -28,6 +30,7 @@ export function createDesktopRouter(options: RouterOptions) {
   }
   function publish(value: unknown) {
     try { validateSnapshot(value) } catch { return }
+    options.imports?.observe(value)
     const owner = owners.get(value.jobId)
     if (owner === undefined || !subscribers.get(owner)?.size) return
     const state = progress.get(owner) ?? { last: -Infinity }; progress.set(owner, state)
@@ -48,8 +51,20 @@ export function createDesktopRouter(options: RouterOptions) {
       let value: unknown
       if (method === 'chooseSources') value = await options.chooseSources?.(owner, args[0] as 'files' | 'directory')
       else if (method === 'prepareImport') {
-        const grants = options.grants.consume(owner, args[0])
-        value = await options.request(method, [grants]); validateResult(method, value); ownJob(owner, value as string)
+        let operationId: string | undefined
+        const grants = options.grants.consume(owner, args[0], source => { operationId = options.imports?.begin(args[0] as SourceHandle[], source) })
+        try {
+          value = await options.request(method, operationId ? [grants, operationId] : [grants])
+          validateResult(method, value)
+        } catch (cause) {
+          if (operationId) {
+            options.imports?.prepareFailed(operationId, cause)
+            const failure = serializableError(cause)
+            throw new BoundaryError(failure.code, failure.action, operationId)
+          }
+          throw cause
+        }
+        ownJob(owner, value as string)
         try { publish(await options.request('getImport', [value])) }
         catch { /* 已受理的导入仍需返回任务编号，以便查询或取消。 */ }
       } else {
@@ -59,15 +74,29 @@ export function createDesktopRouter(options: RouterOptions) {
           if (method === 'cancelImport' && !owners.has(id)) {
             const snapshot = await options.request('getImport', [id]); validateSnapshot(snapshot)
             if (!['failed', 'cancelled', 'partially_completed'].includes(snapshot.status)) throw new BoundaryError('INVALID_JOB', '请重新选择导入来源。')
+            await options.imports?.recover(snapshot)
           }
         }
         if (method === 'startImport') {
           const request = args[0] as StartImportRequest
           requireJob(owner, request.kind === 'stage' ? request.jobId : request.plan.jobId)
+          options.imports?.requested(request)
         }
-        value = await options.request(method, args)
+        if (method === 'cancelImport') options.imports?.requested(args[0] as string)
+        try { value = await options.request(method, args) }
+        catch (cause) {
+          if (method === 'cancelImport' || method === 'startImport') options.imports?.requestFailed(args[0] as StartImportRequest | string, cause)
+          throw cause
+        }
       }
       validateResult(method, value)
+      if (method === 'getImport' && options.imports) {
+        const snapshot = value as ImportSnapshot
+        if (snapshot.operationId && !owners.has(snapshot.jobId) && !recovered.has(snapshot.operationId)) {
+          recovered.add(snapshot.operationId)
+          await options.imports.recover(snapshot).catch(() => {})
+        } else options.imports.observe(snapshot)
+      }
       return value
     },
     onImport(owner: number, listener: (snapshot: ImportSnapshot) => void) {
@@ -80,6 +109,6 @@ export function createDesktopRouter(options: RouterOptions) {
 }
 export const desktopChannels = { call: 'whomi:call', drop: 'whomi:drop', progress: 'whomi:import' } as const
 export function serializableError(error: unknown) {
-  if (error instanceof BoundaryError) return { code: error.code, action: error.action }
+  if (error instanceof BoundaryError) return { code: error.code, action: error.action, ...(error.operationId && { operationId: error.operationId }) }
   return { code: 'OPERATION_FAILED', action: '操作失败，请重试。' }
 }

@@ -1,7 +1,8 @@
 import type { Store } from '../db/open'
 import { cleanupRegisteredStaging } from './snapshot'
 import type { ImportFailurePhase, ImportJobState } from '../../../src/shared/import-contract'
-import { currentImportIssue, type StoredImportDiagnostic } from '../../../src/shared/import-diagnostics'
+import { currentImportIssue, type ImportDiagnosticReceipt, type PersistedImportFailure, type StoredImportDiagnostic } from '../../../src/shared/import-diagnostics'
+import { operationRetentionMs } from '../../../src/shared/operation-diagnostics'
 import { finishJob, recordImportFailure } from './state'
 import { issue } from './limits'
 import { rebuildSummary } from './summary'
@@ -14,17 +15,40 @@ export async function cleanupImportStaging(store: Store, jobId: string): Promise
   }
 }
 
+type FailureRow = { id: bigint; createdAt: bigint; endedAt: bigint; phase: ImportFailurePhase; issues: string | null; counts: string | null; saved: string | null }
+const importFailureQuery = `SELECT id, created_at_ms createdAt, COALESCE(completed_at_ms,created_at_ms) endedAt,
+  json_extract(metadata,'$.failurePhase') phase, json_extract(metadata,'$.issues') issues,
+  json_extract(metadata,'$.counts') counts, json_extract(metadata,'$.diagnosticReceipt') saved
+  FROM import_jobs WHERE phase='failed' AND json_type(metadata,'$.failurePhase')='text'`
+
+function persistedFailure(row: FailureRow): PersistedImportFailure {
+  const jobId = String(row.id), jobCreatedAt = Number(row.createdAt), endedAt = Number(row.endedAt)
+  const code = currentImportIssue(row.phase, JSON.parse(row.issues ?? '[]'))?.code ?? 'IMPORT_FAILED'
+  const signature = JSON.stringify([endedAt, row.phase, code])
+  return { diagnostic: { jobId, phase: row.phase, code }, jobCreatedAt, endedAt,
+    receipt: { jobId, jobCreatedAt, signature }, reported: row.saved === signature,
+    ...(row.counts && { counts: JSON.parse(row.counts) }) }
+}
+
 export function unresolvedImportDiagnostics(store: Store): StoredImportDiagnostic[] {
-  const failures = store.reader.prepare(`SELECT id, created_at_ms, json_extract(metadata,'$.failurePhase') phase,
-    json_extract(metadata,'$.issues') issues, json_extract(metadata,'$.counts') counts FROM import_jobs
-    WHERE phase='failed' AND json_type(metadata,'$.failurePhase')='text' ORDER BY completed_at_ms,id`).all() as {
-    id: bigint; created_at_ms: bigint; phase: ImportFailurePhase; issues: string | null; counts: string | null
-  }[]
-  return failures.map(({ id, created_at_ms, phase, issues, counts }) => ({
-    diagnostic: { jobId: id.toString(), phase, code: currentImportIssue(phase, JSON.parse(issues ?? '[]'))?.code ?? 'IMPORT_FAILED' },
-    jobCreatedAt: Number(created_at_ms),
-    ...(counts && { counts: JSON.parse(counts) }),
+  const rows = store.reader.prepare(importFailureQuery + ' AND COALESCE(completed_at_ms,created_at_ms)>? ORDER BY endedAt,id')
+    .all(Date.now() - operationRetentionMs) as FailureRow[]
+  return rows.map(persistedFailure).filter(failure => !failure.reported).map(({ diagnostic, jobCreatedAt, counts }) => ({
+    diagnostic, jobCreatedAt, ...(counts && { counts }),
   }))
+}
+
+export function getImportDiagnosticFailure(store: Store, jobId: string): PersistedImportFailure | undefined {
+  const row = store.reader.prepare(importFailureQuery + ' AND id=?').get(BigInt(jobId)) as FailureRow | undefined
+  return row && persistedFailure(row)
+}
+
+export function acknowledgeImportDiagnostic(store: Store, receipt: ImportDiagnosticReceipt) {
+  const failure = getImportDiagnosticFailure(store, receipt.jobId)
+  if (failure && !failure.reported && failure.jobCreatedAt === receipt.jobCreatedAt && failure.receipt.signature === receipt.signature) {
+    store.writer.prepare("UPDATE import_jobs SET metadata=json_set(metadata,'$.diagnosticReceipt',?) WHERE id=? AND created_at_ms=?")
+      .run(receipt.signature, BigInt(receipt.jobId), receipt.jobCreatedAt)
+  }
 }
 
 export function getInterruptedImport(store: Store): string | null {

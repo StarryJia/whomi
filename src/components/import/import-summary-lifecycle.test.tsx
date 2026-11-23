@@ -120,6 +120,15 @@ test('来源窗口失败时打开本次无任务编号的日志，取消无需�
   expect(api.cancelImport).not.toHaveBeenCalled()
 })
 
+test('已经接受来源但准备失败时，打开本次操作编号对应的原文件', async () => {
+  const { api, diagnostics, user } = setup(saved('a', '7'))
+  const operationId = '74cb26ee-4e43-45fb-a446-dbe6c19abc5a'
+  vi.mocked(api.prepareImport).mockRejectedValueOnce({ code: 'IMPORT_BUSY', action: '请完成当前导入。', operationId })
+  await user.click(screen.getByRole('button', { name: '选择文件' }))
+  await user.click(await screen.findByRole('button', { name: '查看错误日志' }))
+  expect(diagnostics.open).toHaveBeenCalledExactlyOnceWith(null, operationId)
+})
+
 test('取消有编号的失败任务后直接重新选择文件，选择窗口错误使用本次无编号日志', async () => {
   const { api, diagnostics, user, onCancelled } = setup(saved('a', '7', { summaryFailed: true }))
   await user.click(screen.getByRole('button', { name: '选择文件' }))

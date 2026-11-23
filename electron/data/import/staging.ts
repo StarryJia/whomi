@@ -80,7 +80,13 @@ export function createStagingService(options: StagingOptions) {
             const normalized = { ...value, candidateId: current.candidateId }
             saveIssue.run(current.candidateId, JSON.stringify(normalized))
             // Keep diagnostics bounded in memory; every occurrence remains in the temporary database.
-            if (!current.issues.some(x => x.code === normalized.code && x.severity === normalized.severity)) current.issues.push(normalized)
+            const previous = current.issues.find(x => x.code === normalized.code && x.severity === normalized.severity)
+            if (previous) {
+              previous.occurrences = (previous.occurrences ?? 1) + 1
+              const ordinals = previous.ordinals ?? (previous.ordinal === undefined ? [] : [previous.ordinal])
+              if (normalized.ordinal !== undefined && ordinals.length < 3) ordinals.push(normalized.ordinal)
+              if (ordinals.length) previous.ordinals = ordinals
+            } else current.issues.push(normalized)
             if (value.severity === 'blocking' && value.ordinal !== undefined) invalid.get(current.candidateId)!.add(value.ordinal)
           } else pendingIssues.push(value)
         }

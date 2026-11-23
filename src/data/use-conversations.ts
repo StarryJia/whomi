@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { traceConversation } from './conversation-diagnostics'
 import type { DesktopApi, ConversationSummary, LocateSourceInput, MessagePage, MessagePosition } from '../shared/desktop-api'
 
 export type ConversationClient = Pick<DesktopApi, 'listConversations' | 'readMessages' | 'locateSource'>
@@ -50,7 +51,7 @@ export function useConversations(client?: ConversationClient) {
     setCurrent(value)
   }, [])
 
-  const refresh = useCallback(async (options?: { preserveReader?: boolean }) => {
+  const refresh = useCallback(async (options?: { preserveReader?: boolean }): Promise<'success' | 'failed' | 'unknown'> => {
     const generation = ++listGeneration.current
     if (!options?.preserveReader) {
       ++readerGeneration.current
@@ -62,19 +63,22 @@ export function useConversations(client?: ConversationClient) {
     deletedDuringListRead.current.clear()
     setListLoading(!!client)
     setListError(undefined)
-    if (!client) { setConversations([]); setListCursor(null); cursorRef.current = null; listBusy.current = false; return }
+    if (!client) { setConversations([]); setListCursor(null); cursorRef.current = null; listBusy.current = false; return 'unknown' }
     try {
       let page = await client.listConversations({ limit: 100 })
       while (options?.preserveReader && page.nextCursor && page.items.length < loadedCount.current && generation === listGeneration.current) {
         const next = await client.listConversations({ cursor: page.nextCursor, limit: 100 })
         page = { items: [...page.items, ...next.items], nextCursor: next.nextCursor }
       }
-      if (!mounted.current || generation !== listGeneration.current) return
+      if (!mounted.current || generation !== listGeneration.current) return 'unknown'
       setConversations(page.items.filter(item => !deletedDuringListRead.current.has(item.id)))
       setListCursor(page.nextCursor)
       cursorRef.current = page.nextCursor
+      return 'success'
     } catch (failure) {
-      if (mounted.current && generation === listGeneration.current) setListError(readError(failure))
+      if (!mounted.current || generation !== listGeneration.current) return 'unknown'
+      setListError(readError(failure))
+      return 'failed'
     } finally {
       if (mounted.current && generation === listGeneration.current) { listBusy.current = false; setListLoading(false) }
     }
@@ -132,11 +136,17 @@ export function useConversations(client?: ConversationClient) {
     setLoading(!!client)
     setError(undefined)
     if (!client) { readerBusy.current = false; return }
+    const operation = traceConversation('open')
+    operation.step('read')
     try {
       const page = await client.readMessages({ conversationId, direction: 'after', limit: 100 })
-      if (!mounted.current || generation !== readerGeneration.current) return
+      operation.step('read', { count: page.items.length, hasMore: !!page.afterCursor })
+      if (!mounted.current || generation !== readerGeneration.current) { operation.end('unknown'); return }
       updateWindow(windowPages(window, [page]))
+      operation.step('display')
+      operation.end('success')
     } catch (failure) {
+      operation.end('failed', failure)
       if (mounted.current && generation === readerGeneration.current) setError(readError(failure))
     } finally {
       if (mounted.current && generation === readerGeneration.current) { readerBusy.current = false; setLoading(false) }
@@ -152,11 +162,19 @@ export function useConversations(client?: ConversationClient) {
     updateWindow(previous ?? window)
     setLoading(!!client)
     setError(undefined)
+    const operation = traceConversation('locate')
+    operation.step('locate')
     try {
-      if (previous && !request.endMessageId && previous.messages.some(message => message.id === request.messageId)) return true
+      if (previous && !request.endMessageId && previous.messages.some(message => message.id === request.messageId)) {
+        operation.step('locate', { found: true })
+        operation.end('success')
+        return true
+      }
       const located = await client?.locateSource(request)
-      if (!mounted.current || generation !== readerGeneration.current) return false
+      if (!mounted.current || generation !== readerGeneration.current) { operation.end('unknown'); return false }
       if (!located || located.status === 'unavailable') {
+        operation.step('locate', { found: false })
+        operation.end('failed')
         updateWindow(previous ?? { ...window, sourceStatus: 'unavailable' })
         return false
       }
@@ -164,8 +182,12 @@ export function useConversations(client?: ConversationClient) {
         ? { ...emptyWindow(request.conversationId), ...(previous?.range ? { range: previous.range, sourceStatus: previous.sourceStatus } : {}) }
         : { ...window, sourceStatus: 'available' as const, range: { start: located.start, end: located.end } }
       updateWindow(windowPages(target, [located.page]))
+      operation.step('read', { count: located.page.items.length })
+      operation.step('locate', { found: true })
+      operation.end('success')
       return true
-    } catch {
+    } catch (failure) {
+      operation.end('failed', failure)
       if (mounted.current && generation === readerGeneration.current) updateWindow(previous ?? { ...window, sourceStatus: 'unavailable' })
       return false
     } finally {
@@ -177,6 +199,8 @@ export function useConversations(client?: ConversationClient) {
     const window = windowRef.current
     const cursor = direction === 'before' ? window?.beforeCursor : window?.afterCursor
     if (!client || !window || !cursor || readerBusy.current) return
+    const operation = traceConversation('page')
+    operation.step('read')
     const generation = readerGeneration.current
     readerBusy.current = true
     setLoading(true)
@@ -184,10 +208,14 @@ export function useConversations(client?: ConversationClient) {
     try {
       // 游标固定页大小，定位窗口和普通阅读均延续原快照。
       const page = await client.readMessages({ conversationId: window.conversationId, cursor, direction })
-      if (!mounted.current || generation !== readerGeneration.current) return
+      operation.step('read', { count: page.items.length, hasMore: !!(direction === 'before' ? page.beforeCursor : page.afterCursor) })
+      if (!mounted.current || generation !== readerGeneration.current) { operation.end('unknown'); return }
       const pages = direction === 'before' ? [page, ...window.pages].slice(0, 5) : [...window.pages, page].slice(-5)
       updateWindow(windowPages(window, pages))
+      operation.step('display')
+      operation.end('success')
     } catch (failure) {
+      operation.end('failed', failure)
       if (mounted.current && generation === readerGeneration.current) setError(readError(failure))
     } finally {
       if (mounted.current && generation === readerGeneration.current) { readerBusy.current = false; setLoading(false) }

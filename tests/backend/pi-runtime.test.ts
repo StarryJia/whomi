@@ -44,6 +44,17 @@ describe('Pi runtime over a controlled OpenAI compatible service', () => {
   const options = () => ({ signal: new AbortController().signal, onText: () => {} })
   const input = (model: AiModel, prompt = '示例提问') => ({ key: 'example-thread', model, systemPrompt: '仅依据本轮许可材料回答。', prompt })
 
+  it('recognizes an upstream gateway timeout for insights while keeping normal dialogue errors unchanged', async () => {
+    answer = response => {
+      response.writeHead(504, { 'Content-Type': 'application/json' })
+      response.end(JSON.stringify({ error: { message: 'private gateway detail', code: 'gateway_timeout' } }))
+    }
+    for (const purpose of ['insight', undefined] as const) {
+      const result = new PiRuntime(directory).run({ ...input(model), purpose }, options())
+      await expect(result).rejects.toMatchObject({ code: purpose ? 'MODEL_TIMEOUT' : 'MODEL_REQUEST_FAILED' })
+    }
+  }, 20000)
+
   it('uses the upstream request fallback without saving invented model capacities', async () => {
     const unknown = { ...model, contextWindow: null, maxTokens: null }
     const result = await new PiRuntime(directory).run(input(unknown as unknown as AiModel), options())

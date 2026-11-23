@@ -2,7 +2,8 @@ import { randomUUID } from 'node:crypto'
 import { lstat, readdir, readFile, realpath } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { importFailurePhases, type ImportCounts, type ImportSnapshot } from '../../src/shared/import-contract'
-import { currentImportIssue, type ImportDiagnostic } from '../../src/shared/import-diagnostics'
+import { currentImportIssue, type ImportDiagnostic, type ImportDiagnosticReceipt, type PersistedImportFailure } from '../../src/shared/import-diagnostics'
+import { operationRetentionMs } from '../../src/shared/operation-diagnostics'
 import { BoundaryError, localId } from '../../src/shared/desktop-validation'
 import { localLogDirectory, logPathKey, writeLocalLog, type createAppErrorLogs } from './app-error-logs'
 
@@ -13,7 +14,7 @@ const parserCodes = new Set([
   'UNSAFE_PROPERTY', 'UNSUPPORTED_VERSION', 'UPSTREAM_ERROR',
 ])
 const legacyGenericCodes = new Set([...parserCodes, 'TAKEOUT_INCOMPLETE', 'STAGING_CLOSED', 'INVALID_PAGE', 'PREVIEW_UNAVAILABLE'])
-const importCodes = new Set([
+export const importCodes = new Set([
   ...legacyGenericCodes,
   'ALREADY_COMMITTED', 'AMBIGUOUS_FORMAT', 'AMBIGUOUS_MESSAGE', 'CANCEL_FAILED', 'COMMIT_FAILED', 'CONVERSATION_BLOCKED',
   'CONVERSATION_MISSING', 'DEPTH_LIMIT', 'DIRECTORY_CYCLE', 'DISCOVERY_FAILED',
@@ -144,7 +145,8 @@ async function latestLog(index: LogIndex, jobId?: unknown, job?: ImportSnapshot)
 
 export function createImportDiagnostics(userData: string, version: string, openPath: (path: string) => Promise<string>,
   getImport?: (jobId: string) => Promise<ImportSnapshot>,
-  logs?: Pick<ReturnType<typeof createAppErrorLogs>, 'withWritableRoot' | 'importDirectories'>) {
+  logs?: Pick<ReturnType<typeof createAppErrorLogs>, 'withWritableRoot' | 'importDirectories'> & Partial<Pick<ReturnType<typeof createAppErrorLogs>, 'writeLog'>>,
+  receipts?: { find(jobId: string): Promise<PersistedImportFailure | undefined>; acknowledge(receipt: ImportDiagnosticReceipt): Promise<void> }) {
   const directory = join(resolve(userData), 'import-errors')
   let queue: Promise<unknown> = Promise.resolve()
   const indexes = new Map<string, LogIndex>()
@@ -181,6 +183,14 @@ export function createImportDiagnostics(userData: string, version: string, openP
       return schedule(async () => {
         const { phase, jobId } = request
         let code = request.code
+        const failure = jobId && receipts ? await receipts.find(jobId).catch(() => undefined) : undefined
+        const stored = failure?.diagnostic.phase === phase && (jobCreatedAt === undefined || jobCreatedAt === failure.jobCreatedAt) ? failure : undefined
+        if (stored) {
+          if (stored.reported || stored.endedAt <= Date.now() - operationRetentionMs) return
+          counts ??= stored.counts
+          jobCreatedAt = stored.jobCreatedAt
+          code = readDiagnostic(stored.diagnostic).code
+        }
         if (!counts && jobId && getImport) {
           const snapshot = await getImport(jobId).catch(() => undefined)
           if (snapshot?.jobId === jobId) {
@@ -200,12 +210,12 @@ export function createImportDiagnostics(userData: string, version: string, openP
           const recordedCounts = existing?.counts ?? safeCounts(counts)
           const recordedCode = existing && existing.code !== 'IMPORT_FAILED' ? existing.code : code
           if (existing && existing.code === recordedCode && (existing.counts || !recordedCounts)) return
-          const timestamp = Math.max(Date.now(), (index.files.at(-1)?.recordedAt ?? 0) + 1)
+          const timestamp = stored?.endedAt ?? Math.max(Date.now(), (index.files.at(-1)?.recordedAt ?? 0) + 1)
           const scope = jobId && jobCreatedAt !== undefined ? `${jobCreatedAt}-` : ''
           const filename = original?.file.name ?? `${timestamp}-${randomUUID()}-${scope}${jobId ?? 'none'}.txt`
           const record: LogRecord = { recordedAt: existing?.recordedAt ?? new Date(timestamp).toISOString(),
             version: existing?.version ?? version, phase, code: recordedCode, counts: recordedCounts }
-          await writeLocalLog(root, filename, record)
+          await (logs?.writeLog ?? writeLocalLog)(root, filename, record)
           if (!original) addFile(index, root, filename)
           else if (original.file.root !== root) indexes.delete(root)
         }
@@ -215,6 +225,7 @@ export function createImportDiagnostics(userData: string, version: string, openP
         } catch (error) {
           throw new BoundaryError('IMPORT_LOG_WRITE_FAILED', error instanceof BoundaryError ? error.action : '无法保存错误日志。请检查日志目录的写入权限。')
         }
+        if (stored) await receipts?.acknowledge(stored.receipt).catch(() => {})
       })
     },
     async open(jobId?: unknown) {

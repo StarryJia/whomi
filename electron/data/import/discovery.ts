@@ -61,8 +61,8 @@ export function safeRole(name: unknown): string {
 }
 export function createDiscovery(access: SourceAccess = sourceAccess, parsers: readonly ParserAdapter[] = getParsers()) {
   const records = new WeakMap<Discovery, readonly PrivateEntry[]>()
-  function publish(entries: PrivateEntry[], unrecognized: { displayName: string }[], issues: ImportIssue[]): Discovery {
-    const result = Object.freeze({ entries: Object.freeze(entries.map(({ entryId, displayName, parser }) => Object.freeze({ entryId, displayName, formatId: parser.id }))),
+  function publish(entries: PrivateEntry[], unrecognized: { displayName: string }[], issues: ImportIssue[], totals?: Pick<Discovery, 'fileCount' | 'totalBytes'>): Discovery {
+    const result = Object.freeze({ ...totals, entries: Object.freeze(entries.map(({ entryId, displayName, parser }) => Object.freeze({ entryId, displayName, formatId: parser.id }))),
       unrecognized: Object.freeze(unrecognized.map(x => Object.freeze(x))), issues: Object.freeze(issues.map(x => Object.freeze(x))) })
     records.set(result, entries)
     return result
@@ -173,7 +173,10 @@ export function createDiscovery(access: SourceAccess = sourceAccess, parsers: re
     const result = entries.filter(e => e.generatedManifest || !consumed.has(identity(e.files[0].info)))
     checkSignal(signal)
     distinguishSourceNames(result)
-    return publish(result, unknown, issues)
+    const observed = new Map(files)
+    for (const entry of entries) for (const file of entry.files) observed.set(identity(file.info), file)
+    const bytes = [...observed.values()].reduce((sum, file) => sum + file.info.size, 0n)
+    return publish(result, unknown, issues, { fileCount: observed.size, ...(bytes <= BigInt(Number.MAX_SAFE_INTEGER) && { totalBytes: Number(bytes) }) })
   }
   return { discover, resolveDiscovery, selectDiscovery }
 }

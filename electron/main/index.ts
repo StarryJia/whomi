@@ -7,7 +7,8 @@ import { startDataHost } from './data-host'
 import type { DataHost } from './data-host'
 import { createSourceGrants } from './source-grants'
 import { createDesktopRouter, desktopChannels, isTrustedCaller, serializableError } from './ipc'
-import { BoundaryError } from '../../src/shared/desktop-validation'
+import { BoundaryError, localId } from '../../src/shared/desktop-validation'
+import { isOperationId } from '../../src/shared/operation-diagnostics'
 import { startAgentHost, type AgentHost } from './ai-host'
 import { createAiService } from './ai-service'
 import { createAiRouter } from './ai-router'
@@ -26,6 +27,10 @@ import type { ProcessingMember } from './message-processing'
 import { loadWindowState, rememberWindowState } from './window-state'
 import { createImportDiagnostics, snapshotDiagnostic } from './import-diagnostics'
 import { createAppErrorLogs } from './app-error-logs'
+import { createOperationDiagnostics } from './operation-diagnostics'
+import { createConversationRecorder, recordSetting } from './lifecycle-diagnostics'
+import { createImportOperationTracker } from './import-operation-tracker'
+import { operationDiagnosticsChannel } from '../../src/shared/operation-diagnostics-api'
 import { appExceptionChannel, importDiagnosticsChannel, type StoredImportDiagnostic } from '../../src/shared/import-diagnostics'
 import { version as appVersion } from '../../package.json'
 
@@ -49,6 +54,22 @@ if (!app.requestSingleInstanceLock()) app.quit()
 else {
   const installDirectory = app.isPackaged ? dirname(process.execPath) : testDirectory ?? app.getAppPath()
   const appErrorLogs = createAppErrorLogs(installDirectory, app.getPath('userData'), appVersion, path => shell.openPath(path))
+  const operations = createOperationDiagnostics(installDirectory, appVersion, { onWriteFailure: () => appErrorLogs.recordWriteFailure() })
+  appErrorLogs.setOperationDiagnostics(operations)
+  const startup = operations.begin('startup', 'launch')
+  operations.event(startup, 'startup')
+  let previousMigration: string | undefined
+  async function finishReopen(success: boolean, code?: string) {
+    if (!previousMigration) return
+    const id = previousMigration
+    previousMigration = undefined
+    const previous = (await operations.list()).find(entry => entry.id === id && entry.area === 'storage' && entry.action === 'migrate')
+    if (previous && (previous.outcome === 'interrupted' || previous.outcome === 'running')) {
+      operations.resume(id)
+      operations.event(id, 'reopen')
+      operations.end(id, success ? 'success' : 'failed', { code })
+    }
+  }
   process.on('uncaughtExceptionMonitor', (_error, origin) => appErrorLogs.recordMainException(origin))
   let stoppingWorkers = false
   app.on('child-process-gone', (_event, details) => {
@@ -56,6 +77,9 @@ else {
     const area = details.name === 'Whomi Data' ? 'data' : details.name === 'Whomi Agent' ? 'model' : 'main'
     if (stoppingWorkers && details.reason === 'killed' && area !== 'main') return
     const code = area === 'data' ? 'DATA_PROCESS_GONE' : area === 'model' ? 'AGENT_UNAVAILABLE' : 'MAIN_PROCESS_ERROR'
+    const id = operations.begin('startup', 'workerExit')
+    operations.event(id, 'workerExit', { code })
+    operations.end(id, 'failed', { code })
     void appErrorLogs.record({ area, phase: 'child-process-exit', error: new BoundaryError(code) })
   })
   app.on('second-instance', () => { const window = BrowserWindow.getAllWindows()[0]; window?.show(); window?.focus() })
@@ -66,7 +90,10 @@ else {
       catch (error) { void appErrorLogs.record({ area: 'data', phase: method, error }); throw error }
     }
     const importDiagnostics = createImportDiagnostics(userDataPath, appVersion, path => shell.openPath(path),
-      jobId => requestData('getImport', [jobId]), appErrorLogs)
+      jobId => requestData('getImport', [jobId]), appErrorLogs, {
+        find: jobId => dataHost!.request('getImportDiagnosticFailure', jobId),
+        acknowledge: receipt => dataHost!.request('acknowledgeImportDiagnostic', receipt),
+      })
     let suspended = false, servicesClosed = false, requests = 0
     let publishImport: Parameters<DataHost['onEvent']>[0] = () => {}
     let publishAi: Parameters<NonNullable<typeof aiService>['subscribe']>[0] = () => {}
@@ -79,8 +106,10 @@ else {
     const accounts = { 'openai-codex': chatgpt, 'grok-cli': grok, copilot }
     const accountRunners = { 'openai-codex': createChatgptRunner((id, signal) => chatgpt.accessToken(id, signal)), 'grok-cli': grok.runner, copilot: copilot.runner }
     app.once('before-quit', () => { codexQuota.close(); for (const account of Object.values(accounts)) account.close() })
-    async function startServices(directory: string) {
-      dataHost = startDataHost(directory)
+    async function startServices(directory: string, operationId?: string) {
+      dataHost = startDataHost(directory, (fromVersion, toVersion) => {
+        if (operationId) operations.event(operationId, 'databaseUpgrade', { fromVersion, toVersion })
+      })
       if (probeEnabled) (globalThis as typeof globalThis & { __whomiRuntimeProbe?: DataHost }).__whomiRuntimeProbe = dataHost
       const failures = await requestData<StoredImportDiagnostic[]>('unresolvedImportDiagnostics', null)
       for (const { diagnostic, counts, jobCreatedAt } of failures) void importDiagnostics.report(diagnostic, counts, jobCreatedAt).catch(() => {})
@@ -90,7 +119,7 @@ else {
           if (!input.model.planAccount) return agentHost!.run(input, options)
           const provider: SubscriptionProviderId = input.model.planProvider ?? 'openai-codex'
           return accountRunners[provider].run(input, options)
-        } }, secrets,
+        } }, secrets, diagnostics: operations,
         changed: event => publishAi(event),
         logError: appErrorLogs.record,
         processing: async conversationId => {
@@ -99,9 +128,11 @@ else {
         }, claimProcessing: (id, signature) => requestData('settingsStorage', ['claimProcessing', [id, signature]]) })
       servicesClosed = false
     }
-    const storage = await resolveStorageSelection(userDataPath)
+    operations.event(startup, 'databaseOpen')
+    const storage = await resolveStorageSelection(userDataPath, id => { previousMigration = id })
     appErrorLogs.setDataArchives(storage.path, storage.retainedErrorLogDirectories)
-    await startServices(storage.path)
+    await startServices(storage.path, startup)
+    await finishReopen(true).catch(() => {})
     await importDiagnostics.flush()
     const aiRouter = createAiRouter(new Proxy({} as AiMethods, { get: (_target, method: keyof AiMethods) => (...args: unknown[]) => (aiService![method] as (...values: unknown[]) => Promise<unknown>)(...args) }))
     publishAi = event => aiRouter.publish(event)
@@ -169,12 +200,13 @@ else {
     })
     const windowId = window.webContents.id
     const grants = createSourceGrants()
-    const router = createDesktopRouter({ grants, request: (method, args) => method === 'deleteConversation'
+    const imports = createImportOperationTracker(operations)
+    const router = createDesktopRouter({ grants, imports, request: (method, args) => method === 'deleteConversation'
       ? aiService!.deleteConversation((args as [string])[0], async () => { await requestData(method, args) })
       : requestData(method, args), async chooseSources(_owner, kind) {
       const result = await dialog.showOpenDialog({ properties: kind === 'files' ? ['openFile', 'multiSelections'] : ['openDirectory'] })
         .catch(() => { throw new BoundaryError('PICKER_FAILED', '无法打开来源选择窗口。') })
-      return result.canceled || !result.filePaths.length ? [] : grants.issue(window.webContents.id, result.filePaths)
+      return result.canceled || !result.filePaths.length ? [] : grants.issue(window.webContents.id, result.filePaths, 'picker')
     } })
     publishImport = snapshot => {
       const diagnostic = snapshotDiagnostic(snapshot)
@@ -203,9 +235,18 @@ else {
         return selected.canceled || !selected.filePaths[0] ? null : locations.issueChoice(windowId, selected.filePaths[0])
       },
       async relocateStorage(token) {
-        const location = await locations.relocateStorage(windowId, token)
-        appErrorLogs.setDataArchives(location.path, location.retainedErrorLogDirectories)
-        return location
+        const id = operations.begin('storage', 'migrate')
+        try {
+          const location = await locations.relocateStorage(windowId, token, {
+            id, stage: (name, counts) => operations.event(id, name, { ...counts, sourceLocation: 'original', targetLocation: 'new' }),
+          })
+          appErrorLogs.setDataArchives(location.path, location.retainedErrorLogDirectories)
+          operations.event(id, 'waitingForRestart')
+          return location
+        } catch (error) {
+          operations.end(id, 'failed', { code: serializableError(error).code })
+          throw error
+        }
       },
       async restart() { if (!suspended || !(await locations.getStorage()).restartRequired) throw new BoundaryError('INVALID_STATE'); app.relaunch(); app.quit() },
       async getDiagnostics() { const current = await settingsService.get(); return { version: appVersion, platform: process.platform, entries: current.debug ? [...diagnostics] : [] } },
@@ -220,7 +261,9 @@ else {
         if (value.args.length !== settingsMethods[method]) throw new BoundaryError('INVALID_ARGUMENT')
         if (suspended && !['getStorage', 'openStorageDirectory', 'openErrorLogDirectory', 'restart'].includes(method)) throw new BoundaryError('STORAGE_RESTART_REQUIRED', '数据目录正在切换，请重启应用。')
         requests++
-        try { return { ok: true, value: await (settingsApi[method] as (...args: unknown[]) => Promise<unknown>)(...value.args) } } finally { requests-- }
+        const apply = settingsApi[method] as (...args: unknown[]) => Promise<unknown>
+        const args = value.args
+        try { return { ok: true, value: await recordSetting(operations, method, () => apply(...args)) } } finally { requests-- }
       } catch (error) {
         const failure = serializableError(error)
         if (method && method !== 'testModel' && method !== 'openErrorLogDirectory') {
@@ -250,11 +293,48 @@ else {
     }
     ipcMain.handle(desktopChannels.call, (event, value) => handle(event, value))
     ipcMain.handle(desktopChannels.drop, (event, value) => handle(event, value, true))
+    const conversations = createConversationRecorder(operations)
+    const receiveConversation = (event: Electron.IpcMainEvent, value: unknown) => {
+      if (!window.isDestroyed() && isTrustedCaller(event, window, appUrl)) conversations.receive(value)
+    }
+    ipcMain.on(operationDiagnosticsChannel, receiveConversation)
+    window.webContents.on('did-navigate', () => conversations.close())
+    window.once('closed', () => {
+      conversations.close()
+      ipcMain.removeListener(operationDiagnosticsChannel, receiveConversation)
+      ipcMain.removeHandler(operationDiagnosticsChannel)
+    })
+    ipcMain.handle(operationDiagnosticsChannel, async (event, method, value) => {
+      if (window.isDestroyed() || !isTrustedCaller(event, window, appUrl)) return
+      if (method === 'importRefresh' && value && typeof value.jobId === 'string'
+        && (value.createdAt === undefined || Number.isSafeInteger(value.createdAt))
+        && ['success', 'failed', 'unknown'].includes(value.result)) {
+        await imports.refresh(value.jobId, value.createdAt, value.result)
+      }
+    })
     ipcMain.handle(importDiagnosticsChannel, async (event, operation: unknown, value: unknown) => {
       try {
         if (window.isDestroyed() || !isTrustedCaller(event, window, appUrl)) throw new BoundaryError('UNTRUSTED_CALLER', '请在应用窗口中操作。')
         if (operation === 'report') await importDiagnostics.report(value)
-        else if (operation === 'open') await importDiagnostics.open(value)
+        else if (operation === 'open') {
+          if (value && typeof value === 'object') {
+            if (!('operationId' in value) || !isOperationId(value.operationId) || !('jobId' in value)
+              || (value.jobId != null && !localId(value.jobId))) throw new BoundaryError('INVALID_ARGUMENT')
+            const id = value.operationId
+            const found = (await operations.list()).some(item => item.id === id && item.area === 'import')
+            if (found) {
+              try {
+                await operations.withFile(id, async path => {
+                  if (await shell.openPath(path)) throw new BoundaryError('IMPORT_LOG_OPEN_FAILED', '无法打开日志。请检查默认文本查看应用后重试。')
+                }, true)
+              } catch (error) {
+                if (!(error instanceof BoundaryError) || error.code !== 'DIAGNOSTIC_NOT_FOUND' || value.jobId == null) throw error
+                await importDiagnostics.open(value.jobId)
+              }
+            } else if (value.jobId != null) await importDiagnostics.open(value.jobId)
+            else throw new BoundaryError('IMPORT_LOG_MISSING', '找不到这次操作的日志。')
+          } else await importDiagnostics.open(value)
+        }
         else throw new BoundaryError('INVALID_ARGUMENT')
         return { ok: true }
       } catch (error) { return { ok: false, error: serializableError(error) } }
@@ -284,8 +364,13 @@ else {
     } }))
     if (devUrl) await window.loadURL(devUrl)
     else await window.loadFile(pagePath)
+    operations.event(startup, 'windowReady')
+    operations.end(startup, 'success')
   }).catch(async error => {
     if (quitting) return
+    const code = error instanceof BoundaryError ? error.code : 'STARTUP_FAILED'
+    operations.end(startup, 'failed', { code })
+    await finishReopen(false, code).catch(() => {})
     const logDirectory = await appErrorLogs.record({ area: 'startup', phase: 'initialize', error: error instanceof BoundaryError ? error : new BoundaryError('STARTUP_FAILED') })
     const detail = error instanceof BoundaryError && error.code.startsWith('STORAGE_')
       ? `${error.message}\n连接保存会话的磁盘或恢复原保存目录后，重新打开 Whomi。`
@@ -295,6 +380,7 @@ else {
       ? `\n打开 ${logDirectory} 查看错误日志。`
       : `\n${appErrorLogs.writeFailureAction}`))
     await Promise.allSettled([agentHost?.close(), dataHost?.close()])
+    await operations.close()
     app.exit(1)
   })
   app.on('window-all-closed', () => app.quit())
@@ -306,6 +392,7 @@ else {
         try { await aiService?.close() } catch { /* 数据进程退出时仍需回收Agent进程。 */ }
         await Promise.allSettled([agentHost?.close(), dataHost!.close()])
         await appErrorLogs.flush()
+        await operations.close()
       })().finally(() => app.quit())
     }
   })

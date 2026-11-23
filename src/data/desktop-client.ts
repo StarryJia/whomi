@@ -13,7 +13,7 @@ export function createDesktopClient(transport: DesktopTransport): DesktopApi {
     if (response.ok === false && 'error' in response) {
       if (Object.keys(response).some(key => key !== 'ok' && key !== 'error')) throw new BoundaryError('INVALID_RESPONSE')
       validateError(response.error)
-      throw new BoundaryError(response.error.code, response.error.action)
+      throw new BoundaryError(response.error.code, response.error.action, response.error.operationId)
     }
     if (response.ok !== true || !('value' in response) || Object.keys(response).some(key => key !== 'ok' && key !== 'value')) throw new BoundaryError('INVALID_RESPONSE')
     validateResult(method, response.value)

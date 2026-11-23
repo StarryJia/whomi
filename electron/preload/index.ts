@@ -7,6 +7,7 @@ import { aiChannels, type AiMethods } from '../../src/shared/ai-contract'
 import { createSettingsClient } from '../../src/data/settings-client'
 import { settingsChannel, type SettingsApi } from '../../src/shared/settings-contract'
 import { appExceptionChannel, importDiagnosticsChannel, type ImportDiagnosticsApi } from '../../src/shared/import-diagnostics'
+import { operationDiagnosticsChannel, type OperationDiagnosticsApi } from '../../src/shared/operation-diagnostics-api'
 
 const credential = process.argv.find(value => value.startsWith('--whomi-drop-key='))?.slice('--whomi-drop-key='.length)
 // The credential stays in the isolated preload world; page objects cannot grant paths.
@@ -41,7 +42,7 @@ const exposedSettings = Object.freeze(Object.fromEntries(Object.entries(settings
 // Electron strips custom Error fields across contextBridge; reject only the public record.
 function expose<K extends DesktopMethod | 'acceptDroppedFiles'>(method: K): DesktopApi[K] {
   return ((...args: unknown[]) => (api[method] as (...input: unknown[]) => Promise<unknown>)(...args).catch((error: unknown) => {
-    const failure = error instanceof BoundaryError ? { code: error.code, action: error.action } : { code: 'OPERATION_FAILED', action: '操作失败，请重试。' }
+    const failure = error instanceof BoundaryError ? { code: error.code, action: error.action, ...(error.operationId && { operationId: error.operationId }) } : { code: 'OPERATION_FAILED', action: '操作失败，请重试。' }
     return Promise.reject(failure)
   })) as DesktopApi[K]
 }
@@ -58,12 +59,19 @@ async function importDiagnosticsCall(operation: 'report' | 'open', value: unknow
 }
 const importDiagnostics: ImportDiagnosticsApi = Object.freeze({
   report: (value: Parameters<ImportDiagnosticsApi['report']>[0]) => importDiagnosticsCall('report', value),
-  open: (jobId?: string | null) => importDiagnosticsCall('open', jobId),
+  open: (jobId?: string | null, operationId?: string) => importDiagnosticsCall('open', operationId ? { jobId, operationId } : jobId),
 })
+const operationDiagnostics: OperationDiagnosticsApi = {
+  conversation(event) { ipcRenderer.send(operationDiagnosticsChannel, event) },
+  async importRefresh(jobId, createdAt, result) {
+    await ipcRenderer.invoke(operationDiagnosticsChannel, 'importRefresh', { jobId, createdAt, result })
+  },
+}
 contextBridge.exposeInMainWorld('whomi', Object.freeze({
   ai: exposedAi,
   settings: exposedSettings,
   importDiagnostics,
+  operationDiagnostics: Object.freeze(operationDiagnostics),
   onAppException(listener) {
     const receive = (_event: Electron.IpcRendererEvent, notice: { title: string; detail: string }) => listener(notice)
     ipcRenderer.on(appExceptionChannel, receive)

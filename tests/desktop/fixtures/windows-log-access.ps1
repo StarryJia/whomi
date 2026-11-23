@@ -13,6 +13,6 @@ if (!$directoryInfo.PSIsContainer -or $directoryInfo.Name -ne 'logs' -or
   throw 'Select the isolated test log directory.'
 }
 $sid = '*' + [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
-if ($Action -eq 'Block') { & icacls.exe $directoryInfo.FullName /deny (${sid} + ':(WD)') }
+if ($Action -eq 'Block') { & icacls.exe $directoryInfo.FullName /deny (${sid} + ':(OI)(CI)(WD)') }
 else { & icacls.exe $directoryInfo.FullName /remove:d $sid }
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

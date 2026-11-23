@@ -2,6 +2,7 @@ import type { ThinkingLevel } from '../../src/shared/thinking'
 import type { AiModel, AiUsage } from '../../src/shared/ai-contract'
 
 export type AgentRunInput = { thinkingLevel?: ThinkingLevel;
+  purpose?: 'insight'
   key: string
   checkpoint?: string | null
   model: AiModel

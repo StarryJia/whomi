@@ -5,6 +5,12 @@ import { basename, dirname, isAbsolute, join, parse, relative, resolve, sep } fr
 import Database from 'better-sqlite3'
 import { BoundaryError } from '../../src/shared/desktop-validation'
 import type { StorageChoice, StorageLocation } from '../../src/shared/settings-contract'
+import { isOperationId } from '../../src/shared/operation-diagnostics'
+
+type MigrationObserver = {
+  id: string
+  stage(name: 'copy' | 'verify' | 'switchDirectory', counts?: { fileCount: number; bytes: number }): void
+}
 
 export type StorageLocationOptions = {
   userDataPath: string
@@ -54,7 +60,7 @@ function retainedDirectory(value: unknown): value is string {
     && resolve(value) === value && basename(value) === 'logs'
 }
 
-export async function resolveStorageSelection(userDataPath: string): Promise<StorageSelection> {
+export async function resolveStorageSelection(userDataPath: string, onMigration?: (id: string) => void): Promise<StorageSelection> {
   try {
     await checkedPath(userDataPath, true)
     await fs.mkdir(userDataPath, { recursive: true })
@@ -65,6 +71,7 @@ export async function resolveStorageSelection(userDataPath: string): Promise<Sto
     if (!info.isFile() || info.size > 16_384n) throw new Error('Invalid storage pointer')
     const data = JSON.parse(await fs.readFile(pointer, 'utf8')) as { version?: unknown; path?: unknown; hasDatabase?: unknown; retainedErrorLogDirectories?: unknown }
     if (data.version !== 1 || typeof data.path !== 'string' || typeof data.hasDatabase !== 'boolean') throw new Error('Invalid storage pointer')
+    if ('operationId' in data && isOperationId(data.operationId)) onMigration?.(data.operationId)
     await checkedDirectory(data.path)
     if (data.hasDatabase) {
       const databasePath = join(data.path, 'whomi.db'), databaseInfo = await checkedPath(databasePath)
@@ -239,12 +246,12 @@ function rebaseCheckpoint(value: string, source: string, target: string, depth =
   return changed ? JSON.stringify(checkpoint) : value
 }
 
-async function publishPointer(userDataPath: string, target: string, retainedErrorLogDirectories: string[]) {
+async function publishPointer(userDataPath: string, target: string, retainedErrorLogDirectories: string[], operationId?: string) {
   await checkedDirectory(userDataPath)
   const pointer = join(userDataPath, pointerName), temporary = join(userDataPath, `.storage-location-${randomUUID()}.tmp`)
   try {
     const hasDatabase = Boolean((await checkedPath(join(target, 'whomi.db'), true))?.isFile())
-    const contents = JSON.stringify({ version: 1, path: target, hasDatabase,
+    const contents = JSON.stringify({ version: 1, path: target, hasDatabase, operationId,
       ...(retainedErrorLogDirectories.length && { retainedErrorLogDirectories }) }) + '\n'
     if (Buffer.byteLength(contents) > 16_384) throw new Error('Storage pointer too large')
     const handle = await fs.open(temporary, 'wx', 0o600)
@@ -305,7 +312,7 @@ export function createStorageLocationService(options: StorageLocationOptions) {
       return { token, path: resolve(path) }
     },
     revokeOwner,
-    async relocateStorage(owner: number, token: string): Promise<StorageLocation> {
+    async relocateStorage(owner: number, token: string, observer?: MigrationObserver): Promise<StorageLocation> {
       requireAvailable()
       const grant = grants.get(token)
       if (!grant || grant.owner !== owner || grant.expires <= now()) throw new BoundaryError('INVALID_STORAGE_CHOICE', '请重新选择保存目录。')
@@ -319,7 +326,12 @@ export function createStorageLocationService(options: StorageLocationOptions) {
         await options.stopServices()
         await destination(grant.path, source, grant.identity)
         const entries = await manifest(source)
+        if (observer) {
+          const files = entries.filter(entry => entry.info.isFile())
+          observer.stage('copy', { fileCount: files.length, bytes: files.reduce((sum, entry) => sum + Number(entry.info.size), 0) })
+        }
         for (const entry of entries) await copyEntry(source, grant.path, entry, created)
+        observer?.stage('verify')
         const remaining = await manifest(source)
         if (!sameManifest(entries, remaining)) throw new Error('Source changed')
         await verifyCreated(grant.path, grant.identity, created)
@@ -332,7 +344,8 @@ export function createStorageLocationService(options: StorageLocationOptions) {
         // 旧版把错误日志放在数据目录中，迁移后继续按原位置查找。
         const hasOldLogs = await fs.lstat(oldLogs).then(() => true, error => !missing(error))
         if (hasOldLogs && !retained.some(path => pathKey(path) === pathKey(oldLogs))) retained.push(oldLogs)
-        await publishPointer(options.userDataPath, grant.path, retained)
+        observer?.stage('switchDirectory')
+        await publishPointer(options.userDataPath, grant.path, retained, observer?.id)
         selection = { path: grant.path, retainedErrorLogDirectories: retained }
         restartRequired = true
         grants.clear()

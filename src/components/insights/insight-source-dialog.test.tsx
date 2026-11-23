@@ -22,6 +22,18 @@ function props(readCitation = vi.fn(async () => source())) {
       return { items: [message('9')], beforeCursor: null, afterCursor: 'before', snapshotMaxId: '40' }
     }) } }
 }
+test('records the actual missing highlight separately from a successful citation read', async () => {
+  const saved = window.whomi, conversation = vi.fn()
+  window.whomi = { ...saved, operationDiagnostics: { conversation, importRefresh: vi.fn() } } as NonNullable<typeof saved>
+  try {
+    render(<InsightSourceDialog {...props(vi.fn(async () => source(['10'], ['99'])))} />)
+    expect(await screen.findByText('原文10')).toBeVisible()
+    await waitFor(() => expect(conversation).toHaveBeenCalledWith(expect.objectContaining({ kind: 'end', outcome: 'failed' })))
+    expect(conversation).toHaveBeenCalledWith(expect.objectContaining({ stage: 'read', count: 1 }))
+    expect(conversation).toHaveBeenCalledWith(expect.objectContaining({ stage: 'display', found: false }))
+    expect(JSON.stringify(conversation.mock.calls)).not.toContain('原文10')
+  } finally { window.whomi = saved }
+})
 test('only exact evidence is highlighted, and a failed next fragment keeps the current text and number', async () => {
   const read = vi.fn().mockResolvedValueOnce(source()).mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce(source(['30'], ['30']))
   render(<InsightSourceDialog {...props(read)} />)

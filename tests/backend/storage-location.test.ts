@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { link, mkdtemp, mkdir, readFile, readdir, rename, rm, stat, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
+import { appendFileSync } from 'node:fs'
+import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import Database from 'better-sqlite3'
 import { createStorageLocationService, resolveStorageLocation, resolveStorageSelection } from '../../electron/main/storage-location'
@@ -9,6 +11,32 @@ import { createImportDiagnostics } from '../../electron/main/import-diagnostics'
 import { BoundaryError } from '../../src/shared/desktop-validation'
 
 const temporaryDirectories: string[] = []
+
+it('records copied file totals and identifies a verification failure before switching directories', async () => {
+  const { source, target, service } = await fixture()
+  const path = join(source, 'whomi.db-journal')
+  await writeFile(path, '12345')
+  const stages: unknown[] = []
+  const choice = await service.issueChoice(1, target)
+  await expect(service.relocateStorage(1, choice.token, { id: randomUUID(), stage(name, counts) {
+    stages.push([name, counts])
+    if (name === 'verify') appendFileSync(path, '6')
+  } })).rejects.toMatchObject({ code: 'STORAGE_MIGRATION_FAILED' })
+  expect(stages).toEqual([['copy', { fileCount: 1, bytes: 5 }], ['verify', undefined]])
+  expect(await resolveStorageLocation(source)).toBe(source)
+})
+
+it('keeps the operation number through restart including a failed reopen', async () => {
+  const { source, target, service } = await fixture()
+  await seed(source)
+  const id = randomUUID(), opened = vi.fn()
+  const choice = await service.issueChoice(1, target)
+  await service.relocateStorage(1, choice.token, { id, stage() {} })
+  expect((await resolveStorageSelection(source, opened)).path).toBe(target)
+  await writeFile(join(target, 'whomi.db'), '')
+  await expect(resolveStorageSelection(source, opened)).rejects.toMatchObject({ code: 'STORAGE_UNAVAILABLE' })
+  expect(opened.mock.calls).toEqual([[id], [id]])
+})
 afterEach(async () => {
   for (const directory of temporaryDirectories.splice(0)) await rm(directory, { recursive: true, force: true })
 })

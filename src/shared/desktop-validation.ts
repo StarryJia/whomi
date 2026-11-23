@@ -2,6 +2,7 @@ import { importFailurePhases, importSnapshotStates, importResultStates } from '.
 import type { ImportSnapshot } from './import-contract'
 import type { DesktopError, DesktopMethod } from './desktop-api'
 import { attachmentKinds, messageKinds } from './conversation-model'
+import { isOperationId } from './operation-diagnostics'
 
 type Check = (value: unknown) => boolean
 const text: Check = value => typeof value === 'string' && value.length <= 8 * 1024 ** 2
@@ -35,9 +36,9 @@ const messagePage = object({ items: array(message, 200), beforeCursor: nullable(
 export const availableSourceWindowFields = { status: oneOf('available'), conversationId: localId, startMessageId: localId, endMessageId: localId, start: position, end: position, page: messagePage, rangeEndCursor: cursor }
 const sourceWindow: Check = value => object({ status: oneOf('unavailable') })(value) || object(availableSourceWindowFields)(value)
 const counts = object({ seen: count, validRecords: count, invalidRecords: count })
-const issue = object({ code: key, severity: oneOf('warning', 'blocking'), candidateId: text, ordinal: optional(count), action: text })
+const issue = object({ code: key, severity: oneOf('warning', 'blocking'), candidateId: text, ordinal: optional(count), occurrences: optional(count), ordinals: optional(array(count, 3)), action: text })
 const member = object({ sourceKey: text, displayName: text, stableAccountKey: nullable(text), selfHint: nullable(bool) })
-const discovery = object({ entries: array(object({ entryId: key, displayName: text, formatId: text }), 10000), unrecognized: array(object({ displayName: text }), 10000), issues: array(issue) })
+const discovery = object({ entries: array(object({ entryId: key, displayName: text, formatId: text }), 10000), unrecognized: array(object({ displayName: text }), 10000), issues: array(issue), fileCount: optional(count), totalBytes: optional(count) })
 const candidate = object({ candidateId: key, entryId: key, title: text, formatId: text, parserVersion: text, sourceKey: text, kind: chatKind, identity: object({ platform: text, ownerKey: nullable(text), conversationKey: nullable(text), namespace: text }), members: array(member), fingerprint: nullable(text), counts, status: oneOf(...importResultStates), issues: array(issue) })
 const candidateResult = object({
   candidateId: key,
@@ -50,7 +51,7 @@ const candidateResult = object({
   issues: array(issue),
   summaryFailed: bool,
 })
-const snapshot = object({ jobId: localId, jobCreatedAt: optional(count), status: oneOf(...importSnapshotStates), discovery: nullable(discovery), candidates: array(candidate), results: array(candidateResult), issues: array(issue), counts, inserted: count, duplicates: count, failurePhase: optional(oneOf(...importFailurePhases)), progress:optional(object({processed:count,total:nullable(count)})) })
+const snapshot = object({ jobId: localId, jobCreatedAt: optional(count), operationId: optional(isOperationId), rolledBack: optional(bool), status: oneOf(...importSnapshotStates), discovery: nullable(discovery), candidates: array(candidate), results: array(candidateResult), issues: array(issue), counts, inserted: count, duplicates: count, failurePhase: optional(oneOf(...importFailurePhases)), progress:optional(object({processed:count,total:nullable(count)})) })
 export const sourceHandle = object({ token: key, displayName: text, kind: oneOf('file', 'directory') })
 const alias = object({ platform: text, aliasKey: text, accountKey: text })
 const target: Check = value => object({ kind: oneOf('new') })(value) || object({ kind: oneOf('existing'), conversationId: localId })(value)
@@ -75,7 +76,7 @@ const resultsByMethod: Record<DesktopMethod, Check> = {
 }
 export class BoundaryError extends Error {
   readonly action: string
-  constructor(readonly code: string, action = '请检查输入后重试。') { super(action); this.action = action }
+  constructor(readonly code: string, action = '请检查输入后重试。', readonly operationId?: string) { super(action); this.action = action }
 }
 export function validateArguments(method: unknown, args: unknown): asserts method is DesktopMethod {
   if (typeof method !== 'string' || !Object.hasOwn(argumentsByMethod, method)) throw new BoundaryError('INVALID_METHOD', '请选择可用操作。')
@@ -89,5 +90,5 @@ export function validateSnapshot(value: unknown): asserts value is ImportSnapsho
   if (!snapshot(value)) throw new BoundaryError('INVALID_RESPONSE', '请重新打开应用后重试。')
 }
 export function validateError(value: unknown): asserts value is DesktopError {
-  if (!object({ code: key, action: text })(value)) throw new BoundaryError('INVALID_RESPONSE', '请重新打开应用后重试。')
+  if (!object({ code: key, action: text, operationId: optional(isOperationId) })(value)) throw new BoundaryError('INVALID_RESPONSE', '请重新打开应用后重试。')
 }

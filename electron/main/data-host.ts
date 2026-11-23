@@ -9,7 +9,7 @@ export interface DataHost {
   onEvent(listener: (snapshot: ImportSnapshot) => void): () => void
 }
 
-export function startDataHost(userDataPath: string): DataHost {
+export function startDataHost(userDataPath: string, onUpgrade?: (fromVersion: number, toVersion: number) => void): DataHost {
   const probeEnabled = process.argv.includes('--whomi-runtime-test') && process.env.WHOMI_RUNTIME_TEST === userDataPath
   // Windows 桌面启动时，标准输出的位置可能存放显示器句柄。
   const stdout = process.platform === 'win32' ? 'ignore' : 'inherit'
@@ -30,6 +30,13 @@ export function startDataHost(userDataPath: string): DataHost {
     resolve()
   }))
   child.on('message', (message: { id: number; result?: unknown; error?: unknown; event?: string; value?: unknown }) => {
+    if (message?.event === 'databaseUpgrade') {
+      const value = message.value as { fromVersion?: number; toVersion?: number } | undefined
+      if (value && Number.isSafeInteger(value.fromVersion) && Number.isSafeInteger(value.toVersion)) {
+        onUpgrade?.(value.fromVersion!, value.toVersion!)
+      }
+      return
+    }
     if (message?.event === 'import') {
       try { validateSnapshot(message.value) } catch { return }
       for (const listener of listeners) { try { listener(message.value) } catch { /* A consumer cannot stop the data host. */ } }

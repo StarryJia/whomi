@@ -119,7 +119,7 @@ describe('持久会话分页状态', () => {
     const slow = deferred<Awaited<ReturnType<ConversationClient['listConversations']>>>()
     list.mockReturnValueOnce(slow.promise)
     let pending!: Promise<void>
-    act(() => { pending = result.current[operation]() })
+    act(() => { pending = result.current[operation]().then(() => {}) })
     act(() => { void result.current.forgetConversation(first.id) })
     expect(result.current.conversations).toEqual([kept])
     expect(list).toHaveBeenCalledTimes(2)

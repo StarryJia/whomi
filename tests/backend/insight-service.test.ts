@@ -1,21 +1,29 @@
+import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { expect, test, vi } from 'vitest'
-import { createAiService, type RuntimeInput, type RuntimeRunner } from '../../electron/main/ai-service'
+import { createAiService, type AiServiceOptions, type RuntimeInput, type RuntimeRunner } from '../../electron/main/ai-service'
+import { createOperationDiagnostics } from '../../electron/main/operation-diagnostics'
+import { BoundaryError } from '../../src/shared/desktop-validation'
 import type { AnalysisTask } from '../../src/shared/ai-contract'
 import { defaultProcessing } from '../../src/shared/settings-contract'
 import { defaultPrompts } from '../../src/shared/system-prompts'
 import type { AppError } from '../../electron/main/app-error-logs'
 
 function fixture(run?: RuntimeRunner['run'], logError?: (entry: AppError) => void,
-  beforeStopWrite?: () => void, beforeElapsedWrite?: () => Promise<void>) {
+  beforeStopWrite?: () => void, beforeElapsedWrite?: () => Promise<void>, diagnostics?: AiServiceOptions['diagnostics']) {
   const model = { id: 'm', label: '本地测试', model: 'm', baseUrl: 'http://localhost', contextWindow: 16000, maxTokens: 1000, version: 1, enabled: true, hasCredential: true }
   const task: AnalysisTask = { id: '1', scope: { kind: 'all' }, conversationId: '9', modelId: 'm', state: 'queued', analyzedMessages: 0, totalMessages: 1, skippedMessages: 0, usage: {}, valid: true, eventSequence: 1, elapsedMs: 0 }
   const message = { id: '13800138000', revision: 'revision-13800138000', sentAtMs: 1000, senderName: '示例甲', isSelf: true, text: '联系 13800138000', replyToMessageId: null }
   const snapshot = { taskId: '1', scope: { kind: 'all' }, timezone: 'Asia/Shanghai', createdAtMs: 1000, sourceStartTimeMs: 1000, sourceEndTimeMs: 1000, sources: [{ messageId: message.id, revision: message.revision }] }
+  task.createdAtMs = snapshot.createdAtMs
   const saved: any[] = [], usage: any[] = [], requests: RuntimeInput[] = []
   let checkpoint: string | null = null
   let completed = 0
   const storage = async (method: string, args: any[]) => {
     if (method === 'confirmAnalysis' || method === 'getAnalysis') return { ...task }
+    if (method === 'resumeAnalysis') { task.state = 'queued'; return { ...task } }
+    if (method === 'recover') { if (task.state === 'running') task.state = 'interrupted'; return }
     if (method === 'modelSecret') return { model, encryptedKey: 'encrypted' }
     if (method === 'analysisContext') return { task, model, snapshot, checkpoint, systemPrompts: { ...defaultPrompts, insightReading: '自定义阅读' } }
     if (method === 'readInsightSources') { expect(args[0]).toEqual({ taskId: '1', messageIds: [message.id] }); return [message] }
@@ -38,7 +46,7 @@ function fixture(run?: RuntimeRunner['run'], logError?: (entry: AppError) => voi
     if (method === 'completeAnalysis') { completed++; task.state = 'completed'; task.report = args[1]; return { ...task } }
     throw new Error(method)
   }
-  const service = createAiService({ storage, logError, processing: async () => ({ settings: defaultProcessing, members: [{ id: '2', displayName: '示例甲' }] }),
+  const createService = (diagnostics?: AiServiceOptions['diagnostics']) => createAiService({ storage, diagnostics, logError, processing: async () => ({ settings: defaultProcessing, members: [{ id: '2', displayName: '示例甲' }] }),
     secrets: { encrypt: x => x, decrypt: () => 'credential' }, runtime: { run: async (input, options) => {
       requests.push(input)
       if (run) return run(input, options)
@@ -46,7 +54,7 @@ function fixture(run?: RuntimeRunner['run'], logError?: (entry: AppError) => voi
       return { text: JSON.stringify(payload.stage === 'reading' ? { observations: [], openThreads: [], candidates: [] }
         : { aboutYou: [], relationship: [], citations: [], judgments: [], limitations: ['材料有限。'] }), usage: { inputTokens: 200, outputTokens: 30 }, checkpoint: '' }
     } } })
-  return { service, task, requests, saved, usage, message, completed: () => completed }
+  return { service: createService(diagnostics), createService, model, task, requests, saved, usage, message, completed: () => completed }
 }
 
 test('new insight tasks use frozen sources, protected text and saved prompts through completion', async () => {
@@ -80,6 +88,69 @@ test('reports the failed insight phase, saved coverage and the budget that stopp
   expect(recorded).toEqual([expect.objectContaining({ area: 'insight', phase: 'writing', taskId: '1', analyzedMessages: 1,
     error: expect.objectContaining({ code: 'INSIGHT_BUDGET_EXHAUSTED' }),
     budget: { name: 'maxOutputTokens', limit: 32_768 } })])
+})
+
+test('the fourth reading batch times out once, retries in the same operation and exports its final result without private input', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'whomi-insight-timeout-'))
+  const diagnostics = createOperationDiagnostics(directory, 'test')
+  let readings = 0
+  try {
+    const f = fixture(async input => {
+      const reading = JSON.parse(input.prompt).stage === 'reading'
+      if (reading && ++readings === 4) throw new BoundaryError('MODEL_TIMEOUT', '私密服务商返回文本')
+      const reply = reading ? { observations: [], openThreads: [], candidates: [] }
+        : { aboutYou: [], relationship: [], citations: [], judgments: [], limitations: ['材料有限。'] }
+      return { text: JSON.stringify(reply), usage: { inputTokens: 123, outputTokens: 10 }, checkpoint: '' }
+    }, undefined, undefined, undefined, diagnostics)
+    f.model.contextWindow = 8_000
+    f.message.text = 'PRIVATE_CONTENT'.repeat(1_600)
+    await f.service.confirmAnalysis({ token: 't', requestId: 'fourth-batch' })
+    await f.service.idle()
+    expect(f.task.state).toBe('completed')
+    const operations = await diagnostics.list()
+    expect(operations).toHaveLength(1)
+    const preview = await diagnostics.withFile(operations[0].id, path => readFile(path, 'utf8'))
+    expect(preview).toMatch(/请求失败[^\n]*当前批次=4[^\n]*MODEL_TIMEOUT/)
+    expect(preview).toMatch(/重试[^\n]*当前批次=4[^\n]*MODEL_TIMEOUT/)
+    expect(preview).toMatch(/请求已返回[^\n]*当前批次=4[^\n]*尝试次数=5/)
+    expect(preview).toContain('已保存')
+    expect(preview).not.toMatch(/PRIVATE_CONTENT|私密服务商|13800138000|本地测试|credential|localhost/)
+  } finally { await diagnostics.close(); await rm(directory, { recursive: true, force: true }) }
+})
+
+test('reopening an interrupted insight appends to its original operation and preserves the unconfirmed request', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'whomi-insight-resume-'))
+  let diagnostics = createOperationDiagnostics(directory, 'test')
+  const started = Promise.withResolvers<void>()
+  let first = true
+  try {
+    const f = fixture(async (input, options) => {
+      if (first) {
+        first = false
+        started.resolve()
+        return new Promise((_resolve, reject) => options.signal.addEventListener('abort', () => reject(options.signal.reason), { once: true }))
+      }
+      const reading = JSON.parse(input.prompt).stage === 'reading'
+      const reply = reading ? { observations: [], openThreads: [], candidates: [] }
+        : { aboutYou: [], relationship: [], citations: [], judgments: [], limitations: ['材料有限。'] }
+      return { text: JSON.stringify(reply), usage: {}, checkpoint: '' }
+    }, undefined, undefined, undefined, diagnostics)
+    await f.service.confirmAnalysis({ token: 't', requestId: 'interrupted' })
+    await started.promise
+    await f.service.close()
+    const [original] = await diagnostics.list()
+    expect(original.outcome).toBe('interrupted')
+    await diagnostics.close()
+    diagnostics = createOperationDiagnostics(directory, 'test')
+    const reopened = f.createService(diagnostics)
+    await reopened.continueAnalysis(f.task.id)
+    await reopened.idle()
+    expect(await diagnostics.list()).toMatchObject([{ id: original.id, outcome: 'success' }])
+    const preview = await diagnostics.withFile(original.id, path => readFile(path, 'utf8'))
+    expect(preview).toContain('尚未确认返回')
+    expect(preview).toContain('已恢复')
+    expect(preview).toContain('已保存')
+  } finally { await diagnostics.close(); await rm(directory, { recursive: true, force: true }) }
 })
 
 test('durably samples elapsed time during a stalled model request and counts it once when stopped', async () => {

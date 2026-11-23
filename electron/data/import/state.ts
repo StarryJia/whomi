@@ -3,6 +3,7 @@ import type { Candidate, ImportCandidateResult, ImportFailurePhase, ImportJobSta
 import { terminalImportStates } from '../../../src/shared/import-contract'
 import type { ImportIssue } from '../../../src/shared/conversation-model'
 import { ImportFailure, issue } from './limits'
+import { isOperationId } from '../../../src/shared/operation-diagnostics'
 export function setJobState(store: Store, jobId: string, phase: ImportJobState) {
   const status = phase === 'partially_completed' ? 'completed' : terminalImportStates.has(phase) ? phase : phase === 'preparing' ? 'pending':'running'
   store.writer.prepare('UPDATE import_jobs SET status=?,phase=?,completed_at_ms=? WHERE id=?').run(status,phase,terminalImportStates.has(phase) ? Date.now():null,BigInt(jobId))
@@ -26,11 +27,12 @@ export function getSnapshot(store: Store, jobId: string, provisional?: ReadonlyS
   const job=db.prepare('SELECT phase,metadata,created_at_ms FROM import_jobs WHERE id=?').get(BigInt(jobId)) as {phase:ImportJobState;metadata:string;created_at_ms:bigint}|undefined
   if(!job) throw new ImportFailure('INVALID_JOB')
   const metadata=JSON.parse(job.metadata)
+  const operation = { ...(isOperationId(metadata.operationId) && { operationId: metadata.operationId }), ...(metadata.rolledBack === true && { rolledBack: true }) }
   const jobCreatedAt = Number(job.created_at_ms)
   const rows=db.prepare(`SELECT r.*,s.status summary_status FROM import_results r LEFT JOIN conversation_summaries s ON s.conversation_id=r.conversation_id WHERE job_id=? ORDER BY r.id`).all(BigInt(jobId)) as {candidate_id:string;conversation_id:bigint|null;phase:ImportResultState;added_count:bigint;skipped_count:bigint;committed_at_ms:bigint|null;metadata:string;summary_status:string|null}[]
   const counts = metadata.counts ?? {seen:0,validRecords:0,invalidRecords:0}
   if (!rows.length && (job.phase === 'completed' || job.phase === 'partially_completed')) {
-    return {jobId, jobCreatedAt, status:'removed', discovery:null, candidates:[], issues:[], counts, results:[], inserted:0, duplicates:0}
+    return {jobId, jobCreatedAt, ...operation, status:'removed', discovery:null, candidates:[], issues:[], counts, results:[], inserted:0, duplicates:0}
   }
   const results: ImportCandidateResult[] = rows.map(r => {
     const { issues, matchedConversationTitle } = JSON.parse(r.metadata)
@@ -50,7 +52,7 @@ export function getSnapshot(store: Store, jobId: string, provisional?: ReadonlyS
       ...(typeof matchedConversationTitle === 'string' ? { matchedConversationTitle } : {}),
     }
   })
-  return {jobId,jobCreatedAt,status:job.phase,discovery:metadata.discovery ?? null,candidates:metadata.candidates ?? [],issues:metadata.issues ?? [],counts,results,inserted:provisional ? 0 : results.reduce((n,r)=>n+r.inserted,0),duplicates:provisional ? 0 : results.reduce((n,r)=>n+r.duplicates,0),...(metadata.failurePhase ? {failurePhase:metadata.failurePhase}:{}),...(metadata.progress ? {progress:metadata.progress}:{})}
+  return {jobId,jobCreatedAt,...operation,status:job.phase,discovery:metadata.discovery ?? null,candidates:metadata.candidates ?? [],issues:metadata.issues ?? [],counts,results,inserted:provisional ? 0 : results.reduce((n,r)=>n+r.inserted,0),duplicates:provisional ? 0 : results.reduce((n,r)=>n+r.duplicates,0),...(metadata.failurePhase ? {failurePhase:metadata.failurePhase}:{}),...(metadata.progress ? {progress:metadata.progress}:{})}
 }
 export function finishJob(store: Store, jobId: string, cancelled=false, fatal=false) {
   const rows=store.writer.prepare('SELECT status FROM import_results WHERE job_id=?').all(BigInt(jobId)) as {status:string}[]

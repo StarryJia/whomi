@@ -8,6 +8,7 @@ import type { AiUsage } from '../../src/shared/ai-contract'
 import { modelContextLimit, resolveModelLimits } from '../../src/shared/model-limits'
 import { defaultModelProtocol, isModelProtocol, modelProtocolBaseUrl } from '../../src/shared/model-protocol'
 import { protocolUsage } from './protocol-usage'
+import { isProviderTimeout, modelTimeout } from './model-timeout'
 import type { ResourceLoader } from '@earendil-works/pi-coding-agent'
 export type { AgentRunInput, AgentRunResult } from './protocol'
 
@@ -92,6 +93,7 @@ export class PiRuntime {
     let final: { input: number; output: number; cacheRead: number; cacheWrite: number } | undefined
     let stopReason: string | undefined
     let contextExceeded = false
+    let timedOut = false
     const started = performance.now()
     const startedAt = Date.now()
     const previousObserver = session.agent.onProviderStreamEvent
@@ -111,6 +113,7 @@ export class PiRuntime {
         final = event.message.usage
         stopReason = event.message.stopReason
         contextExceeded = stopReason === 'error' && isContextOverflow(event.message)
+        timedOut = input.purpose === 'insight' && stopReason === 'error' && isProviderTimeout({ message: event.message.errorMessage })
       }
     })
     const abort = () => { void session.abort() }
@@ -128,6 +131,7 @@ export class PiRuntime {
       await session.prompt(input.prompt, { expandPromptTemplates: false })
       if (options.signal.aborted || stopReason === 'aborted') throw abortError()
       if (contextExceeded) throw modelContextLimit()
+      if (timedOut) throw modelTimeout()
       if (!final || stopReason === 'error' || stopReason === 'pending') throw failure('MODEL_REQUEST_FAILED', '请检查模型服务后重试。')
       const usage = usageSnapshot()
       const sessionFile = manager.getSessionFile()
@@ -135,6 +139,9 @@ export class PiRuntime {
       if (!sessionFile || !leafId) throw failure('SESSION_SAVE_FAILED', '请重试保存对话。')
       return { ...(stopReason === 'length' ? { stopReason: 'length' as const } : {}), text: text || session.getLastAssistantText() || '', usage, checkpoint: JSON.stringify({ sessionFile, leafId }) }
     } catch (error) {
+      if (!options.signal.aborted && input.purpose === 'insight' && error instanceof Error && isProviderTimeout(error)) {
+        throw Object.assign(modelTimeout(), { usage: usageSnapshot() })
+      }
       throw Object.assign(error instanceof Error ? error : failure('MODEL_REQUEST_FAILED', '请检查模型服务后重试。'), { usage: usageSnapshot() })
     } finally {
       options.signal.removeEventListener('abort', abort)

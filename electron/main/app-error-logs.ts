@@ -33,6 +33,14 @@ const knownCodes = new Set([
   'STORAGE_OPEN_FAILED', 'STORAGE_UNAVAILABLE', 'STORAGE_UNWRITABLE',
 ])
 
+export function isDiagnosticCode(value: unknown): value is string {
+  return typeof value === 'string' && (value === 'OPERATION_FAILED' || knownCodes.has(value))
+}
+
+export function diagnosticErrorCode(error: unknown) {
+  return error instanceof BoundaryError && isDiagnosticCode(error.code) ? error.code : 'OPERATION_FAILED'
+}
+
 export function logPathKey(path: string) { return process.platform === 'win32' ? path.toLowerCase() : path }
 
 export async function localLogDirectory(directory: string, create = false) {
@@ -49,7 +57,7 @@ export async function localLogDirectory(directory: string, create = false) {
 }
 
 export async function writeLocalLog(root: string, filename: string, record: unknown) {
-  const temporary = join(root, `.${randomUUID()}.tmp`)
+  const temporary = join(root, `.whomi-${filename}.${randomUUID()}.tmp`)
   try {
     await writeFile(temporary, JSON.stringify(record, null, 2) + '\n', { flag: 'wx', mode: 0o600 })
     await rename(temporary, join(root, filename))
@@ -71,6 +79,21 @@ export function createAppErrorLogs(installDirectory: string, userDataPath: strin
   let missedRecords = 0
   let writeFailed = false
   let pending = Promise.resolve()
+  let diagnostics: {
+    writeManagedLog: typeof writeLocalLog
+    writeCrashLog: (name: string, text: string, write: () => void) => boolean
+  } | undefined
+
+  function recordWriteFailure() {
+    missedRecords += 1
+    if (!writeFailed) {
+      writeFailed = true
+      onWriteFailure?.(writeFailureAction)
+    }
+  }
+  function writeLog(root: string, filename: string, record: unknown) {
+    return diagnostics ? diagnostics.writeManagedLog(root, filename, record) : writeLocalLog(root, filename, record)
+  }
 
   function schedule<T>(action: () => Promise<T>): Promise<T> {
     const next = pending.then(action)
@@ -89,13 +112,7 @@ export function createAppErrorLogs(installDirectory: string, userDataPath: strin
         writeFailed = false
         return value
       } catch {
-        if (recording) {
-          missedRecords += 1
-          if (!writeFailed) {
-            writeFailed = true
-            onWriteFailure?.(writeFailureAction)
-          }
-        }
+        if (recording) recordWriteFailure()
         throw new BoundaryError('ERROR_LOG_UNWRITABLE', writeFailureAction)
       }
     })
@@ -103,6 +120,8 @@ export function createAppErrorLogs(installDirectory: string, userDataPath: strin
 
   return {
     writeFailureAction,
+    recordWriteFailure, writeLog,
+    setOperationDiagnostics(store: typeof diagnostics) { diagnostics = store },
     setWriteFailureListener(listener?: (action: string) => void) {
       if (onWriteFailure === listener) return
       onWriteFailure = listener
@@ -123,18 +142,23 @@ export function createAppErrorLogs(installDirectory: string, userDataPath: strin
         try { mkdirSync(directory, { mode: 0o700 }) }
         catch (error) { if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error }
         if (!lstatSync(directory).isDirectory() || logPathKey(realpathSync(directory)) !== logPathKey(directory)) return
-        writeFileSync(join(directory, `${now.getTime()}-main-${randomUUID()}.json`), JSON.stringify(record) + '\n', { flag: 'wx', mode: 0o600 })
+        const name = `${now.getTime()}-main-${randomUUID()}.json`
+        const text = JSON.stringify(record) + '\n'
+        const write = () => writeFileSync(join(directory, name), text, { flag: 'wx', mode: 0o600 })
+        if (diagnostics) {
+          if (!diagnostics.writeCrashLog(name, text, write)) missedRecords += 1
+        } else write()
       } catch { missedRecords += 1 }
     },
     importDirectories: () => [...[directory, dataLogs, profileLogs, ...retainedDirectories].map(root => join(root, 'import-errors')), legacyImport],
     async record({ area, phase, error, taskId, analyzedMessages, budget }: AppError) {
-      const code = error instanceof BoundaryError && knownCodes.has(error.code) ? error.code : 'OPERATION_FAILED'
+      const code = diagnosticErrorCode(error)
       const id = localId(taskId) ? taskId : undefined
       const now = new Date()
       const filename = [now.getTime(), area, id, randomUUID()].filter(Boolean).join('-') + '.json'
       const record = { recordedAt: now.toISOString(), version, area, phase, code, taskId: id, analyzedMessages, budget }
       return withWritableRoot(async root => {
-        await writeLocalLog(root, filename, record)
+        await writeLog(root, filename, record)
         return root
       }).catch(() => undefined)
     },

@@ -1,4 +1,5 @@
 import OpenAI from 'openai'
+import { isProviderTimeout, modelTimeout } from '../agent/model-timeout'
 import { version } from '../../package.json'
 import { isContextLimitCode, modelContextLimit } from '../../src/shared/model-limits'
 import { BoundaryError } from '../../src/shared/desktop-validation'
@@ -46,6 +47,7 @@ export function cherryAccountRunner(provider: CherrySubscription, access: (id: s
           else if (event.type==='response.completed' && event.response.status==='completed') return finish(event.response.usage?.input_tokens,event.response.usage?.output_tokens)
           else if (event.type==='response.incomplete' && event.response.incomplete_details?.reason==='max_output_tokens') return finish(event.response.usage?.input_tokens,event.response.usage?.output_tokens,true)
           else if ((event.type==='response.failed' && isContextLimitCode(event.response.error?.code)) || (event.type==='error' && isContextLimitCode(event.code))) throw modelContextLimit()
+          else if (input.purpose === 'insight' && ((event.type === 'response.failed' && isProviderTimeout({ code: event.response.error?.code })) || (event.type === 'error' && isProviderTimeout({ code: event.code })))) throw modelTimeout()
           else if (event.type==='response.failed' || event.type==='response.incomplete' || event.type==='error') break
         }
       } else {
@@ -64,6 +66,7 @@ export function cherryAccountRunner(provider: CherrySubscription, access: (id: s
     } catch(error) {
       if (signal.aborted) throw signal.reason
       if (error instanceof BoundaryError) throw error
+      if (input.purpose === 'insight' && error instanceof OpenAI.APIError && isProviderTimeout(error)) throw modelTimeout()
       if (error instanceof OpenAI.APIError && isContextLimitCode(error.code)) throw modelContextLimit()
       if (error instanceof OpenAI.APIError && (error.status===401 || error.status===403)) throw new BoundaryError('ACCOUNT_ACCESS','请重新登录并核对此模型的使用权限。')
       throw new BoundaryError('ACCOUNT_REQUEST','模型请求失败，请检查连接后重试。')

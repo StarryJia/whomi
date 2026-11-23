@@ -11,7 +11,7 @@ export type ImportResultState = typeof importResultStates[number]
 export const importFailurePhases = ['source', 'scan', 'parse', 'save', 'confirm', 'statistics', 'cancel'] as const
 export type ImportFailurePhase = typeof importFailurePhases[number]
 export type DiscoveryEntry = { entryId: string; displayName: string; formatId: string }
-export type Discovery = { entries: readonly DiscoveryEntry[]; unrecognized: readonly { displayName: string }[]; issues: readonly ImportIssue[] }
+export type Discovery = { entries: readonly DiscoveryEntry[]; unrecognized: readonly { displayName: string }[]; issues: readonly ImportIssue[]; fileCount?: number; totalBytes?: number }
 export type ImportCounts = { seen: number; validRecords: number; invalidRecords: number }
 export type Candidate = {
   candidateId: string; entryId: string; title: string; formatId: string; parserVersion: string
@@ -37,4 +37,4 @@ export type ImportCandidateResult = {
   issues: ImportIssue[]
   summaryFailed: boolean
 }
-export type ImportSnapshot = { jobId: JobId; jobCreatedAt?: number; status: typeof importSnapshotStates[number]; discovery: Discovery | null; candidates: Candidate[]; results: ImportCandidateResult[]; issues: ImportIssue[]; counts: ImportCounts; inserted: number; duplicates: number; failurePhase?: ImportFailurePhase; progress?: {processed:number;total:number|null} }
+export type ImportSnapshot = { jobId: JobId; jobCreatedAt?: number; operationId?: string; rolledBack?: boolean; status: typeof importSnapshotStates[number]; discovery: Discovery | null; candidates: Candidate[]; results: ImportCandidateResult[]; issues: ImportIssue[]; counts: ImportCounts; inserted: number; duplicates: number; failurePhase?: ImportFailurePhase; progress?: {processed:number;total:number|null} }
