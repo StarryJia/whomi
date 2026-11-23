@@ -4,6 +4,8 @@ import type { InsightSnapshot, InsightSourceMessage } from '../../src/shared/con
 import { defaultInsightPrompts } from '../../electron/data/ai/insight-prompts'
 import { createInsightCheckpoint, type InsightCheckpoint } from '../../electron/main/insight-checkpoint'
 import { generateInsight, type InsightGenerationDeps } from '../../electron/main/insight-generation'
+import { createMessageProcessor } from '../../electron/main/message-processing'
+import { defaultProcessing } from '../../src/shared/settings-contract'
 import compressionTargetFixture from './fixtures/insight-compression-target.json'
 import compressionCoverageFixture from './fixtures/insight-compression-coverage.json'
 import compressionNetProgressFixture from './fixtures/insight-compression-net-progress.json'
@@ -722,6 +724,38 @@ test('an interrupted older insight rereads only the unfinished message when body
   checkpoint.pendingRead = { from: checkpoint.cursor, to: { messageIndex: 2, textOffset: 0 }, depth: 0, repairs: 0 }
   await generateInsight({ ...input, checkpoint }, deps)
   expect(state.checkpoint?.coveredMessageIds).toEqual(['1', '2'])
+})
+
+test('later reading requests redact complete candidate fields before shortening their previews', async () => {
+  const messages = ['1', '2', '3'].map(id => source(id, true, 'x'.repeat(4500)))
+  const assignment = 'password="Blue Bird 42!"' + '。'.repeat(20)
+  const observation = '甲'.repeat(217) + assignment
+  const reason = '乙'.repeat(157) + assignment
+  const revisedObservation = '丙'.repeat(217) + assignment
+  const protectedTail = 'password="[密码]"' + '。'.repeat(8)
+  const batches: string[][] = []
+  const { input, deps, state } = setup(messages, async request => {
+    const payload = JSON.parse(request.prompt)
+    if (payload.stage === 'writing') return result(noConclusion)
+    const ids = payload.messages.map((message: InsightSourceMessage) => message.id)
+    batches.push(ids)
+    if (ids[0] === '1') return result({ ...noObservations, candidates: [{ observation, reason, supportingIds: ['1'] }] })
+    if (ids[0] === '2') {
+      expect(payload.knownCandidates[0]).toMatchObject({
+        observation: '甲'.repeat(217) + protectedTail, reason: '乙'.repeat(157) + protectedTail,
+      })
+      return result({ ...noObservations, candidateUpdates: [{ id: '1', action: 'resolve', finding: {
+        revisedObservation, supportingIds: ['2'], counterexampleIds: [], limitations: [],
+      } }] })
+    }
+    expect(payload.knownCandidates[0].finding.revisedObservation).toBe('丙'.repeat(217) + protectedTail)
+    return result(noObservations)
+  })
+  deps.prepareNotes = createMessageProcessor(defaultProcessing, []).data
+  await generateInsight({ ...input, model: { ...model, maxInputTokens: 8000 } }, deps)
+  expect(batches).toEqual([['1'], ['2'], ['3']])
+  expect(state.writes.some(checkpoint => checkpoint.checks[0]?.reason === reason)).toBe(true)
+  expect(state.checkpoint?.checks[0]).toMatchObject({ observation, finding: { revisedObservation } })
 })
 
 test('reading keeps independent candidates backed by the same message while skipping a repeated question', async () => {

@@ -434,10 +434,10 @@ function candidateSources(check: InsightCheck) {
 function visibleCandidate(check: InsightCheck): VisibleCandidate {
   const { id, state, reason, finding } = check
   return {
-    id, state, observation: check.observation.slice(0, 240), supportingIds: check.supportingIds.slice(0, 12),
-    ...(reason === undefined ? {} : { reason: reason.slice(0, 180) }),
+    id, state, observation: check.observation, supportingIds: check.supportingIds.slice(0, 12),
+    ...(reason === undefined ? {} : { reason }),
     finding: finding && {
-      revisedObservation: finding.revisedObservation.slice(0, 240), supportingIds: finding.supportingIds.slice(0, 12),
+      revisedObservation: finding.revisedObservation, supportingIds: finding.supportingIds.slice(0, 12),
       counterexampleIds: finding.counterexampleIds.slice(0, 12),
     },
     evidenceNotes: [],
@@ -570,10 +570,20 @@ async function generateInsightReport(input: InsightGenerationInput, deps: Insigh
 
   function runtimeInput(stage: InsightStage, payload: unknown, reservedOutput: number): RuntimeInput {
     const compressing = stage === 'reading' && (payload as { operation?: unknown }).operation === 'compress-navigation'
-    const prepareNotes = deps.prepareNotes
-    // 原文已逐条处理，分段后的片段必须保留原样；模型生成的笔记在每次外发时处理。
-    const body = prepareNotes ? Object.fromEntries(Object.entries(payload as Record<string, unknown>).map(([key, value]) =>
-      [key, ['messages', 'relatedMessages', 'evidence', 'earlierEvidence'].includes(key) ? value : prepareNotes(value, key)])) : payload
+    const body = { ...payload as Record<string, unknown> & { knownCandidates?: VisibleCandidate[] } }
+    if (deps.prepareNotes) {
+      for (const [key, value] of Object.entries(body)) {
+        // 原文在分段前已脱敏，保留片段以供逐字验证。
+        if (['messages', 'relatedMessages', 'evidence', 'earlierEvidence'].includes(key)) continue
+        body[key] = deps.prepareNotes(value, key)
+      }
+    }
+    // 先处理完整字段，避免预览边界切断识别凭据所需的上下文。
+    if (body.knownCandidates) body.knownCandidates = body.knownCandidates.map(candidate => ({
+      ...candidate, observation: candidate.observation.slice(0, 240),
+      ...(candidate.reason === undefined ? {} : { reason: candidate.reason.slice(0, 180) }),
+      finding: candidate.finding && { ...candidate.finding, revisedObservation: candidate.finding.revisedObservation.slice(0, 240) },
+    }))
     return {
       key: ['insight', snapshot.taskId, state.callsReserved + 1].join(':'),
       purpose: 'insight',

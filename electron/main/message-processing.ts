@@ -1,4 +1,4 @@
-import type { ProcessingSettings } from '../../src/shared/settings-contract'
+import type { ProcessingSettings, RedactionRule } from '../../src/shared/settings-contract'
 
 export type ProcessingMessage = { id: string; senderName: string; text: string; kind: string; memberId?: string | null; sentAtMs?: number | null; sourceIds?: string[]; isSelf?: boolean }
 export type ProcessingMember = { id: string; displayName: string }
@@ -8,25 +8,52 @@ function luhn(value: string) {
   return sum % 10 === 0 && !/^0+$/.test(value)
 }
 type TextMatch = { 0: string; index: number }
-function* financialNumbers(input: string): Generator<TextMatch> {
+type TextRange = { start: number; end: number }
+
+function* emailAddresses(input: string): Generator<TextMatch> {
+  if (!input.includes('@')) return
+  // 整段消费邮箱本地部分，缺少合法域名时也不必从每个字符重新匹配。
+  const address = /[A-Za-z0-9.!#$%&'*+\/=?^_`{|}~-]+(@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+)?/g
+  for (const match of input.matchAll(address)) if (match[1]) yield match
+}
+
+function* scanCards(input: string, offset: number): Generator<TextRange> {
   for (const run of input.matchAll(/\d+(?:[ -]\d+)*/g)) {
     const groups = [...run[0].matchAll(/\d+/g)]
     for (let start = 0; start < groups.length; start++) {
       let digits = ''
-      let match: TextMatch | undefined
+      let match: TextRange | undefined
       let last = start
       for (let end = start; end < groups.length; end++) {
         digits += groups[end][0]
         if (digits.length > 19) break
         if (digits.length < 13 || !luhn(digits)) continue
         // 只在数字组边界截取，避免吞入相邻号码或截短连续长编号。
-        const offset = groups[start].index
-        match = { 0: run[0].slice(offset, groups[end].index + groups[end][0].length), index: run.index + offset }
+        match = { start: offset + run.index + groups[start].index, end: offset + run.index + groups[end].index + groups[end][0].length }
         last = end
       }
       if (match) { yield match; start = last }
     }
   }
+}
+
+function* financialNumbers(input: string, boundaries: TextRange[]): Generator<TextRange> {
+  if (!boundaries.length) {
+    yield* scanCards(input, 0)
+    return
+  }
+  function* between(ranges: TextRange[]) {
+    let start = 0
+    for (const range of ranges) {
+      if (start < range.start) yield* scanCards(input.slice(start, range.start), start)
+      start = Math.max(start, range.end)
+    }
+    if (start < input.length) yield* scanCards(input.slice(start), start)
+  }
+  // 优先保留其他标识旁边能独立校验的整张卡；其余区间仍可包含与标识重叠的卡号。
+  const separate = [...between(boundaries.sort((left, right) => left.start - right.start))]
+  yield* separate
+  yield* between(separate)
 }
 function cleanCard(text: string) {
   if (!/^\s*(?:<\?xml\s+[^?]*\?>\s*)?<msg[\s>]/.test(text) || !/<appmsg[\s>]/.test(text)) return text
@@ -38,20 +65,20 @@ function cleanCard(text: string) {
 }
 
 function* passwordValues(input: string): Generator<TextMatch> {
-  // 横向空白限制了字段的取值范围，聊天换行不会把下一句当作密码。
-  const field = /(?:密码|\bpassword)["']?[ \t]*(?:[=:：]|[是为](?![ \t]*(?:否|什么|啥|多少|不是|哪|几[位个]|怎么))[ \t]*[:：]?)[ \t]*/gi
-  const valueAtField = /"(?:\\[^\r\n]|[^"\\\r\n])+"|'(?:\\[^\r\n]|[^'\\\r\n])+'|“[^”\r\n]+”|‘[^’\r\n]+’|[^\s"'“”‘’,;，。；！？、][^\s,;，。；！？、]*/y
+  // 仅带引号的结构化键和值允许分行，普通聊天字段只接受横向空白。
+  const field = /(["'])(?:密码|password)\1[ \t\r\n]*:[ \t\r\n]*(?=["'])|(?:密码|\bpassword)["']?[\t\p{Zs}]*(?:[=:：]|[是为](?![\t\p{Zs}]*(?:否|什么|啥|多少|不是|哪|几[位个]|怎么))[\t\p{Zs}]*[:：]?)[\t\p{Zs}]*/giu
+  const valueAtField = /"(?:\\[^\r\n]|[^"\\\r\n])+"|'(?:\\[^\r\n]|[^'\\\r\n])+'|“[^”\r\n]+”|‘[^’\r\n]+’|(`+)(?!`)[^\r\n]+?\1(?!`)|[^\s"'“”‘’,;，。；！？、][^\s,;，。；！？、]*/y
   while (field.exec(input)) {
     valueAtField.lastIndex = field.lastIndex
     const match = valueAtField.exec(input)
     if (!match) continue
     field.lastIndex = valueAtField.lastIndex
     const value = match[0]
-    const quoted = /^["'“‘]/.test(value)
-    const secret = quoted ? value.slice(1, -1) : value
+    const quoteWidth = match[1]?.length ?? (/^["'“‘]/.test(value) ? 1 : 0)
+    const secret = quoteWidth ? value.slice(quoteWidth, -quoteWidth) : value
     // 摘要和引文可能再次经过发送处理，保留已经完整遮盖的值以便原文校验。
     if (/^\[(?:密码|授权令牌|接口密钥|邮箱|身份证号|手机号|座机号|银行卡号|信用卡号|网址|网络地址)\]$/.test(secret)) continue
-    yield { index: match.index + (quoted ? 1 : 0), 0: secret }
+    yield { index: match.index + quoteWidth, 0: secret }
   }
 }
 
@@ -59,26 +86,45 @@ export function createMessageProcessor(settings: ProcessingSettings, members: re
   const nicknames = new Map(members.map(member => [member.displayName, `U${member.id}`]))
   const aliases = new Set(members.map(member => `U${member.id}`))
   const rules = new Set(settings.rules)
+  const selectedCardLabel = rules.has('bank-card') ? '[银行卡号]' : rules.has('credit-card') ? '[信用卡号]' : undefined
   function text(input: string): string {
     if (!settings.redact || !rules.size) return input
+    const cardLabel = selectedCardLabel && /\d(?:[ -]?\d){12}/.test(input) ? selectedCardLabel : undefined
     const spans: { start: number; end: number; label: string }[] = []
-    function redact(pattern: RegExp | ((value: string) => Iterable<TextMatch>), replacement: string | ((value: string) => string | undefined)) {
+    const boundaries: TextRange[] = []
+    const internationalMobileEnds = new Map<number, number>()
+    function redact(rule: RedactionRule, pattern: RegExp | ((value: string) => Iterable<TextMatch>), replacement: string | ((value: string) => string | undefined), selected = spans) {
+      const enabled = rules.has(rule)
+      if (!enabled && !cardLabel) return
       const matches = typeof pattern === 'function' ? pattern(input) : input.matchAll(pattern)
       for (const match of matches) {
         const label = typeof replacement === 'string' ? replacement : replacement(match[0])
-        if (label !== undefined) spans.push({ start: match.index, end: match.index + match[0].length, label })
+        if (label === undefined) continue
+        const span = { start: match.index, end: match.index + match[0].length, label }
+        if (cardLabel) {
+          boundaries.push(span)
+          if (rule === 'mobile' && match[0].startsWith('+')) internationalMobileEnds.set(span.start + 1, span.end)
+        }
+        if (enabled) selected.push(span)
       }
     }
-    if (rules.has('url')) redact(/https?:\/\/[^\s<>"）]+/gi, '[网址]')
-    if (rules.has('token')) redact(/\bBearer\s+[A-Za-z0-9._~+\/-]+=*/gi, '[授权令牌]')
-    if (rules.has('key')) redact(/\b(?:sk-|sk_|AIza|ghp_|github_pat_)[A-Za-z0-9_-]{12,}/g, '[接口密钥]')
-    if (rules.has('email')) redact(/[A-Za-z0-9.!#$%&'*+\/=?^_`{|}~-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+/g, '[邮箱]')
-    if (rules.has('identity')) redact(/(?<!\d)[1-9]\d{5}(?:19|20)\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])\d{3}[\dXx](?!\d)/g, '[身份证号]')
-    if (rules.has('mobile')) redact(/(?<!\d)(?:\+?86[- ]?)?1[3-9]\d{9}(?!\d)/g, '[手机号]')
-    if (rules.has('landline')) redact(/(?<!\d)0\d{2,3}[- ]\d{7,8}(?:[- ]\d{1,6})?(?!\d)/g, '[座机号]')
-    if (rules.has('credit-card') || rules.has('bank-card')) redact(financialNumbers, rules.has('bank-card') ? '[银行卡号]' : '[信用卡号]')
-    if (rules.has('ipv4')) redact(/(?<![\d.])(?:\d{1,3}\.){3}\d{1,3}(?![\d.])/g, match => match.split('.').every(part => Number(part) <= 255) ? '[网络地址]' : undefined)
-    if (rules.has('password')) redact(passwordValues, '[密码]')
+    redact('url', /https?:\/\/[^\s<>"）]+/gi, '[网址]')
+    redact('token', /\bBearer\s+[A-Za-z0-9._~+\/-]+=*/gi, '[授权令牌]')
+    redact('key', /\b(?:sk-|sk_|AIza|ghp_|github_pat_)[A-Za-z0-9_-]{12,}/g, '[接口密钥]')
+    redact('email', emailAddresses, '[邮箱]')
+    redact('identity', /(?<!\d)[1-9]\d{5}(?:19|20)\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])\d{3}[\dXx](?!\d)/g, '[身份证号]')
+    redact('mobile', /(?<!\d)(?:\+?86[- ]?)?1[3-9]\d{9}(?!\d)/g, '[手机号]')
+    redact('landline', /(?<!\d)0\d{2,3}[- ]\d{7,8}(?:[- ]\d{1,6})?(?!\d)/g, '[座机号]')
+    const afterCards: typeof spans = []
+    redact('ipv4', /(?<![\d.])(?:\d{1,3}\.){3}\d{1,3}(?![\d.])/g, match => match.split('.').every(part => Number(part) <= 255) ? '[网络地址]' : undefined, afterCards)
+    redact('password', passwordValues, '[密码]', afterCards)
+    if (cardLabel) {
+      for (const range of financialNumbers(input, boundaries)) {
+        // 带国家码的完整手机号也可能通过卡号校验。
+        if (internationalMobileEnds.get(range.start) !== range.end) spans.push({ ...range, label: cardLabel })
+      }
+    }
+    for (const span of afterCards) spans.push(span)
     if (!spans.length) return input
     // 先在原文上匹配，再合并交叠区间，防止短匹配遮掉较长凭据的识别前缀。
     spans.sort((a, b) => a.start - b.start || b.end - a.end)

@@ -64,6 +64,11 @@ test('redaction also protects sender names when nickname anonymization is off', 
   expect(result[0].senderName).toBe('[邮箱]')
 })
 
+test('email redaction preserves invalid addresses and recognizes adjacent valid ones', () => {
+  const processor = createMessageProcessor({ ...defaultProcessing, rules: ['email'] }, [])
+  expect(processor.text('broken@localhost a@one.example+b@two.example')).toBe('broken@localhost [邮箱][邮箱]')
+})
+
 test.each([
   ['Bearer', 'Bearer testtoken1234567890', '[授权令牌]'],
   ['sk', 'sk-abcdefghijklmnopqrstuv', '[接口密钥]'],
@@ -116,12 +121,17 @@ test('only the sender is anonymized even when their nickname occurs in the messa
 test.each([
   ['密码：“Blue Bird 42!”，明早见', '密码：“[密码]”，明早见'],
   ['密码是： Cedar!42，明早见', '密码是： [密码]，明早见'],
+  ['密码　：　Cedar!42，明早见', '密码　：　[密码]，明早见'],
+  ['{"password"\r\n:\n  "Blue Bird 42!", "note":"hello"}', '{"password"\r\n:\n  "[密码]", "note":"hello"}'],
+  ['password: `Blue Bird 42!`', 'password: `[密码]`'],
+  ['密码：\n明早见', '密码：\n明早见'],
   ["password=Pine's47", 'password=[密码]'],
   ['password=Blue"Bird42', 'password=[密码]'],
   ['密码是否过期？密码是什么？', '密码是否过期？密码是什么？'],
   ['密码是什么?password="Blue Bird 42!"', '密码是什么?password="[密码]"'],
   ['密码：Bearer demo-token-value', '密码：[授权令牌]'],
   ['密码：4111 1111 1111 1111', '密码：[银行卡号]'],
+  ['密码：4111111111111111', '密码：[银行卡号]'],
   ['password="Bearer demo-token extra word"', 'password="[密码]"'],
 ])('explicit passwords preserve question text and cover overlapping credential rules: %s', (input, expected) => {
   const processor = createMessageProcessor(defaultProcessing, [])
@@ -165,6 +175,24 @@ test('financial redaction preserves rule selection and text outside the card', (
   const members = [{ id: '7', displayName: '123' }]
   expect(createMessageProcessor({ ...defaultProcessing, rules: ['credit-card'] }, members).text(input)).toBe('[信用卡号] 123')
   expect(createMessageProcessor({ ...defaultProcessing, rules: [] }, []).text(input)).toBe(input)
+})
+
+test.each(['13800138001', '+86 13800138002'])('an adjacent mobile number %s and grouped card respect each rule selection', mobile => {
+  const input = `${mobile} 4111 1111 1111 1111`
+  expect(createMessageProcessor(defaultProcessing, []).text(input)).toBe('[手机号] [银行卡号]')
+  expect(createMessageProcessor({ ...defaultProcessing, rules: ['bank-card'] }, []).text(input)).toBe(`${mobile} [银行卡号]`)
+  expect(createMessageProcessor({ ...defaultProcessing, rules: ['mobile'] }, []).text(input)).toBe('[手机号] 4111 1111 1111 1111')
+  expect(createMessageProcessor({ ...defaultProcessing, rules: [] }, []).text(input)).toBe(input)
+})
+
+test('a grouped card is protected alongside and across other credential matches', () => {
+  const processor = createMessageProcessor(defaultProcessing, [])
+  expect(processor.text('Bearer 220 4111 1111 1111 1111')).toBe('[授权令牌] [银行卡号]')
+  expect(processor.text('密码：220 4111 1111 1111 1111')).toBe('密码：[密码] [银行卡号]')
+  expect(processor.text('400 13800138001 12')).toBe('[银行卡号]')
+  const cardsOnly = createMessageProcessor({ ...defaultProcessing, rules: ['bank-card'] }, [])
+  expect(cardsOnly.text('Bearer 220 4111 1111 1111 1111')).toBe('Bearer 220 [银行卡号]')
+  expect(cardsOnly.text('+86 13800138002 105')).toBe('+[银行卡号]')
 })
 
 test.each(['<?xml version="1.0"?>', '\uFEFF<?xml version="1.0" encoding="UTF-8"?>\n'])('cleans a share card with declaration %s without changing the original', declaration => {

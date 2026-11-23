@@ -2,7 +2,6 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { ChevronDown, Minus, Plus } from 'lucide-react'
 import { defaultProcessing, redactionRules, type ProcessingSettings, type RedactionRule, type SettingsApi } from '../../shared/settings-contract'
 import { CheckBox, errorText, Modal, Switch } from './common'
-import { ExceptionNotice } from '../ui/exception-notices'
 import { SettingHelp } from './setting-help'
 
 const ruleGroups = [
@@ -51,7 +50,7 @@ export function MessageProcessing({ api, value, onSaved, onBusy }: { api: Settin
   function feedback(target: string) {
     if (failed?.target !== target) return null
     return <div className="settings-save-error">
-      <ExceptionNotice title="无法保存消息处理设置" detail={failed.message} className="ms-error" />
+      <span className="ms-error" role="alert">{failed.message}</span>
       <button type="button" className="ms-button" disabled={busy} onClick={() => void save(failed.value, target)}>重试保存</button>
     </div>
   }
@@ -66,7 +65,13 @@ export function MessageProcessing({ api, value, onSaved, onBusy }: { api: Settin
       <Setting title="数据清洗" description="整理分享卡片中的链接、小程序等内容。" {...switchProps('clean')} />
       <Setting title="合并连续发言" description="将同一人连续发送的文字合并后交给模型，减少重复的昵称和时间。查看原始聊天时，每条消息仍单独显示。" {...switchProps('merge')}>
         <div className="setting-name mp-field-label"><label htmlFor="settings-merge-seconds">合并时间窗口</label><SettingHelp name="合并时间窗口">从每段第一条消息开始计时，可设为 1～600 秒。</SettingHelp></div>
-        <div className="mp-number-row"><div className="mp-number-field"><button type="button" className="mp-icon-button" aria-label="减少合并时间窗口 1 秒" disabled={busy || !validSeconds || numericSeconds <= 1} onClick={() => { const next = numericSeconds - 1; setSeconds(String(next)); void save({ ...current, mergeSeconds: next }, 'seconds') }}><Minus size={16} /></button><input id="settings-merge-seconds" type="number" inputMode="numeric" min={1} max={600} step={1} value={seconds} disabled={busy} aria-invalid={!validSeconds} aria-describedby={validSeconds ? undefined : 'settings-merge-error'} onChange={event => setSeconds(event.target.value)} onBlur={saveSeconds} onKeyDown={event => { if (event.key === 'Enter') saveSeconds() }} /><button type="button" className="mp-icon-button" aria-label="增加合并时间窗口 1 秒" disabled={busy || !validSeconds || numericSeconds >= 600} onClick={() => { const next = numericSeconds + 1; setSeconds(String(next)); void save({ ...current, mergeSeconds: next }, 'seconds') }}><Plus size={16} /></button></div><span>秒</span></div>
+        <div className="mp-number-row"><div className="mp-number-field">
+          <button type="button" className="mp-icon-button" aria-label="减少合并时间窗口 1 秒" disabled={busy || !validSeconds || numericSeconds <= 1} onClick={() => { const next = numericSeconds - 1; setSeconds(String(next)); void save({ ...current, mergeSeconds: next }, 'seconds') }}><Minus size={16} /></button>
+          <input id="settings-merge-seconds" type="number" inputMode="numeric" min={1} max={600} step={1} value={seconds} disabled={busy}
+            aria-invalid={!validSeconds} aria-describedby={validSeconds ? 'settings-merge-unit' : 'settings-merge-unit settings-merge-error'}
+            onChange={event => setSeconds(event.target.value)} onBlur={saveSeconds} onKeyDown={event => { if (event.key === 'Enter') saveSeconds() }} />
+          <button type="button" className="mp-icon-button" aria-label="增加合并时间窗口 1 秒" disabled={busy || !validSeconds || numericSeconds >= 600} onClick={() => { const next = numericSeconds + 1; setSeconds(String(next)); void save({ ...current, mergeSeconds: next }, 'seconds') }}><Plus size={16} /></button>
+        </div><span id="settings-merge-unit">秒</span></div>
         {!validSeconds && <p id="settings-merge-error" className="mp-error" role="alert">请输入 1～600 的整数秒数。</p>}
         {feedback('seconds')}
       </Setting>

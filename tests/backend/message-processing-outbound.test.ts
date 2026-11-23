@@ -125,6 +125,21 @@ describe('processed messages in actual model requests', () => {
     ])
   }
 
+  test('首轮和续聊都遮盖相邻号码及同条消息中明确标出的密码', async () => {
+    const reference = '13800138001 4111 1111 1111 1111\n{"password":\n  "Blue Bird 42!"}'
+    store.writer.prepare("INSERT INTO messages(id,conversation_id,member_id,sender_kind,sender_name,kind,text,ordinal,sent_at_ms) VALUES(1,1,5,'member','小林','text',?,0,0)").run(reference)
+    const turn = await send('密码：　Cedar!42，明早见', ['1'])
+    await send('继续')
+
+    for (const request of requests) {
+      expect(userPayload(request, 0)).toMatchObject({
+        question: '密码：　[密码]，明早见',
+        references: [{ id: '1', text: '[手机号] [银行卡号]\n{"password":\n  "[密码]"}' }],
+      })
+    }
+    expect(repository.turnContext(turn.id).references[0].text).toBe(reference)
+  }, 20000)
+
   test('a resumed conversation sends processed history while retaining the original answer locally', async () => {
     answer = '示例甲 example@example.com 13800138000；password="Blue Bird 42!"'
     const first = await send('联系示例甲 example@example.com')

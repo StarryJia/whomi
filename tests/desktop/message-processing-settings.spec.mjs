@@ -5,7 +5,14 @@ import { join, resolve } from 'node:path'
 
 test('消息处理在正常和最小窗口中居中显示秒数，说明及输入错误可就近阅读', async ({}, info) => {
   const profile = await mkdtemp(join(tmpdir(), 'whomi-runtime-processing-settings-'))
-  await writeFile(join(profile, 'probe.cjs'), 'module.exports=()=>async()=>true')
+  await writeFile(join(profile, 'probe.cjs'), `module.exports = writer => method => {
+    if (method === 'probe.fail-processing') {
+      writer.exec("CREATE TEMP TRIGGER fail_processing BEFORE INSERT ON app_settings WHEN NEW.key='processing' BEGIN SELECT RAISE(ABORT, 'synthetic save failure'); END")
+    } else if (method === 'probe.restore-processing') {
+      writer.exec('DROP TRIGGER temp.fail_processing')
+    } else throw new Error('Unsupported probe')
+    return true
+  }`)
   const app = await electron.launch({
     args: [resolve('out/main/index.cjs'), '--whomi-runtime-test'],
     env: { ...process.env, WHOMI_RUNTIME_TEST: profile },
@@ -43,6 +50,7 @@ test('消息处理在正常和最小窗口中居中显示秒数，说明及输�
         await number.fill(value)
         await number.press('Enter')
         await expect.poll(() => page.evaluate(async () => (await window.whomi.settings.get()).processing.mergeSeconds)).toBe(Number(value))
+        await expect(number).toHaveAccessibleDescription(/秒/)
         const minus = await button('减少合并时间窗口 1 秒').boundingBox()
         const plus = await button('增加合并时间窗口 1 秒').boundingBox()
         const textCenter = await number.evaluate(input => {
@@ -67,15 +75,34 @@ test('消息处理在正常和最小窗口中居中显示秒数，说明及输�
       await expect(tooltip).toBeVisible()
       await page.mouse.move(1, 1)
       await expect(tooltip).toHaveCount(0)
+      await mergeHelp.hover()
+      await expectReadableHelp()
+      await page.locator('.setting-help-content').hover()
+      await expect(tooltip).toBeVisible()
+      await page.mouse.move(1, 1)
+      await expect(tooltip).toHaveCount(0)
       await number.fill('601')
       await number.press('Tab')
       await expect(page.getByRole('alert')).toHaveText('请输入 1～600 的整数秒数。')
+      await expect(number).toHaveAccessibleDescription(/请输入 1～600 的整数秒数/)
       expect(await page.evaluate(async () => (await window.whomi.settings.get()).processing.mergeSeconds)).toBe(180)
       await number.focus()
       await screenshot(size + '-invalid')
       await number.fill('180')
       await number.press('Tab')
       await expect(page.getByRole('alert')).toHaveCount(0)
+      await app.evaluate(() => globalThis.__whomiRuntimeProbe.request('probe.fail-processing', null))
+      await number.fill('60')
+      await number.press('Enter')
+      const mergeSetting = page.getByRole('region', { name: '合并连续发言', exact: true })
+      await expect(mergeSetting.getByRole('alert')).toBeVisible()
+      await expect(number).toHaveValue('180')
+      await expect(mergeSetting.getByRole('button', { name: '重试保存' })).toBeVisible()
+      await screenshot(size + '-save-failed')
+      await app.evaluate(() => globalThis.__whomiRuntimeProbe.request('probe.restore-processing', null))
+      await mergeSetting.getByRole('button', { name: '重试保存' }).click()
+      await expect.poll(() => page.evaluate(async () => (await window.whomi.settings.get()).processing.mergeSeconds)).toBe(60)
+      await expect(mergeSetting.getByRole('alert')).toHaveCount(0)
       await button('恢复默认规则').click()
       const dialog = page.getByRole('dialog', { name: '恢复默认规则' })
       const help = dialog.getByRole('button', { name: '恢复默认规则说明' })
