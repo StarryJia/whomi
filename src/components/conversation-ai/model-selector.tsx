@@ -8,7 +8,7 @@ import type { ThinkingLevel } from '../../shared/thinking'
 
 export const ConversationPopoverOwner = createContext<string | undefined>(undefined)
 export type { ThinkingLevel } from '../../shared/thinking'
-export type ModelOption = { id: string; label: string; model?: string; version?: number; providerId?: string; providerName?: string; providerImage?: string; group?: string; thinkingLevels?: readonly ThinkingLevel[] }
+export type ModelOption = { id: string; label: string; model?: string; version?: number; providerId?: string; providerName?: string; providerImage?: string; group?: string; thinkingLevels?: readonly ThinkingLevel[]; insightThinkingLevels?: readonly ThinkingLevel[] }
 
 const thinkingLabels: Record<ThinkingLevel, string> = { off: '关闭', minimal: '最低', low: '低', medium: '中', high: '高', xhigh: '更高', max: '最高' }
 export const thinkingLevelLabel = (level?: ThinkingLevel) => level ? thinkingLabels[level] : '默认'

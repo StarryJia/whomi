@@ -20,7 +20,9 @@ const ids: Check = value => array(localId, 2000)(value) && new Set(value as stri
 const object = (fields: Record<string, Check>): Check => value => !!value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).every(key => Object.hasOwn(fields, key)) && Object.entries(fields).every(([key, check]) => check((value as Record<string, unknown>)[key]))
 const url: Check = value => { try { if (typeof value !== 'string' || value.length > 2048) return false; const parsed = new URL(value); return ['https:', 'http:'].includes(parsed.protocol) && !parsed.username && !parsed.password && !parsed.hash && !parsed.search } catch { return false } }
 const modelFields = { id: key, label: text(256, true), model: key, baseUrl: url, protocol: optional(isModelProtocol), contextWindow: nullable(positive), maxTokens: nullable(positive), maxInputTokens: optional(nullable(positive)), thinkingLevels: optional(array(thinking, 7)), enabled: bool }
-const model = object({ ...modelFields, planProvider: optional(isSubscriptionId), planAccount: optional(text(512, true)), version: positive, hasCredential: bool })
+const savedModelFields = { ...modelFields, planProvider: optional(isSubscriptionId), planAccount: optional(text(512, true)), version: positive, hasCredential: bool }
+const model = object(savedModelFields)
+const listedModel = object({ ...savedModelFields, insightThinkingLevels: optional(array(thinking, 7)) })
 const usageFields = { inputTokens: optional(count), totalInputTokens: optional(count), outputTokens: optional(count), cacheReadTokens: optional(count), cacheWriteTokens: optional(count), outputTokensPerSecond: optional(metric), firstTokenMs: optional(metric), durationMs: optional(metric), startedAt: optional(count), completedAt: optional(count), incomplete: optional(bool) }
 const usage = object(usageFields)
 const analysisUsage = object({ ...usageFields, cacheReadTokensIncomplete: optional(bool), cacheWriteTokensIncomplete: optional(bool) })
@@ -63,7 +65,7 @@ const input: Record<keyof AiMethods, Check[]> = {
   openThread: [localId], listThreads: [localId], createThread: [localId], getThread: [localId], arrangeThread: [localId, listArrangement], deleteThread: [localId, localId], sendTurn: [object({ threadId: localId, requestId: key, prompt: text(100000, true), referenceIds: ids, modelId: key, thinkingLevel: optional(thinking), skillId: optional(key) })], retryTurn: [localId], stopTurn: [localId],
 }
 const output: Record<keyof AiMethods, Check> = {
-  listModels: array(model, 1000), saveModel: model, testModel: value => value === undefined, listSkills: array(object({ id: key, label: text(256, true), version: key }), 1000),
+  listModels: array(listedModel, 1000), saveModel: model, testModel: value => value === undefined, listSkills: array(object({ id: key, label: text(256, true), version: key }), 1000),
   previewInsightScope: object({ scope: isInsightScope, timezone: isInsightTimezone, totalMessages: count, analyzableMessages: count, sourceStartTimeMs: nullable(timestamp), sourceEndTimeMs: nullable(timestamp) }),
   prepareAnalysis: preparation, confirmAnalysis: analysis, getAnalysis: analysis, listAnalyses: array(analysis), arrangeAnalysis: value => value === undefined, renameAnalysis: analysis, deleteAnalysis: value => value === undefined, stopAnalysis: analysis, continueAnalysis: analysis, getReport: insightReport, readInsightCitation: citationWindow,
   discardAnalysisPreparation: value => value === undefined,

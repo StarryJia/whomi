@@ -3,7 +3,7 @@ import { generatePiInsight, type PiInsightCheckpoint } from './pi-insight-genera
 import type { AgentRunInput, AgentRunResult, InsightRuntimeCallbacks } from '../agent/protocol'
 import { defaultPrompts } from '../../src/shared/system-prompts'
 import type { AnalysisContext, TurnContext } from '../data/ai/repository'
-import { acceptedThinking, reasoningCapabilities } from '../agent/reasoning-capabilities'
+import { acceptedThinking, insightModelProtocol, reasoningCapabilities } from '../agent/reasoning-capabilities'
 import { createHash, randomUUID } from 'node:crypto'
 import type { AiEvent, AiMethods, AiModel, AiThread, AiTurn, AiUsage, AnalysisTask } from '../../src/shared/ai-contract'
 import { BoundaryError } from '../../src/shared/desktop-validation'
@@ -327,7 +327,12 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
     }
   }
   const service: AiMethods = {
-    listModels: async () => Promise.all((await storage<AiModel[]>('listModels')).map(async model => { const capability = await reasoningCapabilities(model); return { ...model, ...(capability ? { thinkingLevels: capability.levels } : {}) } })),
+    listModels: async () => Promise.all((await storage<AiModel[]>('listModels')).map(async model => {
+      const capability = await reasoningCapabilities(model)
+      const protocol = insightModelProtocol(model)
+      const insight = protocol !== model.protocol ? await reasoningCapabilities({ ...model, protocol }) : undefined
+      return { ...model, ...(capability && { thinkingLevels: capability.levels }), ...(insight && { insightThinkingLevels: insight.levels }) }
+    })),
     async saveModel(input) { const { apiKey, ...model } = input; const encrypted = apiKey === undefined ? undefined : apiKey ? options.secrets.encrypt(apiKey) : null; return storage('saveModel', model, encrypted) },
     async testModel(modelId) {
       const key = `test:${randomUUID()}`
@@ -367,7 +372,13 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
         throw error
       }
     },
-    listSkills: () => storage('listSkills'), prepareAnalysis: input => control(async () => { available(input.conversationId); const { model } = await storage<{ model: AiModel }>('modelSecret', input.modelId); return storage('prepareAnalysis', { ...input, thinkingLevel: await acceptedThinking(model, input.thinkingLevel) }) }),
+    listSkills: () => storage('listSkills'),
+    prepareAnalysis: input => control(async () => {
+      available(input.conversationId)
+      const { model } = await storage<{ model: AiModel }>('modelSecret', input.modelId)
+      const thinkingLevel = await acceptedThinking({ ...model, protocol: insightModelProtocol(model) }, input.thinkingLevel)
+      return storage('prepareAnalysis', { ...input, thinkingLevel })
+    }),
     discardAnalysisPreparation: token => control(() => storage('discardAnalysisPreparation', token)),
     confirmAnalysis: input => control(() => submitTask('analysis', async () => {
       const task = await storage<AnalysisTask>('confirmAnalysis', input)

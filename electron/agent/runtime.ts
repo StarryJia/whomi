@@ -1,4 +1,4 @@
-import { acceptedThinking, reasoningCapabilities } from './reasoning-capabilities'
+import { acceptedThinking, insightModelProtocol, reasoningCapabilities } from './reasoning-capabilities'
 import { createHash } from 'node:crypto'
 import { mkdirSync, realpathSync, existsSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
@@ -18,14 +18,35 @@ function failure(code: string, action: string) {
 }
 function abortError() { return new DOMException('回答已停止。', 'AbortError') }
 
+function explicitlyOverloaded(message: string) {
+  const detail = message.replace(/^(?:\S+ API error \(\d{3}\):\s*)?(?:[45]\d\d[:\s]+)?/i, '').trim()
+  const overloadCode = /^(?:overloaded_error|server_overloaded|server_busy|service_unavailable)$/i
+  const overloadText = /^(?:(?:the )?(?:server|service|model) (?:is )?(?:(?:currently |temporarily )?overloaded|(?:currently |temporarily )unavailable)|overloaded)(?:[.!:,\s]|$)|^service unavailable[.!]?$/i
+  if (detail.startsWith('{')) {
+    try {
+      const body = JSON.parse(detail)
+      const error = body?.error ?? body
+      if ([error?.code, error?.type].includes('invalid_request_error')) return false
+      return overloadCode.test(error?.code) || overloadCode.test(error?.type)
+        || (typeof error?.message === 'string' && overloadText.test(error.message))
+    } catch { return false }
+  }
+  const [code, ...reason] = detail.replace(/^error code\s+/i, '').split(':')
+  return overloadCode.test(code) || overloadText.test(detail)
+    || (/^(?:server_error|unknown)$/i.test(code) && overloadText.test(reason.join(':').trim()))
+}
+
 export class PiRuntime {
   constructor(readonly directory: string) {}
   async run(input: AgentRunInput, options: { signal: AbortSignal; onText: (text: string) => void; insight?: InsightRuntimeCallbacks }): Promise<AgentRunResult> {
     options.signal.throwIfAborted()
-    const api = input.model.protocol ?? defaultModelProtocol
-    if (!isModelProtocol(api)) throw failure('INVALID_MODEL', '请选择连接协议后重试。')
+    const configuredApi = input.model.protocol ?? defaultModelProtocol
+    if (!isModelProtocol(configuredApi)) throw failure('INVALID_MODEL', '请选择连接协议后重试。')
+    const baseUrl = modelProtocolBaseUrl(input.model.baseUrl, configuredApi)
+    const api = input.insightSession ? insightModelProtocol(input.model) : configuredApi
+    const useInsightResponses = !!input.insightSession && api === 'openai-responses' && baseUrl === 'https://api.openai.com/v1'
     const { createAgentSession, createExtensionRuntime, ModelRuntime, SettingsManager, SessionManager } = await import('@earendil-works/pi-coding-agent')
-    const { isContextOverflow } = await import('@earendil-works/pi-ai')
+    const { isContextOverflow, isRetryableAssistantError } = await import('@earendil-works/pi-ai')
     options.signal.throwIfAborted()
     const agentDir = join(this.directory, 'ai-runtime')
     const key = createHash('sha256').update(input.key).digest('hex')
@@ -55,14 +76,19 @@ export class PiRuntime {
     const limits = resolveModelLimits(input.model)
     const autonomous = input.insightSession
     if (autonomous && (!options.insight || input.history !== undefined)) throw failure('INVALID_INSIGHT_SESSION', '请重新打开洞察任务。')
-    const capabilities = await reasoningCapabilities(input.model)
-    const thinkingLevel = await acceptedThinking(input.model, input.thinkingLevel)
+    const effectiveModel = useInsightResponses ? { ...input.model, protocol: api } : input.model
+    const capabilities = await reasoningCapabilities(effectiveModel)
+    const thinkingLevel = await acceptedThinking(effectiveModel, input.thinkingLevel)
     modelRuntime.registerProvider(provider, {
-      baseUrl: modelProtocolBaseUrl(input.model.baseUrl, api),
+      baseUrl,
       api,
       ...(autonomous?.headers ? { headers: autonomous.headers } : {}),
       apiKey: 'whomi-runtime-credential',
-      models: [{ id: input.model.model, name: input.model.label, reasoning: !!thinkingLevel, ...(capabilities?.model?.thinkingLevelMap ? { thinkingLevelMap: capabilities.model.thinkingLevelMap } : {}), input: ['text'], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: limits.contextWindow, maxTokens: limits.maxTokens }],
+      models: [{ id: input.model.model, name: input.model.label, reasoning: !!thinkingLevel,
+        ...(capabilities?.model?.thinkingLevelMap ? { thinkingLevelMap: capabilities.model.thinkingLevelMap } : {}),
+        // Responses 需要显式 strict:false，才能按工具声明省略可选的分页参数。
+        ...(useInsightResponses ? { compat: { supportsStrictMode: true } } : {}),
+        input: ['text'], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: limits.contextWindow, maxTokens: limits.maxTokens }],
     })
     await modelRuntime.setRuntimeApiKey(provider, input.apiKey ?? 'whomi-no-credential')
     const model = modelRuntime.getModel(provider, input.model.model)
@@ -101,6 +127,16 @@ export class PiRuntime {
     }) : undefined
     const { session } = await createAgentSession({ cwd, agentDir, modelRuntime, model, resourceLoader: loader, settingsManager, sessionManager: manager,
       tools: reader ? ['read_messages'] : [], customTools: reader ? [reader.tool] : [], thinkingLevel: thinkingLevel ?? 'off' })
+    if (useInsightResponses) {
+      // store:false 下，下一次工具推理需要由本地会话带回服务商签发的加密推理项。
+      const previous = session.agent.onPayload
+      session.agent.onPayload = async (payload, selected) => {
+        const request = await previous?.(payload, selected) ?? payload
+        if (!request || typeof request !== 'object') return request
+        const include = 'include' in request && Array.isArray(request.include) ? request.include : []
+        return { ...request, include: [...new Set([...include, 'reasoning.encrypted_content'])] }
+      }
+    }
     const observed = autonomous && options.insight && reader
       ? observeInsightSession(session, manager, options.insight, autonomous.processing, input.systemPrompt, options.signal, reader, limits.maxTokens, api)
       : undefined
@@ -111,6 +147,7 @@ export class PiRuntime {
     let stopReason: string | undefined
     let contextExceeded = false
     let timedOut = false
+    let overloaded = false
     const started = performance.now()
     const startedAt = Date.now()
     const previousObserver = session.agent.onProviderStreamEvent
@@ -132,6 +169,8 @@ export class PiRuntime {
         stopReason = event.message.stopReason
         contextExceeded = stopReason === 'error' && isContextOverflow(event.message)
         timedOut = input.purpose === 'insight' && stopReason === 'error' && isPiTimeout(api, event.message.errorMessage)
+        overloaded = !!autonomous && isRetryableAssistantError(event.message) && explicitlyOverloaded(event.message.errorMessage ?? '')
+          && event.message.content.length === 0 && event.message.usage.totalTokens === 0
       }
     })
     const abort = () => { void session.abort() }
@@ -151,6 +190,7 @@ export class PiRuntime {
       if (options.signal.aborted || stopReason === 'aborted') throw abortError()
       if (contextExceeded) throw modelContextLimit()
       if (timedOut) throw modelTimeout()
+      if (overloaded) throw failure('INSIGHT_PROVIDER_OVERLOADED', '模型服务暂时繁忙，请稍后继续洞察。')
       if (!final || stopReason === 'error' || stopReason === 'pending') throw failure('MODEL_REQUEST_FAILED', '请检查模型服务后重试。')
       const usage = usageSnapshot()
       const sessionFile = manager.getSessionFile()

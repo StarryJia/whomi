@@ -8,6 +8,8 @@ import { join, resolve, sep } from 'node:path'
 import { PiRuntime } from '../../electron/agent/runtime'
 import type { AiModel } from '../../src/shared/ai-contract'
 import { generateInsight } from '../../electron/main/insight-generation'
+import { generatePiInsight, type PiInsightCheckpoint } from '../../electron/main/pi-insight-generation'
+import { aiOperation } from '../../electron/main/ai-operation-diagnostics'
 import { defaultInsightRunLimits } from '../../electron/main/insight-policy'
 import { defaultInsightPrompts } from '../../electron/data/ai/insight-prompts'
 import { defaultProcessing } from '../../src/shared/settings-contract'
@@ -48,6 +50,160 @@ describe('Pi runtime over a controlled OpenAI compatible service', () => {
   })
   const options = () => ({ signal: new AbortController().signal, onText: () => {} })
   const input = (model: AiModel, prompt = '示例提问') => ({ key: 'example-thread', model, systemPrompt: '仅依据本轮许可材料回答。', prompt })
+
+  function overloadFixture() {
+    const states: PiInsightCheckpoint[] = []
+    const events: InsightRuntimeEvent[] = []
+    const runtime = new PiRuntime(directory)
+    const controller = new AbortController()
+    const operation = aiOperation(undefined, 'insight', 'generate')
+    const source = { id: '1', revision: 'a'.repeat(64), senderName: '本人', isSelf: true, text: '周三散步。', replyToMessageId: null, sentAtMs: 0 }
+    const read = vi.fn(async () => [source])
+    const run = (checkpoint: PiInsightCheckpoint | null = null) => generatePiInsight({
+      snapshot: { taskId: '7', scope: { kind: 'all' }, timezone: 'UTC', createdAtMs: 0, sourceStartTimeMs: 0, sourceEndTimeMs: 0,
+        sources: [{ messageId: source.id, revision: source.revision }] },
+      conversationId: '1', model: { ...model, protocol: 'openai-responses' }, thinkingLevel: undefined,
+      prompts: defaultInsightPrompts, processing: defaultProcessing, checkpoint, signal: controller.signal, operation, read,
+      save: async state => { states.push(structuredClone(state)) },
+      run: (request, io) => runtime.run(request, { signal: controller.signal, onText: () => {}, insight: {
+        read: io.read, record: async event => { events.push(event); return io.record(event) } } }),
+    })
+    return { run, events, states, operation, controller, read }
+  }
+  function frames(response: ServerResponse, ...events: unknown[]) {
+    response.writeHead(200, { 'Content-Type': 'text/event-stream' })
+    response.end(events.map(event => 'data: ' + JSON.stringify(event) + '\n\n').join(''))
+  }
+  const busy = { type: 'response.failed', response: { status: 'failed', error: {
+    code: 'server_error', message: 'The server is overloaded. Please try again later.' } } }
+  function jsonError(response: ServerResponse, status: number, code: string, message: string) {
+    response.writeHead(status, { 'Content-Type': 'application/json' })
+    response.end(JSON.stringify({ error: { code, message } }))
+  }
+
+  it('resumes the native tool result after two explicit overloads, keeps receipts and never resends the saved report', async () => {
+    const fixture = overloadFixture()
+    const received: number[] = []
+    const sections = [{ content: [{ text: '周三散步', citationId: 'c1' }] }]
+    const report = { aboutYou: sections, relationship: sections, citations: [{ id: 'c1', fragments: [{ messageIds: ['1'] }] }], limitations: [] }
+    answer = response => {
+      received.push(Date.now())
+      if (requests.length === 2) return frames(response, busy)
+      if (requests.length === 3) return jsonError(response, 503, 'service_unavailable', 'The service is temporarily unavailable.')
+      const item = requests.length === 1 ? { type: 'function_call', id: 'fc_1', call_id: 'call_1', name: 'read_messages', arguments: '{}' }
+        : { type: 'message', id: 'msg_1', role: 'assistant', content: [{ type: 'output_text', text: JSON.stringify(report) }] }
+      frames(response, { type: 'response.output_item.done', output_index: 0, item },
+        { type: 'response.completed', response: { status: 'completed', output: [item], usage: { input_tokens: 15, output_tokens: 5 } } })
+    }
+    const saved = await fixture.run()
+    expect(requests).toHaveLength(4)
+    expect(received[2] - received[1]).toBeGreaterThanOrEqual(1950)
+    expect(received[3] - received[2]).toBeGreaterThanOrEqual(7950)
+    for (const request of requests.slice(1)) expect(request).toMatchObject({ input: expect.arrayContaining([
+      expect.objectContaining({ type: 'function_call_output', call_id: 'call_1', output: expect.stringContaining('周三散步。') }),
+    ]) })
+    expect(fixture.read).toHaveBeenCalledTimes(1)
+    expect(fixture.events.filter(event => event.type === 'request').map(event => [event.success, event.spans.length]))
+      .toEqual([[true, 0], [false, 0], [false, 0], [true, 1]])
+    const checkpoints = fixture.states.flatMap(state => state.checkpoint ? [JSON.parse(state.checkpoint).sessionFile] : [])
+    expect(new Set(checkpoints).size).toBe(1)
+    expect(fixture.states.at(-1)).toMatchObject({ requests: 4, taskId: '7', input: 30, output: 10, coverage: { coveredMessageIds: ['1'] }, report: saved })
+    expect(await fixture.run(fixture.states.at(-1))).toEqual(saved)
+    expect(requests).toHaveLength(4)
+  }, 30000)
+
+  it.each(['invalid', 'unavailable-model', 'quota', 'partial', 'interrupted', 'exhausted', 'paused'] as const)(
+    'handles %s without uncontrolled resubmission', async mode => {
+      const fixture = overloadFixture()
+      answer = response => {
+        if (mode === 'invalid') return jsonError(response, 400, 'invalid_request_error', 'Unsupported tool parameter: server_overloaded')
+        if (mode === 'unavailable-model') return jsonError(response, 400, 'model_not_found', 'The model is unavailable for this account.')
+        if (mode === 'quota') return jsonError(response, 429, 'insufficient_quota', 'The server is overloaded.')
+        if (mode === 'partial') return frames(response,
+          { type: 'response.output_item.added', output_index: 0, item: { type: 'message', id: 'msg_1', role: 'assistant', content: [] } },
+          { type: 'response.content_part.added', item_id: 'msg_1', output_index: 0, content_index: 0, part: { type: 'output_text', text: '' } },
+          { type: 'response.output_text.delta', item_id: 'msg_1', output_index: 0, content_index: 0, delta: '已开始撰写。' }, busy)
+        if (mode === 'interrupted') return frames(response, { type: 'response.created', response: { id: 'resp_incomplete', status: 'in_progress' } })
+        frames(response, busy)
+      }
+      const retry = vi.spyOn(fixture.operation, 'event')
+      if (mode === 'paused') retry.mockImplementation(stage => {
+        if (stage === 'retry') setTimeout(() => fixture.controller.abort(), 10)
+      })
+      await expect(fixture.run()).rejects.toMatchObject(mode === 'paused' ? { name: 'AbortError' }
+        : { code: mode === 'exhausted' ? 'MODEL_UNAVAILABLE' : 'MODEL_REQUEST_FAILED' })
+      expect(requests).toHaveLength(mode === 'exhausted' ? 3 : 1)
+      expect(retry.mock.calls.filter(([stage]) => stage === 'retry')).toHaveLength(mode === 'exhausted' ? 2 : mode === 'paused' ? 1 : 0)
+      expect(fixture.states.at(-1)).toMatchObject({ requests: requests.length, checkpoint: expect.any(String), coverage: { coveredMessageIds: [] } })
+    }, 30000)
+
+  it.each(['openai-completions', 'openai-responses'] as const)('runs the official insight from %s on Responses and replays the tool output with its source', async protocol => {
+    const localFetch = globalThis.fetch
+    const routes: string[] = []
+    vi.spyOn(globalThis, 'fetch').mockImplementation((url, init) => {
+      routes.push(String(url))
+      return localFetch(model.baseUrl + '/local-fixture', init)
+    })
+    const selected = { ...model, model: 'gpt-6.1-sol', baseUrl: 'https://api.openai.com/v1', protocol }
+    const section = [{ content: [{ text: '一起散步', citationId: 'c1' }] }]
+    const report = { aboutYou: section, relationship: section, citations: [{ id: 'c1', fragments: [{ messageIds: ['1'] }] }], limitations: [] }
+    const normalAnswer = answer
+    answer = response => {
+      if (!routes.at(-1)?.endsWith('/responses')) {
+        response.writeHead(400, { 'Content-Type': 'application/json' })
+        response.end(JSON.stringify({ error: { message: 'Use /responses for function tools with this model.' } }))
+        return
+      }
+      const first = requests.length === 1
+      const item = first ? { type: 'function_call', id: 'fc_read', call_id: 'call_read', name: 'read_messages', arguments: '{}' }
+        : { type: 'message', id: 'msg_report', role: 'assistant', content: [{ type: 'output_text', text: JSON.stringify(report) }] }
+      response.writeHead(200, { 'Content-Type': 'text/event-stream' })
+      const frames = [{ type: 'response.output_item.done', output_index: 0, item },
+        { type: 'response.completed', response: { id: first ? 'resp_read' : 'resp_report', status: 'completed', output: [item],
+          usage: { input_tokens: 15, output_tokens: 5, input_tokens_details: { cached_tokens: 4 } } } }]
+      response.end(frames.map(frame => 'data: ' + JSON.stringify(frame) + '\n\n').join(''))
+    }
+    const runtime = new PiRuntime(directory)
+    const settled: InsightRuntimeEvent[] = []
+    const source = { id: '1', revision: 'a'.repeat(64), senderName: '本人', isSelf: true, text: '周末一起散步', replyToMessageId: null, sentAtMs: 0 }
+    const saved = await generatePiInsight({
+      snapshot: { taskId: '1', scope: { kind: 'all' }, timezone: 'UTC', createdAtMs: 0, sourceStartTimeMs: 0, sourceEndTimeMs: 0,
+        sources: [{ messageId: source.id, revision: source.revision }] },
+      conversationId: '1', model: selected, thinkingLevel: undefined, prompts: defaultInsightPrompts, processing: defaultProcessing,
+      checkpoint: null, signal: AbortSignal.timeout(10000), operation: aiOperation(undefined, 'insight', 'generate'), save: async () => {},
+      read: async () => [source], run: (request, io) => runtime.run(request, { ...options(), insight: { read: io.read,
+        record: async event => { settled.push(event); await io.record(event) } } }),
+    })
+    expect(saved.citations[0].fragments[0].sources).toEqual([{ messageId: '1', revision: source.revision }])
+    expect(routes).toEqual(Array(2).fill('https://api.openai.com/v1/responses'))
+    expect(selected.protocol).toBe(protocol)
+    for (const req of requests) {
+      expect(req).toMatchObject({ model: 'gpt-6.1-sol', store: false, tools: [expect.objectContaining({ type: 'function', name: 'read_messages', strict: false })],
+        include: expect.arrayContaining(['reasoning.encrypted_content']) })
+      expect(req).not.toHaveProperty('reasoning')
+      expect(req).not.toHaveProperty('previous_response_id')
+    }
+    expect(requests[1]).toMatchObject({ input: expect.arrayContaining([
+      expect.objectContaining({ type: 'function_call', call_id: 'call_read', id: 'fc_read' }),
+      expect.objectContaining({ type: 'function_call_output', call_id: 'call_read', output: expect.stringContaining(source.text) }),
+    ]) })
+    const expectedUsage = { inputTokens: 11, totalInputTokens: 15, cacheReadTokens: 4, outputTokens: 5 }
+    expect(settled.filter(event => event.type === 'request')).toMatchObject([
+      { success: true, spans: [], usage: expectedUsage }, { success: true, spans: [{ messageId: '1' }], usage: expectedUsage },
+    ])
+    const checkpoint = settled.find(event => event.type === 'checkpoint')!.checkpoint
+    const protocols = fs.readFileSync(JSON.parse(checkpoint).sessionFile, 'utf8').trim().split('\n').map(line => JSON.parse(line).message)
+      .filter(message => message?.role === 'assistant').map(message => message.api)
+    expect(protocols).toEqual(['openai-responses', 'openai-responses'])
+    await runtime.run({ ...input(selected), key: 'explicit-thinking', thinkingLevel: 'high', insightSession: { processing: defaultProcessing } },
+      { ...options(), insight: { read: vi.fn(), record: async () => {} } })
+    expect(requests.at(-1)).toMatchObject({ reasoning: { effort: 'high' } })
+    answer = normalAnswer
+    await runtime.run(input({ ...selected, protocol: 'openai-completions' }), options())
+    await runtime.run({ ...input({ ...selected, protocol: 'openai-completions', baseUrl: model.baseUrl }), insightSession: { processing: defaultProcessing } },
+      { ...options(), insight: { read: vi.fn(), record: async () => {} } })
+    expect(routes.slice(3)).toEqual(['https://api.openai.com/v1/chat/completions', model.baseUrl + '/chat/completions'])
+  }, 20000)
 
   it('opens the first user-message checkpoint in a new runtime when the first model request gets no answer', async () => {
     const runInput = { ...input(model), purpose: 'insight' as const, insightSession: { processing: defaultProcessing } }

@@ -4,6 +4,25 @@ import { createAiService } from '../../electron/main/ai-service'
 import { defaultProcessing } from '../../src/shared/settings-contract'
 import type { AiModel, AnalysisTask } from '../../src/shared/ai-contract'
 import { resolveModelLimits } from '../../src/shared/model-limits'
+import { validateAiResult } from '../../src/shared/ai-validation'
+
+test('洞察选择器和准备阶段沿用官方 Responses 支持的思考强度', async () => {
+  const model = { id: '1', label: '示例', model: 'gpt-6.1-sol', protocol: 'openai-completions', baseUrl: 'https://api.openai.com/v1',
+    version: 1, enabled: true, hasCredential: false, contextWindow: null, maxTokens: null } satisfies AiModel
+  const storage = vi.fn(async (method: string, args: unknown[]) => {
+    if (method === 'listModels') return [model]
+    if (method === 'modelSecret') return { model, encryptedKey: null }
+    if (method === 'prepareAnalysis') return args[0]
+    throw Error(method)
+  })
+  const service = createAiService({ storage, runtime: { run: vi.fn() }, secrets: { encrypt: value => value, decrypt: value => value } })
+  const models = await service.listModels()
+  expect(() => validateAiResult('listModels', models)).not.toThrow()
+  expect(models[0].insightThinkingLevels).toContain('high')
+  expect(models[0].thinkingLevels).toBeUndefined()
+  await service.prepareAnalysis({ conversationId: '1', modelId: '1', thinkingLevel: 'high' })
+  expect(storage).toHaveBeenCalledWith('prepareAnalysis', [{ conversationId: '1', modelId: '1', thinkingLevel: 'high' }])
+})
 
 function captureDiagnostics() {
   return {

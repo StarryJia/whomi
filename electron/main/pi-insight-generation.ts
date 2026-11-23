@@ -2,13 +2,16 @@ import type { AiModel, AiUsage } from '../../src/shared/ai-contract'
 import type { InsightReport, InsightSnapshot, InsightSourceMessage } from '../../src/shared/conversation-insights'
 import { BoundaryError } from '../../src/shared/desktop-validation'
 import type { ProcessingSettings } from '../../src/shared/settings-contract'
-import { resolveModelLimits } from '../../src/shared/model-limits'
-import type { InsightRuntimeCallbacks } from '../agent/protocol'
+import { insightWorkload, type InsightCapacity, type InsightProtection } from './pi-insight-capacity'
+import { completeReadingInstruction, type InsightRuntimeCallbacks } from '../agent/protocol'
 import type { InsightPrompts } from '../data/ai/insight-prompts'
 import type { RuntimeInput, RuntimeResult } from './ai-service'
 import type { AiOperation } from './ai-operation-diagnostics'
 import { addInsightCoverage, createInsightReader, insightCursor } from './insight-reader'
 import { parseReport } from './insight-generation'
+import { setTimeout as wait } from 'node:timers/promises'
+
+const overloadBackoffMs = [2000, 8000] as const
 
 type Coverage = ReturnType<typeof addInsightCoverage>
 export type PiInsightCheckpoint = {
@@ -19,8 +22,10 @@ export type PiInsightCheckpoint = {
   processing: ProcessingSettings
   requests: number
   stalled: number
+  lastReviewWindow?: string
   input: number
   output: number
+  workload?: { capacity: InsightCapacity; protection: InsightProtection }
   report?: InsightReport
 }
 type Receipt = { requestId: string; usage: AiUsage }
@@ -37,16 +42,6 @@ type Options = {
   read(ids: readonly string[]): Promise<InsightSourceMessage[]>
   save(state: PiInsightCheckpoint, receipt?: Receipt): Promise<void>
   run(input: RuntimeInput, callbacks: InsightRuntimeCallbacks): Promise<RuntimeResult>
-}
-
-function budget(snapshot: InsightSnapshot, model: AiModel) {
-  const capacity = resolveModelLimits(model)
-  const bytes = (snapshot.sourceTextBytes ?? snapshot.sources.length * 256) + snapshot.sources.length * 210
-  // 估算包含工具返回的元数据，并为重复输入、回查、压缩和成稿预留容量。
-  const page = Math.max(256, Math.floor((capacity.maxInputTokens - 1200) / 4))
-  const pages = Math.max(1, Math.ceil(bytes / page))
-  const requests = 20 + pages * 5
-  return { requests, input: requests * capacity.maxInputTokens, output: requests * capacity.maxTokens }
 }
 
 function systemPrompt(prompts: InsightPrompts) {
@@ -68,26 +63,43 @@ export async function generatePiInsight(options: Options): Promise<InsightReport
   }
   const refs = new Map(snapshot.sources.map(ref => [ref.messageId, ref]))
   if (state.taskId !== snapshot.taskId || !Array.isArray(state.coverage?.coveredMessageIds) ||
+      new Set(state.coverage.coveredMessageIds).size !== state.coverage.coveredMessageIds.length ||
       state.coverage.coveredMessageIds.some(id => !refs.has(id)) ||
       ![state.requests, state.input, state.output, state.stalled].every(value => Number.isSafeInteger(value) && value >= 0)) {
     throw new BoundaryError('INVALID_INSIGHT_CHECKPOINT', '请从会话重新发起洞察。')
   }
   if (state.report) return state.report
-  const contextWindow = options.model.contextWindow ?? Math.max(16000, (options.model.maxTokens ?? 0) * 2, options.model.maxInputTokens ?? 0)
-  const model = { ...options.model, contextWindow, maxTokens: options.model.maxTokens ?? Math.max(1, Math.min(8192, Math.floor(contextWindow / 4))) }
-  const limits = budget(snapshot, model)
-  operation.event('estimate', { messageCount: refs.size, bytes: snapshot.sourceTextBytes, contextWindow, outputLimit: model.maxTokens,
-    inputLimit: resolveModelLimits(model).maxInputTokens, estimatedContext: options.model.contextWindow == null,
-    estimatedOutput: options.model.maxTokens == null, requestLimit: limits.requests, inputProtection: limits.input, outputProtection: limits.output })
+  state.workload ??= await insightWorkload(options.model, snapshot, state.requests > 0)
+  const { capacity, protection: limits } = state.workload
+  if (!capacity || !limits || ![capacity.contextWindow, capacity.maxTokens, capacity.maxInputTokens, limits.requests, limits.input, limits.output]
+    .every(value => Number.isSafeInteger(value) && value > 0) || capacity.maxTokens + capacity.maxInputTokens > capacity.contextWindow) {
+    throw new BoundaryError('INVALID_INSIGHT_CHECKPOINT', '请检查任务断点后重试。')
+  }
+  const { contextWindow, maxInputTokens, maxTokens } = capacity
+  const model = { ...options.model, contextWindow, maxInputTokens, maxTokens }
+  operation.event('estimate', { messageCount: refs.size, bytes: snapshot.sourceTextBytes, contextWindow, outputLimit: maxTokens,
+    inputLimit: maxInputTokens, estimatedContext: capacity.contextSource === 'estimated', estimatedOutput: capacity.outputSource === 'estimated',
+    catalogContext: capacity.contextSource === 'catalog', catalogOutput: capacity.outputSource === 'catalog',
+    requestLimit: limits.requests, inputProtection: limits.input, outputProtection: limits.output })
   const read = createInsightReader(snapshot, options.read)
   const ordinals = new Map(snapshot.sources.map((ref, i) => [ref.messageId, i + 1]))
   const calls = new Set<string>()
   const covered = () => state.coverage.coveredMessageIds.length
+  const reviewWindows = new Set<string>()
+  if (covered() === refs.size && state.lastReviewWindow === undefined) {
+    // 旧断点在全部读完后仍按新增覆盖计算停滞。
+    state.stalled = 0
+    state.lastReviewWindow = ''
+  }
   const callbacks: InsightRuntimeCallbacks = {
     async read(request, capacity) {
       signal.throwIfAborted()
       const result = await read(request, capacity)
       const ids = result.spans.map(span => span.messageId)
+      if (covered() === refs.size && ids.length) {
+        const first = result.spans[0], last = result.spans.at(-1)!
+        reviewWindows.add([ordinals.get(first.messageId), first.start, ordinals.get(last.messageId), last.end].join('.'))
+      }
       const seen = new Set(state.coverage.coveredMessageIds)
       operation.event('read', { action: request.messageId ? 'locate' : request.cursor ? 'continue' : 'first',
         targetOrdinal: request.messageId ? ordinals.get(request.messageId) : undefined, readStatus: result.page.status,
@@ -123,17 +135,19 @@ export async function generatePiInsight(options: Options): Promise<InsightReport
         state.requests++
         await options.save(state, { requestId: event.requestId, usage: { incomplete: true } })
         operation.event('request', { attempt: state.requests, kind: event.kind })
-        return
+        return covered() === refs.size ? { fullyReviewed: refs.size } : undefined
       }
       if (!calls.delete(event.requestId)) throw new BoundaryError('INVALID_INSIGHT_CHECKPOINT', '请继续洞察以恢复进度。')
       const before = state.coverage
-      if (event.success) {
+      if (event.success && event.kind === 'inference') {
         if (event.spans.some(span => !refs.has(span.messageId))) throw new BoundaryError('INVALID_EVIDENCE', '请检查聊天来源后继续。')
         state.coverage = addInsightCoverage(before, event.spans)
-        if (event.kind === 'inference') {
-          const advanced = before.coveredMessageIds.length !== covered() || JSON.stringify(before.partial) !== JSON.stringify(state.coverage.partial)
-          state.stalled = advanced ? 0 : state.stalled + 1
-        }
+        const review = [...reviewWindows].sort().join(';')
+        const advanced = before.coveredMessageIds.length === refs.size ? review !== '' && review !== state.lastReviewWindow
+          : before.coveredMessageIds.length !== covered() || JSON.stringify(before.partial) !== JSON.stringify(state.coverage.partial)
+        state.stalled = advanced ? 0 : state.stalled + 1
+        if (covered() === refs.size) state.lastReviewWindow = review || state.lastReviewWindow || ''
+        reviewWindows.clear()
       }
       state.input += event.usage.totalInputTokens ?? ((event.usage.inputTokens ?? 0) + (event.usage.cacheReadTokens ?? 0) + (event.usage.cacheWriteTokens ?? 0))
       state.output += event.usage.outputTokens ?? 0
@@ -152,11 +166,25 @@ export async function generatePiInsight(options: Options): Promise<InsightReport
     return { submitted: submitted.size, firstUnread: firstUnread?.messageId,
       ...(firstUnread ? { resumeCursor: insightCursor(snapshot.taskId, ordinals.get(firstUnread.messageId)! - 1, offset, refs.size) } : {}) }
   }
-  let prompt = (state.checkpoint ? '继续同一项洞察。' : '开始本次会话洞察。') +
-    JSON.stringify({ scope: snapshot.scope, timezone: snapshot.timezone, totalMessages: refs.size, ...remaining() })
-  for (let attempt = 0; ; attempt++) {
-    const result = await options.run({ key: 'insight:' + snapshot.taskId, model, thinkingLevel: options.thinkingLevel, purpose: 'insight',
-      insightSession: { processing: state.processing }, checkpoint: state.checkpoint, systemPrompt: goal, prompt }, callbacks)
+  let correction = ''
+  let retries = 0
+  for (;;) {
+    const prompt = (state.checkpoint ? '继续同一项洞察。' : '开始本次会话洞察。') +
+      JSON.stringify({ scope: snapshot.scope, timezone: snapshot.timezone, totalMessages: refs.size, ...remaining() }) + correction
+    let result: RuntimeResult
+    try {
+      result = await options.run({ key: 'insight:' + snapshot.taskId, model, thinkingLevel: options.thinkingLevel, purpose: 'insight',
+        insightSession: { processing: state.processing }, checkpoint: state.checkpoint, systemPrompt: goal,
+        prompt: covered() === refs.size ? completeReadingInstruction(refs.size) + '\n' + prompt : prompt }, callbacks)
+    } catch (error) {
+      signal.throwIfAborted()
+      if ((error as { code?: string } | null)?.code !== 'INSIGHT_PROVIDER_OVERLOADED') throw error
+      const delay = overloadBackoffMs[retries]
+      if (delay === undefined || !state.checkpoint) throw new BoundaryError('MODEL_UNAVAILABLE', '模型服务暂时繁忙，请稍后继续洞察。')
+      operation.event('retry', { attempt: ++retries, code: 'MODEL_UNAVAILABLE' }, { retry: true })
+      await wait(delay, undefined, { signal })
+      continue
+    }
     signal.throwIfAborted()
     state.checkpoint = result.checkpoint
     await options.save(state)
@@ -176,8 +204,8 @@ export async function generatePiInsight(options: Options): Promise<InsightReport
       await options.save(state)
       return state.report
     } catch (error) {
-      if (!(error instanceof BoundaryError) || attempt > 0 || state.report) throw error
-      prompt = covered() < refs.size ? '尚有未读原文，请用 resumeCursor 继续取文后完成报告。' + JSON.stringify(remaining())
+      if (!(error instanceof BoundaryError) || correction || state.report) throw error
+      correction = covered() < refs.size ? '尚有未读原文，请用 resumeCursor 继续取文后完成报告。'
         : '报告结构或引用未通过校验，请按系统指定的格式重新提交两节正文和对应的原文引用。'
     }
   }

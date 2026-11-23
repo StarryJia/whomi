@@ -269,8 +269,9 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
   const panelId = useId()
   const selectedModel = adapter?.models.find(model => model.id === modelId)
   const selectedAnalysisModel = adapter?.models.find(model => model.id === analysisModelId)
+  const insightLevels = selectedAnalysisModel?.insightThinkingLevels ?? selectedAnalysisModel?.thinkingLevels
   const effectiveThinkingLevel = thinkingLevel && selectedModel?.thinkingLevels?.includes(thinkingLevel) ? thinkingLevel : undefined
-  const effectiveAnalysisThinkingLevel = analysisThinkingLevel && selectedAnalysisModel?.thinkingLevels?.includes(analysisThinkingLevel) ? analysisThinkingLevel : undefined
+  const effectiveAnalysisThinkingLevel = analysisThinkingLevel && insightLevels?.includes(analysisThinkingLevel) ? analysisThinkingLevel : undefined
   async function chooseModel(feature: 'analysis' | 'conversation', id: string) {
     const generation = ++selectionGeneration.current[feature]
     setModelErrors(current => ({ ...current, [feature]: '' }))
@@ -847,7 +848,7 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
             {adapter?.models.length ? <div className="analysis-model-options"><ModelSelector label="分析模型" models={adapter.models} value={selectedAnalysisModel?.id ?? ''}
               disabled={modelSaving.analysis}
               onSelect={id => { void chooseModel('analysis', id) }} />
-            {selectedAnalysisModel?.thinkingLevels?.length ? <ThinkingSelector levels={selectedAnalysisModel.thinkingLevels} value={analysisThinkingLevel} onSelect={setAnalysisThinkingLevel} disabled={modelSaving.analysis} /> : null}</div>
+            {insightLevels?.length ? <ThinkingSelector levels={insightLevels} value={analysisThinkingLevel} onSelect={setAnalysisThinkingLevel} disabled={modelSaving.analysis} /> : null}</div>
               : <div className="analysis-model-unavailable"><span>暂无可用模型</span>
                 {onConfigureModels && <button type="button" className="analysis-link" onClick={() => configureModels(true)}>去配置</button>}
               </div>}

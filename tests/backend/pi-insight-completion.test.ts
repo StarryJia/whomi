@@ -3,6 +3,7 @@ import { generatePiInsight, type PiInsightCheckpoint } from '../../electron/main
 import { defaultInsightPrompts } from '../../electron/data/ai/insight-prompts'
 import { defaultProcessing } from '../../src/shared/settings-contract'
 import { aiOperation } from '../../electron/main/ai-operation-diagnostics'
+import { insightWorkload } from '../../electron/main/pi-insight-capacity'
 
 const snapshot = { taskId: '7', scope: { kind: 'all' as const }, timezone: 'UTC', sourceStartTimeMs: null, sourceEndTimeMs: null,
   createdAtMs: 0, sources: [{ messageId: '11', revision: 'a'.repeat(64) }] }
@@ -12,6 +13,28 @@ const options = { snapshot, conversationId: '2', thinkingLevel: undefined, promp
   read: async () => [{ id: '11', revision: 'a'.repeat(64), text: '周三一起约。', senderName: '我', isSelf: true, sentAtMs: 0, replyToMessageId: null }] }
 const section = [{ content: [{ text: '一起约', citationId: 'c' }] }]
 const draft = { aboutYou: section, relationship: section, citations: [{ id: 'c', fragments: [{ messageIds: ['11'] }] }], limitations: [] }
+
+test('官方模型按接口匹配容量，跨服务同名模型使用估值，保留手填长度', async () => {
+  const configured = { ...options.model, model: 'gpt-6.1-sol', baseUrl: 'https://api.openai.com/v1', contextWindow: null, maxTokens: null }
+  const { capacity } = await insightWorkload(configured, snapshot, false)
+  expect(capacity).toMatchObject({ contextWindow: 272000, maxTokens: 128000, maxInputTokens: 144000, outputSource: 'catalog' })
+  expect((await insightWorkload({ ...configured, baseUrl: 'http://localhost/v1' }, snapshot, false)).capacity)
+    .toMatchObject({ contextWindow: 16000, maxTokens: 4000, outputSource: 'estimated' })
+  expect((await insightWorkload({ ...configured, maxTokens: 32000, maxInputTokens: 100000 }, snapshot, false)).capacity)
+    .toMatchObject({ maxTokens: 32000, maxInputTokens: 100000, outputSource: 'configured' })
+  expect((await insightWorkload({ ...configured, contextWindow: 4096 }, snapshot, false)).capacity)
+    .toMatchObject({ contextWindow: 4096, maxTokens: 2048, maxInputTokens: 2048 })
+  for (const started of [false, true]) {
+    expect((await insightWorkload({ ...configured, contextWindow: 16000, maxInputTokens: 12000 }, snapshot, started)).capacity)
+      .toMatchObject({ contextWindow: 16000, maxTokens: 4000, maxInputTokens: 12000 })
+    expect((await insightWorkload({ ...configured, maxInputTokens: 200000 }, snapshot, started)).capacity)
+      .toMatchObject({ contextWindow: 272000, maxTokens: 72000, maxInputTokens: 200000 })
+  }
+  const long = { ...snapshot, sourceTextBytes: 400000 }
+  const existing = await insightWorkload(configured, long, true)
+  expect(existing.protection.requests).toBeGreaterThan(101)
+  expect(existing.capacity).toEqual(capacity)
+})
 
 test('提前交稿和坏引用可在同一会话修正，重试保存沿用已校验的正文', async () => {
   let saved: PiInsightCheckpoint | null = null
@@ -30,10 +53,37 @@ test('提前交稿和坏引用可在同一会话修正，重试保存沿用已�
   expect(saved).toMatchObject({ coverage: { coveredMessageIds: ['11'] }, input: 100, checkpoint: 'bad-report' })
   const fixed = await generatePiInsight({ ...options, checkpoint: saved, save, run: async input => {
     expect(input.checkpoint).toBe('bad-report')
+    expect(input.prompt).toContain('已完整送阅')
     return { text: JSON.stringify(draft), checkpoint: 'corrected', usage: {} }
   } })
   expect(fixed.aboutYou).toEqual(section)
   expect(await generatePiInsight({ ...options, checkpoint: saved, save, run: () => { throw Error('unexpected model request') } })).toEqual(fixed)
+})
+
+test.each([false, true])('完整送阅后按实际核查窗口识别异常重复，连续重取同处=%s', async repeat => {
+  const refs = Array.from({ length: 18 }, (_, i) => ({ messageId: String(11 + i), revision: 'a'.repeat(64) }))
+  const run = generatePiInsight({ ...options, snapshot: { ...snapshot, sources: refs },
+    read: async ids => ids.map(id => ({ id, revision: refs[0].revision, text: '合成原文。', senderName: '本人', isSelf: true, sentAtMs: 0, replyToMessageId: null })),
+    save: async () => {}, run: async (_input, io) => {
+      const page = await io.read({}, 10000)
+      const start = (id: string) => io.record({ type: 'requestStart', requestId: id, kind: 'inference' })
+      // 工具已取到整页时，下一次推理还没有确认收到这些原文。
+      await io.record({ type: 'requestStart', requestId: 'summary', kind: 'compaction' })
+      await io.record({ type: 'request', requestId: 'summary', kind: 'compaction', spans: page.spans, success: true, usage: {}, checkpoint: 'summary' })
+      await start('failed')
+      await io.record({ type: 'request', requestId: 'failed', kind: 'inference', spans: page.spans, success: false, usage: {}, checkpoint: 'summary' })
+      expect(await start('first')).toBeUndefined()
+      await io.record({ type: 'request', requestId: 'first', kind: 'inference', spans: page.spans, success: true, usage: {}, checkpoint: 'all' })
+      for (let i = 0; i < 18; i++) {
+        await io.read({ messageId: refs[repeat ? 0 : i].messageId, before: 0, after: 0 }, 500)
+        const id = 'review' + i
+        expect(await start(id)).toEqual({ fullyReviewed: 18 })
+        await io.record({ type: 'request', requestId: id, kind: 'inference', spans: [], success: true, usage: {}, checkpoint: 'all' })
+      }
+      return { text: JSON.stringify(draft), checkpoint: 'done', usage: {} }
+    } })
+  if (repeat) await expect(run).rejects.toMatchObject({ code: 'INSIGHT_NO_PROGRESS' })
+  else await expect(run).resolves.toMatchObject({ aboutYou: section })
 })
 
 test('超长原文恢复从已确认的连续前缀之后取文', async () => {
