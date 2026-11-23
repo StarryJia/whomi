@@ -2,11 +2,12 @@ import { test, expect, _electron as electron } from '@playwright/test'
 import { appendFileSync } from 'node:fs'
 import { cp, mkdtemp, writeFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
+import { DatabaseSync } from 'node:sqlite'
 import { basename, dirname, join, resolve } from 'node:path'
 import { correction, early, excerptCaption, meetingChat, meetingModel } from './fixtures/pi-insight-model.mjs'
 
-for (const count of [8, 4600]) {
-  test('从当前会话洞察 ' + count + ' 条，回查远距回复并打开两处原文', async ({}, info) => {
+for (const { count, overloadOnPage } of [{ count: 8 }, { count: 4600 }, { count: 8, overloadOnPage: 2 }]) {
+  test((overloadOnPage ? '模型连续两次过载后自动恢复，' : '') + '从当前会话洞察 ' + count + ' 条，回查远距回复并打开两处原文', async ({}, info) => {
     test.setTimeout(count === 8 ? 120_000 : 600_000)
     const directory = resolve(await mkdtemp(join(tmpdir(), 'whomi-runtime-issue35-')))
     const file = info.outputPath('合成聚会聊天.json')
@@ -14,16 +15,16 @@ for (const count of [8, 4600]) {
     await writeFile(file, JSON.stringify(chat, null, 2))
     const evidence = (name, value) => writeFile(info.outputPath(name + '.json'), JSON.stringify(value, null, 2))
     const track = []
-    const model = await meetingModel({ count, holdPage: count > 8, profileDirectory: directory, observe: item => {
+    const model = await meetingModel({ count, holdPage: count > 8, overloadOnPage, profileDirectory: directory, observe: item => {
       track.push(item)
       appendFileSync(info.outputPath('model-trace.jsonl'), JSON.stringify(item) + '\n')
     } })
-    let app, page, startedAt, paused
+    let app, page, startedAt, paused, waiting
     const btn = name => page.getByRole('button', { name, exact: true })
     const task = () => page.evaluate(async () => (await window.whomi.ai.listAnalyses())[0])
     const shot = name => page.screenshot({ path: info.outputPath(name + '.png'), animations: 'disabled' })
     async function launch() {
-      app = await electron.launch({ args: [resolve('out/main/index.cjs'), '--whomi-runtime-test'], env: { ...process.env, WHOMI_RUNTIME_TEST: directory } })
+      app = await electron.launch({ args: [resolve(process.env.WHOMI_DESKTOP_TEST_ENTRY ?? 'out/main/index.cjs'), '--whomi-runtime-test'], env: { ...process.env, WHOMI_RUNTIME_TEST: directory } })
       page = await app.firstWindow()
       await page.emulateMedia({ reducedMotion: 'reduce' })
       await expect(page.locator('.hello-cover')).toBeAttached({ timeout: 20_000 })
@@ -60,6 +61,14 @@ for (const count of [8, 4600]) {
       expect(track).toHaveLength(0)
       startedAt = Date.now()
       await btn('开始洞察').click()
+      if (overloadOnPage) {
+        await expect.poll(() => track.filter(e => e.action === 'service-overloaded').length, { timeout: 30000 }).toBe(2)
+        waiting = await task()
+        expect(waiting).toMatchObject({ state: 'running', analyzedMessages: 0, totalMessages: count })
+        await expect(btn('暂停生成')).toBeEnabled()
+        await evidence('while-waiting', waiting)
+        await shot('02-waiting')
+      }
       if (count > 8) {
         await expect.poll(() => track.some(event => event.action === 'held-before-reply'), { timeout: 60_000 }).toBe(true)
         await btn('暂停生成').click()
@@ -84,6 +93,25 @@ for (const count of [8, 4600]) {
       const saved = await task()
       const completedAt = Date.now()
       const report = await page.evaluate(id => window.whomi.ai.getReport(id), saved.id)
+      if (overloadOnPage) {
+        expect(saved.id).toBe(waiting.id)
+        expect(await page.evaluate(async () => (await window.whomi.ai.listAnalyses()).length)).toBe(1)
+        const db = new DatabaseSync(join(directory, 'whomi.db'), { readOnly: true })
+        try {
+          const rows = db.prepare('SELECT data FROM ai_request_usage WHERE owner_kind = ? AND owner_id = ?').all('analysis', Number(saved.id))
+            .map(r => JSON.parse(r.data)).sort((a, b) => a.startedAt - b.startedAt)
+          await evidence('per-request-usage', rows)
+          expect(rows).toHaveLength(track.length)
+          const unknown = rows.filter(r => r.incomplete)
+          expect(unknown).toHaveLength(overloadOnPage)
+          for (const receipt of unknown) {
+            expect(receipt).not.toHaveProperty('inputTokens')
+            expect(receipt).not.toHaveProperty('outputTokens')
+          }
+          expect(saved.usage.totalInputTokens).toBe(track.reduce((sum, e) => sum + (e.usage?.prompt_tokens ?? 0), 0))
+          expect(saved.usage.outputTokens).toBe(track.reduce((sum, e) => sum + (e.usage?.completion_tokens ?? 0), 0))
+        } finally { db.close() }
+      }
       await evidence('first-report', report)
       await evidence('first-model-draft', model.state.report)
       await evidence('result', { count, startedAt, completedAt, paused: paused && { id: paused.id, usage: paused.usage }, task: saved,

@@ -67,7 +67,7 @@ function reportDraft(firstId, lateId) {
   }
 }
 
-export async function meetingModel({ count, observe, holdPage, profileDirectory }) {
+export async function meetingModel({ count, observe, holdPage, profileDirectory, overloadOnPage = 0 }) {
   const normalizedPath = value => value.replaceAll('\\', '/').toLowerCase()
   const localPaths = [profileDirectory, process.cwd()].map(normalizedPath)
   const state = { requests: 0, confirmed: new Set(), earlyId: undefined, lateId: undefined, paused: false,
@@ -99,6 +99,13 @@ export async function meetingModel({ count, observe, holdPage, profileDirectory 
       const args = turn?.args
       const trace = { ...event, toolCallId: turn?.callId, previousArgs: args, status: turn?.result.status,
         receivedIds: records.map(item => item.id), nextCursor: turn?.result.nextCursor ?? null }
+      if (overloadOnPage > 0 && records.length) {
+        overloadOnPage--
+        observe({ ...trace, action: 'service-overloaded' })
+        response.writeHead(503, { 'Content-Type': 'application/json' })
+        response.end(JSON.stringify({ error: { code: 'server_overloaded', message: 'The server is overloaded. Please try again later.' } }))
+        return
+      }
       if (holdPage && !state.paused && records.length) {
         state.paused = true
         observe({ ...trace, action: 'held-before-reply' })

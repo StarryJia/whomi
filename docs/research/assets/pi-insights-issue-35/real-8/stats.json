@@ -1,0 +1,40 @@
+{
+  "sample": 8,
+  "model": {
+    "label": "gpt-6.1-sol",
+    "name": "gpt-6.1-sol",
+    "thinkingLevel": "default"
+  },
+  "run": "2026-11-23T16-07-00-364Z",
+  "covered": 8,
+  "total": 8,
+  "createdAt": 1795449157179,
+  "trialStartedAt": 1795450024827,
+  "completedAt": 1795450063401,
+  "appActiveMs": 46626,
+  "trialWallMs": 38574,
+  "firstCoveredRequestStartMsFromClick": 7474,
+  "requests": 4,
+  "successful": 2,
+  "failed": 2,
+  "compactionRequests": 0,
+  "readActions": {
+    "fromStart": 1
+  },
+  "citations": 4,
+  "sourceLinksVerified": 4,
+  "usage": {
+    "inputTokens": 930,
+    "totalInputTokens": 2300,
+    "outputTokens": 1222,
+    "cacheReadTokens": 0,
+    "cacheReadTokensIncomplete": true,
+    "cacheWriteTokens": 1370,
+    "cacheWriteTokensIncomplete": true,
+    "durationMs": 40854,
+    "incomplete": true,
+    "outputTokensPerSecond": 29.911391785382094,
+    "startedAt": 1795449158767,
+    "completedAt": 1795450062608
+  }
+}

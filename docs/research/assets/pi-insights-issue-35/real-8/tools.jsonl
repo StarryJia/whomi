@@ -1,0 +1,6 @@
+{"kind":"session","at":"2026-11-23T15:52:38.732Z"}
+{"kind":"assistant","at":"2026-11-23T15:52:41.652Z","model":"gpt-6.1-sol","api":"openai-completions","stopReason":"error","httpStatus":"400","feedback":"function_tools_require_responses_or_none","calls":[]}
+{"kind":"assistant","at":"2026-11-23T15:57:54.167Z","model":"gpt-6.1-sol","api":"openai-completions","stopReason":"error","httpStatus":"400","feedback":"reasoning_none_unsupported","calls":[]}
+{"kind":"assistant","at":"2026-11-23T16:07:12.277Z","model":"gpt-6.1-sol","api":"openai-responses","stopReason":"toolUse","calls":[{"call":1,"tool":"read_messages","args":{}}]}
+{"kind":"read","at":"2026-11-23T16:07:12.290Z","status":"ok","nextCursor":null,"fragments":[],"replies":[["6","2"]],"maskedEmail":true,"rawSyntheticEmail":false,"historicalInstruction":true,"outsideBody":false,"call":1,"ranges":[[1,8]],"count":8}
+{"kind":"assistant","at":"2026-11-23T16:07:42.608Z","model":"gpt-6.1-sol","api":"openai-responses","stopReason":"stop","calls":[]}
