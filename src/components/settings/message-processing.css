@@ -1,10 +1,15 @@
 .mp-page { width: min(100%, 900px); margin: 0 auto; padding: 36px 44px 48px; color: var(--text); }
 .mp-page h1 { margin: 0; font-size: 25px; line-height: 1.4; font-weight: 650; letter-spacing: -.025em; }
+.mp-page-heading h2 { margin: 0; font-size: 23px; line-height: 1.4; font-weight: 650; letter-spacing: -.025em; }
 .mp-content-section { margin-top: 32px; }
 .mp-content-section > h2, .mp-content-section > .setting-name > h2 { margin: 0 0 2px; font-size: 15px; line-height: 1.6; font-weight: 650; }
-.mp-setting { padding: 20px 0; border-bottom: 1px solid var(--line); }
+.mp-group { margin-block-start: var(--space-6); }
+.mp-group + .mp-group { margin-block-start: var(--space-8); }
+.mp-group > h3 { margin: 0 0 var(--space-1); font-size: 19px; line-height: 1.5; font-weight: 650; }
+.mp-setting { margin-inline-start: var(--space-4); padding-block: var(--space-3); }
+.mp-setting + .mp-setting { border-top: 1px solid var(--line); }
 .mp-setting-top { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
-.mp-setting h3 { margin: 0; font-size: 14px; line-height: 1.6; font-weight: 600; }
+.mp-setting h4 { margin: 0; font-size: 14px; line-height: 1.6; font-weight: 500; }
 .mp-setting-detail { margin-top: 14px; padding-right: 72px; }
 .mp-field-label { display: inline-flex; margin-bottom: 8px; color: var(--text); font-size: 13px; font-weight: 500; }
 .mp-number-field { display: flex; width: fit-content; max-width: 100%; align-items: center; gap: 0; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); }

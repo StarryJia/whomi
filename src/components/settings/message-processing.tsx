@@ -20,7 +20,7 @@ function Setting({ title, description, checked, busy, onChange, children, feedba
 }) {
   return <section className="mp-setting" aria-label={title}>
     <div className="mp-setting-top">
-      <div className="setting-name"><h3>{title}</h3><SettingHelp name={title}>{description}</SettingHelp></div>
+      <div className="setting-name"><h4>{title}</h4><SettingHelp name={title}>{description}</SettingHelp></div>
       <Switch label={title} checked={checked} disabled={busy} onChange={onChange} />
     </div>
     {feedback}
@@ -59,9 +59,9 @@ export function MessageProcessing({ api, value, onSaved, onBusy }: { api: Settin
   }
   const toggleRule = (rule: RedactionRule) => void save({ ...current, rules: current.rules.includes(rule) ? current.rules.filter(item => item !== rule) : [...current.rules, rule] }, rule)
   function saveSeconds() { if (validSeconds && numericSeconds !== current.mergeSeconds) void save({ ...current, mergeSeconds: numericSeconds }, 'seconds') }
-  return <div className="mp-page"><header className="mp-page-heading"><div className="setting-name"><h1 tabIndex={-1}>消息处理</h1><SettingHelp name="消息处理">在发送给模型前整理聊天内容、处理隐私信息，聊天原文不变。</SettingHelp></div></header>
+  return <div className="mp-page"><header className="mp-page-heading"><div className="setting-name"><h2 tabIndex={-1}>消息处理</h2><SettingHelp name="消息处理">在发送给模型前整理聊天内容、处理隐私信息，聊天原文不变。</SettingHelp></div></header>
     <span className="mp-visually-hidden" role="status">{busy ? '正在保存…' : ''}</span>
-    <div className="mp-content-section"><h2>整理材料</h2>
+    <section className="mp-group" aria-labelledby="processing-material"><h3 id="processing-material">整理材料</h3>
       <Setting title="数据清洗" description="整理分享卡片中的链接、小程序等内容。" {...switchProps('clean')} />
       <Setting title="合并连续发言" description="将同一人连续发送的文字合并后交给模型，减少重复的昵称和时间。查看原始聊天时，每条消息仍单独显示。" {...switchProps('merge')}>
         <div className="setting-name mp-field-label"><label htmlFor="settings-merge-seconds">合并时间窗口</label><SettingHelp name="合并时间窗口">从每段第一条消息开始计时，可设为 1～600 秒。</SettingHelp></div>
@@ -76,7 +76,7 @@ export function MessageProcessing({ api, value, onSaved, onBusy }: { api: Settin
         {feedback('seconds')}
       </Setting>
       <Setting title="智能去噪" description="过滤空内容和没有正文的系统占位消息，保留语气、否定和表情。" {...switchProps('denoise')} />
-    </div><div className="mp-content-section"><h2>隐私处理</h2>
+    </section><section className="mp-group" aria-labelledby="processing-privacy"><h3 id="processing-privacy">隐私处理</h3>
       <Setting title="昵称匿名化" description="仅将发送者昵称替换为人物编号。正文中的姓名会原样发给模型。" {...switchProps('anonymize')} />
       <Setting title="数据脱敏" description="按所选规则遮盖敏感信息。规则可能漏掉部分内容，使用云模型前请确认发送范围。" {...switchProps('redact')}>
         <div className="mp-rules-toolbar"><span className="mp-selected-count" aria-live="polite">已选 {current.rules.length}/{redactionRules.length} 项</span><button className="mp-text-button" disabled={busy} onClick={() => setRestore(true)}>恢复默认规则</button></div>
@@ -86,7 +86,7 @@ export function MessageProcessing({ api, value, onSaved, onBusy }: { api: Settin
           return <fieldset className="mp-rule-group" key={group.id} disabled={busy}><legend className="mp-visually-hidden">{group.label}</legend><div className="mp-rule-group-heading"><CheckBox checked={count === group.rules.length} mixed={count > 0 && count < group.rules.length} disabled={busy} onChange={() => { const ids = new Set<RedactionRule>(group.rules.map(rule => rule.id)); void save({ ...current, rules: count === group.rules.length ? current.rules.filter(rule => !ids.has(rule)) : [...new Set([...current.rules, ...ids])] }, group.id) }}>{group.label}</CheckBox><span className="mp-group-count">已选 {count}/{group.rules.length}</span><button className="mp-icon-button" aria-label={`${expanded.has(group.id) ? '收起' : '展开'}${group.label}`} aria-expanded={expanded.has(group.id)} aria-controls={`settings-rules-${group.id}`} onClick={() => setExpanded(previous => { const next = new Set(previous); if (next.has(group.id)) next.delete(group.id); else next.add(group.id); return next })}><ChevronDown size={18} className={expanded.has(group.id) ? 'mp-chevron-open' : undefined} /></button></div>{feedback(group.id)}{expanded.has(group.id) && <div className="mp-rule-items" id={`settings-rules-${group.id}`}>{group.rules.map(rule => <div className="mp-rule-item" key={rule.id}><CheckBox checked={current.rules.includes(rule.id)} disabled={busy} onChange={() => toggleRule(rule.id)}>{rule.label}</CheckBox>{rule.id === 'password' && <SettingHelp name={rule.label}>可遮盖同一条消息里明确标出的密码。单独发送的密码可能原样发给模型。</SettingHelp>}{feedback(rule.id)}</div>)}</div>}</fieldset>
         })}</div>
       </Setting>
-    </div>
+    </section>
     {restore && <Modal title="恢复默认规则" help="默认选中除网络地址和网址以外的规则。其他设置会保留。" onClose={() => setRestore(false)} busy={busy}><div className="ms-modal-body"><p>恢复默认的 {defaultProcessing.rules.length} 项规则？</p></div><footer className="ms-modal-footer"><button className="ms-button" onClick={() => setRestore(false)}>取消</button><button className="ms-button ms-primary" onClick={() => { setRestore(false); void save({ ...current, rules: [...defaultProcessing.rules] }, 'restore') }}>确认恢复</button></footer></Modal>}
   </div>
 }

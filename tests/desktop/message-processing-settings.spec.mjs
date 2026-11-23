@@ -3,7 +3,8 @@ import { mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 
-test('消息处理在正常和最小窗口中居中显示秒数，说明及输入错误可就近阅读', async ({}, info) => {
+test('消息处理在正常和最小窗口中区分设置层级，开关、输入和说明可就近操作', async ({}, info) => {
+  test.setTimeout(120_000)
   const profile = await mkdtemp(join(tmpdir(), 'whomi-runtime-processing-settings-'))
   await writeFile(join(profile, 'probe.cjs'), `module.exports = writer => method => {
     if (method === 'probe.fail-processing') {
@@ -14,7 +15,7 @@ test('消息处理在正常和最小窗口中居中显示秒数，说明及输�
     return true
   }`)
   const app = await electron.launch({
-    args: [resolve('out/main/index.cjs'), '--whomi-runtime-test'],
+    args: [resolve(process.env.WHOMI_DESKTOP_TEST_ENTRY ?? 'out/main/index.cjs'), '--whomi-runtime-test'],
     env: { ...process.env, WHOMI_RUNTIME_TEST: profile },
   })
   const page = await app.firstWindow()
@@ -45,6 +46,35 @@ test('消息处理在正常和最小窗口中居中显示秒数，说明及输�
         return win.getContentSize()
       }, size)
       await expect.poll(() => page.evaluate(() => [innerWidth, innerHeight])).toEqual(viewport)
+      await page.locator('.mp-page').evaluate(element => { element.scrollTop = 0 })
+      await screenshot(size + '-groups')
+      const pageHeading = page.getByRole('heading', { level: 2, name: '消息处理' })
+      const group = page.getByRole('region', { name: '整理材料', exact: true })
+      const groupHeading = group.getByRole('heading', { level: 3, name: '整理材料' })
+      const item = group.getByRole('heading', { level: 4, name: '数据清洗' })
+      const privacy = page.getByRole('region', { name: '隐私处理', exact: true })
+      await expect(pageHeading).toBeVisible()
+      await expect(groupHeading).toBeVisible()
+      await expect(privacy.getByRole('heading', { level: 3, name: '隐私处理' })).toBeVisible()
+      const style = element => element.evaluate(node => ({ size: parseFloat(getComputedStyle(node).fontSize),
+        weight: Number(getComputedStyle(node).fontWeight), left: node.getBoundingClientRect().left }))
+      const [sectionTitle, groupTitle, settingTitle] = await Promise.all([pageHeading, groupHeading, item].map(style))
+      await writeFile(info.outputPath(size + '-hierarchy.json'), JSON.stringify({ viewport, sectionTitle, groupTitle, settingTitle }, null, 2))
+      expect(sectionTitle.size).toBeGreaterThan(groupTitle.size)
+      expect(groupTitle.size - settingTitle.size).toBeGreaterThanOrEqual(4)
+      expect(groupTitle.weight).toBeGreaterThan(settingTitle.weight)
+      expect(settingTitle.left - groupTitle.left).toBeGreaterThanOrEqual(12)
+      expect(await page.locator('.mp-page').evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true)
+      const merge = group.getByRole('switch', { name: '合并连续发言' })
+      await merge.focus()
+      await page.keyboard.press('Space')
+      await expect(number).toHaveCount(0)
+      await merge.click()
+      await expect(number).toBeVisible()
+      await button('系统提示词').click()
+      await button('消息处理').click()
+      await expect(merge).toBeChecked()
+      await expect(privacy.getByRole('switch', { name: '数据脱敏' })).toBeEnabled()
       await number.evaluate(element => element.scrollIntoView({ block: 'center' }))
       for (const value of ['1', '60', '600', '180']) {
         await number.fill(value)
@@ -106,7 +136,10 @@ test('消息处理在正常和最小窗口中居中显示秒数，说明及输�
       await button('恢复默认规则').click()
       const dialog = page.getByRole('dialog', { name: '恢复默认规则' })
       const help = dialog.getByRole('button', { name: '恢复默认规则说明' })
-      await help.focus()
+      await expect(dialog.getByRole('heading', { name: '恢复默认规则' })).toBeFocused()
+      await page.mouse.move(1, 1)
+      await page.keyboard.press('Tab')
+      await expect(help).toBeFocused()
       await expectReadableHelp()
       await screenshot(size + '-dialog-focus')
       await page.keyboard.press('Escape')
