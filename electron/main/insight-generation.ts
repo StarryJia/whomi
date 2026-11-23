@@ -25,6 +25,7 @@ const elapsedPersistenceIntervalMs = 5000
 export type InsightGenerationDeps = {
   run: RuntimeRunner['run']
   read: (ids: readonly string[]) => Promise<InsightSourceMessage[]>
+  prepareNotes?: (value: unknown, key: string) => unknown
   saveCheckpoint: (state: InsightCheckpoint, sampledAtMs: number) => Promise<void>
   saveElapsed?: (elapsedMs: number, sampledAtMs: number) => Promise<void>
   onRetryPlanned?: (shrink: boolean, error: unknown) => void
@@ -496,6 +497,17 @@ async function generateInsightReport(input: InsightGenerationInput, deps: Insigh
     : createInsightCheckpoint(snapshot.taskId, model, { ...input.prompts }, { ...input.limits })
   if (state.version !== 1 || state.taskId !== snapshot.taskId || state.modelId !== model.id || state.modelVersion !== model.version
     || state.prompts.version !== INSIGHT_PROMPT_VERSION || state.attempts.length !== state.callsReserved) return invalidCheckpoint()
+  if (state.sourceTextVersion === undefined) {
+    // 旧偏移按正文替换昵称后的长度计算，从未读完的原消息重新分段。
+    state.cursor = { ...state.cursor, textOffset: 0 }
+    state.pendingRead = null
+    for (const check of state.checks) {
+      if (check.state !== 'pending') continue
+      check.pendingCursor = { ...check.pendingCursor, textOffset: 0 }
+      check.pendingThrough = null
+    }
+    state.sourceTextVersion = 2
+  }
   const refs = new Map(snapshot.sources.map(ref => [ref.messageId, ref]))
   if (refs.size !== snapshot.sources.length || !refs.size) return invalidEvidence()
   const covered = new Set(state.coveredMessageIds)
@@ -558,6 +570,10 @@ async function generateInsightReport(input: InsightGenerationInput, deps: Insigh
 
   function runtimeInput(stage: InsightStage, payload: unknown, reservedOutput: number): RuntimeInput {
     const compressing = stage === 'reading' && (payload as { operation?: unknown }).operation === 'compress-navigation'
+    const prepareNotes = deps.prepareNotes
+    // 原文已逐条处理，分段后的片段必须保留原样；模型生成的笔记在每次外发时处理。
+    const body = prepareNotes ? Object.fromEntries(Object.entries(payload as Record<string, unknown>).map(([key, value]) =>
+      [key, ['messages', 'relatedMessages', 'evidence', 'earlierEvidence'].includes(key) ? value : prepareNotes(value, key)])) : payload
     return {
       key: ['insight', snapshot.taskId, state.callsReserved + 1].join(':'),
       purpose: 'insight',
@@ -565,7 +581,7 @@ async function generateInsightReport(input: InsightGenerationInput, deps: Insigh
       outputTokenLimit: reservedOutput,
       thinkingLevel: input.thinkingLevel,
       systemPrompt: compressing ? prompts.compressNavigation : prompts[stage],
-      prompt: JSON.stringify(payload),
+      prompt: JSON.stringify(body),
       history: [],
     }
   }

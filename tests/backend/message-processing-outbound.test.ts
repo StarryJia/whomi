@@ -92,29 +92,41 @@ describe('processed messages in actual model requests', () => {
     const messages = [
       { memberId: '3', kind: 'text', text: 'Bearer testtoken1234567890' },
       { memberId: '4', kind: 'text', text: 'sk-abcdefghijklmnopqrstuv' },
-      { memberId: '5', kind: 'text', text: '小林约U5明天见' },
+      { memberId: '5', kind: 'text', text: '小林约U5明天见。密码：Cedar!42，明早见' },
       { memberId: '5', kind: 'text', text: '4111111111111111 123' },
       { memberId: '2', kind: 'link', text: '<?xml version="1.0"?><msg><appmsg><title>示例标题</title><url>https://example.invalid</url></appmsg></msg>' },
       { memberId: '1', kind: 'text', text: '378282246310005 4111 1111 1111 1111' },
     ]
-    const insert = store.writer.prepare("INSERT INTO messages(id,conversation_id,member_id,sender_kind,sender_name,kind,text,ordinal) VALUES(?,1,?,'member',?,?,?,?)")
-    messages.forEach((message, index) => insert.run(index + 1, message.memberId, members.find(member => member.id === message.memberId)!.displayName, message.kind, message.text, index))
+    const insert = store.writer.prepare("INSERT INTO messages(id,conversation_id,member_id,sender_kind,sender_name,kind,text,ordinal,sent_at_ms) VALUES(?,1,?,'member',?,?,?,?,?)")
+    messages.forEach((message, index) => insert.run(index + 1, message.memberId, members.find(member => member.id === message.memberId)!.displayName, message.kind, message.text, index, index * 120_000))
     return messages
   }
+
+  test('引用跳过另一位成员的发言时，首轮和续聊仍保留两段', async () => {
+    const insert = store.writer.prepare("INSERT INTO messages(id,conversation_id,member_id,sender_kind,sender_name,kind,text,ordinal,sent_at_ms) VALUES(?,1,?,'member',?,'text',?,?,?)")
+    insert.run(1, 5, '小林', '周六见', 0, 0)
+    insert.run(2, 2, '示例甲', '未选中的回答', 1, 30_000)
+    insert.run(3, 5, '小林', '下午两点', 2, 60_000)
+    await send('我当时说了什么？', ['1', '3'])
+    await send('继续')
+    for (const request of requests) {
+      expect(userPayload(request, 0).references.map((ref: { sourceIds: string[] }) => ref.sourceIds)).toEqual([['1'], ['3']])
+      expect(JSON.stringify(request)).not.toContain('未选中的回答')
+    }
+  }, 20000)
 
   function expectProcessedSources(messages: unknown[]) {
     expect(messages).toMatchObject([
       { id: '1', memberId: '3', sourceIds: ['1'], senderName: 'U3', text: '[授权令牌]' },
       { id: '2', memberId: '4', sourceIds: ['2'], senderName: 'U4', text: '[接口密钥]' },
-      { id: '3', memberId: '5', sourceIds: ['3'], senderName: 'U5', text: 'U5约U6明天见' },
-      { id: '4', memberId: '5', sourceIds: ['4'], senderName: 'U5', text: '[银行卡号] 123' },
+      { id: '3', memberId: '5', sourceIds: ['3', '4'], senderName: 'U5', sentAtMs: 240_000, text: '小林约U5明天见。密码：[密码]，明早见\n[银行卡号] 123' },
       { id: '5', memberId: '2', sourceIds: ['5'], senderName: 'U2', text: '示例标题\nhttps://example.invalid' },
       { id: '6', memberId: '1', sourceIds: ['6'], senderName: 'U1', text: '[银行卡号] [银行卡号]' },
     ])
   }
 
   test('a resumed conversation sends processed history while retaining the original answer locally', async () => {
-    answer = '示例甲 example@example.com 13800138000；U5约U6明天见'
+    answer = '示例甲 example@example.com 13800138000；password="Blue Bird 42!"'
     const first = await send('联系示例甲 example@example.com')
     expect(repository.getThread(threadId).turns[0].text).toBe(answer)
     await service.close()
@@ -123,26 +135,34 @@ describe('processed messages in actual model requests', () => {
     expect(repository.turnContext(repository.getThread(threadId).turns[1].id).checkpoint).toBeTruthy()
     expect(requests).toHaveLength(2)
     expect(requests[1].messages.filter(message => message.role === 'assistant')).toEqual([
-      { role: 'assistant', content: 'U2 [邮箱] [手机号]；U5约U6明天见' },
+      { role: 'assistant', content: '示例甲 [邮箱] [手机号]；password="[密码]"' },
     ])
-    expect(JSON.stringify(requests)).not.toMatch(/示例甲|example@example\.com|13800138000/)
+    expect(JSON.stringify(requests)).not.toMatch(/Blue Bird 42|example@example\.com|13800138000/)
     expect(repository.getThread(threadId).turns[0]).toMatchObject({ id: first.id, text: answer, prompt: '联系示例甲 example@example.com' })
   }, 20000)
 
   test('current questions and current and historical references use all corrected transforms on the wire', async () => {
     const originals = seedSources()
-    await send('Bearer testtoken1234567890；sk-abcdefghijklmnopqrstuv；小林约U5明天见；4111111111111111 123', ['1', '2', '3', '4', '5', '6'])
-    expect(userPayload(requests[0]).question).toBe('[授权令牌]；[接口密钥]；U5约U6明天见；[银行卡号] 123')
+    const first = await send('密码：Bearer testtoken1234567890；sk-abcdefghijklmnopqrstuv；小林约U5明天见；密码是Cedar!42；4111111111111111 123', ['1', '2', '3', '4', '5', '6'])
+    expect(userPayload(requests[0]).question).toBe('密码：[授权令牌]；[接口密钥]；小林约U5明天见；密码是[密码]；[银行卡号] 123')
     expectProcessedSources(userPayload(requests[0]).references)
     await send('继续检查引用')
     expectProcessedSources(userPayload(requests[1], 0).references)
-    expect(store.reader.prepare('SELECT text FROM messages ORDER BY id').all()).toEqual(originals.map(({ text }) => ({ text })))
-    expect(JSON.stringify(requests)).not.toMatch(/testtoken1234567890|abcdefghijklmnopqrstuv|4111111111111111|378282246310005|<appmsg>/)
+    expect(repository.turnContext(first.id).references.map(({ id, text, sentAtMs }) => ({ id, text, sentAtMs })))
+      .toEqual(originals.map(({ text }, index) => ({ id: String(index + 1), text, sentAtMs: index * 120_000 })))
+    expect(JSON.stringify(requests)).not.toMatch(/Cedar!42|testtoken1234567890|abcdefghijklmnopqrstuv|4111111111111111|378282246310005|<appmsg>/)
   }, 20000)
 
   test('洞察读取发送脱敏内容，保存的原文保持完整', async () => {
     const originals = seedSources()
-    answer = request => JSON.stringify(simpleInsightReply(userPayload(request)))
+    answer = request => {
+      const payload = userPayload(request)
+      if (payload.stage === 'reading') return JSON.stringify({
+        observations: [{ text: '小林留下联系方式 example@example.com，password="Blue Bird 42!"', sourceIds: ['3'] }],
+        openThreads: [], candidates: [],
+      })
+      return JSON.stringify(simpleInsightReply(payload))
+    }
     const prepared = await service.prepareAnalysis({ conversationId: '1', modelId: 'model' })
     const task = await service.confirmAnalysis({ token: prepared.token, requestId: 'insight-processing' })
     await service.idle()
@@ -150,10 +170,12 @@ describe('processed messages in actual model requests', () => {
     expect(requests).toHaveLength(2)
     const sent = userPayload(requests[0]).messages
     expect(sent.map((message: { text: string }) => message.text)).toEqual([
-      '[授权令牌]', '[接口密钥]', 'U5约U6明天见', '[银行卡号] 123', '示例标题\nhttps://example.invalid', '[银行卡号] [银行卡号]',
+      '[授权令牌]', '[接口密钥]', '小林约U5明天见。密码：[密码]，明早见', '[银行卡号] 123', '示例标题\nhttps://example.invalid', '[银行卡号] [银行卡号]',
     ])
-    expect(userPayload(requests[1]).stage).toBe('writing')
-    expect(JSON.stringify(requests)).not.toMatch(/testtoken1234567890|abcdefghijklmnopqrstuv|4111111111111111|378282246310005|<appmsg>|示例甲|example@example\.com|13800138000/)
+    expect(userPayload(requests[1])).toMatchObject({ stage: 'writing', observations: [
+      { text: '小林留下联系方式 [邮箱]，password="[密码]"', sourceIds: ['3'] },
+    ] })
+    expect(JSON.stringify(requests)).not.toMatch(/Blue Bird 42|Cedar!42|testtoken1234567890|abcdefghijklmnopqrstuv|4111111111111111|378282246310005|<appmsg>|example@example\.com|13800138000/)
     expect(store.reader.prepare('SELECT text FROM messages ORDER BY id').all()).toEqual(originals.map(({ text }) => ({ text })))
   }, 20000)
 })

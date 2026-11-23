@@ -707,6 +707,23 @@ function setup(messages: InsightSourceMessage[], run: InsightGenerationDeps['run
   return { input, deps, state }
 }
 
+test('an interrupted older insight rereads only the unfinished message when body anonymization changes', async () => {
+  const messages = [source('1', true, '已读内容'), source('2', false, '小陈说明天见。')]
+  const { input, deps, state } = setup(messages, async request => {
+    const payload = JSON.parse(request.prompt)
+    if (payload.stage === 'writing') return result(noConclusion)
+    expect(payload.messages).toEqual([messages[1]])
+    return result(noObservations)
+  })
+  const checkpoint = createInsightCheckpoint('7', model, defaultInsightPrompts, limits)
+  delete checkpoint.sourceTextVersion
+  checkpoint.coveredMessageIds = ['1']
+  checkpoint.cursor = { messageIndex: 1, textOffset: 3 }
+  checkpoint.pendingRead = { from: checkpoint.cursor, to: { messageIndex: 2, textOffset: 0 }, depth: 0, repairs: 0 }
+  await generateInsight({ ...input, checkpoint }, deps)
+  expect(state.checkpoint?.coveredMessageIds).toEqual(['1', '2'])
+})
+
 test('reading keeps independent candidates backed by the same message while skipping a repeated question', async () => {
   const { input, deps, state } = setup([source('1', true, '刚才我先道歉了，这次聚会也由我安排。')], async request => {
     const payload = JSON.parse(request.prompt)

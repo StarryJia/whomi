@@ -5,6 +5,8 @@ import { presetAccountId } from '../../shared/settings-contract'
 import { cherryProviderPresets, type CherryProviderPreset } from '../../vendor/cherry-providers'
 import { cherryProviderIcon } from '../../vendor/cherry-providers/icons'
 
+import { SettingHelp } from './setting-help'
+
 export const presetAccounts = new Map(cherryProviderPresets.map(preset => [presetAccountId(preset.id), preset]))
 
 export function ProviderAvatar({ name, image, avatarId, preset }: { name: string; image?: string; avatarId?: string; preset?: CherryProviderPreset }) {
@@ -41,14 +43,13 @@ export function PresetDetail({ preset, onConfigure, onBack }: {
   return <section className="ms-detail" aria-label="预置服务商详情"><div className="ms-detail-body">
     <button type="button" className="ms-mobile-back ms-text-button" onClick={onBack}><ArrowLeft size={14} />返回服务商</button>
     <div className="ms-detail-header">
-      <div className="ms-detail-title"><ProviderAvatar name={preset.name} preset={preset} /><h2>{preset.name}</h2></div>
+      <div className="ms-detail-title"><ProviderAvatar name={preset.name} preset={preset} /><h2>{preset.name}</h2>{preset.setupNote && <SettingHelp name={preset.name}>{preset.setupNote}</SettingHelp>}</div>
       {preset.protocol && <button type="button" className="ms-button ms-primary" onClick={onConfigure}>配置服务商</button>}
     </div>
     <dl className="ms-preset-connection">
       {(preset.baseUrl || preset.protocol) && <><dt>接口地址</dt><dd>{preset.baseUrl || '配置时填写'}</dd></>}
       {preset.protocol && <><dt>连接协议</dt><dd>{modelProtocolLabels[preset.protocol]}</dd></>}
     </dl>
-    {preset.setupNote && <p className="ms-hint">{preset.setupNote}</p>}
     <PresetLinks preset={preset} />
   </div></section>
 }

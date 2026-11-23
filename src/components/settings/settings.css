@@ -75,6 +75,14 @@
 }
 .settings-page button,.settings-page input,.settings-page select { font:inherit; }
 .settings-page button { cursor:pointer; }
+.setting-name { display:inline-flex; align-items:center; gap:4px; min-width:0; }
+.setting-help { display:inline-grid; place-items:center; flex:none; width:26px; height:26px; padding:0; background:transparent; color:var(--text-muted); border:0; border-radius:5px; cursor:help; vertical-align:middle; }
+.setting-help:hover, .setting-help:focus-visible { background:var(--hover); color:var(--text); }
+.setting-help:focus-visible { outline:2px solid var(--focus); outline-offset:1px; }
+.setting-help-content { z-index:110; max-width:min(320px, var(--radix-tooltip-content-available-width)); overflow-wrap:anywhere; }
+.setting-help-content dl, .setting-help-content dd { margin:0; }
+.setting-help-content dt { font-weight:600; }
+.setting-help-content dt:not(:first-child) { margin-top:8px; }
 .settings-page button:disabled { cursor:default; opacity:.5; }
 .settings-page input,.settings-page select { caret-color:var(--focus); }
 .settings-page * { scrollbar-color:#c4cbd4 transparent; scrollbar-width:thin; }

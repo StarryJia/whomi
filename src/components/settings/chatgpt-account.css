@@ -2,9 +2,10 @@
 .account-login-card > svg { width: 18px; height: 18px; flex: none; }
 .account-login-card strong { font-weight: 600; }
 .account-login-card p { margin: 5px 0 12px; overflow-wrap: anywhere; }
-.account-login-card button { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; border: 0; border-radius: 6px; padding: 7px 12px; color: white; background: #181818; font: inherit; }
+.account-login-card button:not(.setting-help) { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; border: 0; border-radius: 6px; padding: 7px 12px; color: white; background: #181818; font: inherit; }
 .account-login-card button:disabled { opacity: .55; }
 .account-login-card.is-connected { color: #245a36; background: #eff9f1; border-color: #bbd9c3; }
+.account-login-card .setting-name + .account-actions { margin-top: 8px; }
 .account-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 
 .account-login-card .account-alternative { color: inherit; background: transparent; padding-inline: 2px; text-decoration: underline; text-underline-offset: 3px; }

@@ -101,15 +101,20 @@ test('provider notes and model input limit persist without changing encrypted cr
 
 test('saved providers, per-feature choices and processing survive restart without exposing encrypted credentials', async () => {
   const { settings, store, temp, write } = await setup()
+  const initial = settings.get().processing
+  expect(initial).toMatchObject({ merge: true, mergeSeconds: 180 })
+  expect(initial.rules).toContain('password')
   const provider = await settings.saveProvider(providerInput, 'encrypted-key')
   const model = await settings.saveModel({ ...modelInput, providerId: provider.id })
   await settings.selectModel('analysis', model.id)
-  await settings.saveProcessing({ ...defaultProcessing, mergeSeconds: 12, denoise: true })
+  const savedProcessing = { ...initial, merge: false, mergeSeconds: 60, denoise: true, rules: ['email' as const] }
+  await settings.saveProcessing(savedProcessing)
   await settings.setDebug(true)
   store.close()
   const reopened = openStore(temp.path); cleanup.push(() => reopened.close())
   const fresh = createSettingsRepository(reopened, write); await fresh.initialize()
-  expect(fresh.get()).toMatchObject({ providers: [{ id: provider.id, hasCredential: true }], models: [{ id: model.id, providerId: provider.id }], selectedModels: { analysis: model.id }, processing: { mergeSeconds: 12, denoise: true }, debug: true })
+  expect(fresh.get()).toMatchObject({ providers: [{ id: provider.id, hasCredential: true }], models: [{ id: model.id, providerId: provider.id }], selectedModels: { analysis: model.id }, debug: true })
+  expect(fresh.get().processing).toEqual(savedProcessing)
   expect(JSON.stringify(fresh.get())).not.toContain('encrypted-key')
 })
 

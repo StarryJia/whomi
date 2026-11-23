@@ -19,6 +19,19 @@ test('同名消息缺少成员编号时保持独立', () => {
   expect(processor.messages([first, second]).map(item => item.sourceIds)).toEqual([['1'], ['2']])
 })
 
+test('a segment uses the first message time and ends on a different speaker or an unknown time', () => {
+  const processor = createMessageProcessor({ ...defaultProcessing, merge: true, mergeSeconds: 180 }, [])
+  const message = (id: string, sentAtMs: number | null, memberId = '7') =>
+    ({ id, memberId, senderName: '示例', kind: 'text', text: id, sentAtMs })
+  const result = processor.messages([
+    message('1', 0), message('2', 120_000), message('3', 180_000), message('4', 180_001),
+    message('5', 181_000, '8'), message('6', 182_000), message('7', null), message('8', 183_000),
+  ])
+  expect(result.map(({ sourceIds, sentAtMs }) => [sourceIds, sentAtMs])).toEqual([
+    [['1', '2', '3'], 0], [['4'], 180_001], [['5'], 181_000], [['6'], 182_000], [['7'], null], [['8'], 183_000],
+  ])
+})
+
 test('selected redactions protect question, history and profile text while preserving source identifiers', () => {
   const processor = createMessageProcessor(defaultProcessing, [])
   const text = '邮箱 person@example.com 手机 13800138000 密钥 sk-abcdefghijklmnopqrstuv Bearer testtoken1234567890'
@@ -54,8 +67,8 @@ test('redaction also protects sender names when nickname anonymization is off', 
 test.each([
   ['Bearer', 'Bearer testtoken1234567890', '[授权令牌]'],
   ['sk', 'sk-abcdefghijklmnopqrstuv', '[接口密钥]'],
-  ['接口密钥', '接口密钥 sk-abcdefghijklmnopqrstuv', 'U7 [接口密钥]'],
-  ['邮箱', '邮箱 person@example.com', 'U7 [邮箱]'],
+  ['接口密钥', '接口密钥 sk-abcdefghijklmnopqrstuv', '接口密钥 [接口密钥]'],
+  ['邮箱', '邮箱 person@example.com', '邮箱 [邮箱]'],
 ])('nickname %s cannot alter sensitive values or generated redaction labels', (displayName, input, expected) => {
   const processor = createMessageProcessor(defaultProcessing, [{ id: '7', displayName }])
   expect(processor.text(input)).toBe(expected)
@@ -64,9 +77,9 @@ test.each([
 test('anonymization and redaction switches remain independent for a credential-like nickname', () => {
   const members = [{ id: '7', displayName: 'Bearer' }]
   const input = 'Bearer testtoken1234567890'
-  expect(createMessageProcessor({ ...defaultProcessing, redact: false }, members).text(input)).toBe('U7 testtoken1234567890')
+  expect(createMessageProcessor({ ...defaultProcessing, redact: false }, members).text(input)).toBe(input)
   expect(createMessageProcessor({ ...defaultProcessing, anonymize: false }, members).text(input)).toBe('[授权令牌]')
-  expect(createMessageProcessor({ ...defaultProcessing, rules: [] }, members).text(input)).toBe('U7 testtoken1234567890')
+  expect(createMessageProcessor({ ...defaultProcessing, rules: [] }, members).text(input)).toBe(input)
 })
 
 test('a selected URL rule covers the whole address even when it contains a credential', () => {
@@ -75,13 +88,45 @@ test('a selected URL rule covers the whole address even when it contains a crede
   expect(createMessageProcessor({ ...defaultProcessing, rules: ['key'] }, []).text(input)).toBe('https://example.invalid/[接口密钥]/private-path')
 })
 
-test('anonymization never matches generated aliases and retains source identity', () => {
-  const processor = createMessageProcessor(defaultProcessing, [{ id: '1', displayName: '小林' }, { id: '2', displayName: 'U1' }])
-  const original = { id: '9', memberId: '1', senderName: '小林', text: '小林约U1明天见', kind: 'text' }
+test('the password rule only masks an explicitly assigned value in the same original message', () => {
+  const processor = createMessageProcessor({ ...defaultProcessing, merge: true, rules: ['password'] }, [])
+  const chat = { id: '1', memberId: '7', senderName: '小陈', kind: 'text', sentAtMs: 0, text: '密码：Cedar!42，明早见' }
+  const messages = [
+    chat, { ...chat, id: '2', text: 'password="Blue Bird 42!"' },
+    { ...chat, id: '3', text: '密码：' }, { ...chat, id: '4', text: 'Cedar!42' },
+    { ...chat, id: '5', text: '我忘了密码，订单号：Cedar42，验证码：123456' },
+  ]
+  expect(processor.messages(messages)[0].text).toBe([
+    '密码：[密码]，明早见', 'password="[密码]"', '密码：', 'Cedar!42', '我忘了密码，订单号：Cedar42，验证码：123456',
+  ].join('\n'))
+  expect(chat.text).toBe('密码：Cedar!42，明早见')
+  expect(createMessageProcessor({ ...defaultProcessing, rules: [] }, []).text(chat.text)).toBe(chat.text)
+  expect(createMessageProcessor({ ...defaultProcessing, redact: false }, []).text(chat.text)).toBe(chat.text)
+})
+
+test('only the sender is anonymized even when their nickname occurs in the message', () => {
+  const processor = createMessageProcessor(defaultProcessing, [{ id: '7', displayName: '小陈' }])
+  const original = { id: '9', memberId: '7', senderName: '小陈', text: '小陈说明天一起见陈洁', kind: 'text' }
   expect(processor.messages([original])).toEqual([
-    { ...original, senderName: 'U1', text: 'U1约U2明天见', sourceIds: ['9'] },
+    { ...original, senderName: 'U7', text: '小陈说明天一起见陈洁', sourceIds: ['9'] },
   ])
-  expect(original.text).toBe('小林约U1明天见')
+  expect(original.senderName).toBe('小陈')
+})
+
+test.each([
+  ['密码：“Blue Bird 42!”，明早见', '密码：“[密码]”，明早见'],
+  ['密码是： Cedar!42，明早见', '密码是： [密码]，明早见'],
+  ["password=Pine's47", 'password=[密码]'],
+  ['password=Blue"Bird42', 'password=[密码]'],
+  ['密码是否过期？密码是什么？', '密码是否过期？密码是什么？'],
+  ['密码是什么?password="Blue Bird 42!"', '密码是什么?password="[密码]"'],
+  ['密码：Bearer demo-token-value', '密码：[授权令牌]'],
+  ['密码：4111 1111 1111 1111', '密码：[银行卡号]'],
+  ['password="Bearer demo-token extra word"', 'password="[密码]"'],
+])('explicit passwords preserve question text and cover overlapping credential rules: %s', (input, expected) => {
+  const processor = createMessageProcessor(defaultProcessing, [])
+  expect(processor.text(input)).toBe(expected)
+  expect(processor.data({ quote: expected })).toEqual({ quote: expected })
 })
 
 test('processing model reports again preserves existing aliases and redaction labels', () => {
@@ -89,7 +134,7 @@ test('processing model reports again preserves existing aliases and redaction la
     { id: '1', displayName: '小林' }, { id: '2', displayName: 'U1' }, { id: '3', displayName: '邮箱' },
   ])
   expect(processor.data({ summary: 'U1约U2明天见，联系[邮箱]' })).toEqual({ summary: 'U1约U2明天见，联系[邮箱]' })
-  expect(processor.text('小林约U1明天见')).toBe('U1约U2明天见')
+  expect(processor.text('小林约U1明天见')).toBe('小林约U1明天见')
 })
 
 test('model output preserves every member alias even when display names are shared', () => {
@@ -97,15 +142,8 @@ test('model output preserves every member alias even when display names are shar
     { id: '1', displayName: '小林' }, { id: '2', displayName: '小林' }, { id: '3', displayName: 'U1' },
   ])
   expect(processor.messages([{ id: '9', memberId: '1', senderName: '小林', kind: 'text', text: '明天见' }])[0].senderName).toBe('U1')
-  expect(processor.modelText('U1约U3明天见，联系 person@example.com')).toBe('U1约U3明天见，联系 [邮箱]')
-})
-
-test('nickname matching prefers the longest literal name and preserves single-character prose', () => {
-  const processor = createMessageProcessor(defaultProcessing, [
-    { id: '1', displayName: '小林' }, { id: '2', displayName: '小林同学' },
-    { id: '3', displayName: 'A+B' }, { id: '4', displayName: '我' },
-  ])
-  expect(processor.text('我请小林同学、小林和A+B一起')).toBe('我请U2、U1和U3一起')
+  expect(processor.data({ senderName: 'U1', text: 'U1约U3明天见，联系 person@example.com' }))
+    .toEqual({ senderName: 'U1', text: 'U1约U3明天见，联系 [邮箱]' })
 })
 
 test.each([
@@ -122,10 +160,10 @@ test.each([
   expect(createMessageProcessor(defaultProcessing, []).text(input)).toBe(expected)
 })
 
-test('financial redaction preserves rule selection and still anonymizes text outside the card', () => {
+test('financial redaction preserves rule selection and text outside the card', () => {
   const input = '4111111111111111 123'
   const members = [{ id: '7', displayName: '123' }]
-  expect(createMessageProcessor({ ...defaultProcessing, rules: ['credit-card'] }, members).text(input)).toBe('[信用卡号] U7')
+  expect(createMessageProcessor({ ...defaultProcessing, rules: ['credit-card'] }, members).text(input)).toBe('[信用卡号] 123')
   expect(createMessageProcessor({ ...defaultProcessing, rules: [] }, []).text(input)).toBe(input)
 })
 

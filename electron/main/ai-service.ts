@@ -1,14 +1,14 @@
 import { defaultPrompts } from '../../src/shared/system-prompts'
-import type { AnalysisContext } from '../data/ai/repository'
+import type { AnalysisContext, TurnContext } from '../data/ai/repository'
 import { acceptedThinking, reasoningCapabilities } from '../agent/reasoning-capabilities'
 import type { ThinkingLevel } from '../../src/shared/thinking'
 import { createHash, randomUUID } from 'node:crypto'
 import type { AiEvent, AiMethods, AiModel, AiThread, AiTurn, AiUsage, AnalysisTask } from '../../src/shared/ai-contract'
 import { BoundaryError } from '../../src/shared/desktop-validation'
 import { resolveModelLimits } from '../../src/shared/model-limits'
-import { createMessageProcessor, type ProcessingMember, type ProcessingMessage } from './message-processing'
+import { createMessageProcessor, type ProcessingMember } from './message-processing'
 import type { ProcessingSettings } from '../../src/shared/settings-contract'
-import type { InsightReport, InsightSourceMessage } from '../../src/shared/conversation-insights'
+import type { InsightSourceMessage } from '../../src/shared/conversation-insights'
 import { generateInsight } from './insight-generation'
 import { defaultInsightPrompts, INSIGHT_PROMPT_VERSION, type InsightPrompts } from '../data/ai/insight-prompts'
 import { InsightBudgetError, type InsightCheckpoint } from './insight-checkpoint'
@@ -16,8 +16,6 @@ import { defaultInsightRunLimits } from './insight-policy'
 import { diagnosticErrorCode, type AppError } from './app-error-logs'
 import { aiOperation, runDiagnosedModel, type AiDiagnostics, type AiOperation, type ModelRetry } from './ai-operation-diagnostics'
 
-type SourceMessage = ProcessingMessage & { isSelf: boolean }
-type TurnContext = { systemPrompt?: string; turn: AiTurn; conversationId: string; model: AiModel; selfFingerprint: string; references: SourceMessage[]; history: { role: 'user' | 'assistant'; text: string; references?: SourceMessage[] }[]; profile: InsightReport | null; skill: { id: string; version: string; content: string } | null; checkpoint: string | null }
 export type RuntimeInput = { purpose?: 'insight'; thinkingLevel?: ThinkingLevel; key: string; model: AiModel; apiKey?: string; systemPrompt: string; prompt: string; history?: { role: 'user' | 'assistant'; text: string }[]; checkpoint?: string | null; outputTokenLimit?: number }
 export type RuntimeResult = { stopReason?: 'length'; text: string; usage: AiUsage; checkpoint: string }
 export type RuntimeRunner = { run(input: RuntimeInput, options: { signal: AbortSignal; onText: (text: string) => void }): Promise<RuntimeResult> }
@@ -192,6 +190,7 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
       const report = await generateInsight({ snapshot: initial.snapshot, conversationId: initial.task.conversationId, model: initial.model,
         prompts, limits: defaultInsightRunLimits, checkpoint, elapsedMs: running.elapsedMs, thinkingLevel: initial.task.thinkingLevel }, {
         signal, onText: () => {},
+        prepareNotes: processor?.data,
         onRetryPlanned: (shrink, error) => { pendingRetry = { stage: shrink ? 'shrink' : 'retry', code: diagnosticErrorCode(error) } },
         onUnknown: (stage, index) => operation.event('requestUnknown', { phase: stage, attempt: index }),
         read: async messageIds => {
@@ -265,7 +264,7 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
         const processor = processing && createMessageProcessor(processing.settings, processing.members)
         const signature = processing ? hash(processing.settings) : undefined
         const instruction = `${context.systemPrompt ?? dialogueSystem}\n相关画像：${JSON.stringify(processor ? processor.data(context.profile) : context.profile)}${context.skill ? `\n本轮技能：\n${context.skill.content}` : ''}`
-        const prompt = JSON.stringify({ question: processor ? processor.text(context.turn.prompt) : context.turn.prompt, references: processor ? processor.messages(context.references) : context.references })
+        const prompt = JSON.stringify({ question: processor ? processor.text(context.turn.prompt) : context.turn.prompt, references: processor ? processor.messages(context.references, context.referenceBreaks) : context.references })
         // 默认提示词继续使用升级前的断点目录，自定义提示词单独隔离。
         const keyParts = ['thread', context.turn.threadId, context.selfFingerprint, context.model.id, context.model.version, context.skill?.id, context.skill?.version, signature]
         if (context.systemPrompt && context.systemPrompt !== dialogueSystem) keyParts.push(context.systemPrompt)
@@ -274,8 +273,8 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
         const fixedSize = Buffer.byteLength(instruction + prompt, 'utf8')
         if (fixedSize > budget) throw new BoundaryError('CONTEXT_TOO_LARGE', '当前问题或引用超出模型容量，请减少引用或选择更大上下文的模型。')
         let history = context.history.map(item => {
-          const question = !processor ? item.text : item.role === 'assistant' ? processor.modelText(item.text) : processor.text(item.text)
-          return { role: item.role, text: item.references?.length ? JSON.stringify({ question, references: processor ? processor.messages(item.references) : item.references }) : question }
+          const question = processor ? processor.text(item.text) : item.text
+          return { role: item.role, text: item.references?.length ? JSON.stringify({ question, references: processor ? processor.messages(item.references, item.referenceBreaks) : item.references }) : question }
         })
         let checkpoint = context.checkpoint
         if (signature && checkpoint) {

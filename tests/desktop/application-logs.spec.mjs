@@ -67,7 +67,7 @@ test('Windows data storage and import use installation logs across data changes 
     await expect(page.getByRole('region', { name: '关于 Whomi', exact: true }).getByRole('button', { name: /日志/ })).toHaveCount(0)
     await button('数据存储').click()
     const storage = page.getByRole('region', { name: '数据存储', exact: true })
-    await expect(storage.getByRole('button', { name: /日志/ })).toHaveCount(1)
+    await expect(storage.getByRole('button', { name: /^打开.*日志/ })).toHaveCount(1)
     await expect(storage.getByRole('button', { name: '打开错误日志目录', exact: true })).toBeVisible()
   }
   const lastOpen = () => app.evaluate(() => globalThis.logOpens.at(-1))

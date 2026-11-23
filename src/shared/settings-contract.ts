@@ -4,10 +4,10 @@ import type { ModelProtocol } from './model-protocol'
 import type { CodexQuotaAction, CodexQuotaState } from './codex-quota'
 import type { PromptId, PromptValues } from './system-prompts'
 
-export const redactionRules = ['key', 'token', 'email', 'credit-card', 'ipv4', 'url', 'mobile', 'identity', 'bank-card', 'landline'] as const
+export const redactionRules = ['key', 'token', 'password', 'email', 'credit-card', 'ipv4', 'url', 'mobile', 'identity', 'bank-card', 'landline'] as const
 export type RedactionRule = typeof redactionRules[number]
 export type ProcessingSettings = { clean: boolean; merge: boolean; mergeSeconds: number; denoise: boolean; anonymize: boolean; redact: boolean; rules: RedactionRule[] }
-export const defaultProcessing: ProcessingSettings = { clean: true, merge: false, mergeSeconds: 60, denoise: false, anonymize: true, redact: true, rules: redactionRules.filter(rule => rule !== 'ipv4' && rule !== 'url') }
+export const defaultProcessing: ProcessingSettings = { clean: true, merge: true, mergeSeconds: 180, denoise: false, anonymize: true, redact: true, rules: redactionRules.filter(rule => rule !== 'ipv4' && rule !== 'url') }
 export type ProviderEndpoints = Partial<Record<ModelProtocol, string>>
 export type Provider = { planAccount?: string; id: string; name: string; baseUrl: string; protocol?: ModelProtocol; endpointUrls?: ProviderEndpoints; enabled: boolean; hasCredential: boolean; image?: string; avatarId?: string; notes?: string }
 export type ProviderInput = Omit<Provider, 'id' | 'hasCredential' | 'planAccount'> & { id?: string; presetId?: string; apiKey?: string | null }

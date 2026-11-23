@@ -1,3 +1,4 @@
+import { SettingHelp } from './setting-help'
 import { useEffect, useRef, useState } from 'react'
 import { CircleCheck, Info, LogIn } from 'lucide-react'
 import type { Provider, SettingsApi } from '../../shared/settings-contract'
@@ -138,11 +139,11 @@ export function ProviderAccount({ id, api, provider, refresh, onConnection }: {
       <Switch label="启用服务商" checked={connected && provider.enabled} disabled={!connected || working} onChange={() => void change('toggle')} /></div>
     <section className={'account-login-card' + (connected ? ' is-connected' : '')} aria-label={accountName + ' 账户'}>
       {connected ? <CircleCheck aria-hidden="true" /> : <Info aria-hidden="true" />}
-      <div><strong>{unverified ? '账户状态待确认' : connected ? '已连接 ' + accountName : needsPlanPermission ? 'ChatGPT 套餐权限' : isCodex ? '使用你的 ChatGPT 订阅登录' : '使用你的 ' + accountName + ' 账户登录'}</strong>
-        {!unverified && <p role="status">{connected ? status.email || (isCodex ? '已授权使用 ChatGPT 套餐。' : '账户已授权。')
+      <div><div className="setting-name"><strong>{unverified ? '账户状态待确认' : connected ? '已连接 ' + accountName : needsPlanPermission ? 'ChatGPT 套餐权限' : isCodex ? '使用你的 ChatGPT 订阅登录' : '使用你的 ' + accountName + ' 账户登录'}</strong>
+        {!unverified && !connected && !pending && !needsPlanPermission && <SettingHelp name={accountName + ' 登录'}>将在浏览器中完成授权。登录后，可使用{isCodex ? '你的 ChatGPT 套餐' : '账户中的模型'}回答问题和生成会话洞察。</SettingHelp>}</div>
+        {!unverified && (connected || pending || needsPlanPermission) && <p role="status">{connected ? status.email || (isCodex ? '已授权使用 ChatGPT 套餐。' : '账户已授权。')
           : pending ? deviceCode ? '请在 GitHub 验证页面输入设备码。' : '请在浏览器中完成授权。'
-          : needsPlanPermission ? '已登录 ' + (status.email || 'ChatGPT') + '，尚未授权使用套餐。'
-          : '将在浏览器中完成授权。登录后，可使用' + (isCodex ? '你的 ChatGPT 套餐' : '账户中的模型') + '回答问题和生成会话洞察。'}</p>}
+          : '已登录 ' + (status.email || 'ChatGPT') + '，尚未授权使用套餐。'}</p>}
         {deviceCode && <div className="account-device-code"><code>{deviceCode}</code>{trustedDeviceLink && <a href={deviceUrl} target="_blank" rel="noreferrer">打开 GitHub 验证页面</a>}</div>}
         {unverified ? <button type="button" disabled={working} onClick={() => void change('read')}>重试读取状态</button>
           : connected ? <div className="account-actions"><button type="button" disabled={working} onClick={() => setConfirmExit(true)}>退出登录</button>

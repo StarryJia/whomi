@@ -41,7 +41,6 @@
 .ms-service-status { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 20px; margin: 13px 0 22px; }
 .ms-enabled-label { margin: 0; color: var(--text-muted,#5c6674); font-size: 12px; line-height: 1.6; }
 .ms-service-status .ms-detection-status { margin: 0; line-height: 1.6; }
-.ms-data-note { margin: 0 0 23px; color: var(--text-muted,#5c6674); font-size: 12px; line-height: 1.7; }
 .ms-form { display: grid; gap: 19px; }
 .ms-connection { max-width: 740px; }
 .ms-connection h3,.ms-models h3 { margin: 0; font-size: 14px; font-weight: 650; }

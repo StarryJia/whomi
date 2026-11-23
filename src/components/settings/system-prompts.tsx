@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import * as Popover from '@radix-ui/react-popover'
-import { CircleAlert } from 'lucide-react'
+import { SettingHelp } from './setting-help'
 import type { SettingsApi } from '../../shared/settings-contract'
 import { defaultPrompts, maxPromptLength, promptCatalog, validatePrompt, type PromptId, type PromptValues } from '../../shared/system-prompts'
 import { errorText, LeaveDialog, Modal, type LeaveGuard } from './common'
@@ -13,7 +12,6 @@ export function SystemPrompts({ api, registerGuard, onBusy }: Props) {
   const [loadError, setLoadError] = useState('')
   const [attempt, setAttempt] = useState(0)
   const [active, setActive] = useState<PromptId | null>(null)
-  const [help, setHelp] = useState<PromptId | null>(null)
   useEffect(() => {
     let alive = true
     setLoadError('')
@@ -26,15 +24,11 @@ export function SystemPrompts({ api, registerGuard, onBusy }: Props) {
       {!values ? <div className="prompt-load">{loadError ? <><ExceptionNotice title="无法读取提示词" detail={loadError} /><button className="ms-button" onClick={() => setAttempt(value => value + 1)}>重新读取</button></> : <p role="status">正在读取提示词…</p>}</div> :
         <ul className="prompt-list">{promptCatalog.map(item => <li key={item.id} className={active === item.id ? 'is-editing' : undefined}>
           <div className="prompt-name"><span>{item.name}</span>
-            <Popover.Root open={help === item.id} onOpenChange={open => setHelp(open ? item.id : null)}>
-              <Popover.Trigger asChild><button className="prompt-help" aria-label={`${item.name}说明`}><CircleAlert size={18} aria-hidden="true" /></button></Popover.Trigger>
-              <Popover.Portal><Popover.Content className="prompt-popover" side="bottom" align="start" sideOffset={8} collisionPadding={16} aria-label={`${item.name}说明`} onOpenAutoFocus={event => event.preventDefault()}>
-                <dl><dt>作用</dt><dd>{item.purpose}</dd><dt>对应功能</dt><dd>{item.feature}</dd></dl>
-                <Popover.Arrow className="prompt-popover-arrow" />
-              </Popover.Content></Popover.Portal>
-            </Popover.Root>
+            <SettingHelp name={item.name}>
+              <dl><dt>作用</dt><dd>{item.purpose}</dd><dt>对应功能</dt><dd>{item.feature}</dd></dl>
+            </SettingHelp>
           </div>
-          <button className="prompt-edit" aria-label={`编辑${item.name}`} onClick={() => { setHelp(null); setActive(item.id) }}>编辑</button>
+          <button className="prompt-edit" aria-label={`编辑${item.name}`} onClick={() => setActive(item.id)}>编辑</button>
         </li>)}</ul>}
     </div>
     {active && values && <PromptEditor key={active} id={active} value={values[active]} api={api} registerGuard={registerGuard} onBusy={onBusy}

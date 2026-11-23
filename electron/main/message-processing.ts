@@ -37,42 +37,37 @@ function cleanCard(text: string) {
   return values.length ? [...new Set(values)].join('\n') : text
 }
 
+function* passwordValues(input: string): Generator<TextMatch> {
+  // 横向空白限制了字段的取值范围，聊天换行不会把下一句当作密码。
+  const field = /(?:密码|\bpassword)["']?[ \t]*(?:[=:：]|[是为](?![ \t]*(?:否|什么|啥|多少|不是|哪|几[位个]|怎么))[ \t]*[:：]?)[ \t]*/gi
+  const valueAtField = /"(?:\\[^\r\n]|[^"\\\r\n])+"|'(?:\\[^\r\n]|[^'\\\r\n])+'|“[^”\r\n]+”|‘[^’\r\n]+’|[^\s"'“”‘’,;，。；！？、][^\s,;，。；！？、]*/y
+  while (field.exec(input)) {
+    valueAtField.lastIndex = field.lastIndex
+    const match = valueAtField.exec(input)
+    if (!match) continue
+    field.lastIndex = valueAtField.lastIndex
+    const value = match[0]
+    const quoted = /^["'“‘]/.test(value)
+    const secret = quoted ? value.slice(1, -1) : value
+    // 摘要和引文可能再次经过发送处理，保留已经完整遮盖的值以便原文校验。
+    if (/^\[(?:密码|授权令牌|接口密钥|邮箱|身份证号|手机号|座机号|银行卡号|信用卡号|网址|网络地址)\]$/.test(secret)) continue
+    yield { index: match.index + (quoted ? 1 : 0), 0: secret }
+  }
+}
+
 export function createMessageProcessor(settings: ProcessingSettings, members: readonly ProcessingMember[]) {
-  const names = members.map(member => member.displayName).filter(name => name.length > 1)
   const nicknames = new Map(members.map(member => [member.displayName, `U${member.id}`]))
-  // 单字昵称易与正常用语重合；正文只替换多字昵称，消息头仍编号化。
-  function matcher(values: string[]) {
-    const pattern = values.sort((a, b) => b.length - a.length).map(value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')
-    return settings.anonymize && pattern ? new RegExp(pattern, 'g') : null
-  }
-  const generatedTokens = new Set([...members.map(member => `U${member.id}`), '[授权令牌]', '[接口密钥]', '[邮箱]', '[身份证号]', '[手机号]', '[座机号]', '[银行卡号]', '[信用卡号]', '[网址]', '[网络地址]'])
-  const nicknameMatcher = matcher([...names])
-  const modelMatcher = matcher([...names, ...generatedTokens])
+  const aliases = new Set(members.map(member => `U${member.id}`))
   const rules = new Set(settings.rules)
-  function anonymize(input: string, preserveGenerated: boolean): string {
-    const pattern = preserveGenerated ? modelMatcher : nicknameMatcher
-    return pattern ? input.replace(pattern, name => preserveGenerated && generatedTokens.has(name) ? name : nicknames.get(name)!) : input
-  }
-  function text(input: string, preserveGenerated = false): string {
-    if (!settings.redact) return anonymize(input, preserveGenerated)
-    type Part = { value: string; redacted?: boolean }
-    let parts: Part[] = [{ value: input }]
+  function text(input: string): string {
+    if (!settings.redact || !rules.size) return input
+    const spans: { start: number; end: number; label: string }[] = []
     function redact(pattern: RegExp | ((value: string) => Iterable<TextMatch>), replacement: string | ((value: string) => string | undefined)) {
-      parts = parts.flatMap(part => {
-        // 脱敏标记不再参与后续规则或昵称匹配。
-        if (part.redacted) return [part]
-        const result: Part[] = []
-        let start = 0
-        const matches = typeof pattern === 'function' ? pattern(part.value) : part.value.matchAll(pattern)
-        for (const match of matches) {
-          const value = typeof replacement === 'string' ? replacement : replacement(match[0])
-          if (value === undefined) continue
-          result.push({ value: part.value.slice(start, match.index) }, { value, redacted: true })
-          start = match.index + match[0].length
-        }
-        result.push({ value: part.value.slice(start) })
-        return result
-      })
+      const matches = typeof pattern === 'function' ? pattern(input) : input.matchAll(pattern)
+      for (const match of matches) {
+        const label = typeof replacement === 'string' ? replacement : replacement(match[0])
+        if (label !== undefined) spans.push({ start: match.index, end: match.index + match[0].length, label })
+      }
     }
     if (rules.has('url')) redact(/https?:\/\/[^\s<>"）]+/gi, '[网址]')
     if (rules.has('token')) redact(/\bBearer\s+[A-Za-z0-9._~+\/-]+=*/gi, '[授权令牌]')
@@ -83,44 +78,55 @@ export function createMessageProcessor(settings: ProcessingSettings, members: re
     if (rules.has('landline')) redact(/(?<!\d)0\d{2,3}[- ]\d{7,8}(?:[- ]\d{1,6})?(?!\d)/g, '[座机号]')
     if (rules.has('credit-card') || rules.has('bank-card')) redact(financialNumbers, rules.has('bank-card') ? '[银行卡号]' : '[信用卡号]')
     if (rules.has('ipv4')) redact(/(?<![\d.])(?:\d{1,3}\.){3}\d{1,3}(?![\d.])/g, match => match.split('.').every(part => Number(part) <= 255) ? '[网络地址]' : undefined)
-    return parts.map(part => part.redacted ? part.value : anonymize(part.value, preserveGenerated)).join('')
+    if (rules.has('password')) redact(passwordValues, '[密码]')
+    if (!spans.length) return input
+    // 先在原文上匹配，再合并交叠区间，防止短匹配遮掉较长凭据的识别前缀。
+    spans.sort((a, b) => a.start - b.start || b.end - a.end)
+    const parts: string[] = []
+    let end = 0
+    for (const span of spans) {
+      if (span.start >= end) parts.push(input.slice(end, span.start), span.label)
+      end = Math.max(end, span.end)
+    }
+    parts.push(input.slice(end))
+    return parts.join('')
   }
-  // 模型材料中的已有编号与替换标记必须在续聊及多轮归并中保持一致。
-  function modelText(input: string) { return text(input, true) }
   function data<T>(input: T, key = ''): T {
-    if (['id', 'sourceIds', 'evidenceMessageIds', 'referenceIds', 'messageId', 'memberId', 'modelId'].includes(key)) return input
-    if (typeof input === 'string') return (key === 'senderName' && settings.anonymize ? generatedTokens.has(input) ? input : nicknames.get(input) ?? '成员' : modelText(input)) as T
+    if (key === 'id' || key === 'revision' || key.endsWith('Id') || key.endsWith('Ids')) return input
+    if (typeof input === 'string') {
+      if (key === 'senderName' && settings.anonymize) return (aliases.has(input) ? input : nicknames.get(input) ?? '成员') as T
+      return text(input) as T
+    }
     if (Array.isArray(input)) return input.map(value => data(value, key)) as T
     if (input && typeof input === 'object') return Object.fromEntries(Object.entries(input).map(([name, value]) => [name, data(value, name)])) as T
     return input
   }
-  function prepare<T extends ProcessingMessage>(input: readonly T[]) {
+  function processMessages<T extends ProcessingMessage>(input: readonly T[], merge: boolean, breaks?: ReadonlySet<string>) {
     const result: (T & { sourceIds: string[] })[] = []
+    let lastTime: number | null | undefined
     for (const original of input) {
-      if (settings.denoise && (!original.text.trim() || (original.kind === 'system' && /^\[(系统消息|系统占位|空消息)\]$/.test(original.text.trim())))) continue
-      const item = { ...original, sourceIds: original.sourceIds ?? [original.id], text: text(settings.clean ? cleanCard(original.text) : original.text),
+      if (settings.denoise && (!original.text.trim() || (original.kind === 'system' && /^\[(系统消息|系统占位|空消息)\]$/.test(original.text.trim())))) {
+        lastTime = null
+        continue
+      }
+      const item = { ...original, sourceIds: [...(original.sourceIds ?? [original.id])], text: text(settings.clean ? cleanCard(original.text) : original.text),
         senderName: settings.anonymize ? original.memberId ? `U${original.memberId}` : nicknames.get(original.senderName) ?? '成员' : text(original.senderName) }
-      result.push(item)
-    }
-    return result
-  }
-  function merge<T extends ProcessingMessage & { sourceIds: string[] }>(input: readonly T[]): T[] {
-    if (!settings.merge) return [...input]
-    const result: T[] = []
-    for (const item of input) {
       const previous = result.at(-1)
-      if (previous && item.memberId && previous.memberId === item.memberId && previous.isSelf === item.isSelf &&
+      if (merge && !breaks?.has(item.id) && previous && item.memberId && previous.memberId === item.memberId && previous.isSelf === item.isSelf &&
         item.kind === 'text' && previous.kind === 'text' && item.sentAtMs != null && previous.sentAtMs != null &&
-        item.sentAtMs >= previous.sentAtMs && item.sentAtMs - previous.sentAtMs <= settings.mergeSeconds * 1000) {
+        lastTime != null && item.sentAtMs >= lastTime && item.sentAtMs - previous.sentAtMs <= settings.mergeSeconds * 1000) {
         previous.text += '\n' + item.text
         previous.sourceIds.push(...item.sourceIds)
-        previous.sentAtMs = item.sentAtMs
       } else {
-        result.push({ ...item, sourceIds: [...item.sourceIds] })
+        result.push(item)
       }
+      lastTime = item.sentAtMs
     }
     return result
   }
-  function messages<T extends ProcessingMessage>(input: readonly T[]) { return merge(prepare(input)) }
-  return { text, modelText, data, messages, prepare }
+  function prepare<T extends ProcessingMessage>(input: readonly T[]) { return processMessages(input, false) }
+  function messages<T extends ProcessingMessage>(input: readonly T[], referenceBreaks?: readonly string[]) {
+    return processMessages(input, settings.merge, referenceBreaks?.length ? new Set(referenceBreaks) : undefined)
+  }
+  return { text, data, messages, prepare }
 }

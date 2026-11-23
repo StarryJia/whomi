@@ -29,8 +29,9 @@
 .codex-local-usage { border-block: 1px solid var(--line); }
 .codex-local-usage summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 4px 16px 0; cursor: pointer; list-style: none; font-size: 14px; font-weight: 600; }
 .codex-local-usage summary::-webkit-details-marker { display: none; }
-.codex-local-usage summary svg { flex: none; transition: transform 160ms ease-out; }
-.codex-local-usage[open] summary svg { transform: rotate(90deg); }
+.codex-local-usage summary > svg { flex: none; transition: transform 160ms ease-out; }
+.codex-local-usage[open] summary > svg { transform: rotate(90deg); }
+.codex-local-heading { justify-content: flex-end; }
 .codex-local-content { padding-bottom: 16px; }
 .codex-local-content p { color: var(--text-muted); line-height: 1.6; margin: 4px 0; }
 .codex-local-content .ms-error { color: var(--danger, #b42318); }
@@ -47,7 +48,7 @@
   .codex-quota-header { padding-block: 8px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .codex-quota-track > span, .codex-local-usage summary svg { transition: none; }
+  .codex-quota-track > span, .codex-local-usage summary > svg { transition: none; }
 }
 @media (forced-colors: active) {
   .codex-quota-track { border: 1px solid CanvasText; }

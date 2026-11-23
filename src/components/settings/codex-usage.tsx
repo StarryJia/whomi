@@ -3,6 +3,7 @@ import { ArrowUpRight, ChevronRight, RefreshCw } from 'lucide-react'
 import type { AccountUsage, SettingsApi } from '../../shared/settings-contract'
 import type { CodexQuotaAction, CodexQuotaState } from '../../shared/codex-quota'
 import { chatgptUsageUrl } from '../../shared/chatgpt-plan'
+import { SettingHelp } from './setting-help'
 import { errorText } from './common'
 import { ExceptionNotice } from '../ui/exception-notices'
 import './codex-usage.css'
@@ -30,9 +31,9 @@ function LocalUsage({ api }: { api: UsageApi }) {
   }, [api, open, attempt])
   const format = (value: number | null) => value === null ? '未记录' : value.toLocaleString('zh-CN')
   return <details className="codex-local-usage" onToggle={event => setOpen(event.currentTarget.open)}>
-    <summary>本机使用记录<ChevronRight size={16} aria-hidden="true" /></summary>
+    <summary><span className="setting-name"><span>本机使用记录</span><SettingHelp name="本机使用记录">当前账号在 Whomi 中的对话与会话洞察用量。</SettingHelp></span><ChevronRight size={16} aria-hidden="true" /></summary>
     {open && <div className="codex-local-content">
-      <div className="codex-local-heading"><p>当前账号在 Whomi 中的对话与会话洞察用量</p><button type="button" className="ms-text-button" disabled={loading} onClick={() => setAttempt(value => value + 1)}>{error ? '重读本机用量' : '刷新本机用量'}</button></div>
+      <div className="codex-local-heading"><button type="button" className="ms-text-button" disabled={loading} onClick={() => setAttempt(value => value + 1)}>{error ? '重读本机用量' : '刷新本机用量'}</button></div>
       {usage && (usage.requests > 0 ? <><dl><div><dt>输入词元</dt><dd>{format(usage.inputTokens)}</dd></div><div><dt>输出词元</dt><dd>{format(usage.outputTokens)}</dd></div></dl><p>已记录 {usage.requests.toLocaleString('zh-CN')} 次请求{usage.partial ? '，部分请求未返回完整用量。' : '。'}</p></> : <p>暂无本机请求记录。</p>)}
       {loading && !usage && <p role="status">正在读取本机用量…</p>}
       {error && <ExceptionNotice title="无法读取本机用量" detail={error} className="ms-error" />}
@@ -80,7 +81,7 @@ export function CodexUsage({ api, accountId }: { api: UsageApi; accountId: strin
   return <div className="codex-usage">
     <section ref={region} className="codex-quota" aria-label="剩余额度">
       <span className="codex-announcement" role="status">{announcement}</span>
-      <header className="codex-quota-header"><h3>剩余额度</h3><div className="codex-quota-actions">
+      <header className="codex-quota-header"><div className="setting-name"><h3>剩余额度</h3><SettingHelp name="剩余额度">连接本机 Codex 登录文件，查看该账号的剩余额度。</SettingHelp></div><div className="codex-quota-actions">
         {ready && <button data-quota-primary className="ms-text-button codex-refresh" type="button" aria-label={busy ? '正在刷新' : error ? '重试读取额度' : '刷新额度'} disabled={busy !== null} onClick={() => void run('read')}><RefreshCw size={15} aria-hidden="true" />{busy ? '刷新中' : error ? '重试' : '刷新'}</button>}
         {ready && <time dateTime={new Date(quota.updatedAt).toISOString()}>更新于 {date(quota.updatedAt)}</time>}
       </div></header>
@@ -97,7 +98,7 @@ export function CodexUsage({ api, accountId }: { api: UsageApi; accountId: strin
         </div>
       </> : <div className="codex-quota-empty">
         {busy ? <p role="status">{busy === 'connect' ? '正在连接本机 Codex…' : busy === 'disconnect' ? '正在断开…' : '正在读取额度…'}</p>
-          : <><p>{quota.state === 'unavailable' ? unavailableText[quota.reason] : '连接本机 Codex 登录文件，查看该账号的剩余额度。'}</p><div className="codex-empty-actions"><button data-quota-primary className="ms-button" type="button" onClick={() => void run('connect')}>{quota.state === 'unavailable' ? '重新连接本机 Codex' : '连接本机 Codex 用量'}</button>{(quota.state === 'unavailable' || error) && <button className="ms-text-button" type="button" onClick={() => void run('disconnect')}>断开</button>}</div></>}
+          : <>{quota.state === 'unavailable' && <p>{unavailableText[quota.reason]}</p>}<div className="codex-empty-actions"><button data-quota-primary className="ms-button" type="button" onClick={() => void run('connect')}>{quota.state === 'unavailable' ? '重新连接本机 Codex' : '连接本机 Codex 用量'}</button>{(quota.state === 'unavailable' || error) && <button className="ms-text-button" type="button" onClick={() => void run('disconnect')}>断开</button>}</div></>}
         {busy === 'connect' && <button data-quota-primary className="ms-text-button" type="button" onClick={() => void run('disconnect')}>取消连接</button>}
       </div>}
       {error && <ExceptionNotice title="额度操作失败" detail={error + (ready ? ' 当前显示上次结果。' : '')} className="ms-error codex-quota-error" />}
