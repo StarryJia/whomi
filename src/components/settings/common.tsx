@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react'
 import { X } from 'lucide-react'
 import { ExceptionNotice, useExceptionNoticeLayer } from '../ui/exception-notices'
+import { SettingHelp } from './setting-help'
 
 export type LeaveGuard = (action: () => void) => void
 export type RegisterGuard = (guard: LeaveGuard | null) => void
@@ -13,7 +14,7 @@ export function isModelBusy(error: unknown) {
   return !!error && typeof error === 'object' && 'code' in error && error.code === 'MODEL_BUSY'
 }
 
-export function Modal({ title, children, onClose, busy = false, className = '' }: { title: string; children: ReactNode; onClose: () => void; busy?: boolean; className?: string }) {
+export function Modal({ title, help, children, onClose, busy = false, className = '' }: { title: string; help?: string; children: ReactNode; onClose: () => void; busy?: boolean; className?: string }) {
   const dialog = useRef<HTMLDialogElement>(null)
   const titleId = useId()
   useExceptionNoticeLayer(dialog)
@@ -37,7 +38,7 @@ export function Modal({ title, children, onClose, busy = false, className = '' }
     if (event.shiftKey && (document.activeElement === first || !controls.includes(document.activeElement as HTMLElement))) { event.preventDefault(); last?.focus() }
     else if (!event.shiftKey && (document.activeElement === last || !controls.includes(document.activeElement as HTMLElement))) { event.preventDefault(); first.focus() }
   }}>
-    <header className="ms-modal-header"><h2 id={titleId} tabIndex={-1}>{title}</h2><button type="button" className="ms-icon" aria-label={`关闭${title}`} disabled={busy} onClick={onClose}><X size={19} aria-hidden="true" /></button></header>
+    <header className="ms-modal-header"><div className="setting-name"><h2 id={titleId} tabIndex={-1}>{title}</h2>{help && <SettingHelp name={title}>{help}</SettingHelp>}</div><button type="button" className="ms-icon" aria-label={`关闭${title}`} disabled={busy} onClick={onClose}><X size={19} aria-hidden="true" /></button></header>
     {children}
   </dialog>
 }

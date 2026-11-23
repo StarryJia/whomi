@@ -89,7 +89,7 @@ test('settings persist real models, process outbound chat, preserve drafts and m
     INSERT INTO source_conversations(id,conversation_id,platform,namespace) VALUES(1,1,'example','settings');
     INSERT INTO memberships(id,conversation_id,source_conversation_id,source_key,display_name) VALUES(1,1,1,'me','示例甲');
     INSERT INTO self_confirmations(conversation_id,member_id,status,source) VALUES(1,1,'confirmed','user');
-    INSERT INTO messages(id,conversation_id,member_id,sender_kind,sender_name,kind,text,ordinal) VALUES(1,1,1,'member','示例甲','text','示例甲的电话 13800138000，邮箱 example@example.com',0);\`);
+    INSERT INTO messages(id,conversation_id,member_id,sender_kind,sender_name,kind,text,ordinal) VALUES(1,1,1,'member','示例甲','text','示例甲的电话 13800138000，邮箱 example@example.com，密码：Cedar!42，明早见',0);\`);
     return true;
   }`)
   let app
@@ -149,7 +149,9 @@ test('settings persist real models, process outbound chat, preserve drafts and m
     await page.evaluate(() => { location.hash = 'main-content' })
     await page.getByRole('button', { name: '复制诊断信息', exact: true }).click()
     await expect(page.getByText('已复制。', { exact: true })).toBeVisible()
-    const diagnosticText = await app.evaluate(({ clipboard }) => clipboard.readText())
+    const readDiagnostics = () => app.evaluate(({ clipboard }) => clipboard.readText())
+    await expect.poll(readDiagnostics).toContain('"platform"')
+    const diagnosticText = await readDiagnostics()
     expect(JSON.parse(diagnosticText)).toMatchObject({ version: JSON.parse(await readFile('package.json', 'utf8')).version, platform: process.platform })
     expect(diagnosticText).not.toMatch(/test-only-secret|13800138000|example@example\.com/)
     await page.screenshot({ path: join(evidence, '08-about-diagnostics.png') })
@@ -176,11 +178,21 @@ test('settings persist real models, process outbound chat, preserve drafts and m
     await page.getByRole('button', { name: '选择消息', exact: true }).click()
     await page.getByRole('option', { name: /示例甲：示例甲的电话/ }).click()
     await page.getByRole('button', { name: 'AI 对话', exact: true }).click()
-    await draft.fill('示例甲 example@example.com 13800138000')
+    await draft.fill('问示例甲，password="Blue Bird 42!"')
     await page.getByRole('button', { name: '发送给 AI', exact: true }).click()
     await expect(page.getByText('合成验收回答', { exact: true })).toBeVisible({ timeout: 30000 })
-    expect(JSON.stringify(requests.at(-1))).not.toMatch(/示例甲|13800138000|example@example\.com/)
-    expect(JSON.stringify(requests.at(-1))).toContain('U1')
+    function userMaterials(request) {
+      return request.messages.filter(message => message.role === 'user').map(({ content }) =>
+        JSON.parse(typeof content === 'string' ? content : content.map(part => part.text).join('')))
+    }
+    const first = userMaterials(requests.at(-1))
+    expect(first).toHaveLength(1)
+    expect(first[0]).toMatchObject({
+      question: '问示例甲，password="[密码]"',
+      references: [{ id: '1', senderName: 'U1', text: '示例甲的电话 [手机号]，邮箱 [邮箱]，密码：[密码]，明早见' }],
+    })
+    expect(JSON.stringify(requests.at(-1))).not.toMatch(/13800138000|example@example\.com|Cedar!42|Blue Bird 42!/)
+    await writeFile(test.info().outputPath('first-request.json'), JSON.stringify(requests.at(-1), null, 2))
     expect((await page.evaluate(() => window.whomi.settings.get())).selectedModels).toEqual({ conversation: chatId, analysis: analysisId })
     await page.getByRole('button', { name: '设置', exact: true }).click()
     await page.getByRole('button', { name: '数据存储', exact: true }).click()
@@ -220,14 +232,16 @@ test('settings persist real models, process outbound chat, preserve drafts and m
     expect(restored.processing.denoise).toBe(true)
     await page.getByRole('button', { name: '展开会话列表' }).click()
     await page.getByRole('button', { name: '设置验收 · 虚构会话', exact: true }).click()
-    await expect(page.locator('.message-text')).toContainText('13800138000')
+    await expect(page.locator('.message-text')).toContainText('示例甲的电话 13800138000，邮箱 example@example.com，密码：Cedar!42，明早见')
     await page.getByRole('button', { name: 'AI 对话', exact: true }).click()
     await expect(page.getByRole('combobox', { name: '对话模型' })).toContainText('synthetic-chat')
     await expect(page.getByText('合成验收回答', { exact: true })).toBeVisible()
     await chatEditor(page).fill('迁移后继续')
     await page.getByRole('button', { name: '发送给 AI', exact: true }).click()
     await expect(page.getByText('合成验收回答', { exact: true })).toHaveCount(2, { timeout: 30000 })
-    expect(JSON.stringify(requests.at(-1))).not.toMatch(/示例甲|13800138000|example@example\.com/)
+    expect(userMaterials(requests.at(-1))).toEqual([...first, { question: '迁移后继续', references: [] }])
+    expect(JSON.stringify(requests.at(-1))).not.toMatch(/13800138000|example@example\.com|Cedar!42|Blue Bird 42!/)
+    await writeFile(test.info().outputPath('follow-up-request.json'), JSON.stringify(requests.at(-1), null, 2))
     await page.getByRole('button', { name: '设置', exact: true }).click()
     await page.getByRole('switch', { name: '启用服务商', exact: true }).click()
     await expect.poll(() => page.evaluate(async () => (await window.whomi.settings.get()).providers[0].enabled)).toBe(false)

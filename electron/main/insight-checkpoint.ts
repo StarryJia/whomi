@@ -61,6 +61,7 @@ export type InsightAttempt = {
 }
 export type InsightCheckpoint = {
   version: 1
+  sourceTextVersion?: 2
   taskId: string
   modelId: string
   modelVersion: number
@@ -92,7 +93,7 @@ export function createInsightCheckpoint(
     throw new BoundaryError('INVALID_INSIGHT_LIMITS', '请检查洞察预算后重新生成。')
   }
   return {
-    version: 1, taskId, modelId: model.id, modelVersion: model.version, prompts, limits, stage: 'reading',
+    version: 1, sourceTextVersion: 2, taskId, modelId: model.id, modelVersion: model.version, prompts, limits, stage: 'reading',
     cursor: startingInsightCursor, pendingRead: null, readLayouts: [], coveredMessageIds: [], observations: [],
     openThreads: [], navigation: null, checks: [], callsReserved: 0, elapsedMs: 0, attempts: [], writingRepairs: 0, report: null,
   }

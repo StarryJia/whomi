@@ -22,7 +22,8 @@ import { captureInsightSources, previewInsightScope, readCurrentInsightSources, 
 export type AiSourceMessage = { id: string; senderName: string; text: string; isSelf: boolean; kind: string; sentAtMs: number | null; memberId: string | null }
 export type AnalysisContext = { systemPrompts?: PromptValues; task: AnalysisTask; model: AiModel; checkpoint: string | null; snapshot: InsightSnapshot }
 export type RegisteredSkill = AiSkill & { content: string; enabled?: boolean }
-export type TurnContext = { systemPrompt?: string; turn: AiTurn; threadId: string; conversationId: string; model: AiModel; selfFingerprint: string; references: AiSourceMessage[]; history: { role: 'user' | 'assistant'; text: string; references?: AiSourceMessage[] }[]; profile: InsightReport | null; skill: RegisteredSkill | null; checkpoint: string | null }
+type TurnReferences = { references: AiSourceMessage[]; referenceBreaks?: string[] }
+export type TurnContext = TurnReferences & { systemPrompt?: string; turn: AiTurn; threadId: string; conversationId: string; model: AiModel; selfFingerprint: string; history: ({ role: 'user' | 'assistant'; text: string } & Partial<TurnReferences>)[]; profile: InsightReport | null; skill: RegisteredSkill | null; checkpoint: string | null }
 export type AnalysisPatch = { state?: AiState; error?: string }
 export type TurnPatch = AnalysisPatch & { text?: string; usage?: AiUsage; checkpoint?: string | null }
 export type NewTurn = { thinkingLevel?: ThinkingLevel; threadId: string; requestId: string; prompt: string; referenceIds: string[]; modelId: string; skillId?: string }
@@ -182,16 +183,26 @@ export function createAiRepository(store: Store, write: WriterQueue) {
     if (!row) fail('INVALID_THREAD', '请重新打开对话。')
     return String(row.conversation_id)
   }
-  function sources(conversationId: string, messageIds: string[]) {
+  function sources(conversationId: string, messageIds: string[]): TurnReferences {
     if (!Array.isArray(messageIds) || messageIds.length > 10000 || messageIds.some(message => !localId(message)) || new Set(messageIds).size !== messageIds.length) fail('INVALID_REFERENCE')
-    const result = new Map<string, AiSourceMessage>()
-    const fetch = reader.prepare(`SELECT x.id,x.sender_name,x.text,x.kind,x.sent_at_ms,x.member_id,coalesce((SELECT ${confirmedSelfSql} FROM memberships m WHERE m.id=x.member_id AND m.conversation_id=x.conversation_id),0) AS is_self FROM messages x WHERE x.conversation_id=? AND x.id=?`)
+    const references: AiSourceMessage[] = [], referenceBreaks: string[] = []
+    const fetch = reader.prepare(`SELECT x.id,x.sender_name,x.text,x.kind,x.sent_at_ms,x.member_id,
+      coalesce((SELECT ${confirmedSelfSql} FROM memberships m WHERE m.id=x.member_id AND m.conversation_id=x.conversation_id),0) AS is_self,
+      CASE WHEN x.sent_at_ms IS NOT NULL THEN coalesce(
+        (SELECT p.id FROM messages p WHERE p.conversation_id=x.conversation_id AND p.time_bucket=0
+          AND p.sort_time=x.sort_time AND p.id<x.id ORDER BY p.id DESC LIMIT 1),
+        (SELECT p.id FROM messages p WHERE p.conversation_id=x.conversation_id AND p.time_bucket=0
+          AND p.sort_time<x.sort_time ORDER BY p.sort_time DESC,p.id DESC LIMIT 1)
+      ) END AS preceding_id
+      FROM messages x WHERE x.conversation_id=? AND x.id=?`)
     for (const messageId of messageIds) {
-      const row = fetch.get(id(conversationId), id(messageId)) as { id: bigint; sender_name: string; text: string; kind: string; sent_at_ms: bigint | null; member_id: bigint | null; is_self: bigint } | undefined
+      const row = fetch.get(id(conversationId), id(messageId)) as { id: bigint; sender_name: string; text: string; kind: string; sent_at_ms: bigint | null; member_id: bigint | null; is_self: bigint; preceding_id: bigint | null } | undefined
       if (!row) fail('INVALID_REFERENCE', '请选择当前会话中的消息。')
-      result.set(messageId, { id: String(row.id), senderName: row.sender_name, text: row.text, kind: row.kind, isSelf: row.is_self === 1n, sentAtMs: row.sent_at_ms === null ? null : Number(row.sent_at_ms), memberId: row.member_id === null ? null : String(row.member_id) })
+      // 用户可以跳选或逆序引用，只有在原聊天中相邻的引用才能合并。
+      if (references.length && references.at(-1)!.id !== row.preceding_id?.toString()) referenceBreaks.push(messageId)
+      references.push({ id: String(row.id), senderName: row.sender_name, text: row.text, kind: row.kind, isSelf: row.is_self === 1n, sentAtMs: row.sent_at_ms === null ? null : Number(row.sent_at_ms), memberId: row.member_id === null ? null : String(row.member_id) })
     }
-    return messageIds.map(messageId => result.get(messageId)!)
+    return { references, referenceBreaks }
   }
   function aggregate(kind: 'analysis' | 'turn', ownerId: string): AnalysisUsage {
     const records = reader.prepare('SELECT data FROM ai_request_usage WHERE owner_kind=? AND owner_id=? ORDER BY request_id').all(kind, id(ownerId)) as { data: string }[]
@@ -587,13 +598,13 @@ export function createAiRepository(store: Store, write: WriterQueue) {
       const previous = reader.prepare("SELECT * FROM ai_turns WHERE thread_id=? AND id<? AND state='completed' AND self_fingerprint=? ORDER BY id").all(row.thread_id, row.id, self.fingerprint) as TurnRow[]
       const history: TurnContext['history'] = []
       for (const turn of previous) {
-        const references = sources(conversationId, parse<string[]>(turn.reference_ids))
-        history.push({ role: 'user', text: turn.prompt, ...(references.length ? { references } : {}) }, { role: 'assistant', text: turn.text })
+        const material = sources(conversationId, parse<string[]>(turn.reference_ids))
+        history.push({ role: 'user', text: turn.prompt, ...(material.references.length ? material : {}) }, { role: 'assistant', text: turn.text })
       }
       const latest = previous.at(-1), skill = row.skill ? parse<RegisteredSkill>(row.skill) : null
       const sameCheckpointContext = latest?.model_id === row.model_id && latest?.model_version === row.model_version && latest?.skill === row.skill && (latest?.system_prompt ?? defaultPrompts.dialogue) === (row.system_prompt ?? defaultPrompts.dialogue)
       const profile = repository.listAnalyses(conversationId).find(task => task.state === 'completed' && task.valid && task.report)?.report ?? null
-      return { systemPrompt: row.system_prompt ?? defaultPrompts.dialogue, turn: turnView(row), threadId: String(row.thread_id), conversationId, model: modelSecret(row.model_id, Number(row.model_version)).model, selfFingerprint: self.fingerprint, references: sources(conversationId, parse<string[]>(row.reference_ids)), history, profile, skill, checkpoint: sameCheckpointContext ? latest!.checkpoint : null }
+      return { systemPrompt: row.system_prompt ?? defaultPrompts.dialogue, turn: turnView(row), threadId: String(row.thread_id), conversationId, model: modelSecret(row.model_id, Number(row.model_version)).model, selfFingerprint: self.fingerprint, ...sources(conversationId, parse<string[]>(row.reference_ids)), history, profile, skill, checkpoint: sameCheckpointContext ? latest!.checkpoint : null }
     },
     async saveTurn(turnId: string, patch: TurnPatch): Promise<AiTurn> {
       patchState(patch, true)

@@ -6,6 +6,7 @@ import type { Provider, ProviderEndpoints, ProviderInput } from '../../shared/se
 import { defaultModelProtocol, isModelProtocol, isValidModelBaseUrl, modelProtocolLabels, modelProtocols, modelRequestPreview, type ModelProtocol } from '../../shared/model-protocol'
 import { cherryProviderPresets, type CherryProviderPreset } from '../../vendor/cherry-providers'
 import { cherryProviderIcon } from '../../vendor/cherry-providers/icons'
+import { SettingHelp } from './setting-help'
 import { changePresetProtocol } from './provider-presets'
 import './provider-form.css'
 
@@ -62,12 +63,12 @@ function CustomEndpoints({ draft, onChange, errors }: { draft: ProviderInput; on
       <div className="custom-endpoint-label"><label htmlFor={id}>{name}</label>
         {configured.length > 1 && value && (current === type ? <span>默认</span> : <button type="button" className="ms-text-button" aria-label={`将 ${name} 设为默认`} onClick={() => onChange({ ...draft, protocol: type, baseUrl: value, endpointUrls: urls })}>设为默认</button>)}</div>
       <input type="url" id={id} value={value} placeholder="Base URL：https://example.com" onChange={event => updateEndpoint(type, event.target.value)}
-        aria-invalid={!!error} aria-describedby={id + '-help'} />
-      <p id={id + '-help'} className={error ? 'ms-error' : 'ms-hint'} role={error ? 'alert' : undefined}>{error || preview || '填写接口根地址后会显示实际请求路径'}</p>
+        aria-invalid={!!error} aria-describedby={error || preview ? id + '-help' : undefined} />
+      {(error || preview) && <p id={id + '-help'} className={error ? 'ms-error' : 'ms-hint'} role={error ? 'alert' : undefined}>{error || preview}</p>}
     </div>
   }
   return <section aria-label="端点设置" className="custom-endpoints">
-    <h3>端点设置</h3>{field('openai-completions')}{field('anthropic-messages')}
+    <div className="setting-name"><h3>端点设置</h3><SettingHelp name="端点设置">填写接口根地址后可查看实际请求路径。</SettingHelp></div>{field('openai-completions')}{field('anthropic-messages')}
     <button type="button" className="custom-endpoint-more" aria-expanded={expanded} aria-controls={prefix + '-more'} onClick={() => setExpanded(open => !open)}>更多设置<ChevronDown size={15} /></button>
     <div id={prefix + '-more'} hidden={!expanded}>{field('openai-responses')}{field('google-generative-ai')}</div>
   </section>

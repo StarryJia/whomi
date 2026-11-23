@@ -8,6 +8,8 @@
 
 ## 前次实施记录
 
+- 2026-11-23，工单 #27 的合成请求验收中，同一组 6 条聊天仍按条发送给洞察。模拟模型在阅读摘要中写入的邮箱和明确标出的密码，在成稿请求中已遮盖，原话中的成员称呼仍可读。人物关联留待问一问、心事屋与检索增强生成实现后再设计。[消息处理验收](../../designs/whomi-settings-implementation.md#工单-27--消息处理验收)
+
 - 2026-11-16 的审查修复。用户于 2026-11-16 授权从最新 main 新建分支，修复同来源候选误去重、准备快照残留和进度更新打乱置顶顺序三项审查问题；当轮修复与回归已完成，随后获授权提交、推送并创建草稿拉取请求，见[修复验证及工单核对](../../research/conversation-insights-review-fixes-20261116.md)。真实模型语义质量仍仅部分通过，当轮未调用真实模型或发布安装包。
 - 2026-11-16 的质量待办来自[同容量新旧实现对照](../../research/conversation-insights-paired-capacity-20261116.md)暴露的未知范围扩大、成稿前后矛盾与引用语义不足，当前质量仅部分通过。例如改期原文已确认旧位取消，后续新店是否取消仍未定，报告不能把两者合称取消结果未知。结构化事实、完整来源、旧未知轮转和共同协调已实现；原模型及两组120条材料的该轮诊断与配对合计137次请求，全部关闭，未补抽报告。新版两组都完成成稿，分工事实覆盖改善，改期仍有假未知；旧版改期失败，没有同组新旧报告可比。[来源排序轮](../../research/conversation-insights-source-order-20261116.md)曾出现1个自然候选及2次后文解决更新；最终配对新版无候选或主动核查，未证明回读收益。此前[41次长对照](../../research/conversation-insights-long-comparison-20261115.md)、[12次短对照](../../research/conversation-insights-reread-comparison-20261115.md)、[17次质量试验](../../research/conversation-insights-quality-20261115.md)与[14次主动核查验证](../../research/conversation-insights-verification-20261115.md)分别保留。问一问、心事屋按005、006独立推进。
 - 历史工作分支　#11 桌面验收使用从远端 `main` 的 `9b4f6d9` 建立的本地分支 `codex/issue-11-insight-design-baseline`。此前审查修复使用 `codex/fix-insight-review`，首期开发分支 `codex/issue-10-conversation-insights` 已通过 #20 合入 `main`。

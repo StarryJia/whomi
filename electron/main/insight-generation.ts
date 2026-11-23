@@ -25,6 +25,7 @@ const elapsedPersistenceIntervalMs = 5000
 export type InsightGenerationDeps = {
   run: RuntimeRunner['run']
   read: (ids: readonly string[]) => Promise<InsightSourceMessage[]>
+  prepareNotes?: (value: unknown, key: string) => unknown
   saveCheckpoint: (state: InsightCheckpoint, sampledAtMs: number) => Promise<void>
   saveElapsed?: (elapsedMs: number, sampledAtMs: number) => Promise<void>
   onRetryPlanned?: (shrink: boolean, error: unknown) => void
@@ -433,10 +434,10 @@ function candidateSources(check: InsightCheck) {
 function visibleCandidate(check: InsightCheck): VisibleCandidate {
   const { id, state, reason, finding } = check
   return {
-    id, state, observation: check.observation.slice(0, 240), supportingIds: check.supportingIds.slice(0, 12),
-    ...(reason === undefined ? {} : { reason: reason.slice(0, 180) }),
+    id, state, observation: check.observation, supportingIds: check.supportingIds.slice(0, 12),
+    ...(reason === undefined ? {} : { reason }),
     finding: finding && {
-      revisedObservation: finding.revisedObservation.slice(0, 240), supportingIds: finding.supportingIds.slice(0, 12),
+      revisedObservation: finding.revisedObservation, supportingIds: finding.supportingIds.slice(0, 12),
       counterexampleIds: finding.counterexampleIds.slice(0, 12),
     },
     evidenceNotes: [],
@@ -496,6 +497,17 @@ async function generateInsightReport(input: InsightGenerationInput, deps: Insigh
     : createInsightCheckpoint(snapshot.taskId, model, { ...input.prompts }, { ...input.limits })
   if (state.version !== 1 || state.taskId !== snapshot.taskId || state.modelId !== model.id || state.modelVersion !== model.version
     || state.prompts.version !== INSIGHT_PROMPT_VERSION || state.attempts.length !== state.callsReserved) return invalidCheckpoint()
+  if (state.sourceTextVersion === undefined) {
+    // 旧偏移按正文替换昵称后的长度计算，从未读完的原消息重新分段。
+    state.cursor = { ...state.cursor, textOffset: 0 }
+    state.pendingRead = null
+    for (const check of state.checks) {
+      if (check.state !== 'pending') continue
+      check.pendingCursor = { ...check.pendingCursor, textOffset: 0 }
+      check.pendingThrough = null
+    }
+    state.sourceTextVersion = 2
+  }
   const refs = new Map(snapshot.sources.map(ref => [ref.messageId, ref]))
   if (refs.size !== snapshot.sources.length || !refs.size) return invalidEvidence()
   const covered = new Set(state.coveredMessageIds)
@@ -558,6 +570,20 @@ async function generateInsightReport(input: InsightGenerationInput, deps: Insigh
 
   function runtimeInput(stage: InsightStage, payload: unknown, reservedOutput: number): RuntimeInput {
     const compressing = stage === 'reading' && (payload as { operation?: unknown }).operation === 'compress-navigation'
+    const body = { ...payload as Record<string, unknown> & { knownCandidates?: VisibleCandidate[] } }
+    if (deps.prepareNotes) {
+      for (const [key, value] of Object.entries(body)) {
+        // 原文在分段前已脱敏，保留片段以供逐字验证。
+        if (['messages', 'relatedMessages', 'evidence', 'earlierEvidence'].includes(key)) continue
+        body[key] = deps.prepareNotes(value, key)
+      }
+    }
+    // 先处理完整字段，避免预览边界切断识别凭据所需的上下文。
+    if (body.knownCandidates) body.knownCandidates = body.knownCandidates.map(candidate => ({
+      ...candidate, observation: candidate.observation.slice(0, 240),
+      ...(candidate.reason === undefined ? {} : { reason: candidate.reason.slice(0, 180) }),
+      finding: candidate.finding && { ...candidate.finding, revisedObservation: candidate.finding.revisedObservation.slice(0, 240) },
+    }))
     return {
       key: ['insight', snapshot.taskId, state.callsReserved + 1].join(':'),
       purpose: 'insight',
@@ -565,7 +591,7 @@ async function generateInsightReport(input: InsightGenerationInput, deps: Insigh
       outputTokenLimit: reservedOutput,
       thinkingLevel: input.thinkingLevel,
       systemPrompt: compressing ? prompts.compressNavigation : prompts[stage],
-      prompt: JSON.stringify(payload),
+      prompt: JSON.stringify(body),
       history: [],
     }
   }
