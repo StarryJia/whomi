@@ -1,5 +1,7 @@
 import { createHash } from 'node:crypto'
-import type { InsightScope, InsightScopePreview, InsightSnapshot, InsightSourceMessage, InsightSourceRef } from '../../../src/shared/conversation-insights'
+import type { InsightReport, InsightScope, InsightScopePreview, InsightSnapshot, InsightSourceMessage, InsightSourceRef } from '../../../src/shared/conversation-insights'
+import { defaultProcessing, type ProcessingSettings } from '../../../src/shared/settings-contract'
+import { createMessageProcessor } from '../../main/message-processing'
 import { BoundaryError } from '../../../src/shared/desktop-validation'
 import type { Store } from '../db/open'
 import { confirmedSelfSql } from '../db/self'
@@ -106,24 +108,92 @@ export function readCurrentInsightSources(db: Store['reader'], conversationId: b
   })
 }
 
+function readSavedInsightSources(
+  db: Store['reader'], conversationId: bigint, snapshot: StoredInsightSnapshot, ids: ReadonlySet<string>,
+) {
+  const frozen = snapshot.sources.filter(source => ids.has(source.messageId))
+  const current = new Map(insightRows(db, conversationId, frozen.map(source => source.messageId)).map(row => {
+    const source = sourceMessage(row)
+    return [source.id, source]
+  }))
+  const verified = new Map<string, { revision: string; text: string }>()
+  for (const saved of frozen) {
+    const source = current.get(saved.messageId)
+    if (source && source.originalRevision === saved.originalRevision) {
+      verified.set(saved.messageId, { revision: saved.revision, text: source.text })
+    }
+  }
+  return verified
+}
+
+export function quotedInsightPhrases(prose: string): Set<string> {
+  return new Set(Array.from(prose.matchAll(/「([^「」]{1,240})」|“([^“”]{1,240})”|『([^『』]{1,240})』|"([^"]{1,240})"|‘([^‘’]{1,240})’/gu),
+    match => (match[1] ?? match[2] ?? match[3] ?? match[4] ?? match[5]).trim()).filter(phrase => phrase.length > 0 && phrase.length <= 240))
+}
+
+export function populateReportExcerpts(db: Store['reader'], conversationId: bigint, snapshot: StoredInsightSnapshot | undefined, report: InsightReport, processing?: ProcessingSettings) {
+  const judgments = report.judgments ?? []
+  const citations = new Map(report.citations.map(citation => [citation.id, citation]))
+  const refs = judgments.flatMap(item => [...item.supportingSources, ...item.counterexampleSources])
+  const ids = new Set(refs.map(ref => ref.messageId))
+  for (const citation of citations.values()) {
+    for (const fragment of citation.fragments) for (const ref of fragment.sources) ids.add(ref.messageId)
+  }
+  if (!ids.size) return
+  const originals = snapshot ? readSavedInsightSources(db, conversationId, snapshot, ids) : new Map<string, { revision: string; text: string }>()
+  const processor = createMessageProcessor(processing ?? defaultProcessing, [])
+  const protectedTexts = new Map<string, string>()
+  for (const [id, source] of originals) {
+    const message = processor.prepare([{ id, text: source.text, senderName: '', kind: 'text' }])[0]
+    protectedTexts.set(id, message?.text ?? '')
+  }
+  function originalText(ref: InsightSourceRef) {
+    const source = originals.get(ref.messageId)
+    return source?.revision === ref.revision ? source.text : undefined
+  }
+  function matches(ref: InsightSourceRef, phrase: string) {
+    return originalText(ref)?.includes(phrase) && protectedTexts.get(ref.messageId)?.includes(phrase)
+  }
+  for (const judgment of judgments) {
+    const prose = [judgment.text, ...judgment.alternativeExplanations, ...judgment.limitations].join('\n')
+    const quoted = quotedInsightPhrases(prose)
+    for (const ref of [...judgment.supportingSources, ...judgment.counterexampleSources]) {
+      const original = originalText(ref)
+      if (original === undefined) {
+        delete ref.excerpts
+        continue
+      }
+      const candidates = ref.excerpts?.length ? ref.excerpts : [...quoted]
+      ref.excerpts = candidates.filter(phrase => matches(ref, phrase)).slice(0, 400)
+      // 只有完整短消息才可替代未保存的引语，避免任取首句或展开已脱敏资料。
+      const whole = original.trim()
+      if (!ref.excerpts.length && processing && whole && whole.length <= 64 && protectedTexts.get(ref.messageId)?.trim() === whole) {
+        ref.excerpts = [whole]
+      }
+    }
+  }
+  for (const paragraph of [...report.aboutYou, ...report.relationship]) {
+    for (const part of paragraph.content) {
+      const citation = part.citationId && citations.get(part.citationId)
+      if (!citation || citation.fragments.some(fragment => fragment.sources.some(ref => originalText(ref) === undefined))) continue
+      const positions = citation.fragments.flatMap((fragment, index) => fragment.sources
+        .filter(ref => matches(ref, part.text)).map(ref => ({ index, messageId: ref.messageId })))
+      if (positions.length === 1) {
+        part.quoteFragmentIndex = positions[0].index
+        part.quoteMessageId = positions[0].messageId
+      }
+    }
+  }
+}
+
 export function readInsightCitationIds(
   db: Store['reader'], conversationId: bigint, snapshot: StoredInsightSnapshot, refs: readonly InsightSourceRef[],
 ): string[] | null {
   if (!refs.length) return null
   const ids = new Set(refs.map(source => source.messageId))
   if (ids.size !== refs.length) return null
-  const cited = snapshot.sources.filter(source => ids.has(source.messageId))
-  const frozen = new Map(cited.map(source => [source.messageId, source]))
-  const current = new Map(insightRows(db, conversationId, [...ids]).map(row => {
-    const source = sourceMessage(row)
-    return [source.id, source.originalRevision]
-  }))
-  if (refs.some(source => {
-    const saved = frozen.get(source.messageId)
-    const original = current.get(source.messageId)
-    return !saved || !original || saved.revision !== source.revision || original !== saved.originalRevision
-  })) return null
-  return cited.map(source => source.messageId)
+  const sources = readSavedInsightSources(db, conversationId, snapshot, ids)
+  return refs.every(ref => sources.get(ref.messageId)?.revision === ref.revision) ? [...sources.keys()] : null
 }
 
 export function readInsightSources(snapshot: InsightSnapshot, messageIds: readonly string[], current: readonly InsightSourceMessage[]): InsightSourceMessage[] {

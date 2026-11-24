@@ -22,7 +22,7 @@
 | 001 | [不同关系中的对照](ideas/001-cross-relationship-comparison.md) | 待评估 |
 | 002 | [大众熟知人物的白话示例剧本](ideas/002-familiar-character-demo.md) | 待验收 |
 | 003 | [AI 对话模块对齐 Cherry](ideas/003-cherry-chat-alignment.md) | 待验收 |
-| 004 | [对话洞察](ideas/004-conversation-insights.md) | 报告与总览联动已验收。真实模型已完成 8 条合成聊天首稿，4,600 条样本按要求暂停于 526 条。997 条自选聊天已恢复成稿，9 处引用可定位。[#35 真实模型试验](../research/pi-insights-issue-35-real-model.md) · [#46 异常提示与日志待办](https://github.com/StarryJia/whomi/issues/46) |
+| 004 | [对话洞察](ideas/004-conversation-insights.md) | A 版报告阅读页待验收，已验证首屏预测及依据、反例回查。[阅读页实测截图](../designs/conversation-insights/README.md) · [#35 真实模型试验](../research/pi-insights-issue-35-real-model.md) · [#46 异常提示与日志待办](https://github.com/StarryJia/whomi/issues/46) |
 | 005 | [问一问](ideas/005-ask.md) | 后续独立计划，待需求与选型 |
 | 006 | [心事屋](ideas/006-heart-room.md) | 后续独立计划，待需求与选型 |
 

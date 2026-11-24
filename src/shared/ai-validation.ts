@@ -30,14 +30,17 @@ const state: Check = value => ['queued', 'running', 'completed', 'stopped', 'fai
 const direction = (pair: string): Check => nullable(value => typeof value === 'string' && value.length === 1 && pair.includes(value))
 const revision: Check = value => typeof value === 'string' && /^[0-9a-f]{64}$/.test(value)
 const sourceRef = object({ messageId: localId, revision })
-const sourceRefs: Check = value => array(sourceRef, 2000)(value) && new Set((value as { messageId: string }[]).map(source => source.messageId)).size === (value as unknown[]).length
+const uniqueSources = (check: Check): Check => value => array(check, 2000)(value) && new Set((value as { messageId: string }[]).map(source => source.messageId)).size === (value as unknown[]).length
+const sourceRefs = uniqueSources(sourceRef)
+const excerpts: Check = value => array(text(240, true), 400)(value) && new Set(value as string[]).size === (value as string[]).length
+const judgmentSources = uniqueSources(object({ messageId: localId, revision, excerpts: optional(excerpts) }))
 const fragment = object({ sources: value => sourceRefs(value) && (value as unknown[]).length > 0 })
 export const isInsightCitationId = key
 const citation = object({ id: isInsightCitationId, conversationId: localId, fragments: value => array(fragment, 200)(value) && (value as unknown[]).length > 0 })
 export function isInsightCitation(value: unknown): value is InsightCitation { return citation(value) }
-const paragraphs = array(object({ content: array(object({ text: text(20000, true), citationId: optional(isInsightCitationId) }), 200) }), 200)
+const paragraphs = array(object({ content: array(object({ text: text(20000, true), citationId: optional(isInsightCitationId), quoteFragmentIndex: optional(count), quoteMessageId: optional(localId) }), 200) }), 200)
 const notes = array(text(4000, true), 200)
-const judgmentFields = { text: text(4000, true), supportingSources: sourceRefs, counterexampleSources: sourceRefs, alternativeExplanations: notes, limitations: notes }
+const judgmentFields = { text: text(4000, true), supportingSources: judgmentSources, counterexampleSources: judgmentSources, alternativeExplanations: notes, limitations: notes }
 const judgments = array(value => {
   if (!dimensionKeys.some(dimension => object({ dimension: name => name === dimension, direction: direction(dimension), ...judgmentFields })(value))) return false
   const judgment = value as InsightJudgment
@@ -65,7 +68,7 @@ const input: Record<keyof AiMethods, Check[]> = {
   prepareAnalysis: [object({ conversationId: localId, modelId: key, thinkingLevel: optional(thinking), scope: optional(isInsightScope) })], confirmAnalysis: [object({ token: key, requestId: key })],
   discardAnalysisPreparation: [key],
   getAnalysis: [localId], listAnalyses: [optional(localId)], arrangeAnalysis: [listArrangement], renameAnalysis: [object({ taskId: localId, title: value => insightTitle(value) !== null })], deleteAnalysis: [localId], stopAnalysis: [localId], continueAnalysis: [localId], getReport: [localId],
-  readInsightCitation: [object({ taskId: localId, citationId: isInsightCitationId, fragmentIndex: count })],
+  readInsightCitation: [object({ taskId: localId, citationId: isInsightCitationId, fragmentIndex: count, messageId: optional(localId) })],
   openThread: [localId], listThreads: [localId], createThread: [localId], getThread: [localId], arrangeThread: [localId, listArrangement], deleteThread: [localId, localId], sendTurn: [object({ threadId: localId, requestId: key, prompt: text(100000, true), referenceIds: ids, modelId: key, thinkingLevel: optional(thinking), skillId: optional(key) })], retryTurn: [localId], stopTurn: [localId],
 }
 const output: Record<keyof AiMethods, Check> = {

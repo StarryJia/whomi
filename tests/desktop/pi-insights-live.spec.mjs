@@ -238,22 +238,27 @@ test('真实模型经桌面入口阅读所选的合成聊天', async ({}, info) 
     await expect(page.getByRole('heading', { name: '关于你' })).toBeVisible()
     await expect(page.getByRole('heading', { name: '你们的相处' })).toBeVisible()
     await shot('02-report')
-    const mbti = page.getByRole('region', { name: 'MBTI 人格倾向' })
+    const article = page.getByRole('article')
     const axes = { EI: '精力来源', SN: '理解信息', TF: '做决定', JP: '安排方式' }
     expect(report.judgments.map(judgment => judgment.dimension).sort()).toEqual(Object.keys(axes).sort())
     for (const judgment of report.judgments) {
-      await expect(mbti.getByRole('heading', { name: axes[judgment.dimension], exact: true })).toBeVisible()
-      await expect(mbti).toContainText(judgment.text)
-      if (judgment.supportingSources.length) {
-        await mbti.getByRole('button', { name: axes[judgment.dimension] + '的依据原文' }).click()
-        const region = page.getByRole('region', { name: '引用聊天记录' })
-        const firstId = judgment.supportingSources[0].messageId
-        await expect(region.locator('[data-citation=true][data-message-id="' + firstId + '"]'))
-          .toContainText(source.messages[Number(firstId) - 1].content)
-        await button('关闭原文').click()
+      const heading = article.getByRole('heading', { level: 3, name: new RegExp(axes[judgment.dimension]) })
+      await expect(heading).toBeVisible()
+      for (const sources of [judgment.supportingSources, judgment.counterexampleSources]) {
+        const first = sources[0]
+        if (first) {
+          const quote = first.excerpts?.[0]
+          const links = heading.locator('..').locator('button[data-source-message="' + first.messageId + '"]')
+          await (quote ? links.filter({ hasText: quote }) : links).first().click()
+          const region = page.getByRole('region', { name: '引用聊天记录' })
+          const message = region.locator('[data-citation=true][data-message-id="' + first.messageId + '"]')
+          await expect(message).toBeVisible()
+          if (quote) await expect(message.locator('mark')).toHaveText(quote)
+          await button('关闭原文').click()
+        }
       }
     }
-    await mbti.getByRole('heading', { name: 'MBTI 人格倾向' }).scrollIntoViewIfNeeded()
+    await article.getByRole('heading', { level: 3 }).first().scrollIntoViewIfNeeded()
     await shot('03-mbti')
     const links = report.aboutYou.concat(report.relationship).flatMap(p => p.content.filter(part => part.citationId))
     const inspected = new Set()
@@ -264,6 +269,13 @@ test('真实模型经桌面入口阅读所选的合成聊天', async ({}, info) 
       const citation = report.citations.find(c => c.id === link.citationId)
       await page.locator('.insight-prose section > p button.insight-citation').nth(index).click()
       const region = page.getByRole('region', { name: '引用聊天记录' })
+      if (link.quoteFragmentIndex !== undefined) {
+        await expect(region.locator('[data-citation=true] mark')).toHaveText(link.text)
+        for (let part = link.quoteFragmentIndex; part > 0; part--) {
+          await button('上一段').click()
+          await expect(page.locator('.insight-source-footer')).toContainText(part + ' / ' + citation.fragments.length)
+        }
+      }
       for (const [part, fragment] of citation.fragments.entries()) {
         if (part > 0) await button('下一段').click()
         const ids = fragment.sources.map(s => s.messageId)

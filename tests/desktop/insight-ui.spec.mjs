@@ -701,7 +701,7 @@ test('real Electron preserves long report reading position and fits an 80-charac
     const row = page.locator('.insight-report-row[data-list-id]')
     await row.click()
     await app.evaluate(({ BrowserWindow }) => { BrowserWindow.getAllWindows()[0].setSize(960, 640) })
-    await expect(page.locator('.insight-prose footer')).not.toBeInViewport()
+    await expect(btn('回到开头')).not.toBeInViewport()
     await btn('重命名').click()
     const longTitle = '合成报告长名称与建议倾听'.repeat(8).slice(0, 80)
     await page.getByLabel('报告名称').fill(longTitle)
@@ -722,7 +722,7 @@ test('real Electron preserves long report reading position and fits an 80-charac
     const main = page.locator('main.insights-home')
     const top = await main.evaluate(el => el.scrollTop)
     expect(top).toBeGreaterThan(500)
-    await expect(page.locator('.insight-prose footer')).toBeInViewport()
+    await expect(btn('回到开头')).toBeInViewport()
     await shot('29-long-report-bottom')
     await failNext(app, 'readInsightCitation')
     await citation.focus(); await page.keyboard.press('Enter')
@@ -917,9 +917,9 @@ test('real Electron keeps same-name reports independent and rebuilds overview af
     await expect(btn(`会话洞察 #${removed}`)).toBeVisible()
     await expect(observations().getByText('???J', { exact: true })).toBeVisible()
     const report = await page.evaluate(id => window.whomi.ai.getReport(id), removed)
-    expect(report.judgments).toContainEqual(expect.objectContaining({
-      dimension: 'JP', direction: 'J', supportingSources: [{ messageId: '4', revision: expect.any(String) }],
-    }))
+    expect(report.judgments.find(item => item.dimension === 'JP')).toMatchObject({
+      direction: 'J', supportingSources: [{ messageId: '4', revision: expect.any(String) }],
+    })
     const requestsAfterGeneration = h.requests.length
     const renamed = '合成报告 · 两份同名报告'
     const originalKeptRow = btn(`${syntheticInsightConversation} · 会话洞察 #${kept}`)

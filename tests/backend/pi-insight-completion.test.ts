@@ -102,3 +102,24 @@ test('超长原文恢复从已确认的连续前缀之后取文', async () => {
     throw new Error('模拟服务离线')
   } })).rejects.toThrow('模拟服务离线')
 })
+
+test('依据与反例逐条匹配送阅原话，交叉引用的摘录须重新提交', async () => {
+  const other = { messageId: '12', revision: 'b'.repeat(64) }
+  const scoped = { ...snapshot, sources: [...snapshot.sources, other] }
+  const messages = [...await options.read(), { id: other.messageId, revision: other.revision, text: '到了再决定。', senderName: '对方', isSelf: false, sentAtMs: 1, replyToMessageId: null }]
+  const checkpoint: PiInsightCheckpoint = { version: 'pi-insight-v1', taskId: '7', checkpoint: 'read', processing: defaultProcessing,
+    requests: 1, stalled: 0, input: 60, output: 3, coverage: { coveredMessageIds: ['11', '12'], partial: {} } }
+  let attempts = 0
+  const report = await generatePiInsight({ ...options, snapshot: scoped, checkpoint, save: async () => {},
+    read: async ids => messages.filter(message => ids.includes(message.id)), run: async () => {
+      attempts++
+      const text = attempts === 1 ? '到了再决定' : '周三一起约'
+      const judgments = sampleJudgments({ JP: { direction: 'J', text: '你说「' + text + '」，其中「一起约」给了对方选择。对方说「到了再决定」。',
+        supportingIds: ['11'], counterexampleIds: ['12'], excerpts: [{ messageId: '11', text }, { messageId: '11', text: '一起约' }, { messageId: '12', text: '到了再决定' }] } })
+      return { text: JSON.stringify({ ...draft, judgments }), checkpoint: 'draft', usage: {} }
+    } })
+  expect(attempts).toBe(2)
+  expect(report.judgments?.at(-1)).toMatchObject({
+    supportingSources: [{ messageId: '11', excerpts: ['周三一起约', '一起约'] }], counterexampleSources: [{ messageId: '12', excerpts: ['到了再决定'] }],
+  })
+})

@@ -158,6 +158,35 @@ describe('processed messages in actual model requests', () => {
     expect(repository.getThread(threadId).turns[0]).toMatchObject({ id: first.id, text: answer, prompt: '联系示例甲 example@example.com' })
   }, 20000)
 
+  test('画像引文遵从本轮密码遮盖，保留同条消息里的普通原话', async () => {
+    const processing = settings.get().processing
+    await settings.saveProcessing({ ...processing, redact: false })
+    store.writer.prepare("INSERT INTO messages(id,conversation_id,member_id,sender_kind,sender_name,kind,text,ordinal,sent_at_ms) VALUES(1,1,1,'member','本人','text',?,0,0)")
+      .run('password: TeaRoom7，周五一起去。password: OtherKey6。稍后又说了 TeaRoom7。')
+    const prepared = await repository.prepareAnalysis({ conversationId: '1', modelId: 'model' })
+    const task = await repository.confirmAnalysis({ token: prepared.token, requestId: 'profile-quotes' })
+    const [ref] = repository.analysisContext(task.id).snapshot.sources
+    await repository.saveInsightCheckpoint(task.id, 'done', [ref.messageId])
+    await repository.completeAnalysis(task.id, { format: 'conversation-insights-v1', limitations: [], relationship: [],
+      citations: [{ id: 'meeting', conversationId: '1', fragments: [{ sources: [ref] }] }],
+      aboutYou: [{ content: [{ text: 'TeaRoom7', citationId: 'meeting' }, { text: '周五一起去', citationId: 'meeting' }] }],
+      judgments: [{ dimension: 'JP', direction: 'J', text: '你说「TeaRoom7」，又约「周五一起去」。',
+        supportingSources: [{ ...ref, excerpts: ['TeaRoom7', '周五一起去'] }], counterexampleSources: [], alternativeExplanations: [], limitations: [] },
+      { dimension: 'SN', direction: 'S', text: '你也曾提到“OtherKey6”。',
+        supportingSources: [ref], counterexampleSources: [], alternativeExplanations: [], limitations: [] }] })
+
+    await settings.saveProcessing({ ...processing, redact: true, rules: ['password'] })
+    expect(repository.getReport(task.id).aboutYou[0].content[1]).toMatchObject({ quoteFragmentIndex: 0, quoteMessageId: ref.messageId })
+    await send('一起做过什么？')
+    const outgoing = JSON.stringify(requests[0])
+    expect(outgoing).not.toContain('TeaRoom7')
+    expect(outgoing).not.toContain('OtherKey6')
+    expect(outgoing).not.toContain('excerpts')
+    expect(outgoing).not.toMatch(/quoteMessageId|quoteFragmentIndex/)
+    expect(outgoing).toContain('周五一起去')
+    expect(repository.getReport(task.id).judgments![0].text).toContain('TeaRoom7')
+  }, 20000)
+
   test('current questions and current and historical references use all corrected transforms on the wire', async () => {
     const originals = seedSources()
     const first = await send('密码：Bearer testtoken1234567890；sk-abcdefghijklmnopqrstuv；小林约U5明天见；密码是Cedar!42；4111111111111111 123', ['1', '2', '3', '4', '5', '6'])

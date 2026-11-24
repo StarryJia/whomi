@@ -19,7 +19,8 @@ import { defaultModelProtocol, isModelProtocol } from '../../../src/shared/model
 import { BoundaryError, localId } from '../../../src/shared/desktop-validation'
 import type { AiModel, AiSkill, AiState, AiThread, AiThreadSummary, AiTurn, AiUsage, AnalysisPreparation, AnalysisTask, AnalysisUsage, PrepareAnalysisInput } from '../../../src/shared/ai-contract'
 import { threadTitle } from './thread-title'
-import { captureInsightSources, previewInsightScope, readCurrentInsightSources, readInsightCitationIds, readInsightSources, type StoredInsightSnapshot, type StoredInsightSourceRef } from './insight-sources'
+import { prepareTurnProfile } from './turn-profile'
+import { captureInsightSources, populateReportExcerpts, previewInsightScope, readCurrentInsightSources, readInsightCitationIds, readInsightSources, type StoredInsightSnapshot, type StoredInsightSourceRef } from './insight-sources'
 
 export type AiSourceMessage = { id: string; senderName: string; text: string; isSelf: boolean; kind: string; sentAtMs: number | null; memberId: string | null }
 export type AnalysisContext = { processing?: ProcessingSettings; systemPrompts?: PromptValues; task: AnalysisTask; model: AiModel; checkpoint: string | null; snapshot: InsightSnapshot }
@@ -57,6 +58,8 @@ function readInsightReport(data: string, conversationId: bigint): InsightReport 
     for (const paragraph of section) {
       if (!Array.isArray(paragraph?.content)) continue
       for (const part of paragraph.content) {
+        delete part?.quoteFragmentIndex
+        delete part?.quoteMessageId
         if (part?.citationId !== undefined && !isInsightCitationId(part.citationId)) part.citationId = unavailableId
       }
     }
@@ -175,7 +178,8 @@ export function createAiRepository(store: Store, write: WriterQueue) {
     for (const judgment of report.judgments ?? []) {
       if (((judgment.direction !== null || judgment.supportingSources.length > 0) &&
           !judgment.supportingSources.some(source => sources.get(source.messageId)?.isSelf)) ||
-        [...judgment.supportingSources, ...judgment.counterexampleSources].some(source => !validRef(source))) {
+        [...judgment.supportingSources, ...judgment.counterexampleSources].some(source =>
+          !validRef(source) || source.excerpts?.some(phrase => !sources.get(source.messageId)?.text.includes(phrase)))) {
         fail('INVALID_INSIGHT_JUDGMENT', '请重新生成这份报告。')
       }
     }
@@ -433,7 +437,22 @@ export function createAiRepository(store: Store, write: WriterQueue) {
         purgeAnalysis(db, row.id)
       })())
     },
-    getReport(taskId: string): InsightReport { const task = repository.getAnalysis(taskId); if (task.state !== 'completed' || !task.report) fail('REPORT_UNAVAILABLE', '生成完成后再查看文稿。'); return task.report },
+    getReport(taskId: string): InsightReport {
+      const row = analysisRow(taskId)
+      const saved = reader.prepare('SELECT data,content_revision FROM ai_reports WHERE task_id=?').get(row.id) as ReportRow | undefined
+      if (row.state !== 'completed' || !saved) fail('REPORT_UNAVAILABLE', '生成完成后再查看文稿。')
+      const report = readInsightReport(saved.data, row.conversation_id)
+      let snapshot: StoredInsightSnapshot | undefined
+      if (createHash('sha256').update(saved.data).digest('hex') === saved.content_revision) {
+        try {
+          snapshot = insightSnapshot(row)
+        } catch (error) {
+          if (!(error instanceof BoundaryError && error.code === 'INSIGHT_SNAPSHOT_UNAVAILABLE')) throw error
+        }
+      }
+      populateReportExcerpts(reader, row.conversation_id, snapshot, report, row.processing_snapshot ? parse<ProcessingSettings>(row.processing_snapshot) : undefined)
+      return report
+    },
     readInsightSources(input: { taskId: string; messageIds: readonly string[] }) {
       fields(input, ['taskId', 'messageIds'])
       if (!Array.isArray(input.messageIds) || input.messageIds.some(messageId => !localId(messageId))) fail('INVALID_ARGUMENT')
@@ -460,7 +479,8 @@ export function createAiRepository(store: Store, write: WriterQueue) {
         throw error
       }
       if (!highlightIds) return { status: 'expired' }
-      const window = await queries.locateSource({ conversationId: citation.conversationId, messageId: highlightIds[0], endMessageId: highlightIds.at(-1)! })
+      if (input.messageId && !highlightIds.includes(input.messageId)) return { status: 'unavailable' }
+      const window = await queries.locateSource({ conversationId: citation.conversationId, messageId: highlightIds[0], endMessageId: highlightIds.at(-1)! }, input.messageId)
       return window.status === 'available' ? { ...window, highlightIds } : { status: 'expired' }
     },
     analysisContext(taskId: string): AnalysisContext {
@@ -613,7 +633,8 @@ export function createAiRepository(store: Store, write: WriterQueue) {
       })())
       return turnView(turnRow(turnId))
     },
-    turnContext(turnId: string): TurnContext {
+    turnContext(turnId: string, processing?: ProcessingSettings): TurnContext {
+      if (processing !== undefined) validateProcessing(processing)
       const row = turnRow(turnId), conversationId = threadConversation(String(row.thread_id)), self = identity(conversationId)
       if (row.self_fingerprint !== self.fingerprint) fail('IDENTITY_CHANGED', '本人身份已更新，请重新提问。')
       const previous = reader.prepare("SELECT * FROM ai_turns WHERE thread_id=? AND id<? AND state='completed' AND self_fingerprint=? ORDER BY id").all(row.thread_id, row.id, self.fingerprint) as TurnRow[]
@@ -625,6 +646,7 @@ export function createAiRepository(store: Store, write: WriterQueue) {
       const latest = previous.at(-1), skill = row.skill ? parse<RegisteredSkill>(row.skill) : null
       const sameCheckpointContext = latest?.model_id === row.model_id && latest?.model_version === row.model_version && latest?.skill === row.skill && (latest?.system_prompt ?? defaultPrompts.dialogue) === (row.system_prompt ?? defaultPrompts.dialogue)
       const profile = repository.listAnalyses(conversationId).find(task => task.state === 'completed' && task.valid && task.report)?.report ?? null
+      if (profile) prepareTurnProfile(reader, id(conversationId), profile, processing)
       return { systemPrompt: row.system_prompt ?? defaultPrompts.dialogue, turn: turnView(row), threadId: String(row.thread_id), conversationId, model: modelSecret(row.model_id, Number(row.model_version)).model, selfFingerprint: self.fingerprint, ...sources(conversationId, parse<string[]>(row.reference_ids)), history, profile, skill, checkpoint: sameCheckpointContext ? latest!.checkpoint : null }
     },
     async saveTurn(turnId: string, patch: TurnPatch): Promise<AiTurn> {

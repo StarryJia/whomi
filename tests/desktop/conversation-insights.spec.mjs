@@ -173,6 +173,7 @@ test('空库导入后保留一份报告与另一项暂停任务，重启回查�
     expect(requests.every(request => request.input.tools?.length === 1 && request.input.tools[0].function.name === 'read_messages')).toBe(true)
     expect(fixtureErrors).toEqual([])
 
+    const savedReport = await page.evaluate(async id => (await window.whomi.ai.getAnalysis(id)).report, task.id)
     const report = await page.evaluate(id => window.whomi.ai.getReport(id), task.id)
     expect(report.format).toBe('conversation-insights-v1')
     const thinking = report.judgments.find(item => item.dimension === 'TF')
@@ -191,7 +192,8 @@ test('空库导入后保留一份报告与另一项暂停任务，重启回查�
     const renamed = await page.evaluate(({ taskId, title }) => window.whomi.ai.renameAnalysis({ taskId, title }), {
       taskId: task.id, title: syntheticInsightReportTitle,
     })
-    expect(renamed).toMatchObject({ title: syntheticInsightReportTitle, scope: syntheticInsightScope, report })
+    expect(renamed).toMatchObject({ title: syntheticInsightReportTitle, scope: syntheticInsightScope, report: savedReport })
+    expect(await page.evaluate(id => window.whomi.ai.getReport(id), task.id)).toEqual(report)
     interruptedCheck = false
     const secondStart = requests.length
     const second = await page.evaluate(async ({ conversationId, modelId }) => {
@@ -237,7 +239,7 @@ test('空库导入后保留一份报告与另一项暂停任务，重启回查�
     expect(saved).toMatchObject({ id: second.id, state: 'completed', scope: { kind: 'all' }, totalMessages: 12, analyzedMessages: 12 })
     const feeling = saved.report.judgments.find(item => item.dimension === 'TF')
     expect(feeling).toMatchObject({ direction: 'F', supportingSources: [{ messageId: '4', revision: expect.any(String) }] })
-    expect(feeling.counterexampleSources).toEqual(thinking.counterexampleSources)
+    expect(feeling.counterexampleSources).toEqual(savedReport.judgments.find(item => item.dimension === 'TF').counterexampleSources)
     expect(saved.report.citations.find(item => item.id === 'later-listening').fragments[0].sources)
       .toEqual(feeling.supportingSources)
     await expect.poll(() => page.evaluate(() => window.syntheticInsightEvents)).toContainEqual({

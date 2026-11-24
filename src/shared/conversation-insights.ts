@@ -18,17 +18,18 @@ export type InsightScopePreview = {
 }
 
 export type InsightSourceRef = { messageId: string; revision: string }
+export type InsightJudgmentSource = InsightSourceRef & { excerpts?: string[] }
 export type InsightFragment = { sources: InsightSourceRef[] }
 export type InsightCitation = { id: string; conversationId: string; fragments: InsightFragment[] }
-export type InsightInline = { text: string; citationId?: string }
+export type InsightInline = { text: string; citationId?: string; quoteFragmentIndex?: number; quoteMessageId?: string }
 export type InsightParagraph = { content: InsightInline[] }
 
 export type InsightJudgment = {
   [Dimension in keyof InsightDimensions]: { dimension: Dimension; direction: InsightDimensions[Dimension] }
 }[keyof InsightDimensions] & {
   text: string
-  supportingSources: InsightSourceRef[]
-  counterexampleSources: InsightSourceRef[]
+  supportingSources: InsightJudgmentSource[]
+  counterexampleSources: InsightJudgmentSource[]
   alternativeExplanations: string[]
   limitations: string[]
 }
@@ -54,7 +55,7 @@ export function judgmentCitation(report: InsightReport, conversationId: string, 
   const base = 'mbti.' + judgmentIndex + '.' + kind
   let id = base
   for (let suffix = 1; occupied.has(id); suffix++) id = base + '.' + suffix
-  return { id, conversationId, fragments: sources.map(source => ({ sources: [source] })) }
+  return { id, conversationId, fragments: sources.map(({ messageId, revision }) => ({ sources: [{ messageId, revision }] })) }
 }
 
 export function resolveReportCitation(report: InsightReport, conversationId: string, id: string): InsightCitation | undefined {
@@ -88,7 +89,7 @@ export type InsightSnapshot = {
   createdAtMs: number
 }
 
-export type InsightCitationInput = { taskId: string; citationId: string; fragmentIndex: number }
+export type InsightCitationInput = { taskId: string; citationId: string; fragmentIndex: number; messageId?: string }
 export type InsightCitationWindow =
   | (Extract<SourceWindow, { status: 'available' }> & { highlightIds: string[] })
   | { status: 'expired' }

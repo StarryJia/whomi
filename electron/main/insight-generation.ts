@@ -355,10 +355,27 @@ export function parseReport(
     const counterexampleIds = sourceIds(judgment.counterexampleIds, counterexamples)
     if ((supportingIds.length > 0 && !supportingIds.some(id => selfIds.has(id))) ||
       supportingIds.some(id => counterexampleIds.includes(id))) return invalidEvidence()
+    const excerpts = new Map<string, string[]>()
+    if (checks === null && judgment.excerpts !== undefined) {
+      const cited = new Set([...supportingIds, ...counterexampleIds])
+      for (const part of array(judgment.excerpts, 400, object)) {
+        const messageId = string(part.messageId, 256)
+        const excerpt = string(part.text, 240)
+        const phrases = excerpts.get(messageId) ?? []
+        if (!cited.has(messageId) || phrases.includes(excerpt)) return invalidEvidence()
+        phrases.push(excerpt)
+        excerpts.set(messageId, phrases)
+      }
+    }
+    const source = (id: string) => {
+      const ref = refs.get(id)!
+      const phrases = excerpts.get(id)
+      return phrases ? { ...ref, excerpts: phrases } : ref
+    }
     return {
       dimension, direction, text: string(judgment.text, 3000),
-      supportingSources: supportingIds.map(id => refs.get(id)!),
-      counterexampleSources: counterexampleIds.map(id => refs.get(id)!),
+      supportingSources: supportingIds.map(source),
+      counterexampleSources: counterexampleIds.map(source),
       alternativeExplanations: explanations(judgment.alternativeExplanations), limitations: explanations(judgment.limitations),
     } as InsightJudgment
   })

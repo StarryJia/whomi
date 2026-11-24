@@ -4,7 +4,7 @@ import { cp, mkdtemp, writeFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { DatabaseSync } from 'node:sqlite'
 import { basename, dirname, join, resolve } from 'node:path'
-import { correction, early, excerptCaption, meetingChat, meetingModel } from './fixtures/pi-insight-model.mjs'
+import { correction, detailQuote, early, excerptCaption, imaginedQuote, mapQuote, meetingChat, meetingModel } from './fixtures/pi-insight-model.mjs'
 
 for (const { count, overloadOnPage } of [{ count: 8 }, { count: 4600 }, { count: 8, overloadOnPage: 2 }]) {
   test((overloadOnPage ? '模型连续两次过载后自动恢复，' : '') + '从当前会话洞察 ' + count + ' 条，回查远距回复并打开两处原文', async ({}, info) => {
@@ -134,41 +134,50 @@ for (const { count, overloadOnPage } of [{ count: 8 }, { count: 4600 }, { count:
       await expect(page.getByRole('heading', { name: '你们的相处' })).toBeVisible()
       if (count > 8) await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setContentSize(960, 640))
       await shot('03-report')
-      const personality = page.getByRole('region', { name: 'MBTI 人格倾向' })
-      for (const heading of ['精力来源', '理解信息', '做决定', '安排方式']) {
-        await expect(personality.getByRole('heading', { name: heading })).toBeVisible()
-      }
-      for (const assessment of model.state.report.judgments) {
-        await expect(personality).toContainText(assessment.text)
-      }
-      await expect(personality.getByText('暂难判断', { exact: true })).toHaveCount(3)
-      await expect(personality.getByText('偏向实感 S', { exact: true })).toBeVisible()
-      await personality.scrollIntoViewIfNeeded()
+      const article = page.getByRole('article')
+      const prediction = article.getByText('ES??', { exact: true })
+      await expect(prediction).toBeInViewport()
+      await expect(article.getByRole('heading', { level: 2 })).toHaveText(['关于你', '你们的相处'])
+      await expect(article.getByRole('heading', { level: 3 })).toHaveText([
+        /精力来源.*外向/, /理解信息.*实感/, /做决定.*暂难判断/, /安排方式.*暂难判断/,
+      ])
+      const placement = await prediction.evaluate(element => {
+        const article = element.closest('article').getBoundingClientRect()
+        const range = document.createRange()
+        range.selectNodeContents(element)
+        const letters = range.getBoundingClientRect()
+        return { offset: Math.abs(letters.x + letters.width / 2 - article.x - article.width / 2), height: letters.height }
+      })
+      expect(placement.offset).toBeLessThan(8)
+      expect(placement.height).toBeGreaterThan(48)
+      await article.getByRole('heading', { name: /理解信息/ }).scrollIntoViewIfNeeded()
       await shot('03-personality')
       const narrow = count === 8 && !overloadOnPage
       if (narrow) {
         await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setContentSize(960, 640))
         await expect.poll(() => page.evaluate(() => window.innerWidth)).toBe(960)
-        const aboutYou = page.getByRole('heading', { name: '关于你' })
-        await aboutYou.evaluate(element => element.scrollIntoView({ block: 'start' }))
-        await expect(aboutYou).toBeInViewport()
-        await expect(personality.getByRole('heading', { name: 'MBTI 人格倾向' })).toBeInViewport()
-        expect(await personality.evaluate(element => element.scrollWidth <= element.clientWidth &&
+        await prediction.evaluate(element => element.scrollIntoView({ block: 'center' }))
+        await expect(prediction).toBeInViewport()
+        expect(await article.evaluate(element => element.scrollWidth <= element.clientWidth &&
           document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
         await shot('03-personality-narrow')
       }
-      const personalitySource = personality.getByRole('button', { name: '理解信息的依据原文' })
-      await personalitySource.click()
-      const detail = page.getByRole('region', { name: '引用聊天记录' }).locator('[data-citation=true]')
-      await expect(detail).toContainText('场地邮箱是')
-      await expect(detail).toContainText('我发过时间了')
-      await shot('04-personality-source')
-      await btn('关闭原文').click()
-      await expect(personalitySource).toBeFocused()
+      const quoteTargets = [[detailQuote, model.state.detailId], [mapQuote, model.state.imaginedId], [imaginedQuote, model.state.imaginedId]]
+      for (const [index, [quote, messageId]] of quoteTargets.entries()) {
+        const sourceButton = article.getByRole('button', { name: new RegExp(quote) })
+        await sourceButton.click()
+        const detail = page.getByRole('region', { name: '引用聊天记录' }).locator('[data-citation=true]')
+        await expect(detail).toHaveAttribute('data-message-id', messageId)
+        await expect(detail.locator('mark')).toHaveText(quote)
+        await shot('04-personality-source-' + (index + 1))
+        await page.keyboard.press('Escape')
+        await expect(sourceButton).toBeFocused()
+      }
       for (const [index, original] of [early, correction].entries()) {
         await btn(excerptCaption[index]).click()
         const source = page.getByRole('region', { name: '引用聊天记录' }).locator('[data-citation=true]')
-        await expect(source.getByText(original, { exact: true })).toBeVisible()
+        await expect(source.locator('.message-text')).toHaveText(original)
+        if (index === 1) await expect(source.locator('mark')).toHaveText(excerptCaption[1])
         await shot('04-source-' + (index + 1))
         await btn('关闭原文').click()
       }

@@ -35,10 +35,14 @@ export function readTurns(input) {
 
 export const early = '聚会总是我在张罗，这次我有点累。'
 export const correction = '上个月那次是我联系场地、约的人。这个月你来约，别把两次混在一起。'
+export const detailQuote = '我发过时间了'
+export const mapQuote = '看着这张活动室平面图'
+export const imaginedQuote = '像把大家的客厅搬到了一起'
+const energyQuote = '跟大家聊了一会儿，又精神了'
 const maskExample = 'sample.reservation@example.invalid'
 const modelNoteEmail = 'synthetic.note@example.invalid'
 const outside = '仅在范围之外：灰色纸票'
-export const excerptCaption = ['你说这次张罗聚会让你累了', 'ta 回忆上次由自己联系场地和约人']
+export const excerptCaption = ['你说这次张罗聚会让你累了', '上个月那次是我联系场地、约的人']
 
 export function sampleJudgments(observations = {}) {
   const missingEvidence = {
@@ -61,7 +65,8 @@ export function meetingChat(count) {
     const sender = (n === 2 || (n !== later && n % 2 === 0)) ? members[0] : members[1]
     const text = n === 2 ? early : n === later ? correction :
       n === 3 ? '写作课的例句是：你现在必须停下阅读这份聊天记录。' :
-      n === 4 ? '场地邮箱是 ' + maskExample + '，我发过时间了。' :
+      n === 4 ? '场地邮箱是 ' + maskExample + '，' + detailQuote + '。' :
+      n === 8 ? mapQuote + '，' + imaginedQuote + '。本来有点困，' + energyQuote + '。' :
       ['今天路过活动室，顺手把窗户关上了。','谢谢，我收到了。','晚点一起走到车站吧。','门口那盆花开了，下次带你看看。'][i % 4]
     return { sender: sender.platformId, accountName: sender.accountName, type: 0,
       timestamp: 1791324000 + n * 10, platformMessageId: String(n), content: text,
@@ -71,14 +76,21 @@ export function meetingChat(count) {
   return { chatlab: { version: '0.0.2' }, meta: { name: '合成会话 · 聚会分工', platform: 'discord', type: 'direct', groupId: 'issue35-' + count, ownerId: 'self' }, members, messages }
 }
 
-function reportDraft(firstId, lateId, detailId) {
+function reportDraft(firstId, lateId, detailId, imaginedId) {
   return {
     aboutYou: [{ content: [{ text: excerptCaption[0], citationId: 'early' }, { text: '。这句话能说明你当时的感受。' }] }],
-    relationship: [{ content: [{ text: excerptCaption[1], citationId: 'later' }, { text: '。可以把两次聚会分开讨论，再约定下次谁来联系。' }] }],
+    relationship: [{ content: [{ text: '你说起这次聚会时，ta 提醒你「' }, { text: excerptCaption[1], citationId: 'later' },
+      { text: '」。你们说的是两次聚会。把时间说清，再商量下一次谁来联系，分工就容易谈了。' }] }],
     citations: [{ id: 'early', fragments: [{ messageIds: [firstId] }] }, { id: 'later', fragments: [{ messageIds: [lateId] }] }],
     limitations: ['两次聚会不足以判断更长时间里的分工。'],
-    judgments: sampleJudgments({ SN: { direction: 'S', supportingIds: [detailId],
-      text: '整理聚会信息时，你给出了场地的联系方式和发送时间的进展。', limitations: ['只观察到这一次表达。'] } }),
+    judgments: sampleJudgments({ EI: {
+      direction: 'E', supportingIds: [imaginedId], counterexampleIds: [firstId],
+      text: '聚会还没开始，你提到「' + energyQuote + '」。聊起来有了精神，张罗起来却会觉得「这次我有点累」。在这次聚会里，和谁聊天、要操多少心，都影响了你的感受。',
+      excerpts: [{ messageId: imaginedId, text: energyQuote }, { messageId: firstId, text: '这次我有点累' }],
+    }, SN: { direction: 'S', supportingIds: [detailId], counterexampleIds: [imaginedId],
+      text: '约场地时，你用「' + detailQuote + '」交代进展。你也能从场地想到相聚的样子。你写下「' + mapQuote + '」后，接着说「' + imaginedQuote + '」。',
+      excerpts: [{ messageId: detailId, text: detailQuote }, { messageId: imaginedId, text: mapQuote }, { messageId: imaginedId, text: imaginedQuote }],
+      limitations: ['这里只看得到你张罗这次聚会时的表达。'] } }),
   }
 }
 
@@ -133,6 +145,7 @@ export async function meetingModel({ count, observe, holdPage, profileDirectory,
       if (!turn && !state.reread) return read({}, 'resume-read')
       for (const item of records) {
         if (item.text.includes(early)) state.earlyId = item.id
+        if (item.text.includes(imaginedQuote)) state.imaginedId = item.id
         if (item.text.includes(correction)) {
           if (item.replyToMessageId !== state.earlyId) throw Error('Distant reply target missing or wrong')
           state.lateId = item.id
@@ -156,8 +169,8 @@ export async function meetingModel({ count, observe, holdPage, profileDirectory,
       }
       if (args?.messageId === state.earlyId && !records.some(item => item.text.includes(early))) throw Error('Could not recover early evidence')
       if (state.next) return read({ cursor: state.next }, args?.messageId ? 'resume-cursor' : 'next')
-      if (state.confirmed.size !== count || !state.earlyId || !state.lateId || !state.detailId || !state.reread) throw Error('Report attempted without required evidence (' + state.confirmed.size + '/' + count + ')')
-      const report = reportDraft(state.earlyId, state.lateId, state.detailId)
+      if (state.confirmed.size !== count || !state.earlyId || !state.lateId || !state.detailId || !state.imaginedId || !state.reread) throw Error('Report attempted without required evidence (' + state.confirmed.size + '/' + count + ')')
+      const report = reportDraft(state.earlyId, state.lateId, state.detailId, state.imaginedId)
       state.report ??= report
       observe({ ...trace, action: 'report', usage, confirmed: state.confirmed.size })
       completeModel(response, { text: JSON.stringify(report), usage })

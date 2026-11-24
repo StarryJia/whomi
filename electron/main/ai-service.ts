@@ -1,5 +1,5 @@
 import { withInsightClock } from './insight-clock'
-import { generatePiInsight, type PiInsightCheckpoint } from './pi-insight-generation'
+import { generatePiInsight, verifyInsightExcerpts, type PiInsightCheckpoint } from './pi-insight-generation'
 import type { AgentRunInput, AgentRunResult, InsightRuntimeCallbacks } from '../agent/protocol'
 import { defaultPrompts } from '../../src/shared/system-prompts'
 import type { AnalysisContext, TurnContext } from '../data/ai/repository'
@@ -10,7 +10,7 @@ import { BoundaryError } from '../../src/shared/desktop-validation'
 import { resolveModelLimits } from '../../src/shared/model-limits'
 import { createMessageProcessor, type ProcessingMember } from './message-processing'
 import { defaultProcessing, type ProcessingSettings } from '../../src/shared/settings-contract'
-import type { InsightSourceMessage } from '../../src/shared/conversation-insights'
+import type { InsightJudgmentSource, InsightSourceMessage } from '../../src/shared/conversation-insights'
 import { generateInsight } from './insight-generation'
 import { defaultInsightPrompts, INSIGHT_PROMPT_VERSION, type InsightPrompts } from '../data/ai/insight-prompts'
 import { InsightBudgetError, type InsightCheckpoint } from './insight-checkpoint'
@@ -192,8 +192,9 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
       const elapsedSample = { elapsedMs: running.elapsedMs ?? 0, sampledAtMs: Date.now() }
       elapsedSamples.set(id, elapsedSample)
       publish({ kind: 'analysis', snapshot: running })
-      const read = async (messageIds: readonly string[]) => {
+      const read = async (messageIds: readonly string[], excerpts?: readonly InsightJudgmentSource[]) => {
         const sources = await storage<InsightSourceMessage[]>('readInsightSources', { taskId: id, messageIds })
+        if (excerpts?.length) verifyInsightExcerpts(sources, excerpts)
         return sources.map(({ memberId, ...source }) => {
           const protectedSource = processor.prepare([{ ...source, memberId, kind: 'text' }])[0]
           return { ...source, text: protectedSource?.text ?? '', senderName: protectedSource?.senderName ?? '' }
@@ -279,8 +280,8 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
       await saveTurn(id, { state: 'running', error: undefined })
       const result = await schedule(1, async () => {
         if (signal.aborted) throw new DOMException('已停止', 'AbortError')
-        context = await storage<TurnContext>('turnContext', id)
         const processing = await options.processing?.(context.conversationId)
+        context = await storage<TurnContext>('turnContext', id, processing?.settings)
         const processor = processing && createMessageProcessor(processing.settings, processing.members)
         const signature = processing ? hash(processing.settings) : undefined
         const instruction = `${context.systemPrompt ?? dialogueSystem}\n相关画像：${JSON.stringify(processor ? processor.data(context.profile) : context.profile)}${context.skill ? `\n本轮技能：\n${context.skill.content}` : ''}`

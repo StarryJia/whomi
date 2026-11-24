@@ -486,7 +486,12 @@ test('人格观察可保留未知，依据与反例按保存的版本分别回�
   }
   await repository.completeAnalysis(task.id, report)
   const saved = repository.getReport(task.id)
-  expect(saved.judgments).toEqual(report.judgments)
+  expect(saved.judgments?.[0]).toMatchObject({
+    supportingSources: [{ ...self, excerpts: ['我们几点开始？'] }],
+    counterexampleSources: [{ ...other, excerpts: ['今天九点。'] }],
+  })
+  expect(repository.listAnalyses()[0].report?.judgments).toEqual(report.judgments)
+  expect(() => validateAiResult('getReport', saved)).not.toThrow()
   const support = judgmentCitation(saved, '1', 0, 'supporting')!
   const counter = judgmentCitation(saved, '1', 0, 'counterexample')!
   const read = (citationId: string, fragmentIndex = 0) => repository.readInsightCitation({ taskId: task.id, citationId, fragmentIndex })
@@ -497,6 +502,8 @@ test('人格观察可保留未知，依据与反例按保存的版本分别回�
   expect(judgmentCitation(saved, '1', 1, 'supporting')).toBeUndefined()
   expect(await read(support.id, 1)).toEqual({ status: 'unavailable' })
   store.writer.prepare('UPDATE messages SET text=? WHERE id=?').run('过期原文', self.messageId)
+  expect(repository.getReport(task.id).judgments?.[0].supportingSources).toEqual([self])
+  expect(repository.getReport(task.id).judgments?.[0].counterexampleSources).toMatchObject([{ excerpts: ['今天九点。'] }])
   expect(await read(support.id)).toEqual({ status: 'expired' })
 })
 
@@ -520,4 +527,114 @@ test('已保存的人格观察可按单条依据打开第 201 个来源', async 
   const citation = judgmentCitation(report, '1', 0, 'supporting')!
   expect(await repository.readInsightCitation({ taskId: task.id, citationId: citation.id, fragmentIndex: 200 }))
     .toMatchObject({ status: 'available', highlightIds: ['300'] })
+})
+
+test('存档的短引文必须逐字来自对应消息，打开报告时保留写作者选择的片段', async () => {
+  const { repository } = await setup()
+  const preparation = await repository.prepareAnalysis({ conversationId: '1', modelId: 'example', scope: october })
+  const task = await repository.confirmAnalysis({ token: preparation.token, requestId: 'verified-quote' })
+  const [self, other] = repository.analysisContext(task.id).snapshot.sources
+  await repository.saveInsightCheckpoint(task.id, 'done', [self.messageId, other.messageId])
+  const report: InsightReport = { format: 'conversation-insights-v1', aboutYou: [], relationship: [], citations: [], limitations: [],
+    judgments: [{ dimension: 'JP', direction: 'J', text: '你说「我们」，并问了「几点开始」。', supportingSources: [{ ...self, excerpts: ['我们', '今天九点'] }],
+      counterexampleSources: [], alternativeExplanations: [], limitations: [] }] }
+  await expect(repository.completeAnalysis(task.id, report)).rejects.toMatchObject({ code: 'INVALID_INSIGHT_JUDGMENT' })
+  report.judgments![0].supportingSources[0].excerpts = ['我们', '几点开始']
+  await repository.completeAnalysis(task.id, report)
+  expect(repository.getReport(task.id)).toEqual(report)
+  expect(judgmentCitation(report, '1', 0, 'supporting')?.fragments).toEqual([{ sources: [self] }])
+})
+
+test('普通正文的原话定位到唯一匹配的片段，概述和重复原话仍按整处引用阅读', async () => {
+  const { repository, store } = await setup()
+  store.writer.prepare('UPDATE messages SET text=? WHERE id=1').run('今天我们几点开始？')
+  const preparation = await repository.prepareAnalysis({ conversationId: '1', modelId: 'example', scope: october })
+  const task = await repository.confirmAnalysis({ token: preparation.token, requestId: 'body-fragment' })
+  const [self, other] = repository.analysisContext(task.id).snapshot.sources
+  await repository.saveInsightCheckpoint(task.id, 'done', [self.messageId, other.messageId])
+  const report: InsightReport = { format: 'conversation-insights-v1', aboutYou: [{ content: [
+    { text: '今天', citationId: 'c' }, { text: '你们商量了时间', citationId: 'c' },
+  ] }], relationship: [{ content: [{ text: '九点', citationId: 'c' }] }],
+    citations: [{ id: 'c', conversationId: '1', fragments: [{ sources: [self] }, { sources: [other] }] }], limitations: [] }
+  await repository.completeAnalysis(task.id, report)
+  const loaded = repository.getReport(task.id)
+  expect(loaded.relationship[0].content[0]).toEqual({ text: '九点', citationId: 'c', quoteFragmentIndex: 1, quoteMessageId: other.messageId })
+  expect(loaded.aboutYou).toEqual(report.aboutYou)
+  expect(() => validateAiResult('getReport', loaded)).not.toThrow()
+  const forged = { ...report, aboutYou: [{ content: [{ text: '不存在的原句', citationId: 'c', quoteFragmentIndex: 0, quoteMessageId: self.messageId }] }] }
+  const data = JSON.stringify(forged)
+  store.writer.prepare('UPDATE ai_reports SET data=?,content_revision=? WHERE task_id=?').run(data, createHash('sha256').update(data).digest('hex'), task.id)
+  expect(repository.getReport(task.id).aboutYou[0].content[0]).toEqual({ text: '不存在的原句', citationId: 'c' })
+  expect(repository.listAnalyses()[0].report?.aboutYou[0].content[0]).toEqual({ text: '不存在的原句', citationId: 'c' })
+  store.writer.prepare('UPDATE messages SET text=? WHERE id=4').run('后来改成了别的时间')
+  expect(repository.getReport(task.id).relationship[0].content[0]).not.toHaveProperty('quoteFragmentIndex')
+})
+
+test('旧判断优先匹配分析里的引语，完整展示短消息，过长的原文只保留入口', async () => {
+  const { repository, store } = await setup()
+  const selfText = '收到。聊完我反而有精神了。'
+  const otherText = '先应一声。' + '接着聊起别的话题。'.repeat(50)
+  store.writer.prepare('UPDATE messages SET text=? WHERE id=?').run(selfText, 1)
+  store.writer.prepare('UPDATE messages SET text=? WHERE id=?').run(otherText, 4)
+  const preparation = await repository.prepareAnalysis({ conversationId: '1', modelId: 'example', scope: october })
+  const task = await repository.confirmAnalysis({ token: preparation.token, requestId: 'legacy-phrases' })
+  const [self, other] = repository.analysisContext(task.id).snapshot.sources
+  await repository.saveInsightCheckpoint(task.id, 'done', [self.messageId, other.messageId])
+  const report: InsightReport = { format: 'conversation-insights-v1', aboutYou: [], relationship: [], citations: [], limitations: [],
+    judgments: [{ dimension: 'EI', direction: 'E', text: '你说‘聊完我反而有精神了’。', supportingSources: [self], counterexampleSources: [other], alternativeExplanations: [], limitations: [] },
+      { dimension: 'JP', direction: null, text: '你在聊天中回复了对方。', supportingSources: [self], counterexampleSources: [], alternativeExplanations: [], limitations: [] }] }
+  await repository.completeAnalysis(task.id, report)
+  const [first, second] = repository.getReport(task.id).judgments!
+  expect(first.supportingSources[0]).toEqual({ ...self, excerpts: ['聊完我反而有精神了'] })
+  expect(first.counterexampleSources[0]).toEqual({ ...other, excerpts: [] })
+  expect(second.supportingSources[0]).toEqual({ ...self, excerpts: [selfText] })
+})
+
+test('短消息中已保护的内容不随旧报告展开，同一消息的普通原话仍可核对', async () => {
+  const { repository, store } = await setup()
+  store.writer.prepare('UPDATE messages SET text=? WHERE id=1').run('资料发到 sample@example.invalid，你来定时间。')
+  const preparation = await repository.prepareAnalysis({ conversationId: '1', modelId: 'example', scope: october })
+  const task = await repository.confirmAnalysis({ token: preparation.token, requestId: 'masked-legacy-source' })
+  const [self, other] = repository.analysisContext(task.id).snapshot.sources
+  await repository.saveInsightCheckpoint(task.id, 'done', [self.messageId, other.messageId])
+  const report: InsightReport = { format: 'conversation-insights-v1', aboutYou: [], relationship: [{ content: [
+    { text: '你来定时间', citationId: 'c' }, { text: 'sample@example.invalid', citationId: 'c' },
+  ] }], citations: [{ id: 'c', conversationId: '1', fragments: [{ sources: [self] }] }], limitations: [],
+    judgments: [{ dimension: 'JP', direction: null, text: '你交给对方安排。', supportingSources: [self], counterexampleSources: [], alternativeExplanations: [], limitations: [] }] }
+  await repository.completeAnalysis(task.id, report)
+  const selected = repository.getReport(task.id)
+  expect(selected.judgments?.[0].supportingSources[0]).toEqual({ ...self, excerpts: [] })
+  expect(selected.relationship[0].content).toEqual([{ text: '你来定时间', citationId: 'c', quoteFragmentIndex: 0, quoteMessageId: self.messageId }, { text: 'sample@example.invalid', citationId: 'c' }])
+})
+
+test('同片段内相隔百条的原话可直接定位，其他片段和会话的消息不能作为落点', async () => {
+  const { repository, store } = await setup()
+  store.writer.prepare('UPDATE messages SET text=? WHERE id=1').run('今天几点开始？')
+  const insert = store.writer.prepare(`INSERT INTO messages(id,conversation_id,member_id,sender_kind,sender_name,kind,text,ordinal,sent_at_ms)
+    VALUES(?,1,2,'member','小林','text','中间的消息。',?,?)`)
+  store.writer.transaction(() => {
+    for (let i = 0; i < 120; i++) insert.run(100 + i, i + 10, start + i + 1)
+  })()
+  const preparation = await repository.prepareAnalysis({ conversationId: '1', modelId: 'example', scope: october })
+  const task = await repository.confirmAnalysis({ token: preparation.token, requestId: 'body-message-anchor' })
+  const { sources } = repository.analysisContext(task.id).snapshot
+  const [first, middle] = sources
+  const last = sources.at(-1)!
+  await repository.saveInsightCheckpoint(task.id, 'done', sources.map(ref => ref.messageId))
+  const report: InsightReport = { format: 'conversation-insights-v1', aboutYou: [{ content: [{ text: '今天', citationId: 'when' }] }], relationship: [{ content: [{ text: '九点', citationId: 'when' }] }],
+    citations: [{ id: 'when', conversationId: '1', fragments: [{ sources: [middle] }, { sources: [first, last] }] }], limitations: [] }
+  await repository.completeAnalysis(task.id, report)
+  const loaded = repository.getReport(task.id)
+  expect(loaded.relationship[0].content[0]).toEqual({ text: '九点', citationId: 'when', quoteFragmentIndex: 1, quoteMessageId: last.messageId })
+  expect(loaded.aboutYou).toEqual(report.aboutYou)
+  const input = { taskId: task.id, citationId: 'when', fragmentIndex: 1 }
+  const defaultWindow = await repository.readInsightCitation(input)
+  const anchored = await repository.readInsightCitation({ ...input, messageId: last.messageId })
+  expect(defaultWindow.status === 'available' && defaultWindow.page.items.some(message => message.id === last.messageId)).toBe(false)
+  expect(anchored).toMatchObject({ status: 'available', startMessageId: first.messageId, endMessageId: last.messageId, highlightIds: [first.messageId, last.messageId] })
+  expect(anchored.status === 'available' && anchored.page.items.some(message => message.id === last.messageId)).toBe(true)
+  expect(() => validateAiResult('readInsightCitation', anchored)).not.toThrow()
+  for (const messageId of [middle.messageId, '5']) {
+    expect(await repository.readInsightCitation({ ...input, messageId })).toEqual({ status: 'unavailable' })
+  }
 })

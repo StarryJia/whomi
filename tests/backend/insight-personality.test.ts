@@ -37,3 +37,11 @@ test('Pi 新报告省略空的附加列表仍能保存，明确方向继续要�
   expect(report.judgments).toEqual(parse(observations).judgments)
   expect(() => validateAiResult('getReport', report)).not.toThrow()
 })
+
+test('同一来源可在分析中引用多个片段，每个短句只登记一次', () => {
+  const first = { messageId: '1', text: '一起约' }
+  const quoted = (excerpts: typeof first[]) => parse([...observations.slice(0, 3), { ...observations[3], excerpts }])
+  expect(() => quoted([first, first])).toThrow()
+  expect(() => quoted([{ ...first, messageId: '2' }])).toThrow()
+  expect(quoted([first, { ...first, text: '周三' }]).judgments?.at(-1)?.supportingSources[0]).toMatchObject({ excerpts: ['一起约', '周三'] })
+})

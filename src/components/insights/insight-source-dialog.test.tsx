@@ -32,6 +32,37 @@ function props(readCitation = vi.fn(async () => source())) {
       return { items: [message('9')], beforeCursor: null, afterCursor: 'before', snapshotMaxId: '40' }
     }) } }
 }
+test('点击第二段引文直接定位原句，只标记这条来源消息中的引文', async () => {
+  const window = source(['20', '21'], ['20', '21'])
+  if (window.status !== 'available') throw Error('缺少测试原文')
+  window.page.items[0].text = '我们周末再约，好吗？'
+  window.page.items[1].text = '好呀，我们周末再约。'
+  const read = vi.fn().mockResolvedValue(window)
+  render(<InsightSourceDialog {...props(read)} initialFragmentIndex={1} quote="周末再约" quoteMessageId="21" />)
+  expect(await screen.findByText('2 / 2')).toBeVisible()
+  expect(read).toHaveBeenCalledWith({ taskId: '7', citationId: 'e1', fragmentIndex: 1, messageId: '21' })
+  const region = screen.getByRole('region', { name: '引用聊天记录' })
+  const mark = region.querySelector('mark')
+  expect(mark).toHaveTextContent('周末再约')
+  expect(mark?.closest('[data-message-id]')).toHaveAttribute('data-message-id', '21')
+  expect(region.querySelector('[data-message-id="20"] mark')).toBeNull()
+
+  Object.defineProperties(region, { clientHeight: { value: 300 }, scrollHeight: { value: 1500 } })
+  vi.spyOn(region, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 400, 300))
+  vi.spyOn(region.querySelector('[data-message-id="21"]')!, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, -700, 400, 900))
+  vi.spyOn(mark!, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, -690, 80, 20))
+  fireEvent.scroll(region, { target: { scrollTop: 700 } })
+  fireEvent.click(screen.getByRole('button', { name: '回到引用' }))
+  expect(region).toHaveFocus()
+
+  fireEvent.click(screen.getByRole('button', { name: '上一段' }))
+  expect(await screen.findByText('1 / 2')).toBeVisible()
+  expect(read).toHaveBeenLastCalledWith({ taskId: '7', citationId: 'e1', fragmentIndex: 0 })
+  expect(region.querySelector('mark')).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: '下一段' }))
+  expect(await screen.findByText('2 / 2')).toBeVisible()
+  expect(read).toHaveBeenLastCalledWith({ taskId: '7', citationId: 'e1', fragmentIndex: 1, messageId: '21' })
+})
 test('records the actual missing highlight separately from a successful citation read', async () => {
   const saved = window.whomi, conversation = vi.fn()
   window.whomi = { ...saved, operationDiagnostics: { conversation, importRefresh: vi.fn() } } as NonNullable<typeof saved>
