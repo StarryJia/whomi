@@ -11,6 +11,7 @@ import { BoundaryError } from '../../src/shared/desktop-validation'
 import { createMessageProcessor } from '../main/message-processing'
 import { completeReadingInstruction, type InsightRuntimeCallbacks, type InsightRuntimeEvent } from './protocol'
 import { protocolUsage } from './protocol-usage'
+import { diagnoseInsightFailure, insightRequestError, type InsightFailureCode } from './insight-request-failure'
 
 const parameters = Type.Object({
   cursor: Type.Optional(Type.String({ description: '继续先前分页时，原样传回 nextCursor。' })),
@@ -26,6 +27,7 @@ export function createInsightTool(callbacks: InsightRuntimeCallbacks, inputLimit
   let contextTokens = 0
   let outstandingTokens = 0
   let remainingReads = new Map<string, number>()
+  let originatingRequestId: string | undefined
   const tool = {
     name: 'read_messages', label: '读取聊天原文',
     description: '只读本次范围的脱敏历史发言。无参数从开头读取。用 nextCursor 继续同一页序列，null 表示该序列结束。回看时传 messageId，可指定 before 和 after；保存顺读的 nextCursor 以便回看后继续。',
@@ -35,7 +37,7 @@ export function createInsightTool(callbacks: InsightRuntimeCallbacks, inputLimit
       // 同一轮可回查多处原文，先执行的取文也要为后续目标留下容量。
       const available = Math.max(0, inputLimit - contextTokens - outstandingTokens - 128)
       const allocation = Math.floor(available / (remainingReads.get(id) ?? 1))
-      const { page, spans } = await callbacks.read(args, allocation)
+      const { page, spans } = await callbacks.read(args, allocation, originatingRequestId)
       signal?.throwIfAborted()
       if (page.status === 'insufficient_capacity') requestCompaction()
       const text = JSON.stringify(page.status === 'insufficient_capacity' && allocation < available
@@ -44,7 +46,8 @@ export function createInsightTool(callbacks: InsightRuntimeCallbacks, inputLimit
       return { content: [{ type: 'text', text }], details: { spans, digest: digest(text) } }
     },
   } satisfies ToolDefinition<typeof parameters, Receipt>
-  return { tool, setUsage(tokens: number, response: AssistantMessage) {
+  return { tool, setUsage(tokens: number, response: AssistantMessage, requestId: string) {
+    originatingRequestId = requestId
     contextTokens = tokens
     outstandingTokens = 0
     const ids = response.content.flatMap(block => block.type === 'toolCall' && block.name === tool.name ? [block.id] : [])
@@ -177,7 +180,12 @@ export function observeInsightSession(session: AgentSession, manager: SessionMan
   let fullyReviewed: number | undefined
   let fatal: unknown
   let lastText = ''
+  let lastInferenceFailure: InsightFailureCode | undefined
+  let needsRecovery = false
+  let recoveryFailure: InsightFailureCode | undefined
   let settlement = Promise.resolve()
+  type SummaryRequest = { requestId: string; complete: boolean; failure?: InsightFailureCode }
+  let summaryRequests: SummaryRequest[] = []
   let observeFirstOutput: (() => void) | undefined
   const confirmed = new Set<string>()
   async function flush() {
@@ -202,6 +210,18 @@ export function observeInsightSession(session: AgentSession, manager: SessionMan
   }
 
   session.agent.toolExecution = 'sequential'
+  session.subscribe(event => {
+    if (event.type !== 'compaction_end' || !summaryRequests.length) return
+    const completed = summaryRequests
+    summaryRequests = []
+    // Pi 在追加压缩记录后发送 result。一次压缩可合并多个摘要请求。
+    settlement = settlement.then(async () => {
+      for (const request of completed) await record({ type: 'summary', requestId: request.requestId, saved: !!event.result && request.complete })
+      if (event.reason === 'overflow' && needsRecovery && !event.aborted && !event.result) {
+        recoveryFailure = completed.slice().reverse().find(request => request.failure)?.failure ?? 'INSIGHT_SUMMARY_FAILED'
+      }
+    }).catch(error => { fatal = error })
+  })
   session.agent.subscribe(async event => {
     if (event.type === 'message_update' && ['text_delta', 'thinking_delta', 'toolcall_delta'].includes(event.assistantMessageEvent.type)) observeFirstOutput?.()
     if (event.type === 'message_end' && event.message.role === 'assistant') await settlement
@@ -249,17 +269,37 @@ export function observeInsightSession(session: AgentSession, manager: SessionMan
     }
     const maxTokens = Math.min(limits.maxTokens, model.contextWindow - reservedInput)
     if (estimatedInput > limits.maxInputTokens || maxTokens < (api === 'openai-responses' ? 16 : 1)) {
+      await record({ type: 'requestBlocked', kind, code: 'MODEL_CONTEXT_LIMIT' })
       fatal = new BoundaryError('MODEL_CONTEXT_LIMIT', '洞察请求超出模型容量，请缩小分析范围或选择更大上下文的模型。')
       throw fatal
     }
     const requestId = randomUUID()
     const request = await record({ type: 'requestStart', kind, requestId })
+    const summaryRequest: SummaryRequest = { requestId, complete: false }
+    if (kind === 'compaction') summaryRequests.push(summaryRequest)
+    else recoveryFailure = undefined
     const startedAt = Date.now()
     let usage: AiUsage = {}
     let firstTokenMs: number | undefined
+    let responseReceived: boolean | undefined
+    let httpStatus: number | undefined
     observeFirstOutput = kind === 'inference' ? () => { firstTokenMs ??= Date.now() - startedAt } : undefined
-    async function finish(response?: AssistantMessage) {
+    async function finish(response?: AssistantMessage, cause?: unknown) {
       const success = !!response && (response.stopReason === 'stop' || response.stopReason === 'toolUse' || response.stopReason === 'length')
+      summaryRequest.complete = success && response?.stopReason !== 'length'
+      const reportedStop = response?.stopReason
+      const stopReason = (reportedStop === 'error' || reportedStop === 'aborted'
+        || (response?.rawStopReason && (reportedStop === 'stop' || reportedStop === 'toolUse' || reportedStop === 'length'))) ? reportedStop : 'unknown'
+      const message = response?.errorMessage ?? (cause instanceof Error ? cause.message : '')
+      const diagnosis = !success && reportedStop !== 'aborted' && !signal.aborted
+        ? diagnoseInsightFailure(api, message, responseReceived, httpStatus) : undefined
+      if (diagnosis) responseReceived = diagnosis.responseReceived
+      const failureCode = response?.stopReason === 'error' && (await import('@earendil-works/pi-ai')).isContextOverflow(response)
+        ? 'MODEL_CONTEXT_LIMIT' : diagnosis?.failureCode
+      if (kind === 'inference') {
+        lastInferenceFailure = failureCode
+        needsRecovery = reportedStop === 'error' || reportedStop === 'length'
+      } else summaryRequest.failure = reportedStop === 'length' ? 'MODEL_OUTPUT_LIMIT' : failureCode
       const durationMs = Date.now() - startedAt
       usage = { ...usage, startedAt, completedAt: startedAt + durationMs, durationMs, firstTokenMs,
         incomplete: usage.inputTokens === undefined || usage.outputTokens === undefined,
@@ -278,10 +318,11 @@ export function observeInsightSession(session: AgentSession, manager: SessionMan
           if (accepted.length) { spans.push(...accepted); confirmed.add(signature) }
         }
       }
-      await record({ type: 'request', requestId, kind, success, usage, spans, checkpoint: lastCheckpoint })
+      await record({ type: 'request', requestId, kind, success, usage, spans, checkpoint: lastCheckpoint,
+        stopReason, failureCode, httpStatus, responseReceived })
       if (kind === 'inference' && response && success) {
         const input = usage.totalInputTokens ?? Buffer.byteLength(JSON.stringify(messages))
-        reader.setUsage(input + (usage.outputTokens ?? Buffer.byteLength(JSON.stringify(response.content))), response)
+        reader.setUsage(input + (usage.outputTokens ?? Buffer.byteLength(JSON.stringify(response.content))), response, requestId)
         lastText = response.content.flatMap(block => block.type === 'text' ? [block.text] : []).join('')
       }
     }
@@ -290,18 +331,35 @@ export function observeInsightSession(session: AgentSession, manager: SessionMan
       const access = request?.access
       const stream = await baseStream({ ...model, maxTokens, ...(access && { baseUrl: access.baseUrl }) }, { ...context, messages }, { ...options, maxTokens,
         ...(access && { apiKey: access.token }),
+        // OpenAI 和 Anthropic 的适配器只在成功打开流后调用 onResponse。
+        ...(api === 'google-generative-ai' ? {} : { fetch: async (...args: Parameters<typeof fetch>) => {
+          const response = await (options?.fetch ?? globalThis.fetch)(...args).catch((error: unknown) => {
+            responseReceived = false
+            httpStatus = undefined
+            throw error
+          })
+          httpStatus = response.status
+          responseReceived = true
+          return response
+        } }),
         onProviderStreamEvent: async (chunk, selected) => {
+          responseReceived = true
           usage = protocolUsage(api, chunk, usage)
           await options?.onProviderStreamEvent?.(chunk, selected)
         },
       })
       // Pi consumes the live stream. Its next request waits for this request's durable receipt.
-      settlement = stream.result().then(finish, async error => { await finish(); throw error }).catch(error => { fatal = error })
+      const receipt = stream.result().then(finish, async error => {
+        await finish(undefined, error)
+        throw insightRequestError(diagnoseInsightFailure(api, error instanceof Error ? error.message : '', responseReceived, httpStatus).failureCode)
+      })
+      settlement = Promise.all([settlement, receipt]).then(() => {}).catch(error => { fatal = error })
       return stream
     } catch (error) {
-      await finish()
-      throw error
+      await finish(undefined, error)
+      signal.throwIfAborted()
+      throw insightRequestError(diagnoseInsightFailure(api, error instanceof Error ? error.message : '', responseReceived, httpStatus).failureCode)
     }
   }
-  return { lastText: () => lastText, flush }
+  return { lastText: () => lastText, lastFailure: () => lastInferenceFailure, recoveryFailure: () => recoveryFailure, flush }
 }

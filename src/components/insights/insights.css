@@ -3,6 +3,12 @@
 .app-conversation-frame { height: 100%; min-height: 0; }
 .insights-list, .insight-reader { width: min(100%, 1180px); min-width: 0; margin-inline: auto; color: var(--text); overflow-wrap: anywhere; }
 .insights-list h1 { margin: 0 0 22px; font-size: 30px; font-weight: 660; }
+.insight-failure-time { display: block; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.insight-open-log {
+  display: block; padding: 4px 0; border: 0; background: transparent; color: var(--focus);
+  font: inherit; text-decoration: underline; text-underline-offset: 3px; cursor: pointer;
+}
+.insight-open-log:disabled { opacity: .6; cursor: wait; }
 .insight-group + .insight-group { margin-top: 24px; }
 .insight-group h2 { margin: 0; border-bottom: 1px solid var(--line); }
 .insight-group-toggle {

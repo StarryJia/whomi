@@ -514,6 +514,41 @@ it('展开洞察异常时保留原会话的进度和恢复操作', async () => {
   expect(screen.getByRole('button', { name: '再次洞察' })).toBeVisible()
 })
 
+it('同一任务连续失败时，从提醒打开各自的操作日志，打开失败可原位重试', async () => {
+  const user = userEvent.setup()
+  const firstId = '29aabf7e-983a-4eb9-8205-68d91dc2d566'
+  const secondId = 'c8995227-0e57-47f7-9906-83e97ce81a14'
+  const resumeId = 'a13228fd-b21f-4c03-bd16-16292fd0b0a8'
+  const resume = vi.fn().mockRejectedValue({ code: 'MODEL_CHANGED', action: '模型配置已更新，请从会话重新开始洞察。',
+    operationId: resumeId, failureAtMs: Date.UTC(2026, 10, 24, 4, 32, 57) })
+  const openInsightLog = vi.fn().mockRejectedValueOnce({ code: 'LOG_OPEN_FAILED', action: '请检查默认文本查看应用后重试。' }).mockResolvedValue(undefined)
+  vi.stubGlobal('whomi', { operationDiagnostics: { openInsightLog } })
+  const failed: AnalysisTask = { ...completed, state: 'failed', report: undefined, error: '模型拒绝了本次参数。' }
+  const library = (failureOperationId: string) => <ExceptionNoticeProvider>
+    <InsightsLibrary tasks={[{ ...failed, failureOperationId }]} conversations={[]} loading={false} error=""
+      onContinue={resume} retry={() => {}} onSelect={() => {}} onReturn={() => {}} onTask={() => {}} onConversations={() => {}} onRenameBusy={() => {}} />
+  </ExceptionNoticeProvider>
+  try {
+    const view = render(library(firstId))
+    await user.click(screen.getByRole('button', { name: '展开详情' }))
+    const open = screen.getByRole('button', { name: '打开本次操作日志' })
+    await user.click(open)
+    expect(screen.getByText('请检查默认文本查看应用后重试。')).toBeVisible()
+    await user.click(open)
+    expect(screen.queryByText('请检查默认文本查看应用后重试。')).toBeNull()
+    await user.click(screen.getByRole('button', { name: '关闭提醒' }))
+    view.rerender(library(secondId))
+    await user.click(screen.getByRole('button', { name: '展开详情' }))
+    await user.click(screen.getByRole('button', { name: '打开本次操作日志' }))
+    await user.click(screen.getByRole('button', { name: '关闭提醒' }))
+    await user.click(screen.getByRole('button', { name: '重试' }))
+    await user.click(screen.getByRole('button', { name: '展开详情' }))
+    expect(screen.getByText('模型配置已更新，请从会话重新开始洞察。')).toBeVisible()
+    await user.click(screen.getByRole('button', { name: '打开本次操作日志' }))
+    expect(openInsightLog.mock.calls).toEqual([[firstId], [firstId], [secondId], [resumeId]])
+  } finally { vi.unstubAllGlobals() }
+})
+
 it('同一次洞察失败关闭后可折叠和重访列表，任务重试后的失败重新提醒', async () => {
   const user = userEvent.setup()
   const failed: AnalysisTask = { ...completed, state: 'failed', report: undefined, error: '连接失败，请重试。' }

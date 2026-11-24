@@ -1,7 +1,7 @@
 import type { SourceHandle } from '../../src/shared/desktop-api'
 import type { ImportSnapshot, StartImportRequest } from '../../src/shared/import-contract'
 import { terminalImportStates } from '../../src/shared/import-contract'
-import { BoundaryError, localId, validateArguments, validateResult, validateSnapshot } from '../../src/shared/desktop-validation'
+import { BoundaryError, localId, serializableError, validateArguments, validateResult, validateSnapshot } from '../../src/shared/desktop-validation'
 import type { SourceGrants } from './source-grants'
 import type { ImportOperationTracker } from './import-operation-tracker'
 
@@ -108,7 +108,4 @@ export function createDesktopRouter(options: RouterOptions) {
   }
 }
 export const desktopChannels = { call: 'whomi:call', drop: 'whomi:drop', progress: 'whomi:import' } as const
-export function serializableError(error: unknown) {
-  if (error instanceof BoundaryError) return { code: error.code, action: error.action, ...(error.operationId && { operationId: error.operationId }) }
-  return { code: 'OPERATION_FAILED', action: '操作失败，请重试。' }
-}
+export { serializableError }

@@ -66,6 +66,8 @@ export function migrateStore(store: Pick<Store, 'writer'>): void {
         UPDATE conversation_summaries SET member_count=(SELECT count(*) FROM visible_memberships m WHERE m.conversation_id=conversation_summaries.conversation_id)
           WHERE conversation_id IN (SELECT x.conversation_id FROM messages x JOIN legacy_insight_source_classification l ON l.message_id=x.id);`)
       }
+      if (version < 15n) db.exec(`ALTER TABLE ai_analysis_tasks ADD COLUMN failure_operation_id TEXT;
+        ALTER TABLE ai_analysis_tasks ADD COLUMN failure_at_ms INTEGER CHECK(failure_at_ms >= 0);`)
       if ((db.pragma('foreign_key_check') as unknown[]).length) throw new Error('资料库迁移失败，请从备份恢复后重试。')
       db.pragma(`user_version = ${schemaVersion}`)
     }).immediate()

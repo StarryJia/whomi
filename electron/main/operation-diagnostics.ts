@@ -366,7 +366,7 @@ export function createOperationDiagnostics(installDirectory: string, version: st
     background(async () => {
       const entry = entries.get(id)
       if (entry && (entry.summary.outcome === 'interrupted' || entry.summary.outcome === 'unknown'
-        || (['import', 'insight'].includes(entry.summary.area) && entry.summary.outcome === 'failed'))) {
+        || (entry.summary.area === 'import' && entry.summary.outcome === 'failed'))) {
         entry.summary.endedAt = null
         entry.summary.outcome = 'running'
         await write(entry, row)
@@ -419,13 +419,13 @@ export function createOperationDiagnostics(installDirectory: string, version: st
     } finally { release() }
   }
 
-  async function withFile<T>(id: string, use: (path: string) => T | Promise<T>, preparingAttachment = false) {
+  async function withFile<T>(id: string, use: (path: string) => T | Promise<T>, preparingAttachment = false, area?: OperationArea) {
     if (!isOperationId(id)) throw missingOperation()
     const release = pin(id)
     try {
       const path = await enqueue(async () => {
         const entry = entries.get(id)
-        if (!entry?.size) throw missingOperation()
+        if (!entry?.size || (area && entry.summary.area !== area)) throw missingOperation()
         const path = operationPath(entry)
         try {
           await checkedSize(path)
@@ -463,7 +463,7 @@ export function createOperationDiagnostics(installDirectory: string, version: st
   }
   return {
     begin, event, end, bind, resume, discardUnstarted, withFile, openLegacyFile,
-    async findByTask(area: OperationArea, taskId: string, createdAt: number) {
+    async findByTask(area: OperationArea, taskId: string, createdAt: number, outcomes?: readonly OperationSummary['outcome'][]) {
       await pending
       const binding = taskBinding(area, taskId, createdAt)
       let latest: Entry | undefined
@@ -471,7 +471,7 @@ export function createOperationDiagnostics(installDirectory: string, version: st
         if (entry.binding === binding && (!latest || entry.summary.startedAt > latest.summary.startedAt
           || (entry.summary.startedAt === latest.summary.startedAt && entry.summary.lastAt >= latest.summary.lastAt))) latest = entry
       }
-      return latest?.summary.id ?? null
+      return latest && (!outcomes || outcomes.includes(latest.summary.outcome)) ? latest.summary.id : null
     },
     async list() {
       await pending

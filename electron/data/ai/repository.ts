@@ -1,3 +1,4 @@
+import { isOperationId } from '../../../src/shared/operation-diagnostics'
 import { readPromptValues } from './system-prompts'
 import { defaultProcessing, type ProcessingSettings } from '../../../src/shared/settings-contract'
 import { validateProcessing } from '../settings/validation'
@@ -27,12 +28,13 @@ export type AnalysisContext = { processing?: ProcessingSettings; systemPrompts?:
 export type RegisteredSkill = AiSkill & { content: string; enabled?: boolean }
 type TurnReferences = { references: AiSourceMessage[]; referenceBreaks?: string[] }
 export type TurnContext = TurnReferences & { systemPrompt?: string; turn: AiTurn; threadId: string; conversationId: string; model: AiModel; selfFingerprint: string; history: ({ role: 'user' | 'assistant'; text: string } & Partial<TurnReferences>)[]; profile: InsightReport | null; skill: RegisteredSkill | null; checkpoint: string | null }
-export type AnalysisPatch = { state?: AiState; error?: string }
-export type TurnPatch = AnalysisPatch & { text?: string; usage?: AiUsage; checkpoint?: string | null }
+type StatePatch = { state?: AiState; error?: string }
+export type AnalysisPatch = StatePatch & Pick<AnalysisTask, 'failureOperationId' | 'failureAtMs'>
+export type TurnPatch = StatePatch & { text?: string; usage?: AiUsage; checkpoint?: string | null }
 export type NewTurn = { thinkingLevel?: ThinkingLevel; threadId: string; requestId: string; prompt: string; referenceIds: string[]; modelId: string; skillId?: string }
 export type ModelInput = Omit<AiModel, 'version' | 'hasCredential'>
 export type UsageRecord = { ownerKind: 'analysis' | 'turn'; ownerId: string; requestId: string; usage: AiUsage }
-type AnalysisRow = { title: string | null; elapsed_ms: bigint; prompt_snapshot: string | null; thinking_level: ThinkingLevel | null; id: bigint; conversation_id: bigint; model_id: string; model_version: bigint; created_at_ms: bigint | null; completed_at_ms: bigint | null; pinned: bigint; prompt_version: string; self_fingerprint: string; snapshot_max_id: bigint; state: AiState; total_messages: bigint; skipped_messages: bigint; event_sequence: bigint; error: string | null; checkpoint: string | null }
+type AnalysisRow = { failure_operation_id: string | null; failure_at_ms: bigint | null; title: string | null; elapsed_ms: bigint; prompt_snapshot: string | null; thinking_level: ThinkingLevel | null; id: bigint; conversation_id: bigint; model_id: string; model_version: bigint; created_at_ms: bigint | null; completed_at_ms: bigint | null; pinned: bigint; prompt_version: string; self_fingerprint: string; snapshot_max_id: bigint; state: AiState; total_messages: bigint; skipped_messages: bigint; event_sequence: bigint; error: string | null; checkpoint: string | null }
 type InsightSnapshotRow = { scope: string; timezone: string; source_start_time_ms: bigint | null; source_end_time_ms: bigint | null; source_text_bytes: bigint | null; created_at_ms: bigint; sources: string }
 type ReportRow = { data: string; content_revision: string | null }
 function readInsightReport(data: string, conversationId: bigint): InsightReport {
@@ -278,6 +280,8 @@ export function createAiRepository(store: Store, write: WriterQueue) {
       sourceStartTimeMs: optionalNumber(insight?.start ?? null), sourceEndTimeMs: optionalNumber(insight?.end ?? null),
       pinned: !!row.pinned, state: row.state, analyzedMessages: Number(coverage.n), totalMessages: Number(row.total_messages),
       skippedMessages: Number(row.skipped_messages), usage: aggregate('analysis', String(row.id)), valid, eventSequence: Number(row.event_sequence),
+      ...(isOperationId(row.failure_operation_id) && { failureOperationId: row.failure_operation_id }),
+      ...(row.failure_at_ms != null && { failureAtMs: Number(row.failure_at_ms) }),
       ...(row.error ? { error: row.error } : {}), ...(report ? { report: readInsightReport(report.data, row.conversation_id) } : {}),
     }
   }
@@ -307,7 +311,7 @@ export function createAiRepository(store: Store, write: WriterQueue) {
     db.prepare('INSERT INTO ai_request_usage(owner_kind,owner_id,request_id,data) VALUES(?,?,?,?) ON CONFLICT(owner_kind,owner_id,request_id) DO UPDATE SET data=excluded.data').run(record.ownerKind, id(record.ownerId), record.requestId, JSON.stringify(record.usage))
   }
   function patchState(patch: TurnPatch, turn = false) {
-    fields(patch, ['state', 'error', ...(turn ? ['text', 'usage', 'checkpoint'] : [])])
+    fields(patch, ['state', 'error', ...(turn ? ['text', 'usage', 'checkpoint'] : ['failureOperationId', 'failureAtMs'])])
     if (patch.state !== undefined && !states.has(patch.state)) fail('INVALID_STATE')
     if (patch.error !== undefined && (typeof patch.error !== 'string' || patch.error.length > 4096)) fail('INVALID_ARGUMENT')
     if (patch.checkpoint !== undefined && patch.checkpoint !== null && !text(patch.checkpoint, 32768)) fail('INVALID_ARGUMENT')
@@ -496,12 +500,15 @@ export function createAiRepository(store: Store, write: WriterQueue) {
     },
     async saveAnalysis(taskId: string, patch: AnalysisPatch, sampledAtMs?: number): Promise<AnalysisTask> {
       patchState(patch)
+      if (patch.failureOperationId !== undefined && (patch.state !== 'failed' || !isOperationId(patch.failureOperationId))) fail('INVALID_ARGUMENT')
+      if (patch.failureAtMs !== undefined && (patch.state !== 'failed' || !Number.isSafeInteger(patch.failureAtMs) || patch.failureAtMs < 0)) fail('INVALID_ARGUMENT')
       await write(() => {
         const row = analysisRow(taskId)
         if (!activeStates.has(row.state)) return
         if (patch.state === 'completed') fail('REPORT_REQUIRED')
-        db.prepare('UPDATE ai_analysis_tasks SET state=?,error=?,elapsed_ms=?,event_sequence=event_sequence+1 WHERE id=?').run(
+        db.prepare('UPDATE ai_analysis_tasks SET state=?,error=?,failure_operation_id=?,failure_at_ms=?,elapsed_ms=?,event_sequence=event_sequence+1 WHERE id=?').run(
           patch.state ?? row.state, Object.hasOwn(patch, 'error') ? patch.error ?? null : row.error,
+          patch.failureOperationId ?? null, patch.failureAtMs ?? null,
           insightElapsedAt(row, Date.now(), sampledAtMs), row.id)
       })
       return repository.getAnalysis(taskId)
@@ -565,7 +572,7 @@ export function createAiRepository(store: Store, write: WriterQueue) {
         insightSnapshot(row)
         if (!sameModelConfiguration(row.model_id, Number(row.model_version))) fail('MODEL_CHANGED', '模型配置已更新，请重新准备分析。')
         if (db.prepare("SELECT 1 FROM ai_analysis_tasks WHERE conversation_id=? AND state IN ('queued','running')").get(row.conversation_id)) fail('ANALYSIS_BUSY')
-        db.prepare("UPDATE ai_analysis_tasks SET state='queued',error=NULL,event_sequence=event_sequence+1 WHERE id=?").run(row.id)
+        db.prepare("UPDATE ai_analysis_tasks SET state='queued',error=NULL,failure_operation_id=NULL,failure_at_ms=NULL,event_sequence=event_sequence+1 WHERE id=?").run(row.id)
       })
       return repository.getAnalysis(taskId)
     },

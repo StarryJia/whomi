@@ -68,8 +68,9 @@ function sample(text: string) {
 }
 
 it('同一洞察的每次模型请求使用当轮服务地址与凭据', async () => {
-  const { input, options } = sample('合成原文。'.repeat(1800))
+  const { input, options, read } = sample('合成原文。'.repeat(1800))
   const kinds: string[] = []
+  const requestIds: string[] = []
   answer = (_path, body, response) => {
     if (JSON.stringify(body.input?.[0]).includes('context summarization assistant')) responses(response, [textItem('核查原话')])
     else if (requests.length === 1) responses(response, [{ type: 'function_call', id: 'fc_read', call_id: 'call_read', name: 'read_messages', arguments: '{}' }], 5800)
@@ -79,13 +80,33 @@ it('同一洞察的每次模型请求使用当轮服务地址与凭据', async (
     { ...options, insight: { ...options.insight, record: async event => {
       if (event.type !== 'requestStart') return
       kinds.push(event.kind)
+      requestIds.push(event.requestId)
       return { access: { token: 'sample-' + kinds.length, baseUrl: model.baseUrl } }
     } } })
   expect(result.text).toBe('已成稿')
   expect(kinds).toEqual(['inference', 'compaction', 'inference'])
+  expect(read).toHaveBeenCalledWith({}, expect.any(Number), requestIds[0])
   expect(authorizations).toEqual(['Bearer sample-1', 'Bearer sample-2', 'Bearer sample-3'])
   const history = await readFile(JSON.parse(result.checkpoint).sessionFile, 'utf8')
   expect(history).not.toMatch(/sample-[123]/)
+}, 30000)
+
+it('服务只报告压缩用量时保留未知结束原因', async () => {
+  const { input, options, events } = sample('周五见。'.repeat(1800))
+  answer = (_path, body, response) => {
+    if (JSON.stringify(body.input?.[0]).includes('context summarization assistant')) {
+      const item = textItem('摘要。')
+      const frames = [{ type: 'response.output_item.done', output_index: 0, item },
+        { type: 'response.completed', response: { output: [item], usage: { input_tokens: 100, output_tokens: 1000 } } }]
+      response.writeHead(200, { 'content-type': 'text/event-stream' })
+      response.end(frames.map(frame => 'data: ' + JSON.stringify(frame) + '\n\n').join(''))
+    } else if (requests.length === 1) {
+      responses(response, [{ type: 'function_call', id: 'fc_read', call_id: 'call_read', name: 'read_messages', arguments: '{}' }], 5800)
+    } else responses(response, [textItem('已完成')])
+  }
+  await new PiRuntime(directory).run(input, options)
+  expect(events).toContainEqual(expect.objectContaining({ type: 'request', kind: 'compaction',
+    stopReason: 'unknown', usage: expect.objectContaining({ outputTokens: 1000 }) }))
 }, 30000)
 
 it('相同原文页的顺读和首次回查分别确认，后续重复回查保持去重', async () => {
@@ -261,7 +282,7 @@ it('压缩耗尽输出后从同一断点重开，下一份完整的短摘要才�
   answer = (_path, body, response) => {
     if (JSON.stringify(body.input?.[0]).includes('context summarization assistant')) {
       compacting.push(body)
-      responses(response, [textItem(capped ? '未写完的笔记' : '顺读至 #1，原话改在周五。')], 5601, capped ? 4000 : 22, capped ? 'incomplete' : 'completed')
+      responses(response, [textItem(capped ? '未写完的笔记' : '顺读至 #1，原话改在周五。')], 5601, 4000, capped ? 'incomplete' : 'completed')
     } else if (needPage) {
       needPage = false
       const id = capped ? 'first' : 'resumed'
@@ -272,13 +293,19 @@ it('压缩耗尽输出后从同一断点重开，下一份完整的短摘要才�
   const first = await new PiRuntime(directory).run(frozen, options)
   const file = JSON.parse(first.checkpoint).sessionFile
   const summaries = () => SessionManager.open(file).getBranch().filter(entry => entry.type === 'compaction')
-  expect(events).toContainEqual(expect.objectContaining({ type: 'request', kind: 'compaction', usage: expect.objectContaining({ outputTokens: 4000 }) }))
+  const compactionReceipts = () => events.filter(e => e.type === 'request' && e.kind === 'compaction')
+  const truncated = compactionReceipts().at(-1)
+  expect(truncated).toMatchObject({ stopReason: 'length', usage: { outputTokens: 4000 } })
+  expect(events).toContainEqual({ type: 'summary', requestId: truncated!.requestId, saved: false })
   expect(summaries()).toHaveLength(0)
 
   capped = false
   needPage = true
   const resumed = await new PiRuntime(directory).run({ ...frozen, checkpoint: first.checkpoint, prompt: '继续。' }, options)
   expect(JSON.parse(resumed.checkpoint).sessionFile).toBe(file)
+  const completed = compactionReceipts().at(-1)
+  expect(completed).toMatchObject({ stopReason: 'stop', usage: { outputTokens: 4000 } })
+  expect(events).toContainEqual({ type: 'summary', requestId: completed!.requestId, saved: true })
   expect(summaries()).toContainEqual(expect.objectContaining({ summary: expect.stringContaining('顺读至 #1，原话改在周五。') }))
   const nextInput = JSON.stringify(requests.at(-1)!.input)
   expect(nextInput).toContain('顺读至 #1，原话改在周五。')
@@ -290,6 +317,27 @@ it('压缩耗尽输出后从同一断点重开，下一份完整的短摘要才�
     const instruction = JSON.stringify(request.input?.[0])
     for (const expected of ['900', '替换', '顺读游标', '原文编号', '反例', frozen.systemPrompt]) expect(instruction).toContain(expected)
   }
+}, 30000)
+
+it('恢复超出上下文的推理时，以真正阻止恢复的压缩请求归因为认证失败', async () => {
+  const { input, options, events } = sample('周五见。'.repeat(2100))
+  let reads = 0
+  answer = (_path, body, response) => {
+    const summary = JSON.stringify(body.input?.[0]).includes('context summarization assistant')
+    if (!summary && reads++ === 0) {
+      responses(response, [{ type: 'function_call', id: 'fc_read', call_id: 'call_read', name: 'read_messages', arguments: '{}' }])
+      return
+    }
+    response.writeHead(summary ? 401 : 400, { 'Content-Type': 'application/json' })
+    response.end(JSON.stringify({ error: summary ? { code: 'invalid_api_key', message: 'Invalid key' }
+      : { code: 'context_length_exceeded', message: "This model's maximum context length is 8000 tokens." } }))
+  }
+  const error = await new PiRuntime(directory).run(input, options).catch(error => error)
+  expect(events).toContainEqual(expect.objectContaining({ type: 'request', failureCode: 'MODEL_CONTEXT_LIMIT' }))
+  const compaction = events.find(e => e.type === 'request' && e.kind === 'compaction')
+  expect(compaction).toMatchObject({ failureCode: 'INSIGHT_AUTH_FAILED', httpStatus: 401 })
+  expect(events).toContainEqual({ type: 'summary', requestId: compaction!.requestId, saved: false })
+  expect(error).toMatchObject({ code: 'INSIGHT_AUTH_FAILED' })
 }, 30000)
 
 it.each(['工具页', '压缩笔记'] as const)('按本轮%s中的中文材料为输出留出实际空间', async kind => {
@@ -328,7 +376,7 @@ it.each([
   await expect(new PiRuntime(directory).run(task, options)).rejects.toMatchObject({ code: 'MODEL_CONTEXT_LIMIT' })
   expect(requests).toHaveLength(0)
   expect(events.some(event => event.type === 'checkpoint')).toBe(true)
-  expect(events.filter(event => event.type !== 'checkpoint')).toEqual([])
+  expect(events.filter(event => event.type !== 'checkpoint')).toEqual([{ type: 'requestBlocked', kind: 'inference', code: 'MODEL_CONTEXT_LIMIT' }])
 }, 30000)
 
 const signatureCases = [

@@ -76,7 +76,12 @@ const resultsByMethod: Record<DesktopMethod, Check> = {
 }
 export class BoundaryError extends Error {
   readonly action: string
-  constructor(readonly code: string, action = '请检查输入后重试。', readonly operationId?: string) { super(action); this.action = action }
+  constructor(readonly code: string, action = '请检查输入后重试。', readonly operationId?: string, readonly failureAtMs?: number) { super(action); this.action = action }
+}
+export function serializableError(error: unknown): DesktopError {
+  if (error instanceof BoundaryError) return { code: error.code, action: error.action,
+    ...(error.operationId && { operationId: error.operationId }), ...(error.failureAtMs != null && { failureAtMs: error.failureAtMs }) }
+  return { code: 'OPERATION_FAILED', action: '操作失败，请重试。' }
 }
 export function validateArguments(method: unknown, args: unknown): asserts method is DesktopMethod {
   if (typeof method !== 'string' || !Object.hasOwn(argumentsByMethod, method)) throw new BoundaryError('INVALID_METHOD', '请选择可用操作。')
@@ -90,5 +95,5 @@ export function validateSnapshot(value: unknown): asserts value is ImportSnapsho
   if (!snapshot(value)) throw new BoundaryError('INVALID_RESPONSE', '请重新打开应用后重试。')
 }
 export function validateError(value: unknown): asserts value is DesktopError {
-  if (!object({ code: key, action: text, operationId: optional(isOperationId) })(value)) throw new BoundaryError('INVALID_RESPONSE', '请重新打开应用后重试。')
+  if (!object({ code: key, action: text, operationId: optional(isOperationId), failureAtMs: optional(count) })(value)) throw new BoundaryError('INVALID_RESPONSE', '请重新打开应用后重试。')
 }

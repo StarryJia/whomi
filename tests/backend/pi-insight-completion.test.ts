@@ -1,9 +1,13 @@
-import { expect, test } from 'vitest'
+import { expect, onTestFinished, test } from 'vitest'
+import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { sampleJudgments } from '../desktop/fixtures/pi-insight-model.mjs'
 import { generatePiInsight, type PiInsightCheckpoint } from '../../electron/main/pi-insight-generation'
 import { defaultInsightPrompts } from '../../electron/data/ai/insight-prompts'
 import { defaultProcessing } from '../../src/shared/settings-contract'
 import { aiOperation } from '../../electron/main/ai-operation-diagnostics'
+import { createOperationDiagnostics } from '../../electron/main/operation-diagnostics'
 import { insightWorkload } from '../../electron/main/pi-insight-capacity'
 import type { InsightReadSpan } from '../../src/shared/insight-reader'
 import type { InsightRuntimeCallbacks } from '../../electron/agent/protocol'
@@ -16,6 +20,137 @@ const options = { snapshot, conversationId: '2', thinkingLevel: undefined, promp
   read: async () => [{ id: '11', revision: 'a'.repeat(64), text: '周三一起约。', senderName: '我', isSelf: true, sentAtMs: 0, replyToMessageId: null }] }
 const section = [{ content: [{ text: '一起约', citationId: 'c' }] }]
 const draft = { aboutYou: section, relationship: section, citations: [{ id: 'c', fragments: [{ messageIds: ['11'] }] }], limitations: [], judgments: sampleJudgments() }
+
+async function openLog() {
+  const root = await mkdtemp(join(tmpdir(), 'whomi-insight-log-'))
+  const log = createOperationDiagnostics(root, '1.0.0')
+  onTestFinished(async () => { await log.close(); await rm(root, { recursive: true, force: true }) })
+  const operation = aiOperation(log, 'insight', 'generate')
+  operation.bind(snapshot.taskId, 0)
+  return { operation, contents: () => log.withFile(operation.id!, file => readFile(file, 'utf8')) }
+}
+
+test('普通操作日志能从容量不足的回查追到重试取得的目标和成功报告', async () => {
+  const { operation, contents } = await openLog()
+  await generatePiInsight({ ...options, operation, save: async () => {}, run: async (_, io) => {
+    async function infer(id: string, spans: InsightReadSpan[]) {
+      await io.record({ type: 'requestStart', requestId: id, kind: 'inference' })
+      await io.record({ type: 'request', requestId: id, kind: 'inference', spans, success: true, usage: {}, checkpoint: 'leaf' })
+    }
+    await infer('fixture-private-first', [])
+    const target = { messageId: '11' }
+    await io.read(target, 1, 'fixture-private-first')
+    await infer('fixture-private-second', [])
+    const page = await io.read(target, 500, 'fixture-private-second')
+    await infer('fixture-private-final', page.spans)
+    return { text: JSON.stringify(draft), checkpoint: 'done', usage: {} }
+  } })
+  operation.end('success')
+  const text = await contents()
+  const reads = text.split('\n').filter(line => line.includes('取文方式='))
+  expect(reads[0]).toContain('请求序号=1')
+  expect(reads[0]).toContain('找到目标=否')
+  expect(reads[1]).toContain('请求序号=2')
+  expect(reads[1]).toContain('上次容量不足的请求序号=1')
+  expect(reads[1]).toContain('找到目标=是')
+  expect(text).toContain('结果=成功')
+  expect(text).not.toContain('fixture-private')
+})
+
+test('续页取得此前容量不足的多个定位目标，每个目标只关联一次', async () => {
+  const { operation, contents } = await openLog()
+  const [base] = await options.read()
+  const sources = ['11', '12', '13'].map(id => ({ ...base, id }))
+  await generatePiInsight({ ...options, operation, snapshot: { ...snapshot, sources: sources.map(({ id, revision }) => ({ messageId: id, revision })) },
+    read: async ids => sources.filter(source => ids.includes(source.id)), save: async () => {}, run: async (_, io) => {
+      async function infer(requestId: string, spans: InsightReadSpan[] = []) {
+        await io.record({ type: 'requestStart', requestId, kind: 'inference' })
+        await io.record({ type: 'request', requestId, kind: 'inference', success: true, spans, usage: {}, checkpoint: 'leaf' })
+      }
+      await infer('first')
+      await io.read({ messageId: '12' }, 1, 'first')
+      await infer('second')
+      await io.read({ messageId: '13', before: 2 }, 1, 'second')
+      await infer('retry')
+      const first = await io.read({ messageId: '13', before: 2 }, 250, 'retry')
+      expect(first.spans.map(span => span.messageId)).toEqual(['11'])
+      if (first.page.status !== 'ok' || !first.page.nextCursor) throw Error('测试页缺少续读游标')
+      await infer('continue', first.spans)
+      const next = await io.read({ cursor: first.page.nextCursor }, 1000, 'continue')
+      expect(next.spans.map(span => span.messageId)).toEqual(['12', '13'])
+      await infer('repeat', next.spans)
+      await io.read({ cursor: first.page.nextCursor }, 1000, 'repeat')
+      return { text: JSON.stringify(draft), checkpoint: 'done', usage: {} }
+    } })
+  const text = await contents()
+  expect(text).toMatch(/按编号定位.*定位序号=3.*找到目标=否.*请求序号=3.*上次容量不足的请求序号=2/)
+  const recovered = text.split('\n').filter(line => line.includes('阶段=已取到此前容量不足的目标'))
+  expect(recovered).toHaveLength(2)
+  expect(recovered[0]).toMatch(/定位序号=2.*请求序号=4.*上次容量不足的请求序号=1/)
+  expect(recovered[1]).toMatch(/定位序号=3.*请求序号=4.*上次容量不足的请求序号=2/)
+})
+
+test('本地容量预检阻止压缩时，本次失败记录不引用前一条成功回执', async () => {
+  const { operation, contents } = await openLog()
+  const updates: Record<string, unknown>[] = []
+  await expect(generatePiInsight({ ...options, operation, onDiagnostic: fields => updates.push(fields), save: async () => {},
+    run: async (_, io) => {
+      await io.record({ type: 'requestStart', kind: 'inference', requestId: 'prior' })
+      await io.record({ type: 'request', kind: 'inference', requestId: 'prior', success: true, stopReason: 'toolUse',
+        responseReceived: true, httpStatus: 200, spans: [], usage: {}, checkpoint: 'leaf' })
+      await io.record({ type: 'requestBlocked', kind: 'compaction', code: 'MODEL_CONTEXT_LIMIT' })
+      throw new Error('本地容量不足')
+    } })).rejects.toThrow('本地容量不足')
+  expect(updates.at(-1)).toEqual({ phase: 'compaction', kind: 'compaction', code: 'MODEL_CONTEXT_LIMIT' })
+  const line = (await contents()).split('\n').find(row => row.includes('请求未发出'))
+  expect(line).toContain('MODEL_CONTEXT_LIMIT')
+  expect(line).not.toMatch(/请求序号|服务状态码|收到服务响应/)
+})
+
+test('普通操作日志分别记录压缩结束原因和摘要是否保存，即使用量相同', async () => {
+  const { operation, contents } = await openLog()
+  const diagnostics: Record<string, unknown>[] = []
+  await expect(generatePiInsight({ ...options, operation, onDiagnostic: fields => diagnostics.push(fields),
+    save: async () => {}, run: async (_, io) => {
+      for (const [id, reason, saved] of [['a', 'length', false], ['b', 'stop', true], ['c', undefined, false]] as const) {
+        await io.record({ type: 'requestStart', requestId: id, kind: 'compaction' })
+        await io.record({ type: 'request', requestId: id, kind: 'compaction', success: true, stopReason: reason,
+          spans: [], usage: { outputTokens: 4000 }, checkpoint: 'leaf' })
+        await io.record({ type: 'summary', requestId: id, saved })
+      }
+      await io.record({ type: 'requestStart', requestId: 'd', kind: 'inference' })
+      await io.record({ type: 'request', requestId: 'd', kind: 'inference', success: false, stopReason: 'error',
+        failureCode: 'INSIGHT_REQUEST_INCOMPATIBLE', httpStatus: 400, responseReceived: true, spans: [], usage: {}, checkpoint: 'leaf' })
+      throw new Error('模拟服务拒绝')
+    } })).rejects.toThrow('模拟服务拒绝')
+  expect(diagnostics.at(-1)).toMatchObject({ phase: 'reading', requestNumber: 4, code: 'INSIGHT_REQUEST_INCOMPATIBLE', responseReceived: true, httpStatus: 400 })
+  const text = await contents()
+  const rows = text.split('\n').filter(line => line.includes('结束原因='))
+  expect(rows[0]).toContain('结束原因=达到输出上限')
+  expect(rows[1]).toContain('结束原因=正常结束')
+  expect(rows[2]).toContain('结束原因=原因未知')
+  const summaries = text.split('\n').filter(line => line.includes('摘要已保存='))
+  expect(summaries).toHaveLength(3)
+  expect(summaries[0]).toMatch(/请求序号=1.*摘要已保存=否/)
+  expect(summaries[1]).toMatch(/请求序号=2.*摘要已保存=是/)
+  expect(text).toContain('错误码=INSIGHT_REQUEST_INCOMPATIBLE')
+  expect(text).toMatch(/处理建议=.*调整模型接口或参数设置.*重新开始洞察/)
+})
+
+test('断点恢复后原文仍未送阅时，保护记录未读数量和实际触发值', async () => {
+  const { operation, contents } = await openLog()
+  const checkpoint: PiInsightCheckpoint = {
+    version: 'pi-insight-v1', taskId: snapshot.taskId, checkpoint: 'leaf', processing: defaultProcessing,
+    coverage: { coveredMessageIds: [], partial: {} }, requests: 16, stalled: 16, input: 200, output: 50,
+  }
+  await expect(generatePiInsight({ ...options, operation, checkpoint, save: async () => {}, run: async (_, io) => {
+    await io.record({ type: 'requestStart', requestId: 'next', kind: 'inference' })
+    throw new Error('unexpected request')
+  } })).rejects.toMatchObject({ code: 'INSIGHT_NO_PROGRESS', action: expect.stringContaining('还有1条原文未读完') })
+  const text = await contents()
+  expect(text).toContain('恢复前累计请求数=16')
+  expect(text).toMatch(/触发阅读停滞保护.*尚有未读原文，阅读未推进.*数量=16.*限额=16.*累计已读=0/)
+})
 
 test('官方模型按接口匹配容量，跨服务同名模型使用估值，保留手填长度', async () => {
   const configured = { ...options.model, model: 'gpt-6.1-sol', baseUrl: 'https://api.openai.com/v1', contextWindow: null, maxTokens: null }
@@ -82,8 +217,10 @@ test('提前交稿和坏引用可在同一会话修正，重试保存沿用已�
 })
 
 test.each([1, 2, 20])('完整送阅后循环核查 %i 处，只有新增范围才推进', async distinct => {
+  const { operation, contents } = await openLog()
   const refs = Array.from({ length: 20 }, (_, i) => ({ messageId: String(11 + i), revision: 'a'.repeat(64) }))
-  const run = generatePiInsight({ ...options, snapshot: { ...snapshot, sources: refs },
+  const diagnostics: Record<string, unknown>[] = []
+  const run = generatePiInsight({ ...options, operation, snapshot: { ...snapshot, sources: refs }, onDiagnostic: fields => diagnostics.push(fields),
     read: async ids => ids.map(id => ({ id, revision: refs[0].revision, text: '合成原文。', senderName: '本人', isSelf: true, sentAtMs: 0, replyToMessageId: null })),
     save: async () => {}, run: async (_input, io) => {
       const page = await io.read({}, 10000)
@@ -104,8 +241,20 @@ test.each([1, 2, 20])('完整送阅后循环核查 %i 处，只有新增范围�
       }
       return { text: JSON.stringify(draft), checkpoint: 'done', usage: {} }
     } })
-  if (distinct < refs.length) await expect(run).rejects.toMatchObject({ code: 'INSIGHT_NO_PROGRESS' })
-  else await expect(run).resolves.toMatchObject({ aboutYou: section })
+  if (distinct < refs.length) {
+    await expect(run).rejects.toMatchObject({ code: 'INSIGHT_NO_PROGRESS', action: expect.stringContaining('回查') })
+    expect(diagnostics.at(-1)).toMatchObject({ phase: 'checking', rule: 'noNewReviewRange', count: 16, limit: 16, readCount: 20 })
+    const text = await contents()
+    expect(text).toMatch(/触发阅读停滞保护.*已读完，回查未增加范围.*数量=16.*限额=16/)
+    expect(text).toContain('处理建议=请继续洞察')
+  } else {
+    await expect(run).resolves.toMatchObject({ aboutYou: section })
+    operation.end('success')
+    const text = await contents()
+    expect(text).toMatch(/按编号定位.*任务阶段=回查.*定位序号=20.*找到目标=是/)
+    expect(text).toContain('结果=成功')
+    expect(text).not.toContain('触发阅读停滞保护')
+  }
 })
 
 test('恢复已落盘的回查片段时，只有成功送达的新范围才解除停滞', async () => {

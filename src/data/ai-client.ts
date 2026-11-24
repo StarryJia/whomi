@@ -8,7 +8,11 @@ export function createAiClient(transport: { invoke(method: keyof AiMethods, args
   async function invoke(method: keyof AiMethods, args: unknown[]) {
     const response = await transport.invoke(method, args) as { ok: boolean; value?: unknown; error?: unknown }
     if (!response || typeof response !== 'object' || typeof response.ok !== 'boolean') throw new BoundaryError('INVALID_RESPONSE')
-    if (!response.ok) { validateError(response.error); throw new BoundaryError(response.error.code, response.error.action) }
+    if (!response.ok) {
+      validateError(response.error)
+      const { code, action, operationId, failureAtMs } = response.error
+      throw new BoundaryError(code, action, operationId, failureAtMs)
+    }
     validateAiResult(method, response.value)
     return response.value
   }

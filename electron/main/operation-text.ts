@@ -4,6 +4,7 @@ import { createInterface } from 'node:readline'
 import { isOperationId, operationActionLabels, operationAreaLabels, operationOutcomeLabels, type OperationArea,
   type OperationOutcome, type OperationSummary } from '../../src/shared/operation-diagnostics'
 import { fieldLabels, safeFields, stageLabels, type SafeFields } from './operation-fields'
+import { insightFailureAction, insightResumeFailureAction } from '../agent/insight-request-failure'
 
 export type Outcome = Exclude<OperationOutcome, 'running'>
 export type Row = { at: number; kind: 'start' | 'event' | 'progress' | 'retry' | 'end' | 'resume' | 'bind' | 'gap'
@@ -14,7 +15,13 @@ export type Row = { at: number; kind: 'start' | 'event' | 'progress' | 'retry' |
 const kinds = { start: '开始', event: '阶段变化', progress: '进度', retry: '自动重试', end: '结束', resume: '恢复', bind: '关联任务', gap: '记录不完整' }
 const readableValues: Record<string, string> = { picker: '选择窗口', drop: '拖放', file: '文件', directory: '文件夹', mixed: '混合来源',
   requested: '已发起', success: '成功', failed: '失败', unknown: '尚未确认返回', cancelled: '已取消', interrupted: '中断',
-  original: '原数据目录', new: '新数据目录', install: '安装目录' }
+  original: '原数据目录', new: '新数据目录', install: '安装目录',
+  noNewReviewRange: '已读完，回查未增加范围', unreadRemaining: '尚有未读原文，阅读未推进',
+  stop: '正常结束', toolUse: '调用工具', length: '达到输出上限', error: '请求出错', aborted: '请求已中止',
+  inference: '模型推理', compaction: '压缩摘要', checking: '回查', reading: '阅读', writing: '成稿', resumePreparation: '准备恢复洞察',
+  insufficient_capacity: '可用容量不足', first: '首次取文', continue: '续读', locate: '按编号定位',
+  ok: '成功取文', out_of_scope: '超出所选范围', source_changed: '原文已变化', invalid_request: '取文参数错误' }
+const unknownLabels: Readonly<Record<string, string>> = { stopReason: '原因未知', responseReceived: '未知' }
 const inverse = (table: Readonly<Record<string, string>>) => new Map(Object.entries(table).map(([key, value]) => [value, key]))
 const areas = inverse(operationAreaLabels), actions = inverse(operationActionLabels), events = inverse(kinds)
 const outcomes = inverse(operationOutcomeLabels), stages = inverse(stageLabels), fields = inverse(fieldLabels), values = inverse(readableValues)
@@ -57,8 +64,19 @@ export function encodeRow(row: Row, previous: number) {
   if (row.outcome) parts.push('结果=' + operationOutcomeLabels[row.outcome])
   if (row.taskId) parts.push('任务编号=' + row.taskId, '任务创建时间=' + row.createdAt)
   for (const [key, value] of Object.entries(row.fields ?? {})) {
-    const display = typeof value === 'boolean' ? (value ? '是' : '否') : typeof value === 'string' ? (readableValues[value] ?? value) : String(value)
+    let display = String(value)
+    if (typeof value === 'boolean') display = value ? '是' : '否'
+    if (typeof value === 'string') display = (value === 'unknown' ? unknownLabels[key] : undefined) ?? readableValues[value] ?? value
     parts.push(fieldLabels[key] + '=' + display)
+  }
+  const { code, kind, rule } = row.fields ?? {}
+  if (rule === 'noNewReviewRange' || rule === 'unreadRemaining') {
+    parts.push('处理建议=请继续洞察，再次停止时换用支持工具调用的模型重新开始。')
+  } else if (typeof code === 'string' && row.fields?.phase === 'resumePreparation') {
+    parts.push('处理建议=' + insightResumeFailureAction(code))
+  } else if (typeof code === 'string' && (code.startsWith('INSIGHT_') || kind === 'inference' || kind === 'compaction')) {
+    const action = insightFailureAction(code)
+    if (action) parts.push('处理建议=' + action)
   }
   return parts.join('  ') + '\n'
 }
@@ -73,12 +91,12 @@ function decodeRow(line: string): Row {
     const [key, value] = part.split('=')
     if (key === '任务编号') row.taskId = value
     else if (key === '任务创建时间') row.createdAt = Number(value)
-    else if (key === '阶段' && !row.stage) row.stage = stages.get(value)
+    else if (key === '阶段' && !row.stage && kind !== 'end' && stages.has(value)) row.stage = stages.get(value)
     else if (key === '结果' && kind === 'end' && !row.outcome) row.outcome = outcomes.get(value) as Outcome
     else {
-      const field = fields.get(key)
+      const field = key === '阶段' ? 'phase' : fields.get(key)
       if (!field) continue
-      const decoded = values.get(value) ?? value
+      const decoded = unknownLabels[field] === value ? 'unknown' : values.get(value) ?? value
       data[field] = field === 'ordinals' ? value.split(',').map(Number) : /^\d+$/.test(value) ? Number(value)
         : value === '是' ? true : value === '否' ? false : decoded
     }

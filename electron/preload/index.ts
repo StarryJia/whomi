@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import { createDesktopClient } from '../../src/data/desktop-client'
-import { BoundaryError, validateError } from '../../src/shared/desktop-validation'
+import { BoundaryError, serializableError, validateError } from '../../src/shared/desktop-validation'
 import type { DesktopApi, DesktopMethod } from '../../src/shared/desktop-api'
 import { createAiClient } from '../../src/data/ai-client'
 import { aiChannels, type AiMethods } from '../../src/shared/ai-contract'
@@ -35,7 +35,7 @@ const ai = createAiClient({
   invoke(method, args) { return ipcRenderer.invoke(aiChannels.call, { method, args }) },
   onEvent(listener) { const receive = (_event: Electron.IpcRendererEvent, value: unknown) => listener(value); ipcRenderer.on(aiChannels.event, receive); return () => { ipcRenderer.removeListener(aiChannels.event, receive) } },
 })
-const exposedAi = Object.freeze({ ...Object.fromEntries(Object.entries(ai).filter(([name]) => name !== 'onEvent').map(([name, method]) => [name, (...args: unknown[]) => (method as (...args: unknown[]) => Promise<unknown>)(...args).catch((error: unknown) => Promise.reject(error instanceof BoundaryError ? { code: error.code, action: error.action } : { code: 'OPERATION_FAILED', action: '操作失败，请重试。' }))])), onEvent: ai.onEvent }) as AiMethods & Pick<typeof ai, 'onEvent'>
+const exposedAi = Object.freeze({ ...Object.fromEntries(Object.entries(ai).filter(([name]) => name !== 'onEvent').map(([name, method]) => [name, (...args: unknown[]) => (method as (...args: unknown[]) => Promise<unknown>)(...args).catch((error: unknown) => Promise.reject(serializableError(error)))])), onEvent: ai.onEvent }) as AiMethods & Pick<typeof ai, 'onEvent'>
 const settings = createSettingsClient((method, args) => ipcRenderer.invoke(settingsChannel, { method, args }))
 const exposedSettings = Object.freeze(Object.fromEntries(Object.entries(settings).map(([name, method]) => [name, (...args: unknown[]) =>
   (method as (...args: unknown[]) => Promise<unknown>)(...args).catch((error: unknown) => Promise.reject(error instanceof BoundaryError ? { code: error.code, action: error.action } : { code: 'OPERATION_FAILED', action: '操作失败，请重试。' }))]))) as unknown as SettingsApi
@@ -46,8 +46,8 @@ function expose<K extends DesktopMethod | 'acceptDroppedFiles'>(method: K): Desk
     return Promise.reject(failure)
   })) as DesktopApi[K]
 }
-async function importDiagnosticsCall(operation: 'report' | 'open', value: unknown) {
-  const response: unknown = await ipcRenderer.invoke(importDiagnosticsChannel, operation, value)
+async function diagnosticsCall(channel: string, operation: string, value: unknown) {
+  const response: unknown = await ipcRenderer.invoke(channel, operation, value)
   if (response && typeof response === 'object' && 'ok' in response) {
     if (response.ok === true) return
     if (response.ok === false && 'error' in response) {
@@ -58,11 +58,12 @@ async function importDiagnosticsCall(operation: 'report' | 'open', value: unknow
   throw { code: 'INVALID_RESPONSE', action: '请重新打开应用后重试。' }
 }
 const importDiagnostics: ImportDiagnosticsApi = Object.freeze({
-  report: (value: Parameters<ImportDiagnosticsApi['report']>[0]) => importDiagnosticsCall('report', value),
-  open: (jobId?: string | null, operationId?: string) => importDiagnosticsCall('open', operationId ? { jobId, operationId } : jobId),
+  report: (value: Parameters<ImportDiagnosticsApi['report']>[0]) => diagnosticsCall(importDiagnosticsChannel, 'report', value),
+  open: (jobId?: string | null, operationId?: string) => diagnosticsCall(importDiagnosticsChannel, 'open', operationId ? { jobId, operationId } : jobId),
 })
 const operationDiagnostics: OperationDiagnosticsApi = {
   conversation(event) { ipcRenderer.send(operationDiagnosticsChannel, event) },
+  openInsightLog(operationId) { return diagnosticsCall(operationDiagnosticsChannel, 'openInsightLog', operationId) },
   async importRefresh(jobId, createdAt, result) {
     await ipcRenderer.invoke(operationDiagnosticsChannel, 'importRefresh', { jobId, createdAt, result })
   },

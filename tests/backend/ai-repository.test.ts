@@ -321,6 +321,26 @@ test('删除会话只撤回该会话的洞察判断，暂停和失败任务不�
   expect(currentOverviewContributions(repository.listAnalyses())).toEqual([before[1]])
 })
 
+test('同一洞察连续失败时重开资料库仍可定位本次操作记录', async () => {
+  const { repository, store, path } = await setup()
+  const analysis = await task(repository)
+  const first = { failureOperationId: crypto.randomUUID(), failureAtMs: 1000 }
+  await repository.saveAnalysis(analysis.id, { state: 'failed', error: '请检查模型连接。', ...first })
+  store.close()
+  const reopened = openStore(path)
+  cleanup.push(() => reopened.close())
+  const restored = createAiRepository(reopened, async operation => operation())
+  const failed = restored.getAnalysis(analysis.id)
+  expect(failed).toMatchObject(first)
+  expect(() => validateAiResult('getAnalysis', failed)).not.toThrow()
+  const resumed = await restored.resumeAnalysis(analysis.id)
+  expect(resumed.failureOperationId).toBeUndefined()
+  expect(resumed.failureAtMs).toBeUndefined()
+  const second = { failureOperationId: crypto.randomUUID(), failureAtMs: 2000 }
+  await restored.saveAnalysis(analysis.id, { state: 'failed', error: '请检查模型密钥。', ...second })
+  expect(restored.listAnalyses()[0]).toMatchObject(second)
+})
+
 test('restart preserves saved coverage, interrupts active work and ignores late terminal callbacks', async () => {
   const { store, repository } = await setup(), analysis = await task(repository)
   await repository.saveInsightCheckpoint(analysis.id, 'reading', ['1'])

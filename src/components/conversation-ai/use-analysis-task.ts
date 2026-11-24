@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import type { AnalysisTask } from '../../shared/ai-contract'
+import { operationFailure, type OperationFailure } from '../../shared/operation-diagnostics'
 import type { AnalysisProgress, AnalysisResult, ConversationAiAdapter } from './types'
 
 type Phase = 'idle' | 'running' | 'done' | 'stopped' | 'failed' | 'interrupted'
 type Request = Parameters<ConversationAiAdapter['analyze']>[0]
-type TaskView = { phase: Phase; progress?: AnalysisProgress; result?: AnalysisResult; error: string; blocked: boolean }
+type TaskView = { phase: Phase; progress?: AnalysisProgress; result?: AnalysisResult; error: string; errorOperation?: OperationFailure; blocked: boolean }
 type CreationFailure = { scope: Request['scope']; error: string; previous?: TaskView }
 const incompatible = new Set(['MODEL_CHANGED', 'INVALID_MODEL', 'IDENTITY_CHANGED', 'PROMPT_CHANGED', 'PROCESSING_CHANGED', 'INVALID_TASK', 'INVALID_OWNER'])
 
@@ -31,7 +32,10 @@ export function useAnalysisTask(adapter: ConversationAiAdapter | undefined, conv
   const [phase, setPhase] = useState<Phase>('idle')
   const [progress, setProgress] = useState<AnalysisProgress>()
   const [result, setResult] = useState<AnalysisResult>()
-  const [error, setError] = useState('')
+  const [{ error, errorOperation }, setFailure] = useState<{ error: string; errorOperation?: OperationFailure }>({ error: '' })
+  function setError(cause: unknown) {
+    setFailure({ error: typeof cause === 'string' ? cause : failure(cause), errorOperation: operationFailure(cause) })
+  }
   const [confirming, setConfirming] = useState(!initialTaskId)
   const [blocked, setBlocked] = useState(false)
   const [stopping, setStopping] = useState(false)
@@ -78,7 +82,7 @@ export function useAnalysisTask(adapter: ConversationAiAdapter | undefined, conv
     operation.current = controller
     const version = ++generation.current
     const previous = creationFailure?.previous ?? (task || result?.taskId
-      ? { phase, progress, result, error: error || task?.error || '', blocked } : undefined)
+      ? { phase, progress, result, error: error || task?.error || '', errorOperation, blocked } : undefined)
     let accepted = false
     setConfirming(false); setError(''); setBlocked(false); setCreationFailure(undefined)
     if (request) { setPhase('running'); setProgress(undefined); setResult(undefined) }
@@ -102,7 +106,7 @@ export function useAnalysisTask(adapter: ConversationAiAdapter | undefined, conv
         setCreationFailure({ scope: request.scope, error: failure(cause), previous })
         setProgress(undefined)
       } else {
-        setError(failure(cause))
+        setError(cause)
         if (cannotResume(cause)) setBlocked(true)
       }
       if (request || accepted) setPhase('failed')
@@ -145,10 +149,10 @@ export function useAnalysisTask(adapter: ConversationAiAdapter | undefined, conv
     setPhase(previous.phase)
     setProgress(previous.progress)
     setResult(previous.result)
-    setError(previous.error)
+    setFailure({ error: previous.error, errorOperation: previous.errorOperation })
     setBlocked(previous.blocked)
   }
 
-  return { phase, progress, result, error, setError, confirming, setConfirming, resumable, stopping, resuming,
+  return { phase, progress, result, error, errorOperation, setError, confirming, setConfirming, resumable, stopping, resuming,
     creationFailure, restorePrevious, run, stop }
 }

@@ -10,4 +10,5 @@ export type ConversationTrace =
 export type OperationDiagnosticsApi = {
   conversation(event: ConversationTrace): void
   importRefresh(jobId: string, jobCreatedAt: number | undefined, result: 'success' | 'failed' | 'unknown'): Promise<void>
+  openInsightLog(operationId: string): Promise<void>
 }
