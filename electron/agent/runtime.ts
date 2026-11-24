@@ -1,4 +1,5 @@
-import { acceptedThinking, insightModelProtocol, reasoningCapabilities } from './reasoning-capabilities'
+import { insightModelProtocol, reasoningCapabilities } from './reasoning-capabilities'
+import { resolveAgentModelCapacity } from './model-capacity'
 import { createHash } from 'node:crypto'
 import { mkdirSync, realpathSync, existsSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
@@ -6,7 +7,7 @@ import { performance } from 'node:perf_hooks'
 import type { AgentRunInput, AgentRunResult, InsightRuntimeCallbacks } from './protocol'
 import { createInsightTool, observeInsightSession } from './insight-session'
 import type { AiUsage } from '../../src/shared/ai-contract'
-import { modelContextLimit, resolveModelLimits } from '../../src/shared/model-limits'
+import { modelContextLimit } from '../../src/shared/model-limits'
 import { defaultModelProtocol, isModelProtocol, modelProtocolBaseUrl } from '../../src/shared/model-protocol'
 import { protocolUsage } from './protocol-usage'
 import { isPiTimeout, isProviderTimeout, modelTimeout } from './model-timeout'
@@ -73,12 +74,14 @@ export class PiRuntime {
       credentials: { read: async () => undefined, list: async () => [], modify: async (_provider, change) => change(undefined), delete: async () => {} },
       modelsPath: null, refreshOnCreate: false, allowModelNetwork: false,
     })
-    const limits = resolveModelLimits(input.model)
     const autonomous = input.insightSession
     if (autonomous && (!options.insight || input.history !== undefined)) throw failure('INVALID_INSIGHT_SESSION', '请重新打开洞察任务。')
     const effectiveModel = useInsightResponses ? { ...input.model, protocol: api } : input.model
     const capabilities = await reasoningCapabilities(effectiveModel)
-    const thinkingLevel = await acceptedThinking(effectiveModel, input.thinkingLevel)
+    const thinkingLevel = input.thinkingLevel && capabilities?.levels.includes(input.thinkingLevel) ? input.thinkingLevel : undefined
+    const limits = await resolveAgentModelCapacity(effectiveModel, thinkingLevel)
+    const defaultOutput = autonomous ? limits.maxTokens : limits.requestDefaultOutputTokens ?? limits.maxTokens
+    const outputLimit = Math.min(input.outputTokenLimit ?? defaultOutput, limits.maxTokens)
     modelRuntime.registerProvider(provider, {
       baseUrl,
       api,
@@ -87,8 +90,8 @@ export class PiRuntime {
       models: [{ id: input.model.model, name: input.model.label, reasoning: !!thinkingLevel,
         ...(capabilities?.model?.thinkingLevelMap ? { thinkingLevelMap: capabilities.model.thinkingLevelMap } : {}),
         // Responses 需要显式 strict:false，才能按工具声明省略可选的分页参数。
-        ...(useInsightResponses ? { compat: { supportsStrictMode: true } } : {}),
-        input: ['text'], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: limits.contextWindow, maxTokens: limits.maxTokens }],
+        compat: useInsightResponses ? { supportsStrictMode: true } : capabilities?.compat,
+        input: ['text'], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: limits.contextWindow, maxTokens: outputLimit }],
     })
     await modelRuntime.setRuntimeApiKey(provider, input.apiKey ?? 'whomi-no-credential')
     const model = modelRuntime.getModel(provider, input.model.model)
@@ -127,18 +130,25 @@ export class PiRuntime {
     }) : undefined
     const { session } = await createAgentSession({ cwd, agentDir, modelRuntime, model, resourceLoader: loader, settingsManager, sessionManager: manager,
       tools: reader ? ['read_messages'] : [], customTools: reader ? [reader.tool] : [], thinkingLevel: thinkingLevel ?? 'off' })
-    if (useInsightResponses) {
-      // store:false 下，下一次工具推理需要由本地会话带回服务商签发的加密推理项。
-      const previous = session.agent.onPayload
-      session.agent.onPayload = async (payload, selected) => {
-        const request = await previous?.(payload, selected) ?? payload
-        if (!request || typeof request !== 'object') return request
-        const include = 'include' in request && Array.isArray(request.include) ? request.include : []
-        return { ...request, include: [...new Set([...include, 'reasoning.encrypted_content'])] }
-      }
+    if (useInsightResponses || capabilities?.supportsReasoningInclude === false) {
+      // 原生压缩也使用同一条流，不同 Responses 服务对加密推理回放的支持不同。
+      const stream = session.agent.streamFunction
+      session.agent.streamFunction = (selected, context, options) => stream(selected, context, { ...options,
+        onPayload: async (payload, model) => {
+          const request = await options?.onPayload?.(payload, model) ?? payload
+          if (!request || typeof request !== 'object') return request
+          if (useInsightResponses) {
+            const include = 'include' in request && Array.isArray(request.include) ? request.include : []
+            return { ...request, include: [...new Set([...include, 'reasoning.encrypted_content'])] }
+          }
+          if (!('include' in request)) return request
+          const { include: _include, ...supported } = request
+          return supported
+        } })
     }
     const observed = autonomous && options.insight && reader
-      ? observeInsightSession(session, manager, options.insight, autonomous.processing, input.systemPrompt, options.signal, reader, limits.maxTokens, api)
+      ? observeInsightSession(session, manager, options.insight, autonomous.processing, input.systemPrompt, options.signal, reader,
+        { maxTokens: outputLimit, maxInputTokens: limits.maxInputTokens }, api)
       : undefined
     let text = ''
     let firstTokenMs: number | undefined

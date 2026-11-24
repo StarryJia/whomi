@@ -7,6 +7,7 @@ import type { AiUsage } from '../../src/shared/ai-contract'
 import type { InsightReadSpan } from '../../src/shared/insight-reader'
 import type { ProcessingSettings } from '../../src/shared/settings-contract'
 import type { ModelProtocol } from '../../src/shared/model-protocol'
+import { BoundaryError } from '../../src/shared/desktop-validation'
 import { createMessageProcessor } from '../main/message-processing'
 import { completeReadingInstruction, type InsightRuntimeCallbacks, type InsightRuntimeEvent } from './protocol'
 import { protocolUsage } from './protocol-usage'
@@ -168,10 +169,12 @@ function safeMessages(messages: Message[], processor: ReturnType<typeof createMe
 }
 
 export function observeInsightSession(session: AgentSession, manager: SessionManager, callbacks: InsightRuntimeCallbacks,
-  settings: ProcessingSettings, task: string, signal: AbortSignal, reader: ReturnType<typeof createInsightTool>, maxTokens: number, api: ModelProtocol) {
+  settings: ProcessingSettings, task: string, signal: AbortSignal, reader: ReturnType<typeof createInsightTool>,
+  limits: { maxTokens: number; maxInputTokens: number }, api: ModelProtocol) {
   const processor = createMessageProcessor(settings, [])
   const baseStream = session.agent.streamFunction
   let lastCheckpoint: string | null = null
+  let fullyReviewed: number | undefined
   let fatal: unknown
   let lastText = ''
   let settlement = Promise.resolve()
@@ -182,7 +185,11 @@ export function observeInsightSession(session: AgentSession, manager: SessionMan
     if (fatal) throw fatal
   }
   async function record(event: InsightRuntimeEvent) {
-    try { return await callbacks.record(event) }
+    try {
+      const reply = await callbacks.record(event)
+      if (reply?.fullyReviewed !== undefined) fullyReviewed = reply.fullyReviewed
+      return reply
+    }
     catch (error) { fatal = error; throw error }
   }
   async function checkpoint() {
@@ -217,12 +224,36 @@ export function observeInsightSession(session: AgentSession, manager: SessionMan
       ].join('\n')
       messages[0] = { ...first, sections: { ...first.sections, insight: '\n' + insight } }
     }
+    let readingStatus: string | undefined
+    if (fullyReviewed !== undefined && messages[0]?.role === 'system') {
+      const first = messages[0]
+      readingStatus = '\n' + completeReadingInstruction(fullyReviewed, kind)
+      messages[0] = { ...first, sections: { ...first.sections, readingStatus } }
+    }
+    const { estimateContextTokens, estimateTextTokens } = await import('@earendil-works/pi-ai/utils/estimate')
+    const estimate = estimateContextTokens(messages)
+    // 读完提示可在上一轮回执之后加入系统消息，尾部估算看不到该变化。
+    const addedStatus = estimate.lastUsageIndex !== null ? readingStatus ?? '' : ''
+    const estimatedInput = estimate.tokens + estimateTextTokens(addedStatus)
+    let reservedInput = estimatedInput
+    if (limits.maxInputTokens + limits.maxTokens > model.contextWindow) {
+      // 输出与输入共享窗口时，用未获回执部分的字节数预留写作空间。
+      let conservative = estimate.usageTokens + Buffer.byteLength(addedStatus)
+      for (let i = (estimate.lastUsageIndex ?? -1) + 1; i < messages.length && conservative < model.contextWindow; i++) {
+        const message = messages[i]
+        const content = message.role === 'toolResult' ? [message.toolName, message.toolCallId, message.content]
+          : message.role === 'assistant' ? message.content : message
+        conservative += Buffer.byteLength(JSON.stringify(content))
+      }
+      reservedInput = Math.max(reservedInput, conservative)
+    }
+    const maxTokens = Math.min(limits.maxTokens, model.contextWindow - reservedInput)
+    if (estimatedInput > limits.maxInputTokens || maxTokens < (api === 'openai-responses' ? 16 : 1)) {
+      fatal = new BoundaryError('MODEL_CONTEXT_LIMIT', '洞察请求超出模型容量，请缩小分析范围或选择更大上下文的模型。')
+      throw fatal
+    }
     const requestId = randomUUID()
     const request = await record({ type: 'requestStart', kind, requestId })
-    if (request?.fullyReviewed !== undefined && messages[0]?.role === 'system') {
-      const first = messages[0]
-      messages[0] = { ...first, sections: { ...first.sections, readingStatus: '\n' + completeReadingInstruction(request.fullyReviewed, kind) } }
-    }
     const startedAt = Date.now()
     let usage: AiUsage = {}
     let firstTokenMs: number | undefined
@@ -238,8 +269,11 @@ export function observeInsightSession(session: AgentSession, manager: SessionMan
         // 脱敏回退会更换消息角色，成功送出的原文仍按本地工具回执核对。
         for (const message of original) {
           if (message.role !== 'toolResult') continue
-          const signature = (message.details as Receipt | undefined)?.digest
-          if (!signature || confirmed.has(signature)) continue
+          const receipt = message.details as Receipt | undefined
+          if (!receipt?.digest) continue
+          // 相同页面首次用于回查时仍需确认，其后的重复送达共用同一回执。
+          const signature = receipt.spans?.[0]?.review ? 'review:' + receipt.digest : receipt.digest
+          if (confirmed.has(signature)) continue
           const accepted = readReceipt(message)
           if (accepted.length) { spans.push(...accepted); confirmed.add(signature) }
         }
@@ -254,7 +288,7 @@ export function observeInsightSession(session: AgentSession, manager: SessionMan
     try {
       signal.throwIfAborted()
       const access = request?.access
-      const stream = await baseStream(access ? { ...model, baseUrl: access.baseUrl } : model, { ...context, messages }, { ...options, maxTokens,
+      const stream = await baseStream({ ...model, maxTokens, ...(access && { baseUrl: access.baseUrl }) }, { ...context, messages }, { ...options, maxTokens,
         ...(access && { apiKey: access.token }),
         onProviderStreamEvent: async (chunk, selected) => {
           usage = protocolUsage(api, chunk, usage)

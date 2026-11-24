@@ -26,6 +26,7 @@ export type AgentRunInput = { thinkingLevel?: ThinkingLevel;
   key: string
   checkpoint?: string | null
   model: AiModel
+  outputTokenLimit?: number
   apiKey?: string
   systemPrompt: string
   prompt: string

@@ -1,7 +1,8 @@
 import { expect, test, vi } from 'vitest'
 import { performance } from 'node:perf_hooks'
 import { sampleJudgments } from '../desktop/fixtures/pi-insight-model.mjs'
-import { createAiService } from '../../electron/main/ai-service'
+import { createAiService, type RuntimeRunner } from '../../electron/main/ai-service'
+import { createChatgptRunner } from '../../electron/main/chatgpt-responses'
 import { defaultProcessing } from '../../src/shared/settings-contract'
 import type { AiModel, AnalysisTask } from '../../src/shared/ai-contract'
 import { resolveModelLimits } from '../../src/shared/model-limits'
@@ -130,8 +131,7 @@ test('a failed model request is recorded as unknown usage instead of disappearin
   expect(turn.state).toBe('failed')
 })
 
-function turnStorage() {
-  const model = { id: 'm', label: '示例', model: 'm', baseUrl: 'http://127.0.0.1:9999/v1', contextWindow: 8000, maxTokens: 1000, version: 1, enabled: true, hasCredential: false }
+function turnStorage(model: AiModel = { id: 'm', label: '示例', model: 'm', baseUrl: 'http://127.0.0.1:9999/v1', contextWindow: 8000, maxTokens: 1000, version: 1, enabled: true, hasCredential: false }) {
   const turn = { id: '1', threadId: '1', requestId: 'request', prompt: '问题', referenceIds: [], modelId: 'm', text: '', state: 'queued', attempt: 1, usage: {}, eventSequence: 1 }
   let identityChanged = false
   return { turn, changeIdentity() { identityChanged = true }, async storage(method: string, args: unknown[]) {
@@ -145,6 +145,37 @@ function turnStorage() {
     throw new Error(method)
   } }
 }
+test.each([0, 47_000])('未知套餐模型为普通对话按剩余窗口请求输出，输入样本 %i 个汉字', async characters => {
+  const state = turnStorage({ id: 'm', label: '示例', model: 'unknown', baseUrl: 'https://api.openai.com/v1',
+    protocol: 'openai-responses', planProvider: 'openai-codex', planAccount: 'test', contextWindow: null, maxTokens: null,
+    version: 1, enabled: true, hasCredential: false })
+  state.turn.prompt = '文'.repeat(characters) + '继续'
+  let outputLimit: number | undefined
+  const runtime = createChatgptRunner(async () => 'synthetic', async (_url, init) => {
+    outputLimit = JSON.parse(String(init?.body)).max_output_tokens
+    const events = [{ type: 'response.output_text.delta', delta: '完成' }, { type: 'response.completed', response: { status: 'completed' } }]
+    return new Response(events.map(event => 'data: ' + JSON.stringify(event) + '\n\n').join(''), { headers: { 'content-type': 'text/event-stream' } })
+  })
+  const service = createAiService({ storage: state.storage, runtime, secrets: { encrypt: value => value, decrypt: value => value } })
+  await service.sendTurn({ threadId: '1', requestId: 'request', prompt: state.turn.prompt, referenceIds: [], modelId: 'm' })
+  await service.idle()
+  expect(state.turn.state).toBe('completed')
+  if (characters === 0) expect(outputLimit).toBe(128_000)
+  else {
+    expect(outputLimit).toBeGreaterThan(112_000)
+    expect(outputLimit).toBeLessThanOrEqual(115_000)
+  }
+})
+test.each([[null, 65536], [200000, 200000]] as const)('DeepSeek 普通对话在输出配置为 %s 时采用相应的请求额度', async (configuredOutput, expected) => {
+  const state = turnStorage({ id: 'm', label: '示例', model: 'deepseek-v4-pro', baseUrl: 'https://api.deepseek.com/v1',
+    protocol: 'openai-completions', contextWindow: null, maxTokens: configuredOutput, version: 1, enabled: true, hasCredential: false })
+  const run = vi.fn<RuntimeRunner['run']>(async () => ({ text: '收到', usage: {}, checkpoint: '' }))
+  const service = createAiService({ storage: state.storage, runtime: { run }, secrets: { encrypt: value => value, decrypt: value => value } })
+  await service.sendTurn({ threadId: '1', requestId: 'request', prompt: '继续', referenceIds: [], modelId: 'm' })
+  await service.idle()
+  expect(run.mock.calls[0][0].outputTokenLimit).toBe(expected)
+})
+
 test.each(['send', 'confirm'] as const)('records %s before the database acknowledges the action and captures preparation failures', async action => {
   const diagnostics = captureDiagnostics()
   const storageEntered = Promise.withResolvers<void>()
@@ -243,6 +274,38 @@ test('a long thread keeps its recent complete turns and rebuilds Pi context inst
   expect(state.turn.state).toBe('completed')
 })
 
+test.each([
+  ['https://dashscope.aliyuncs.com/compatible-mode/v1', true],
+  ['https://proxy.example/v1', false],
+] as const)('模型目录决定普通对话能保留的历史，服务地址 %s', async (baseUrl, keepsHistory) => {
+  const state = turnStorage({ id: 'm', label: '示例', model: 'qwen3.7-plus', baseUrl, protocol: 'openai-completions',
+    contextWindow: null, maxTokens: null, version: 1, enabled: true, hasCredential: false })
+  const history = [{ role: 'user' as const, text: '请保留以下材料' }, { role: 'assistant' as const, text: 'a'.repeat(300_000) }]
+  const run = vi.fn<RuntimeRunner['run']>(async () => ({ text: '收到', usage: {}, checkpoint: '' }))
+  const service = createAiService({ storage: async (method, args) => {
+    const result = await state.storage(method, args)
+    return method === 'turnContext' ? { ...result, history } : result
+  }, runtime: { run }, secrets: { encrypt: value => value, decrypt: value => value } })
+  await service.sendTurn({ threadId: '1', requestId: 'request', prompt: '问题', referenceIds: [], modelId: 'm' })
+  await service.idle()
+  expect(state.turn.state).toBe('completed')
+  expect(run.mock.calls[0][0].history).toEqual(keepsHistory ? history : [])
+})
+
+test('普通模型首次发送长问题时把余下的输出额度交给运行器', async () => {
+  const state = turnStorage({ id: 'm', label: '示例', model: 'local', baseUrl: 'https://proxy.example/v1',
+    contextWindow: null, maxTokens: null, version: 1, enabled: true, hasCredential: false })
+  state.turn.prompt = '文'.repeat(47_000)
+  const run = vi.fn<RuntimeRunner['run']>(async () => ({ text: '收到', usage: {}, checkpoint: '' }))
+  const service = createAiService({ storage: state.storage, runtime: { run }, secrets: { encrypt: value => value, decrypt: value => value } })
+  await service.sendTurn({ threadId: '1', requestId: 'request', prompt: state.turn.prompt, referenceIds: [], modelId: 'm' })
+  await service.idle()
+  expect(state.turn.state).toBe('completed')
+  const { outputTokenLimit } = run.mock.calls[0][0]
+  expect(outputTokenLimit).toBeGreaterThan(112_000)
+  expect(outputTokenLimit).toBeLessThanOrEqual(115_000)
+})
+
 test('processing protects questions, references, profile and old history and discards an incompatible checkpoint', async () => {
   const state = turnStorage()
   state.turn.prompt = '示例甲的邮箱是 example@example.com'
@@ -296,9 +359,15 @@ test('a one-token context cannot produce a zero-token runtime output limit', () 
   expect(() => resolveModelLimits({ contextWindow: 1, maxTokens: null, maxInputTokens: null })).toThrow('请增加上下文长度或减少最大输出长度。')
 })
 
+test('short requests keep the available output even when the independent input limit approaches the window', () => {
+  expect(resolveModelLimits({ contextWindow: 128000, maxTokens: null, maxInputTokens: 127999 }).maxTokens).toBe(64000)
+  expect(resolveModelLimits({ contextWindow: 1000000, maxTokens: null, maxInputTokens: null }).maxInputTokens).toBe(144000)
+  expect(resolveModelLimits({ contextWindow: null, maxTokens: null }, { contextWindow: 40960, maxTokens: 32768 }).maxTokens).toBe(32768)
+})
+
 test('independent input and output ceilings share the context budget without rewriting either ceiling', () => {
   const model = { contextWindow: 128000, maxTokens: 16000, maxInputTokens: 128000 }
-  expect(resolveModelLimits(model)).toEqual({ contextWindow: 128000, maxTokens: 16000, maxInputTokens: 112000 })
+  expect(resolveModelLimits(model)).toEqual({ contextWindow: 128000, maxTokens: 16000, maxInputTokens: 128000 })
   expect(model.maxInputTokens).toBe(128000)
 })
 
@@ -308,6 +377,35 @@ test('connection testing rejects an input limit too small for its test prompt be
   const service = createAiService({ storage: async () => ({ model, encryptedKey: null }), runtime: { run: async () => { requests++; return { text: 'OK', usage: {}, checkpoint: 'cp' } } }, secrets: { encrypt: value => value, decrypt: value => value } })
   await expect(service.testModel(model.id)).rejects.toMatchObject({ code: 'CONTEXT_TOO_LARGE', action: expect.stringContaining('最大输入长度') })
   expect(requests).toBe(0)
+})
+
+test('Responses 对话在最大输出小于协议下限时本地失败', async () => {
+  const state = turnStorage({ id: 'm', label: '测试', model: 'local', baseUrl: 'http://localhost/v1',
+    protocol: 'openai-responses', contextWindow: 32_000, maxTokens: 8, version: 1, enabled: true, hasCredential: false })
+  const run = vi.fn<RuntimeRunner['run']>(async () => ({ text: 'OK', usage: {}, checkpoint: '' }))
+  const service = createAiService({ storage: state.storage, runtime: { run }, secrets: { encrypt: value => value, decrypt: value => value } })
+  await service.sendTurn({ threadId: '1', requestId: 'request', prompt: '问题', referenceIds: [], modelId: 'm' })
+  await service.idle()
+  expect(state.turn).toMatchObject({ state: 'failed', error: expect.stringContaining('16') })
+  expect(run).not.toHaveBeenCalled()
+})
+
+test.each([
+  ['openai-responses', 15], ['openai-responses', 16], ['openai-completions', 8],
+] as const)('%s 检测连接在仅剩 %i 个输出词元时按协议限制发送', async (protocol, remaining) => {
+  const promptSize = 1000 + Buffer.byteLength('Reply OK.' + 'OK' + '[]')
+  const contextWindow = promptSize + remaining
+  const model: AiModel = { id: 'm', label: '测试', model: 'local', baseUrl: 'http://localhost/v1',
+    protocol, contextWindow, maxInputTokens: contextWindow, maxTokens: 256, version: 1, enabled: true, hasCredential: false }
+  const run = vi.fn<RuntimeRunner['run']>(async () => ({ text: 'OK', usage: {}, checkpoint: '' }))
+  const service = createAiService({ storage: async () => ({ model, encryptedKey: null }), runtime: { run }, secrets: { encrypt: value => value, decrypt: value => value } })
+  if (protocol === 'openai-responses' && remaining < 16) {
+    await expect(service.testModel(model.id)).rejects.toMatchObject({ action: expect.stringContaining('16') })
+    expect(run).not.toHaveBeenCalled()
+  } else {
+    await service.testModel(model.id)
+    expect(run.mock.calls[0][0].outputTokenLimit).toBe(remaining)
+  }
 })
 
 

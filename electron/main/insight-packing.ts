@@ -21,7 +21,9 @@ export function computeInsightInputBudget(input: {
 }
 
 export function resolveInsightCapacity(model: AiModel) {
-  const defaults = resolveModelLimits(model)
+  // 分阶段旧任务的断点按原输出预留计算了成稿额度。
+  const maxTokens = model.maxTokens ?? Math.min(8192, (model.contextWindow ?? provisionalContextWindow) - 1)
+  const defaults = resolveModelLimits({ ...model, maxTokens })
   return {
     known: model.contextWindow != null,
     contextWindow: model.contextWindow ?? provisionalContextWindow,

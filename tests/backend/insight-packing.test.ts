@@ -26,7 +26,7 @@ test('the total context and independent input limit both constrain the available
 
 test('unknown limits use a conservative estimate of the complete request without credentials', async () => {
   const capacity = resolveInsightCapacity(model)
-  expect(capacity).toMatchObject({ known: false, margin: expect.any(Number) })
+  expect(capacity).toMatchObject({ known: false, contextWindow: 16_000, maxOutputTokens: 8192, margin: expect.any(Number) })
   expect(capacity.contextWindow).toBeLessThan(resolveInsightCapacity({ ...model, contextWindow: 128000 }).contextWindow)
   const base = { key: 'test', model, systemPrompt: '规则', prompt: '正文' }
   const minimal = await countInsightInput(base, model)

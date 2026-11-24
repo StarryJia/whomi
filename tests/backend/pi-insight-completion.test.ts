@@ -5,6 +5,8 @@ import { defaultInsightPrompts } from '../../electron/data/ai/insight-prompts'
 import { defaultProcessing } from '../../src/shared/settings-contract'
 import { aiOperation } from '../../electron/main/ai-operation-diagnostics'
 import { insightWorkload } from '../../electron/main/pi-insight-capacity'
+import type { InsightReadSpan } from '../../src/shared/insight-reader'
+import type { InsightRuntimeCallbacks } from '../../electron/agent/protocol'
 
 const snapshot = { taskId: '7', scope: { kind: 'all' as const }, timezone: 'UTC', sourceStartTimeMs: null, sourceEndTimeMs: null,
   createdAtMs: 0, sources: [{ messageId: '11', revision: 'a'.repeat(64) }] }
@@ -18,23 +20,36 @@ const draft = { aboutYou: section, relationship: section, citations: [{ id: 'c',
 test('官方模型按接口匹配容量，跨服务同名模型使用估值，保留手填长度', async () => {
   const configured = { ...options.model, model: 'gpt-6.1-sol', baseUrl: 'https://api.openai.com/v1', contextWindow: null, maxTokens: null }
   const { capacity } = await insightWorkload(configured, snapshot, false)
-  expect(capacity).toMatchObject({ contextWindow: 272000, maxTokens: 128000, maxInputTokens: 144000, outputSource: 'catalog' })
+  expect(capacity).toMatchObject({ contextWindow: 1050000, maxTokens: 128000, maxInputTokens: 922000, outputSource: 'catalog' })
   expect((await insightWorkload({ ...configured, baseUrl: 'http://localhost/v1' }, snapshot, false)).capacity)
-    .toMatchObject({ contextWindow: 16000, maxTokens: 4000, outputSource: 'estimated' })
+    .toMatchObject({ contextWindow: 256000, maxInputTokens: 144000, maxTokens: 128000, outputSource: 'estimated' })
   expect((await insightWorkload({ ...configured, maxTokens: 32000, maxInputTokens: 100000 }, snapshot, false)).capacity)
     .toMatchObject({ maxTokens: 32000, maxInputTokens: 100000, outputSource: 'configured' })
   expect((await insightWorkload({ ...configured, contextWindow: 4096 }, snapshot, false)).capacity)
     .toMatchObject({ contextWindow: 4096, maxTokens: 2048, maxInputTokens: 2048 })
   for (const started of [false, true]) {
     expect((await insightWorkload({ ...configured, contextWindow: 16000, maxInputTokens: 12000 }, snapshot, started)).capacity)
-      .toMatchObject({ contextWindow: 16000, maxTokens: 4000, maxInputTokens: 12000 })
+      .toMatchObject({ contextWindow: 16000, maxTokens: 8000, maxInputTokens: 12000 })
     expect((await insightWorkload({ ...configured, maxInputTokens: 200000 }, snapshot, started)).capacity)
-      .toMatchObject({ contextWindow: 272000, maxTokens: 72000, maxInputTokens: 200000 })
+      .toMatchObject({ contextWindow: 1050000, maxTokens: 128000, maxInputTokens: 200000 })
   }
   const long = { ...snapshot, sourceTextBytes: 400000 }
   const existing = await insightWorkload(configured, long, true)
   expect(existing.protection.requests).toBeGreaterThan(101)
   expect(existing.capacity).toEqual(capacity)
+})
+
+test('从断点恢复时沿用独立输入与输出上限', async () => {
+  const capacity = { contextWindow: 256000, maxInputTokens: 144000, maxTokens: 128000, contextSource: 'estimated', outputSource: 'estimated' } as const
+  const checkpoint: PiInsightCheckpoint = {
+    version: 'pi-insight-v1', taskId: snapshot.taskId, checkpoint: 'read', processing: defaultProcessing,
+    coverage: { coveredMessageIds: ['11'], partial: {} }, requests: 1, stalled: 0, input: 50, output: 10,
+    workload: { capacity, protection: { requests: 25, input: 3600000, output: 3200000 } },
+  }
+  await generatePiInsight({ ...options, checkpoint, save: async () => {}, run: async input => {
+    expect(input.model).toMatchObject({ contextWindow: 256000, maxInputTokens: 144000, maxTokens: 128000 })
+    return { text: JSON.stringify(draft), checkpoint: 'done', usage: {} }
+  } })
 })
 
 test('提前交稿和坏引用可在同一会话修正，重试保存沿用已校验的正文', async () => {
@@ -79,17 +94,48 @@ test.each([1, 2, 20])('完整送阅后循环核查 %i 处，只有新增范围�
       await start('failed')
       await io.record({ type: 'request', requestId: 'failed', kind: 'inference', spans: page.spans, success: false, usage: {}, checkpoint: 'summary' })
       expect(await start('first')).toBeUndefined()
-      await io.record({ type: 'request', requestId: 'first', kind: 'inference', spans: page.spans, success: true, usage: {}, checkpoint: 'all' })
+      expect(await io.record({ type: 'request', requestId: 'first', kind: 'inference', spans: page.spans, success: true, usage: {}, checkpoint: 'all' })).toEqual({ fullyReviewed: refs.length })
+      expect(await io.record({ type: 'checkpoint', checkpoint: 'all' })).toEqual({ fullyReviewed: refs.length })
       for (let i = 0; i < refs.length; i++) {
-        await io.read({ messageId: refs[i % distinct].messageId, before: 0, after: 0 }, 500)
+        const review = await io.read({ messageId: refs[i % distinct].messageId, before: 0, after: 0 }, 500)
         const id = 'review' + i
         expect(await start(id)).toEqual({ fullyReviewed: refs.length })
-        await io.record({ type: 'request', requestId: id, kind: 'inference', spans: [], success: true, usage: {}, checkpoint: 'all' })
+        await io.record({ type: 'request', requestId: id, kind: 'inference', spans: review.spans, success: true, usage: {}, checkpoint: 'all' })
       }
       return { text: JSON.stringify(draft), checkpoint: 'done', usage: {} }
     } })
   if (distinct < refs.length) await expect(run).rejects.toMatchObject({ code: 'INSIGHT_NO_PROGRESS' })
   else await expect(run).resolves.toMatchObject({ aboutYou: section })
+})
+
+test('恢复已落盘的回查片段时，只有成功送达的新范围才解除停滞', async () => {
+  let saved: PiInsightCheckpoint = { version: 'pi-insight-v1', taskId: '7', checkpoint: 'read', processing: defaultProcessing,
+    requests: 1, stalled: 0, input: 10, output: 2, coverage: { coveredMessageIds: ['11'], partial: {} },
+    reviewCoverage: { coveredMessageIds: [], partial: { '11': [[0, 3]] } } }
+  const save = async (state: PiInsightCheckpoint) => { saved = structuredClone(state) }
+  const history = { messageId: '11', start: 0, end: 6, length: 6 }
+  let pending: InsightReadSpan[] = []
+  const record = async (io: InsightRuntimeCallbacks, requestId: string, spans: InsightReadSpan[], kind: 'inference' | 'compaction' = 'inference', success = true) => {
+    await io.record({ type: 'requestStart', requestId, kind })
+    await io.record({ type: 'request', requestId, kind, success, spans, usage: {}, checkpoint: saved.checkpoint })
+  }
+  await expect(generatePiInsight({ ...options, checkpoint: saved, save, run: async (_, io) => {
+    for (let i = 0; i < 15; i++) await record(io, 'history' + i, [history])
+    pending = (await io.read({ cursor: '7.0.3.1' }, 500)).spans
+    await io.record({ type: 'checkpoint', checkpoint: 'pending-tool' })
+    throw new Error('暂停')
+  } })).rejects.toThrow('暂停')
+  expect(saved).toMatchObject({ checkpoint: 'pending-tool', stalled: 15, reviewCoverage: { coveredMessageIds: [], partial: { '11': [[0, 3]] } } })
+  await generatePiInsight({ ...options, checkpoint: saved, save, run: async (_, io) => {
+    await record(io, 'compact', pending, 'compaction')
+    await record(io, 'failed', pending, 'inference', false)
+    expect(saved.stalled).toBe(15)
+    await record(io, 'replay', [history, ...pending])
+    expect(saved).toMatchObject({ stalled: 0, reviewCoverage: { coveredMessageIds: ['11'], partial: {} } })
+    await record(io, 'repeated', pending)
+    expect(saved.stalled).toBe(1)
+    return { text: JSON.stringify(draft), checkpoint: 'done', usage: {} }
+  } })
 })
 
 test('超长原文恢复从已确认的连续前缀之后取文', async () => {

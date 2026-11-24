@@ -7,7 +7,7 @@ import { acceptedThinking, insightModelProtocol, reasoningCapabilities } from '.
 import { createHash, randomUUID } from 'node:crypto'
 import type { AiEvent, AiMethods, AiModel, AiThread, AiTurn, AiUsage, AnalysisTask } from '../../src/shared/ai-contract'
 import { BoundaryError } from '../../src/shared/desktop-validation'
-import { resolveModelLimits } from '../../src/shared/model-limits'
+import { resolveAgentModelCapacity } from '../agent/model-capacity'
 import { createMessageProcessor, type ProcessingMember } from './message-processing'
 import { defaultProcessing, type ProcessingSettings } from '../../src/shared/settings-contract'
 import type { InsightJudgmentSource, InsightSourceMessage } from '../../src/shared/conversation-insights'
@@ -18,7 +18,7 @@ import { defaultInsightRunLimits } from './insight-policy'
 import { diagnosticErrorCode, type AppError } from './app-error-logs'
 import { aiOperation, runDiagnosedModel, type AiDiagnostics, type AiOperation, type ModelRetry } from './ai-operation-diagnostics'
 
-export type RuntimeInput = AgentRunInput & { outputTokenLimit?: number }
+export type RuntimeInput = AgentRunInput
 export type RuntimeResult = AgentRunResult
 export type RuntimeRunner = { run(input: RuntimeInput, options: { signal: AbortSignal; onText: (text: string) => void; insight?: InsightRuntimeCallbacks }): Promise<RuntimeResult> }
 export type AiServiceOptions = { storage(method: string, args: unknown[]): Promise<unknown>; runtime: RuntimeRunner; secrets: { encrypt(value: string): string; decrypt(value: string): string }; changed?: (event: AiEvent) => void;
@@ -30,9 +30,19 @@ export type AiServiceOptions = { storage(method: string, args: unknown[]): Promi
   claimProcessing?: (taskId: string, signature: string) => Promise<void> }
 const dialogueSystem = defaultPrompts.dialogue
 const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex')
-function assertInputFits(input: RuntimeInput) {
-  const room = resolveModelLimits(input.model).maxInputTokens - 1000 - Buffer.byteLength(input.systemPrompt) - Buffer.byteLength(JSON.stringify(input.history ?? []))
-  if (Buffer.byteLength(input.prompt) > room) throw new BoundaryError('CONTEXT_TOO_LARGE', '当前内容超出最大输入长度，请减少内容或选择更大上下文的模型。')
+function minimumTurnOutput(model: AiModel) {
+  // Pi 会将 Responses 请求上调至 16；Grok 套餐直接按预算发送。
+  return model.protocol === 'openai-responses' && !(model.planAccount && model.planProvider === 'grok-cli') ? 16 : 1
+}
+function availableTurnOutput(input: RuntimeInput, capacity: Awaited<ReturnType<typeof resolveAgentModelCapacity>>) {
+  const estimatedInput = 1000 + Buffer.byteLength(input.prompt) + Buffer.byteLength(input.systemPrompt) + Buffer.byteLength(JSON.stringify(input.history ?? []))
+  if (estimatedInput > capacity.maxInputTokens || estimatedInput >= capacity.contextWindow) {
+    throw new BoundaryError('CONTEXT_TOO_LARGE', '当前内容超出最大输入长度，请减少内容或选择更大上下文的模型。')
+  }
+  const output = Math.min(capacity.requestDefaultOutputTokens ?? capacity.maxTokens, capacity.maxTokens, capacity.contextWindow - estimatedInput)
+  const minimum = minimumTurnOutput(input.model)
+  if (output < minimum) throw new BoundaryError('CONTEXT_TOO_LARGE', `请为回答预留至少 ${minimum} 个输出词元，或调整模型容量设置。`)
+  return output
 }
 
 
@@ -157,7 +167,6 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
     }
   }
   async function runTurnModel(id: string, attempt: number, input: RuntimeInput, signal: AbortSignal, onText: (text: string) => void, operation: AiOperation) {
-    assertInputFits(input)
     const result = await runTrackedModel('turn', id, `${id}:${attempt}`, input, signal, onText, operation, { attempt })
     if (result.stopReason === 'length') throw new BoundaryError('MODEL_OUTPUT_LIMIT', '回答未完成，请重试或选择更大输出长度的模型。')
     return result
@@ -330,7 +339,8 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
         const keyParts = ['thread', context.turn.threadId, context.selfFingerprint, context.model.id, context.model.version, context.skill?.id, context.skill?.version, signature]
         if (context.systemPrompt && context.systemPrompt !== dialogueSystem) keyParts.push(context.systemPrompt)
         const key = hash(keyParts)
-        const budget = resolveModelLimits(context.model).maxInputTokens - 1000
+        const capacity = await resolveAgentModelCapacity(context.model, context.turn.thinkingLevel)
+        const budget = capacity.maxInputTokens - 1000
         const fixedSize = Buffer.byteLength(instruction + prompt, 'utf8')
         if (fixedSize > budget) throw new BoundaryError('CONTEXT_TOO_LARGE', '当前问题或引用超出模型容量，请减少引用或选择更大上下文的模型。')
         let history = context.history.map(item => {
@@ -341,8 +351,11 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
         if (signature && checkpoint) {
           try { const saved = JSON.parse(checkpoint); checkpoint = saved.processing === signature && typeof saved.checkpoint === 'string' ? saved.checkpoint : null } catch { checkpoint = null }
         }
-        while (history.length && fixedSize + Buffer.byteLength(JSON.stringify(history), 'utf8') > budget) { history = history.slice(2); checkpoint = null }
-        const response = await runTurnModel(id, context.turn.attempt, { key, model: context.model, thinkingLevel: context.turn.thinkingLevel, apiKey: await modelSecret(context.model), systemPrompt: instruction, prompt, history, checkpoint }, signal, text => {
+        const historyBudget = Math.min(budget, capacity.contextWindow - 1000 - minimumTurnOutput(context.model))
+        while (history.length && fixedSize + Buffer.byteLength(JSON.stringify(history), 'utf8') > historyBudget) { history = history.slice(2); checkpoint = null }
+        const input: RuntimeInput = { key, model: context.model, thinkingLevel: context.turn.thinkingLevel, apiKey: await modelSecret(context.model), systemPrompt: instruction, prompt, history, checkpoint }
+        input.outputTokenLimit = availableTurnOutput(input, capacity)
+        const response = await runTurnModel(id, context.turn.attempt, input, signal, text => {
           if (signal.aborted) return
           writes = writes.then(async () => { if (!signal.aborted) await saveTurn(id, { text }) })
         }, operation)
@@ -387,8 +400,8 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
             const { model } = await storage<{ model: AiModel }>('modelSecret', modelId)
             if (!model.enabled) throw new BoundaryError('MODEL_DISABLED', '请启用模型后再检测连接。')
             if (signal.aborted) throw new DOMException('已停止', 'AbortError')
-            const input = { key, model, apiKey: await modelSecret(model), systemPrompt: 'Reply OK.', prompt: 'OK' }
-            assertInputFits(input)
+            const input: RuntimeInput = { key, model, apiKey: await modelSecret(model), systemPrompt: 'Reply OK.', prompt: 'OK' }
+            input.outputTokenLimit = availableTurnOutput(input, await resolveAgentModelCapacity(model))
             await runDiagnosedModel(options.runtime, input, signal, () => {}, operation, { attempt: 1 })
           }, signal)
         } finally { clearTimeout(timeout) }

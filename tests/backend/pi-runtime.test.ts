@@ -145,7 +145,7 @@ describe('Pi runtime over a controlled OpenAI compatible service', () => {
       routes.push(String(url))
       return localFetch(model.baseUrl + '/local-fixture', init)
     })
-    const selected = { ...model, model: 'gpt-6.1-sol', baseUrl: 'https://api.openai.com/v1', protocol }
+    const selected = { ...model, model: 'gpt-6.1-sol', baseUrl: 'https://api.openai.com/v1', protocol, contextWindow: null, maxTokens: null }
     const section = [{ content: [{ text: '一起散步', citationId: 'c1' }] }]
     const report = { aboutYou: section, relationship: section, citations: [{ id: 'c1', fragments: [{ messageIds: ['1'] }] }], limitations: [], judgments: sampleJudgments() }
     const normalAnswer = answer
@@ -179,7 +179,7 @@ describe('Pi runtime over a controlled OpenAI compatible service', () => {
     expect(routes).toEqual(Array(2).fill('https://api.openai.com/v1/responses'))
     expect(selected.protocol).toBe(protocol)
     for (const req of requests) {
-      expect(req).toMatchObject({ model: 'gpt-6.1-sol', store: false, tools: [expect.objectContaining({ type: 'function', name: 'read_messages', strict: false })],
+      expect(req).toMatchObject({ model: 'gpt-6.1-sol', max_output_tokens: 128000, store: false, tools: [expect.objectContaining({ type: 'function', name: 'read_messages', strict: false })],
         include: expect.arrayContaining(['reasoning.encrypted_content']) })
       expect(req).not.toHaveProperty('reasoning')
       expect(req).not.toHaveProperty('previous_response_id')
@@ -351,14 +351,49 @@ describe('Pi runtime over a controlled OpenAI compatible service', () => {
     expect(report.limitations).toEqual(['材料有限。'])
   }, 20000)
 
-  it('uses the upstream request fallback without saving invented model capacities', async () => {
+  it('uses the estimated output ceiling on a short request without persisting it to the model', async () => {
     const unknown = { ...model, contextWindow: null, maxTokens: null }
     const result = await new PiRuntime(directory).run(input(unknown as unknown as AiModel), options())
     expect(result.text).toBe('已收到')
     const request = requests[0] as Record<string, unknown>
-    expect(request.max_tokens ?? request.max_completion_tokens).toBe(8192)
+    expect(request.max_tokens ?? request.max_completion_tokens).toBe(128000)
     expect(unknown.contextWindow).toBeNull()
     expect(unknown.maxTokens).toBeNull()
+  }, 20000)
+
+  it('uses the catalog capacity for a standard chat request to the configured official endpoint', async () => {
+    const localFetch = globalThis.fetch
+    const endpoint = 'https://dashscope.aliyuncs.com/compatible-mode/v1'
+    const official = { ...model, model: 'qwen3.7-plus', baseUrl: endpoint, contextWindow: null, maxTokens: null }
+    const intercepted = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, init) => {
+      expect(String(url)).toBe(endpoint + '/chat/completions')
+      return localFetch(model.baseUrl + '/chat/completions', init)
+    })
+    expect((await new PiRuntime(directory).run(input(official), options())).text).toBe('已收到')
+    expect(intercepted).toHaveBeenCalledTimes(1)
+    const request = requests[0] as Record<string, unknown>
+    expect(request.max_tokens ?? request.max_completion_tokens).toBe(131072)
+  }, 20000)
+
+  it('reduces output when the service reports that the previous turn used most of the input window', async () => {
+    const runtime = new PiRuntime(directory)
+    const unknown = { ...model, contextWindow: null, maxTokens: null }
+    answer = response => frames(response, { id: 'large-turn', choices: [{ index: 0, delta: { role: 'assistant', content: '收到' }, finish_reason: 'stop' }],
+      usage: { prompt_tokens: 143990, completion_tokens: 10, total_tokens: 144000 } })
+    const first = await runtime.run(input(unknown), options())
+    await runtime.run({ ...input(unknown, '继续'), checkpoint: first.checkpoint }, options())
+    const request = requests[1] as Record<string, unknown>
+    const output = request.max_tokens ?? request.max_completion_tokens
+    expect(output).toBeGreaterThan(100000)
+    expect(output).toBeLessThanOrEqual(112000)
+  }, 20000)
+
+  it('honors the remaining output budget for a packed first turn before the service can report usage', async () => {
+    const unknown = { ...model, contextWindow: null, maxTokens: null }
+    const request = { ...input(unknown, '读'.repeat(47500)), outputTokenLimit: 112000 }
+    await new PiRuntime(directory).run(request, options())
+    const body = requests[0] as Record<string, unknown>
+    expect(body.max_tokens ?? body.max_completion_tokens).toBe(112000)
   }, 20000)
 
   it('streams real Pi output, records reported usage, and exposes no tools or ambient instructions', async () => {

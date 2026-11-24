@@ -1,5 +1,4 @@
 import type { AiModel, AiUsage } from '../../src/shared/ai-contract'
-import type { InsightReadSpan } from '../../src/shared/insight-reader'
 import type { InsightJudgmentSource, InsightReport, InsightSnapshot, InsightSourceMessage } from '../../src/shared/conversation-insights'
 import { BoundaryError } from '../../src/shared/desktop-validation'
 import type { ProcessingSettings } from '../../src/shared/settings-contract'
@@ -79,10 +78,10 @@ export async function generatePiInsight(options: Options): Promise<InsightReport
     throw new BoundaryError('INVALID_INSIGHT_CHECKPOINT', '请从会话重新发起洞察。')
   }
   if (state.report) return state.report
-  state.workload ??= await insightWorkload(options.model, snapshot, state.requests > 0)
+  state.workload ??= await insightWorkload(options.model, snapshot, state.requests > 0, options.thinkingLevel)
   const { capacity, protection: limits } = state.workload
   if (!capacity || !limits || ![capacity.contextWindow, capacity.maxTokens, capacity.maxInputTokens, limits.requests, limits.input, limits.output]
-    .every(value => Number.isSafeInteger(value) && value > 0) || capacity.maxTokens + capacity.maxInputTokens > capacity.contextWindow) {
+    .every(value => Number.isSafeInteger(value) && value > 0) || capacity.maxTokens >= capacity.contextWindow || capacity.maxInputTokens > capacity.contextWindow) {
     throw new BoundaryError('INVALID_INSIGHT_CHECKPOINT', '请检查任务断点后重试。')
   }
   const { contextWindow, maxInputTokens, maxTokens } = capacity
@@ -95,7 +94,7 @@ export async function generatePiInsight(options: Options): Promise<InsightReport
   const ordinals = new Map(snapshot.sources.map((ref, i) => [ref.messageId, i + 1]))
   const calls = new Set<string>()
   const covered = () => state.coverage.coveredMessageIds.length
-  const reviewSpans: InsightReadSpan[] = []
+  const readingStatus = () => covered() === refs.size ? { fullyReviewed: refs.size } : undefined
   if (covered() === refs.size && !state.reviewCoverage) {
     if (state.lastReviewWindow === undefined) state.stalled = 0
     state.reviewCoverage = { coveredMessageIds: [], partial: {} }
@@ -105,7 +104,6 @@ export async function generatePiInsight(options: Options): Promise<InsightReport
       signal.throwIfAborted()
       const result = await read(request, capacity)
       const ids = result.spans.map(span => span.messageId)
-      if (covered() === refs.size) reviewSpans.push(...result.spans)
       const seen = new Set(state.coverage.coveredMessageIds)
       operation.event('read', { action: request.messageId ? 'locate' : request.cursor ? 'continue' : 'first',
         targetOrdinal: request.messageId ? ordinals.get(request.messageId) : undefined, readStatus: result.page.status,
@@ -113,13 +111,14 @@ export async function generatePiInsight(options: Options): Promise<InsightReport
         fromOffset: result.spans[0]?.start, endOffset: result.spans.at(-1)?.end,
         count: ids.length, ordinals: ids.length ? [ordinals.get(ids[0]), ordinals.get(ids.at(-1)!)] : [], repeated: ids.filter(id => seen.has(id)).length,
         hasMore: result.page.status === 'ok' && result.page.nextCursor !== null })
-      return result
+      // 阅读阶段留在本地工具回执中，恢复时可与重发的顺读历史区分。
+      return covered() === refs.size ? { ...result, spans: result.spans.map(span => ({ ...span, review: true })) } : result
     },
     async record(event) {
       if (event.type === 'checkpoint') {
         state.checkpoint = event.checkpoint
         await options.save(state)
-        return
+        return readingStatus()
       }
       if (event.type === 'requestStart') {
         signal.throwIfAborted()
@@ -141,7 +140,7 @@ export async function generatePiInsight(options: Options): Promise<InsightReport
         state.requests++
         await options.save(state, { requestId: event.requestId, usage: { incomplete: true } })
         operation.event('request', { attempt: state.requests, kind: event.kind })
-        return covered() === refs.size ? { fullyReviewed: refs.size } : undefined
+        return readingStatus()
       }
       if (!calls.delete(event.requestId)) throw new BoundaryError('INVALID_INSIGHT_CHECKPOINT', '请继续洞察以恢复进度。')
       const before = state.coverage
@@ -150,18 +149,18 @@ export async function generatePiInsight(options: Options): Promise<InsightReport
         state.coverage = addInsightCoverage(before, event.spans)
         const reviewing = before.coveredMessageIds.length === refs.size
         const previous = reviewing ? state.reviewCoverage! : before
-        const next = reviewing ? addInsightCoverage(previous, reviewSpans) : state.coverage
+        const next = reviewing ? addInsightCoverage(previous, event.spans.filter(span => span.review)) : state.coverage
         const advanced = previous.coveredMessageIds.length !== next.coveredMessageIds.length || JSON.stringify(previous.partial) !== JSON.stringify(next.partial)
         state.stalled = advanced ? 0 : state.stalled + 1
         if (reviewing) state.reviewCoverage = next
         else if (covered() === refs.size) state.reviewCoverage = { coveredMessageIds: [], partial: {} }
-        reviewSpans.length = 0
       }
       state.input += event.usage.totalInputTokens ?? ((event.usage.inputTokens ?? 0) + (event.usage.cacheReadTokens ?? 0) + (event.usage.cacheWriteTokens ?? 0))
       state.output += event.usage.outputTokens ?? 0
       if (event.checkpoint) state.checkpoint = event.checkpoint
       await options.save(state, { requestId: event.requestId, usage: event.usage })
       operation.event(event.success ? 'returned' : 'requestFailed', { kind: event.kind, readCount: covered(), inputTokens: event.usage.totalInputTokens ?? event.usage.inputTokens, outputTokens: event.usage.outputTokens })
+      return readingStatus()
     },
   }
   await options.save(state)
