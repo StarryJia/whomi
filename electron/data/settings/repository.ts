@@ -5,7 +5,7 @@ import type { Store } from '../db/open'
 import type { WriterQueue } from '../import/runner'
 import { saveAiModelVersion } from '../ai/repository'
 import type { AiModel } from '../../../src/shared/ai-contract'
-import { defaultProcessing, presetAccountId, type AccountUsage, type ModelFeature, type ProcessingSettings, type Provider, type ProviderInput, type SettingsModel, type SettingsModelInput, type SettingsSnapshot } from '../../../src/shared/settings-contract'
+import { defaultProcessing, presetAccountId, type AccountUsage, type ModelFeature, type ProcessingSettings, type Provider, type ProviderInput, type SettingsModel, type SettingsModelWrite, type SettingsSnapshot } from '../../../src/shared/settings-contract'
 import { failSettings, settingsId, validateProcessing, validateProvider, validateSettingsModel } from './validation'
 import { getSubscriptionId, isSubscriptionId, subscriptionProviders, type SubscriptionProviderId } from '../../../src/shared/chatgpt-plan'
 import { localId } from '../../../src/shared/desktop-validation'
@@ -151,11 +151,18 @@ export function createSettingsRepository(store: Store, write: WriterQueue) {
         db.prepare('DELETE FROM settings_providers WHERE id=?').run(id)
       })())
     },
-    async saveModel(input: SettingsModelInput, source?: 'catalog'): Promise<SettingsModel> {
-      validateSettingsModel(input)
+    async saveModel(update: SettingsModelWrite, source?: 'catalog'): Promise<SettingsModel> {
+      validateSettingsModel(update)
       return write(() => db.transaction(() => {
-        const { provider, encryptedKey } = providerSecret(input.providerId), previous = input.id ? model(input.id) : null
+        const { provider, encryptedKey } = providerSecret(update.providerId), previous = update.id ? model(update.id) : null
         if (previous && previous.providerId !== provider.id) failSettings('INVALID_MODEL')
+        const sameModel = previous?.model === update.model.trim() ? previous : null
+        const input = { ...update,
+          contextWindow: update.contextWindow === undefined ? sameModel?.contextWindow ?? null : update.contextWindow,
+          maxTokens: update.maxTokens === undefined ? sameModel?.maxTokens ?? null : update.maxTokens,
+          maxInputTokens: update.maxInputTokens === undefined ? sameModel?.maxInputTokens : update.maxInputTokens,
+        }
+        validateSettingsModel(input)
         if (models(provider.id).some(value => value.id !== input.id && value.model === input.model.trim())) failSettings('DUPLICATE_MODEL', '该模型已添加，请修改已有模型。')
         if (previous) idle([previous.id])
         if (getSubscriptionId(provider.id) && !provider.planAccount) failSettings('ACCOUNT_LOGIN', '请先登录服务商账户。')

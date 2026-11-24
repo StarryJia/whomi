@@ -4,17 +4,18 @@ import { mkdtemp, mkdir, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 
-test('Cherry settings menus, auto-save, sync recovery and capacity drawers work in the desktop window', async () => {
+test('Cherry settings menus, auto-save, sync recovery and capacity drawers work in the desktop window', async ({}, info) => {
   test.setTimeout(90000)
   const directory = await mkdtemp(join(tmpdir(), 'whomi-runtime-cherry-settings-'))
   await writeFile(join(directory, 'probe.cjs'), 'module.exports=()=>async()=>{throw Error("Unsupported test probe")}')
-  const evidence = resolve('release/cherry-catalog-selection-20261031')
+  const evidence = info.outputPath('screenshots')
   await mkdir(evidence, { recursive: true })
   let failCatalog = true
   const server = createServer((request, response) => {
     if (request.url?.endsWith('/models')) {
       response.writeHead(failCatalog ? 503 : 200, { 'Content-Type': 'application/json' })
-      response.end(JSON.stringify(failCatalog ? {} : { data: [{ id: 'catalog-model', name: '目录示例模型', context_length: 200000, max_output_tokens: 32768, max_input_tokens: 150000, group: '示例模型组' }, { id: 'unused-model', name: '暂不添加的模型', group: '示例模型组' }] }))
+      response.end(JSON.stringify(failCatalog ? {} : { data: [{ id: 'catalog-model', name: '目录示例模型', context_length: 200000, max_output_tokens: 32768, max_input_tokens: 150000, group: '示例模型组' },
+        { id: 'long-model', name: '已有模型', context_length: 128000 }, { id: 'unused-model', name: '暂不添加的模型', group: '示例模型组' }] }))
     } else { response.writeHead(404); response.end('{}') }
   })
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve))
@@ -26,7 +27,7 @@ test('Cherry settings menus, auto-save, sync recovery and capacity drawers work 
     const baseUrl = `http://127.0.0.1:${server.address().port}/v1`
     const state = await page.evaluate(async baseUrl => {
       const provider = await window.whomi.settings.saveProvider({ name: '本地示例服务', baseUrl, apiKey: 'synthetic-only', enabled: true })
-      const model = await window.whomi.settings.saveModel({ providerId: provider.id, model: 'long-model', label: '这是用于核对真实桌面窄窗口布局的较长模型名称 Example Long Model', contextWindow: 128000, maxTokens: 16384, enabled: true })
+      const model = await window.whomi.settings.saveModel({ providerId: provider.id, model: 'long-model', label: '这是用于核对真实桌面窄窗口布局的较长模型名称 Example Long Model', contextWindow: null, maxTokens: 16384, enabled: true })
       return { provider, model }
     }, baseUrl)
     await page.getByRole('button', { name: '设置', exact: true }).click()
@@ -58,6 +59,15 @@ test('Cherry settings menus, auto-save, sync recovery and capacity drawers work 
     expect((await page.evaluate(() => window.whomi.settings.get())).models.map(model => model.model)).toEqual(['long-model'])
     await catalog.getByRole('button', { name: '取消', exact: true }).click()
     expect((await page.evaluate(() => window.whomi.settings.get())).models.map(model => model.model)).toEqual(['long-model'])
+    await page.getByRole('button', { name: '编辑' + state.model.label, exact: true }).click()
+    const synced = page.getByRole('dialog', { name: '编辑模型', exact: true })
+    await expect(synced.getByLabel('上下文长度', { exact: true })).toHaveValue('128000')
+    await synced.getByLabel('显示名称', { exact: true }).fill('同步后改名')
+    await synced.getByRole('button', { name: '关闭编辑模型', exact: true }).click()
+    await page.getByRole('button', { name: '编辑同步后改名', exact: true }).click()
+    await expect(synced.getByLabel('上下文长度', { exact: true })).toHaveValue('128000')
+    await page.screenshot({ path: join(evidence, 'synced-model-after-rename.png') })
+    await synced.getByRole('button', { name: '关闭编辑模型', exact: true }).click()
     const catalogOpener = page.getByRole('button', { name: '添加模型', exact: true })
     await catalogOpener.click()
     await expect(catalog.getByRole('checkbox', { name: '选择目录示例模型', exact: true })).not.toBeChecked()
@@ -75,7 +85,7 @@ test('Cherry settings menus, auto-save, sync recovery and capacity drawers work 
     await expect(catalog.getByRole('button', { name: '移除目录示例模型', exact: true })).toBeVisible()
     await expect(catalog.getByRole('checkbox', { name: '选择暂不添加的模型', exact: true })).not.toBeChecked()
     await page.screenshot({ path: join(evidence, '04-reopened-catalog.png') })
-    await catalog.getByRole('button', { name: `移除${state.model.label}`, exact: true }).click()
+    await catalog.getByRole('button', { name: '移除已有模型', exact: true }).click()
     await expect.poll(() => page.evaluate(async () => (await window.whomi.settings.get()).models.length)).toBe(1)
     await catalog.getByRole('button', { name: '关闭本地示例服务 模型', exact: true }).click()
     await page.getByRole('button', { name: '编辑目录示例模型', exact: true }).click()

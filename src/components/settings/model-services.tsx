@@ -12,7 +12,7 @@ import { changePresetProtocol, PresetDetail, PresetLinks, ProviderAvatar, preset
 import { defaultModelProtocol, modelProtocols } from '../../shared/model-protocol'
 import { errorText, isModelBusy, Modal, Switch, type LeaveGuard, type RegisterGuard } from './common'
 import { ProtocolSelect, ProviderForm, providerErrors } from './provider-form'
-import { ModelEditor, modelInput } from './model-editor'
+import { ModelEditor, modelChanges, modelInput } from './model-editor'
 import { ProviderAccount, unconfiguredAccount } from './chatgpt-account'
 import { getSubscriptionId } from '../../shared/chatgpt-plan'
 import { ModelPicker } from './model-picker'
@@ -190,7 +190,7 @@ function ProviderDetail({ api, provider, refreshAccount, models, savedProvider, 
   useEffect(() => { registerGuard(navigate); return () => registerGuard(null) })
   useEffect(() => { onBusy(busy); return () => onBusy(false) }, [busy, onBusy])
   async function test(model: SettingsModel) { if (accountUnavailable || !await commit() || !isCurrent()) return; setBusy(true); setError(''); setDetections(current => ({ ...current, [model.id]: '检测中…' })); try { await api.testModel(model.id); if (isCurrent()) setDetections(current => ({ ...current, [model.id]: '连接成功' })) } catch (cause) { if (isCurrent()) { setDetections(current => ({ ...current, [model.id]: '检测失败' })); setError(errorText(cause, '检测失败，请检查配置后重试。')) } } finally { modelBusy(false) } }
-  async function toggle(model: SettingsModel) { if (accountUnavailable) return; setBusy(true); setError(''); try { const saved = await api.saveModel({ ...modelInput(model), enabled: !model.enabled }); if (isCurrent()) savedModels([saved]) } catch (cause) { if (isCurrent()) setError(errorText(cause)) } finally { modelBusy(false) } }
+  async function toggle(model: SettingsModel) { if (accountUnavailable) return; setBusy(true); setError(''); try { const previous = modelInput(model); const saved = await api.saveModel(modelChanges({ ...previous, enabled: !model.enabled }, previous)); if (isCurrent()) savedModels([saved]) } catch (cause) { if (isCurrent()) setError(errorText(cause)) } finally { modelBusy(false) } }
   const filtered = visibleModels.filter(model => `${model.label} ${model.model}`.toLowerCase().includes(modelQuery.toLowerCase()))
   const groups = [...new Set(filtered.map(model => model.group || '模型'))]
   return <section className="ms-detail" aria-label="服务商配置"><div className="ms-detail-body"><button className="ms-mobile-back ms-text-button" onClick={() => navigate(onBack)}><ArrowLeft size={14} />返回服务商</button>
@@ -218,7 +218,7 @@ function ProviderDetail({ api, provider, refreshAccount, models, savedProvider, 
       {groups.map(group => <div className="cherry-model-group" key={group}><h4>{group}</h4>{filtered.filter(model => (model.group || '模型') === group).map(model => <div className="ms-model-row" key={model.id}><button className="cherry-model-name" title={`${model.label} · ${model.model}`} disabled={busy || saver.pending || accountUnavailable} onClick={() => setEditor(model)}><strong>{model.label}</strong>{model.label !== model.model && <span>{model.model}</span>}</button><div className="settings-model-actions"><span className="cherry-health" role="status">{detections[model.id]}</span><button className="ms-icon" aria-label={`检测${model.label}`} title="检测连接" disabled={busy || saver.pending || !provider.enabled || !model.enabled || accountUnavailable} onClick={() => void test(model)}><RefreshCw size={14} /></button><button className="ms-icon" aria-label={`编辑${model.label}`} disabled={busy || saver.pending || accountUnavailable} onClick={() => setEditor(model)}><Pencil size={14} /></button><Switch label={`启用${model.label}`} checked={model.enabled} disabled={busy || saver.pending || accountUnavailable} onChange={() => void toggle(model)} /></div></div>)}</div>)}
     </section>
     </div>
-    {picker && !accountUnavailable && <ModelPicker api={api} provider={provider} models={visibleModels} onClose={() => { if (isCurrent()) setPicker(false) }} onAdded={values => { if (isCurrent()) savedModels(values) }} onRemoved={ids => { if (isCurrent()) removedModels(ids) }} onBusy={modelBusy} />}
+    {picker && !accountUnavailable && <ModelPicker api={api} provider={provider} models={visibleModels} onSynced={() => refreshAccount(isCurrent)} onClose={() => { if (isCurrent()) setPicker(false) }} onAdded={values => { if (isCurrent()) savedModels(values) }} onRemoved={ids => { if (isCurrent()) removedModels(ids) }} onBusy={modelBusy} />}
     {editor && !accountUnavailable && <ModelEditor api={api} provider={provider} models={visibleModels} existing={editor === 'new' ? undefined : editor} onClose={() => { if (isCurrent()) setEditor(null) }} onSaved={value => { if (isCurrent()) savedModels([value]) }} />}
   </section>
 }

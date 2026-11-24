@@ -14,6 +14,7 @@ export type ProviderInput = Omit<Provider, 'id' | 'hasCredential' | 'planAccount
 export function presetAccountId(presetId: string): string { return `cherry:${presetId}` }
 export type SettingsModel = AiModel & { providerId: string; group?: string; maxInputTokens?: number | null }
 export type SettingsModelInput = Pick<SettingsModel, 'providerId' | 'label' | 'model' | 'contextWindow' | 'maxTokens' | 'enabled' | 'group' | 'maxInputTokens' | 'thinkingLevels'> & { id?: string }
+export type SettingsModelWrite = Omit<SettingsModelInput, 'contextWindow' | 'maxTokens'> & Partial<Pick<SettingsModelInput, 'contextWindow' | 'maxTokens'>>
 export type CatalogModel = { id: string; label?: string; group?: string; contextWindow?: number; maxTokens?: number; maxInputTokens?: number }
 export type ModelFeature = 'analysis' | 'conversation'
 export type SettingsSnapshot = { providers: Provider[]; models: SettingsModel[]; processing: ProcessingSettings; selectedModels: Partial<Record<ModelFeature, string>>; debug: boolean }
@@ -35,7 +36,7 @@ export interface SettingsApi {
   setAccountEnabled(id: SubscriptionProviderId, enabled: boolean): Promise<void>
   saveProvider(input: ProviderInput): Promise<Provider>
   removeProvider(id: string): Promise<void>
-  saveModel(input: SettingsModelInput): Promise<SettingsModel>
+  saveModel(input: SettingsModelWrite): Promise<SettingsModel>
   removeModel(id: string): Promise<void>
   syncModels(providerId: string): Promise<CatalogModel[]>
   testModel(id: string): Promise<void>

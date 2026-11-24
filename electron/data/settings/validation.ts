@@ -2,7 +2,7 @@ import { isThinkingLevel } from '../../../src/shared/thinking'
 import { BoundaryError } from '../../../src/shared/desktop-validation'
 import { getCherryProviderPreset } from '../../../src/vendor/cherry-providers'
 import { isModelProtocol, isValidModelBaseUrl, type ModelProtocol } from '../../../src/shared/model-protocol'
-import { redactionRules, type ProcessingSettings, type ProviderInput, type SettingsModelInput } from '../../../src/shared/settings-contract'
+import { redactionRules, type ProcessingSettings, type ProviderInput, type SettingsModelWrite } from '../../../src/shared/settings-contract'
 
 export function failSettings(code: string, action = '请检查设置后重试。'): never { throw new BoundaryError(code, action) }
 export function settingsId(value: unknown): asserts value is string { if (typeof value !== 'string' || !value.trim() || value.length > 128) failSettings('INVALID_ID') }
@@ -35,7 +35,7 @@ export function validateProvider(value: ProviderInput): ModelProtocol | undefine
   if (value.image !== undefined && (typeof value.image !== 'string' || value.image.length > 2 * 1024 * 1024 || !/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(value.image) || Buffer.from(value.image.slice(value.image.indexOf(',') + 1), 'base64').length > 1024 * 1024)) failSettings('INVALID_PROVIDER', '请选择不超过 1 MB 的 PNG、JPEG 或 WebP 图片。')
   return protocol
 }
-export function validateSettingsModel(value: SettingsModelInput): void {
+export function validateSettingsModel(value: SettingsModelWrite): void {
   if (value.thinkingLevels !== undefined && (!Array.isArray(value.thinkingLevels) || value.thinkingLevels.length > 7 || value.thinkingLevels.some(level => !isThinkingLevel(level)))) failSettings('INVALID_MODEL')
   fields(value, ['id', 'providerId', 'label', 'model', 'contextWindow', 'maxTokens', 'enabled', 'group', 'maxInputTokens', 'thinkingLevels'], 'INVALID_MODEL')
   if (value.id !== undefined) settingsId(value.id)

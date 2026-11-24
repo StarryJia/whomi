@@ -31,6 +31,9 @@ test('sync fills missing limits on a saved model and keeps its manual output lim
   expect(saved).toMatchObject({ contextWindow: 32000, maxInputTokens: 28000, maxTokens: 2048 })
   await service.syncModels(provider.id)
   expect((await service.get()).models[0].version).toBe(saved.version)
+  const rename = { id: saved.id, providerId: provider.id, model: 'alpha', label: '同步后改名', enabled: true }
+  expect(await service.saveModel(rename)).toMatchObject({ contextWindow: 32000, maxInputTokens: 28000, maxTokens: 2048 })
+  expect(await service.saveModel({ ...rename, contextWindow: null })).toMatchObject({ contextWindow: null, maxInputTokens: 28000, maxTokens: 2048 })
 })
 
 test.each(['capacity', 'credential'])('a paused insight keeps its frozen model across catalog synchronization but rejects a manual %s change', async change => {

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, expect, test, vi } from 'vitest'
-import { defaultProcessing, type Provider, type SettingsApi, type SettingsSnapshot } from '../../shared/settings-contract'
+import { defaultProcessing, type Provider, type SettingsApi, type SettingsModel, type SettingsSnapshot } from '../../shared/settings-contract'
 import { ModelServices } from './model-services'
 
 const model = { id: 'm1', providerId: 'p1', label: '示例模型', model: 'alpha', baseUrl: 'http://localhost:1234/v1', enabled: true, hasCredential: true, contextWindow: 128000, maxTokens: 16384, version: 1 }
@@ -10,15 +10,15 @@ const legacyProvider = (id: string, name: string, baseUrl = 'https://example.inv
   ({ id: 'cherry:' + id, name, baseUrl, enabled: false, hasCredential: false })
 const grokAccount = legacyProvider('grok-cli', 'Grok CLI')
 const copilotAccount = legacyProvider('copilot', 'GitHub Copilot')
-function setup(withModel = true, accountApi: Partial<SettingsApi> = {}, storedProviders: Provider[] = []) {
-  let data: SettingsSnapshot = { providers: [{ id: 'p1', name: '示例服务', baseUrl: 'http://localhost:1234/v1', enabled: true, hasCredential: true }, ...storedProviders], models: withModel ? [model] : [], processing: defaultProcessing, selectedModels: {}, debug: false }
+function setup(withModel: boolean | SettingsModel = true, accountApi: Partial<SettingsApi> = {}, storedProviders: Provider[] = []) {
+  let data: SettingsSnapshot = { providers: [{ id: 'p1', name: '示例服务', baseUrl: 'http://localhost:1234/v1', enabled: true, hasCredential: true }, ...storedProviders], models: withModel ? [withModel === true ? model : withModel] : [], processing: defaultProcessing, selectedModels: {}, debug: false }
   const api = {
     get: async () => structuredClone(data),
     getCodexQuota: async () => ({ state: 'disconnected' }),
     getAccountUsage: async () => ({requests:0,inputTokens:null,outputTokens:null,partial:false}),
     saveProvider: vi.fn(async input => { const { apiKey: _key, ...safe } = input; const saved = { ...safe, id: input.id ?? 'p2', hasCredential: true }; data = { ...data, providers: [...data.providers.filter(p => p.id !== saved.id), saved] }; return saved }),
     removeProvider: vi.fn(async () => {}), stopModelTasks: vi.fn(async () => {}),
-    saveModel: vi.fn(async input => { const saved = { ...model, ...input, id: input.id ?? `m-${input.model}` }; data = { ...data, models: [...data.models.filter(m => m.id !== saved.id), saved] }; return saved }),
+    saveModel: vi.fn(async input => { const saved = { ...model, ...data.models.find(m => m.id === input.id), ...input, id: input.id ?? `m-${input.model}` }; data = { ...data, models: [...data.models.filter(m => m.id !== saved.id), saved] }; return saved }),
     removeModel: vi.fn(async id => { data = { ...data, models: data.models.filter(m => m.id !== id) } }),
     syncModels: vi.fn(async () => [{ id: 'alpha', label: '示例模型', contextWindow: 128000, maxTokens: 16384 }, { id: 'beta', label: '目录模型', contextWindow: 200000, maxTokens: 32768 }]),
     testModel: vi.fn(async () => {}), ...accountApi,
@@ -122,8 +122,30 @@ test('最大输入预设等于上下文时保留独立输出上限，由请求�
   await user.click(screen.getByRole('button', { name: '编辑示例模型' }))
   const drawer = await screen.findByRole('dialog', { name: '编辑模型' })
   await user.click(within(drawer).getByRole('button', { name: '最大输入长度: 128K (128000)' }))
-  await waitFor(() => expect(api.saveModel).toHaveBeenCalledWith(expect.objectContaining({ contextWindow: 128000, maxInputTokens: 128000, maxTokens: 16384 })))
+  await waitFor(() => expect(api.saveModel).toHaveBeenCalledWith(expect.objectContaining({ maxInputTokens: 128000 })))
+  expect((await api.get()).models[0]).toMatchObject({ contextWindow: 128000, maxInputTokens: 128000, maxTokens: 16384 })
   expect(within(drawer).queryByRole('alert')).not.toBeInTheDocument()
+})
+
+test('同步后在同一设置页改名，重新打开仍显示目录补齐的上下文长度', async () => {
+  const { user, api } = setup({ ...model, contextWindow: null })
+  vi.mocked(api.syncModels).mockImplementationOnce(async () => {
+    await api.saveModel({ ...model, contextWindow: 128000 })
+    return [{ id: model.model, contextWindow: 128000 }]
+  })
+  await user.click(screen.getByRole('button', { name: '同步模型' }))
+  const picker = within(screen.getByRole('dialog'))
+  await picker.findByRole('button', { name: /移除/ })
+  await user.click(picker.getByRole('button', { name: '取消' }))
+  await user.click(screen.getByRole('button', { name: '编辑示例模型' }))
+  const editor = within(screen.getByRole('dialog'))
+  expect(editor.getByLabelText('上下文长度')).toHaveValue(128000)
+  const label = editor.getByLabelText('显示名称')
+  await user.clear(label)
+  await user.type(label, '改名示例')
+  await user.click(editor.getByRole('button', { name: '关闭编辑模型' }))
+  await user.click(await screen.findByRole('button', { name: '编辑改名示例' }))
+  expect(within(screen.getByRole('dialog')).getByLabelText('上下文长度')).toHaveValue(128000)
 })
 
 test('目录勾选后确认添加并保留元数据，常驻加号可再次进入目录', async () => {
