@@ -1,14 +1,17 @@
 import { afterEach, expect, test } from 'vitest'
+import { createServer } from 'node:http'
+import { dirname } from 'node:path'
+import { PiRuntime } from '../../electron/agent/runtime'
 import { openStore } from '../../electron/data/db/open'
 import { createSettingsRepository } from '../../electron/data/settings/repository'
 import { createAiRepository } from '../../electron/data/ai/repository'
 import { temporaryStore } from './helpers'
 import { createAiService } from '../../electron/main/ai-service'
-import { defaultPrompts } from '../../src/shared/system-prompts'
+import { completeModel, readTurns, sampleJudgments } from '../desktop/fixtures/pi-insight-model.mjs'
 
-const cleanup: (() => void)[] = []
-afterEach(() => cleanup.splice(0).reverse().forEach(close => close()))
-async function setup() {
+const cleanup: (() => void | Promise<void>)[] = []
+afterEach(async () => { for (const close of cleanup.splice(0).reverse()) await close() })
+async function setup(baseUrl = 'http://127.0.0.1:9999/v1') {
   const temp = temporaryStore(), store = openStore(temp.path)
   cleanup.push(() => { store.close(); temp.cleanup() })
   let queue: Promise<unknown> = Promise.resolve()
@@ -20,7 +23,7 @@ async function setup() {
     INSERT INTO self_confirmations(conversation_id,member_id,status,source) VALUES(1,1,'confirmed','user');
     INSERT INTO messages(id,conversation_id,member_id,sender_kind,sender_name,kind,text,ordinal) VALUES(1,1,1,'member','本人','text','周末一起散步',0)`)
   const ai = createAiRepository(store, write)
-  await ai.saveModel({ id: 'm', label: '测试', model: 'm', baseUrl: 'http://127.0.0.1:9999/v1', contextWindow: 8000, maxTokens: 1000, enabled: true })
+  await ai.saveModel({ id: 'm', label: '测试', model: 'm', baseUrl, contextWindow: 8000, maxTokens: 1000, enabled: true })
   await settings.initialize()
   return { temp, store, settings, ai, write }
 }
@@ -78,36 +81,59 @@ test('对话修改提示词后不复用旧上下文，失败重试仍使用原�
 })
 
 test('保存的对话和洞察提示词进入模型请求，连接检测保持固定指令', async () => {
-  const { settings, ai } = await setup()
-  const requests: { systemPrompt: string; prompt: string }[] = []
-  const service = createAiService({
-    storage: async (method, args) => (ai[method as keyof typeof ai] as (...values: any[]) => unknown)(...args),
-    secrets: { encrypt: value => value, decrypt: value => value },
-    runtime: { run: async input => {
-      requests.push(input)
-      const payload = input.prompt.startsWith('{') ? JSON.parse(input.prompt) : {}
-      const text = payload.stage === 'reading' ? { observations: [], openThreads: [], candidates: [] }
-        : payload.stage === 'writing' ? { aboutYou: [], relationship: [], citations: [], limitations: ['材料有限。'] }
-        : '测试回答'
-      return { text: typeof text === 'string' ? text : JSON.stringify(text), usage: {}, checkpoint: 'checkpoint' }
-    } },
+  type Request = { messages: { role: string; content: string | { type: string; text: string }[] }[]; tools?: { function: { name: string } }[] }
+  const requests: Request[] = []
+  const server = createServer(async (request, response) => {
+    let body = ''
+    for await (const chunk of request) body += chunk
+    const input: Request = JSON.parse(body)
+    requests.push(input)
+    if (!input.tools?.length) return completeModel(response, { text: 'OK' })
+    const turns = readTurns(input)
+    if (!turns.length) return completeModel(response, { read: {} })
+    const section = [{ content: [{ text: '约周末散步', citationId: 'walk' }] }]
+    const report = { aboutYou: section, relationship: section, limitations: [], judgments: sampleJudgments(),
+      citations: [{ id: 'walk', fragments: [{ messageIds: ['1'] }] }] }
+    completeModel(response, { text: JSON.stringify(report) })
   })
+  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
+  cleanup.push(async () => {
+    server.closeAllConnections()
+    await new Promise<void>(resolve => server.close(() => resolve()))
+  })
+  const { settings, ai, temp } = await setup(`http://127.0.0.1:${(server.address() as { port: number }).port}/v1`)
+  const service = createAiService({
+    storage: (method, args) => Reflect.apply(Reflect.get(ai, method), ai, args),
+    secrets: { encrypt: value => value, decrypt: value => value },
+    runtime: new PiRuntime(dirname(temp.path)),
+  })
+  cleanup.push(() => service.close())
   await settings.savePrompt('dialogue', '对话用简短句子。')
   const thread = await ai.createThread('1')
   await service.sendTurn({ threadId: thread.id, requestId: 'dialogue', modelId: 'm', prompt: '你好', referenceIds: [] })
   await service.idle()
-  expect(requests[0].systemPrompt).toContain('对话用简短句子。')
+  expect(requests[0].messages[0]).toMatchObject({ role: 'system', content: expect.stringContaining('对话用简短句子。') })
   await settings.savePrompt('insightReading', '记录具体动作。')
+  await settings.savePrompt('insightChecking', '对照原话核查。')
   await settings.savePrompt('insightWriting', '成稿保留细节。')
   const prep = await service.prepareAnalysis({ conversationId: '1', modelId: 'm' })
   const task = await service.confirmAnalysis({ token: prep.token, requestId: 'insight' })
   await service.idle()
-  expect(ai.getAnalysis(task.id).state).toBe('completed')
-  expect(requests[1].systemPrompt).toContain('记录具体动作。')
-  expect(requests[2].systemPrompt).toContain('成稿保留细节。')
-  expect(JSON.parse(requests[2].prompt).stage).toBe('writing')
+  expect(ai.getAnalysis(task.id)).toMatchObject({ state: 'completed', analyzedMessages: 1 })
+  const insightRequests = requests.slice(1)
+  expect(insightRequests).toHaveLength(2)
+  for (const input of insightRequests) {
+    expect(input.tools?.map(tool => tool.function.name)).toEqual(['read_messages'])
+    expect(JSON.stringify(input)).not.toContain('<cwd>')
+    const system = input.messages.find(message => message.role === 'system')?.content
+    for (const prompt of ['记录具体动作。', '对照原话核查。', '成稿保留细节。']) expect(system).toContain(prompt)
+  }
+  expect(readTurns(insightRequests[1])).toMatchObject([{ result: { status: 'ok', messages: [{ id: '1', text: '周末一起散步' }] } }])
   await service.testModel('m')
-  expect(requests.at(-1)).toMatchObject({ systemPrompt: 'Reply OK.', prompt: 'OK' })
-  expect(defaultPrompts.dialogue).not.toBe('对话用简短句子。')
-  await service.close()
-})
+  const probe = requests.at(-1)!
+  expect(probe.messages).toEqual([
+    { role: 'system', content: expect.stringMatching(/^Reply OK\.(?:\n|$)/) },
+    { role: 'user', content: [{ type: 'text', text: 'OK' }] },
+  ])
+  expect(JSON.stringify(probe)).not.toMatch(/对话用简短句子|记录具体动作|对照原话核查|成稿保留细节/)
+}, 30000)

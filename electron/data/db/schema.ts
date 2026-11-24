@@ -1,4 +1,4 @@
-export const schemaVersion = 10
+export const schemaVersion = 14
 
 const legacyMessageKinds = "'text','image','audio','video','file','sticker','link','location','reply','forward','system','unknown'"
 

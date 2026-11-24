@@ -1,5 +1,5 @@
 // Adapted from Cherry Studio ModelListSyncDrawer / ModelListSyncContent (AGPL-3.0).
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import { Minus, RefreshCw, Search, X } from 'lucide-react'
 import type { CatalogModel, Provider, SettingsApi, SettingsModel } from '../../shared/settings-contract'
 import { errorText, isModelBusy } from './common'
@@ -7,17 +7,22 @@ import { ProviderSettingsDrawer } from './cherry-primitives'
 import { ExceptionNotice } from '../ui/exception-notices'
 import { getDefaultGroupName } from './cherry-model-naming'
 
-export function ModelPicker({ api, provider, models, onClose, onAdded, onRemoved, onBusy }: { api: SettingsApi; provider: Provider; models: SettingsModel[]; onClose: () => void; onAdded: (models: SettingsModel[]) => void; onRemoved: (ids: string[]) => void; onBusy: (busy: boolean) => void }) {
+export function ModelPicker({ api, provider, models, onSynced, onClose, onAdded, onRemoved, onBusy }: { api: SettingsApi; provider: Provider; models: SettingsModel[]; onSynced: () => Promise<void>; onClose: () => void; onAdded: (models: SettingsModel[]) => void; onRemoved: (ids: string[]) => void; onBusy: (busy: boolean) => void }) {
   const search = useRef<HTMLInputElement>(null)
   const [catalog, setCatalog] = useState<CatalogModel[]>([]), [query, setQuery] = useState(''), [filter, setFilter] = useState<'all' | 'added' | 'stale'>('all')
   const [loading, setLoading] = useState(true), [busy, setBusy] = useState(false), [error, setError] = useState(''), [attempt, setAttempt] = useState(0), [loaded, setLoaded] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
   const [retry, setRetry] = useState<{ entries: CatalogModel[]; remove: boolean; stop: boolean } | null>(null)
   useEffect(() => { onBusy(busy); return () => onBusy(false) }, [busy, onBusy])
+  const sync = useEffectEvent(async () => {
+    const catalog = await api.syncModels(provider.id)
+    await onSynced()
+    return catalog
+  })
   useEffect(() => {
     let alive = true
     setLoading(true); setError('')
-    api.syncModels(provider.id).then(value => { if (alive) { setCatalog(value); setLoaded(true); setSelectedIds(current => new Set([...current].filter(id => value.some(model => model.id === id)))) } }).catch(cause => { if (alive) setError(errorText(cause, '同步失败，请检查配置后重试。')) }).finally(() => { if (alive) setLoading(false) })
+    sync().then(value => { if (alive) { setCatalog(value); setLoaded(true); setSelectedIds(current => new Set([...current].filter(id => value.some(model => model.id === id)))) } }).catch(cause => { if (alive) setError(errorText(cause, '同步失败，请检查配置后重试。')) }).finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }
   }, [api, provider.id, attempt])
   const local = models.filter(model => model.providerId === provider.id), localIds = new Map(local.map(model => [model.model, model]))

@@ -2,7 +2,7 @@ import { Fragment } from 'react'
 import type { MessageView } from '../../shared/desktop-api'
 import { ChatMessageContent, messageDay } from '../chat-message-content'
 
-export function ReadOnlyMessages({ messages, highlightIds }: { messages: readonly MessageView[]; highlightIds: readonly string[] }) {
+export function ReadOnlyMessages({ messages, highlightIds, quote }: { messages: readonly MessageView[]; highlightIds: readonly string[]; quote?: string }) {
   const evidence = new Set(highlightIds)
   const byId = new Map(messages.map(message => [message.id, message]))
   let previousDay: string | undefined
@@ -16,7 +16,8 @@ export function ReadOnlyMessages({ messages, highlightIds }: { messages: readonl
       {startsDay && <li className="insight-message-date" role="presentation">{day}</li>}
       <li data-message-id={message.id} data-citation={highlighted}
         className={['message', message.isSelf && 'message-self', highlighted && 'message-source'].filter(Boolean).join(' ')}>
-        <ChatMessageContent message={message} groupedByDate replyTarget={replyId ? byId.get(replyId) : undefined} />
+        <ChatMessageContent message={message} groupedByDate highlightText={highlighted ? quote : undefined}
+          replyTarget={replyId ? byId.get(replyId) : undefined} />
       </li>
     </Fragment>
   })}</ol>

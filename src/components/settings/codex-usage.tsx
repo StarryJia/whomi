@@ -34,7 +34,7 @@ function LocalUsage({ api }: { api: UsageApi }) {
     <summary><span className="setting-name"><span>本机使用记录</span><SettingHelp name="本机使用记录">当前账号在 Whomi 中的对话与会话洞察用量。</SettingHelp></span><ChevronRight size={16} aria-hidden="true" /></summary>
     {open && <div className="codex-local-content">
       <div className="codex-local-heading"><button type="button" className="ms-text-button" disabled={loading} onClick={() => setAttempt(value => value + 1)}>{error ? '重读本机用量' : '刷新本机用量'}</button></div>
-      {usage && (usage.requests > 0 ? <><dl><div><dt>输入词元</dt><dd>{format(usage.inputTokens)}</dd></div><div><dt>输出词元</dt><dd>{format(usage.outputTokens)}</dd></div></dl><p>已记录 {usage.requests.toLocaleString('zh-CN')} 次请求{usage.partial ? '，部分请求未返回完整用量。' : '。'}</p></> : <p>暂无本机请求记录。</p>)}
+      {usage && (usage.requests > 0 ? <><dl><div><dt>输入 token</dt><dd>{format(usage.inputTokens)}</dd></div><div><dt>输出 token</dt><dd>{format(usage.outputTokens)}</dd></div></dl><p>已记录 {usage.requests.toLocaleString('zh-CN')} 次请求{usage.partial ? '，部分请求未返回完整用量。' : '。'}</p></> : <p>暂无本机请求记录。</p>)}
       {loading && !usage && <p role="status">正在读取本机用量…</p>}
       {error && <ExceptionNotice title="无法读取本机用量" detail={error} className="ms-error" />}
     </div>}

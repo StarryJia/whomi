@@ -204,7 +204,7 @@ async function detect(module: FormatModule, probe: SourceProbe) {
 export function adapt(module: FormatModule): ParserAdapter {
   const stream = module.feature.id === 'chatlab-jsonl'
   return Object.freeze({
-    id: module.feature.id, version: ['echotrace', 'weflow'].includes(module.feature.id) ? 'f19beeadda27b-whomi.4' : 'f19beeadda27b-whomi.2',
+    id: module.feature.id, version: ['echotrace', 'weflow'].includes(module.feature.id) ? 'f19beeadda27b-whomi.5' : 'f19beeadda27b-whomi.2',
     extensions: Object.freeze([...module.feature.extensions]),
     mode: stream ? 'stream' : 'bounded',
     capabilities: { multiConversation: Boolean(module.feature.multiChat), stableMessageIds: ['qq-native', 'qq-shuakami', 'qq-shuakami-chunked', 'line-native', 'whatsapp-native', 'instagram-native'].includes(module.feature.id) ? 'none' : 'conditional', media: 'descriptors-only' },

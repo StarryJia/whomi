@@ -214,6 +214,7 @@ export async function createConversationAiClient(api: AiApi, settings?: Settings
       const provider = preferences?.providers.find(item => item.id === configured?.providerId)
       if (provider && !provider.enabled) return []
       return [{ id: model.id, label: model.label, model: model.model, version: model.version, ...(model.thinkingLevels ? { thinkingLevels: model.thinkingLevels } : {}),
+        ...(model.insightThinkingLevels && { insightThinkingLevels: model.insightThinkingLevels }),
         ...(configured?.group ? { group: configured.group } : {}),
         ...(provider ? { providerId: provider.id, providerName: provider.name, providerImage: provider.image || (provider.avatarId && cherryProviderIcon(provider.avatarId)) } : {}) }]
     }),

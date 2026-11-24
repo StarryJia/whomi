@@ -1,3 +1,4 @@
+import { catalogLimits } from './model-catalog'
 import { createHash, randomBytes } from 'node:crypto'
 import { setTimeout as delay } from 'node:timers/promises'
 import type { ChatgptStatus } from '../../src/shared/chatgpt-plan'
@@ -186,7 +187,7 @@ export function createCherryAccount(provider: CherrySubscription, options: Optio
       const offered = compatible.filter(item => item.model_picker_enabled === true)
       const available = !offered.length && credential.baseUrl === 'https://api.individual.githubcopilot.com'
         ? compatible.filter(item => item.policy?.state === 'enabled') : offered
-      return available.map(item => ({id: String(item.id), name: field(item.name) ? String(item.name) : String(item.id)}))
+      return available.map(item => ({...catalogLimits(item.capabilities?.limits ?? {}), id: String(item.id), name: field(item.name) ? String(item.name) : String(item.id)}))
     } catch(error) {if (error instanceof BoundaryError) throw error;throw connectionError()}
   }
   function reset() {cancel();generation++;active.abort(cancelError());active=new AbortController();acquiring=undefined;cache=undefined}
@@ -200,5 +201,5 @@ export function createCherryAccount(provider: CherrySubscription, options: Optio
     }
   }
   function close() {closed=true;reset()}
-  return {getStatus:async()=>status(),signIn,cancel,signOut,close,listModels,runner:cherryAccountRunner(provider,access,request)}
+  return {getStatus:async()=>status(),signIn,cancel,signOut,close,listModels,access,runner:cherryAccountRunner(provider,access,request)}
 }

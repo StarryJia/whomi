@@ -1,7 +1,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { ArrowLeft, ChevronDown, FileText, LoaderCircle, Pencil } from 'lucide-react'
-import type { AnalysisTask } from '../../shared/ai-contract'
-import type { InsightReport } from '../../shared/conversation-insights'
+import type { AiApi, AnalysisTask } from '../../shared/ai-contract'
+import type { InsightCitation, InsightReport } from '../../shared/conversation-insights'
 import type { ListArrangement } from '../../shared/desktop-api'
 import { actionError } from '../ui/managed-row'
 import { ExceptionNotice, ExceptionNoticeScope } from '../ui/exception-notices'
@@ -10,21 +10,40 @@ import { InsightRenameForm, InsightReportRow, type RenameReport } from './insigh
 import { formatInsightNumber, insightCompletedAt, insightElapsed, insightPercentage, insightRange, insightReportRange, insightSpeed, InsightRing, InsightStatus, insightTaskFailed, insightTaskFailureKey, insightTaskNumber, insightTaskTitle, InsightTaskDetails, InsightTaskModel, useInsightRunDuration } from './insight-task'
 import './insights.css'
 
-type CitationTarget = { taskId: string; citationId: string; phrase: string; conversationTitle: string; fragmentCount: number }
-export type RenderInsightSource = (target: CitationTarget & { onClose: () => void; returnFocus: RefObject<HTMLButtonElement | null> }) => ReactNode
+type CitationTarget = {
+  taskId: string; citationId: string; phrase: string; conversationTitle: string; fragmentCount: number
+  initialFragmentIndex?: number; quote?: string; quoteMessageId?: string
+}
+export type RenderInsightSource = (target: CitationTarget & { onClose: () => void; returnFocus: RefObject<HTMLElement | null> }) => ReactNode
 
-function ReportPage({ task, report, onBack, rename, onRenameBusy, renderSource }: {
+function ReportPage({ task, report, onBack, rename, onRenameBusy, renderSource, getReport }: {
   task: AnalysisTask; report: InsightReport; onBack: () => void; rename?: RenameReport
   onRenameBusy: (busy: boolean) => void; renderSource?: RenderInsightSource
+  getReport?: AiApi['getReport']
 }) {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [citation, setCitation] = useState<CitationTarget>()
   const [citationErrorAttempt, setCitationErrorAttempt] = useState(0)
+  const [detail, setDetail] = useState<InsightReport | 'failed'>()
+  const [readAttempt, setReadAttempt] = useState(0)
+  const hasSources = report.citations.length > 0 ||
+    report.judgments?.some(item => item.supportingSources.length > 0 || item.counterexampleSources.length > 0)
+  const verifiedReport = detail === 'failed' ? undefined : detail
   const heading = useRef<HTMLHeadingElement>(null)
   const edit = useRef<HTMLButtonElement>(null)
-  const sourceTrigger = useRef<HTMLButtonElement>(null)
+  const sourceTrigger = useRef<HTMLElement>(null)
   const title = insightTaskTitle(task)
+  useEffect(() => {
+    if (!hasSources || !getReport) return
+    let active = true
+    void getReport(task.id).then(value => {
+      if (active) setDetail(value)
+    }, () => {
+      if (active) setDetail('failed')
+    })
+    return () => { active = false }
+  }, [task.id, getReport, hasSources, readAttempt])
   useLayoutEffect(() => {
     heading.current?.focus({ preventScroll: true })
     return () => { sourceTrigger.current = null }
@@ -32,6 +51,19 @@ function ReportPage({ task, report, onBack, rename, onRenameBusy, renderSource }
   function endEdit() {
     setEditing(false)
     requestAnimationFrame(() => edit.current?.focus({ preventScroll: true }))
+  }
+  function openCitation(reference: InsightCitation | undefined, trigger: HTMLElement, initialFragmentIndex?: number, quote?: string, quoteMessageId?: string) {
+    if (!reference) {
+      setCitationErrorAttempt(attempt => attempt + 1)
+      return
+    }
+    setCitationErrorAttempt(0)
+    sourceTrigger.current = trigger
+    setCitation({
+      taskId: task.id, citationId: reference.id, initialFragmentIndex, quote, quoteMessageId,
+      phrase: quote ?? trigger.getAttribute('aria-label') ?? trigger.textContent ?? '',
+      conversationTitle: task.conversationTitle ?? '会话', fragmentCount: reference.fragments.length,
+    })
   }
   return <section className="insight-reader">
     <button className="overview-return" type="button" onClick={onBack} disabled={saving}><ArrowLeft aria-hidden="true" />返回</button>
@@ -49,16 +81,17 @@ function ReportPage({ task, report, onBack, rename, onRenameBusy, renderSource }
           <div><dt>报告编号</dt><dd>{insightTaskNumber(task)}</dd></div>
         </dl>
       </header>
-      <InsightArticle report={report} conversationId={task.conversationId} onOpenCitation={renderSource && ((reference, trigger) => {
-        if (!reference) {
-          setCitationErrorAttempt(attempt => attempt + 1)
-          return
-        }
-        setCitationErrorAttempt(0)
-        sourceTrigger.current = trigger
-        setCitation({ taskId: task.id, citationId: reference.id, phrase: trigger.textContent ?? '', conversationTitle: task.conversationTitle ?? '会话', fragmentCount: reference.fragments.length })
-      })} />
+      <InsightArticle report={verifiedReport ?? report} allowSourceExcerpts={!!verifiedReport} conversationId={task.conversationId}
+        citationsLoading={!!(hasSources && getReport && !verifiedReport)} onOpenCitation={renderSource && openCitation} />
       {citationErrorAttempt > 0 && <ExceptionNotice key={citationErrorAttempt} title="无法定位这处引用的原文。" />}
+      {detail === 'failed' && <>
+        <ExceptionNotice title="报告引文读取失败" />
+        <button className="analysis-link" type="button" onClick={() => {
+          setDetail(undefined)
+          setReadAttempt(value => value + 1)
+        }}>重新读取引文</button>
+      </>}
+      {hasSources && getReport && !detail && <p role="status">正在读取引文…</p>}
     </div>
     {citation && renderSource?.({ ...citation, onClose: () => setCitation(undefined), returnFocus: sourceTrigger })}
   </section>
@@ -78,7 +111,7 @@ function TaskRow({ task, onOpen, onStop, onContinue }: {
     : task.state === 'stopped' ? '已暂停' : '生成中'
   const failed = status === '生成失败'
   const elapsed = useInsightRunDuration(task)
-  const count = formatInsightNumber(task.analyzedMessages) + ' / ' + formatInsightNumber(task.totalMessages) + ' 条'
+  const count = '已提交分析 ' + formatInsightNumber(task.analyzedMessages) + ' / ' + formatInsightNumber(task.totalMessages) + ' 条'
   const number = insightTaskNumber(task)
   const start = status === '生成中' ? onStop : task.valid ? onContinue : undefined
   async function run() {
@@ -127,7 +160,7 @@ function visibleTaskRows(list: HTMLElement | null) {
 }
 
 export function InsightsLibrary({ tasks, conversations, selectedId, onSelect, onReturn, onTask, onConversations, loading, error, retry, arrange, rename,
-  remove, onStop, onContinue, onRenameBusy, renderSource }: {
+  remove, onStop, onContinue, onRenameBusy, renderSource, getReport }: {
   tasks: readonly AnalysisTask[]
   conversations: readonly { id: string; title: string; pinned?: boolean }[]
   selectedId?: string
@@ -145,6 +178,7 @@ export function InsightsLibrary({ tasks, conversations, selectedId, onSelect, on
   onContinue?: (id: string) => Promise<void>
   onRenameBusy: (busy: boolean) => void
   renderSource?: RenderInsightSource
+  getReport?: AiApi['getReport']
 }) {
   const id = useId()
   const [collapsed, setCollapsed] = useState(() => new Set<string>())
@@ -287,7 +321,8 @@ export function InsightsLibrary({ tasks, conversations, selectedId, onSelect, on
         })}
       </>}
     </section></ExceptionNoticeScope>
-    {selected && selectedReport && <ReportPage key={selected.id} task={selected} report={selectedReport} onBack={onReturn}
+    {selected && selectedReport && <ReportPage key={selected.id + ':' + (selected.insightContentRevision ?? '')}
+      task={selected} report={selectedReport} onBack={onReturn} getReport={getReport}
       rename={rename} onRenameBusy={onRenameBusy} renderSource={renderSource} />}
   </>
 }

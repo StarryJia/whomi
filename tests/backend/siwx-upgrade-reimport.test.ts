@@ -69,6 +69,50 @@ async function importFile(messages: ReturnType<typeof rawMessage>[], historical?
   } finally { await staged.cleanup() }
 }
 
+test('重叠微信导出按次数匹配没有服务器编号的撤回通知', async () => {
+  const sent = rawMessage(1, { senderUsername: 'example-owner', isSend: 1 })
+  const recall = rawMessage(2, { localType: 10000, content: '你撤回了一条消息' })
+  const first = [sent, recall, rawMessage(3)]
+  const previous = await importFile(first)
+  expect(previous.inserted).toBe(3)
+  expect(await importFile([...first, rawMessage(4)])).toMatchObject({ conversationId: previous.conversationId, inserted: 1, duplicates: 3 })
+  // 旧解析器可能为已迁移的撤回通知留下空的引用记录。
+  store.writer.exec("INSERT INTO message_replies(message_id,conversation_id) SELECT id,conversation_id FROM messages WHERE kind='system'")
+  expect(await importFile([...first, recall, rawMessage(4)])).toMatchObject({ conversationId: previous.conversationId, inserted: 1, duplicates: 4 })
+  expect(store.reader.prepare("SELECT count(*) AS n FROM messages WHERE kind='system'").get()).toEqual({ n: 2n })
+})
+
+test.each(['文本消息', undefined])('撤回通知的数字、数字字符串和前导零写法共享去重次数（标签 %s）', async typeName => {
+  const sent = rawMessage(1, { senderUsername: 'example-owner', isSend: 1 })
+  const recall = (localType: number | string) => rawMessage(2, { typeName, localType, content: '你撤回了一条消息' })
+  const first = await importFile([sent, recall(10000)])
+  const second = await importFile([sent, recall('10000'), recall('010000')])
+  expect(second).toMatchObject({ conversationId: first.conversationId, inserted: 1, duplicates: 2 })
+  const third = await importFile([sent, recall('0010000'), recall(10000), rawMessage(3)])
+  expect(third).toMatchObject({ conversationId: first.conversationId, inserted: 1, duplicates: 3 })
+  expect(store.reader.prepare("SELECT count(*) AS n FROM messages WHERE kind='system'").get()).toEqual({ n: 2n })
+})
+
+test('版本 13 已归类的图片撤回通知带有旧附件，重叠导入保留原编号和实际次数', async () => {
+  const sent = rawMessage(1, { senderUsername: 'example-owner', isSend: 1 })
+  const recall = rawMessage(2, { typeName: '图片消息', localType: 10000, content: '对方撤回了一条消息' })
+  const identified = { ...recall, serverId: '123' }
+  const first = await importFile([sent, recall, identified])
+  store.writer.exec(`INSERT INTO legacy_insight_source_classification
+    SELECT id, NULL, 'unknown', '合成用户', 'image' FROM messages WHERE kind='system';
+    INSERT INTO message_attachments(message_id,kind,state)
+    SELECT id,'image','missing' FROM messages WHERE kind='system';
+    PRAGMA user_version=13;`)
+  store.close()
+  store = openStore(temporary.path)
+  const second = await importFile([sent, recall, identified, rawMessage(3)])
+  expect(second).toMatchObject({ conversationId: first.conversationId, inserted: 1, duplicates: 3 })
+  expect(store.reader.prepare("SELECT id FROM messages WHERE kind='system' ORDER BY id").all()).toEqual([{ id: 2n }, { id: 3n }])
+  const third = await importFile([sent, recall, recall, identified, rawMessage(3)])
+  expect(third).toMatchObject({ conversationId: first.conversationId, inserted: 1, duplicates: 4 })
+  expect(store.reader.prepare("SELECT message_id FROM message_keys WHERE original_id='123'").get()).toEqual({ message_id: 3n })
+})
+
 test('a newly recognized contact between five known records still matches the conversation with no known owner', async () => {
   const messages = [1, 2, 3, 4, 5, 6].map(index => index === 3
     ? rawMessage(index, { localType: 42, typeName: '名片消息', content: '合成名片' }) : rawMessage(index))

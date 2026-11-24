@@ -13,14 +13,20 @@ type AvailableSource = Extract<InsightCitationWindow, { status: 'available' }>
 type PendingRead = { kind: 'fragment'; index: number } | { kind: 'context' }
 export type InsightSourceDialogProps = {
   taskId: string; citationId: string; phrase: string; conversationTitle: string; fragmentCount: number
-  onClose: () => void; returnFocus: RefObject<HTMLButtonElement | null>
+  initialFragmentIndex?: number; quote?: string; quoteMessageId?: string
+  onClose: () => void; returnFocus: RefObject<HTMLElement | null>
   client: Pick<DesktopApi, 'readMessages'>; readCitation: AiApi['readInsightCitation']
 }
 
-export function InsightSourceDialog({ taskId, citationId, phrase, conversationTitle, fragmentCount, onClose, returnFocus, client, readCitation }: InsightSourceDialogProps) {
+function citationElements(viewport: HTMLElement) {
+  const quote = viewport.querySelector<HTMLElement>('[data-citation=true] mark')
+  return quote ? [quote] : Array.from(viewport.querySelectorAll<HTMLElement>('[data-citation=true]'))
+}
+
+export function InsightSourceDialog({ taskId, citationId, phrase, conversationTitle, fragmentCount, initialFragmentIndex = 0, quote, quoteMessageId, onClose, returnFocus, client, readCitation }: InsightSourceDialogProps) {
   const heading = useId()
   const [current, setCurrent] = useState<AvailableSource>()
-  const [fragment, setFragment] = useState(0)
+  const [fragment, setFragment] = useState(initialFragmentIndex)
   const [pending, setPending] = useState<PendingRead | null>(null)
   const [error, setError] = useState('')
   const [away, setAway] = useState(false)
@@ -47,7 +53,8 @@ export function InsightSourceDialog({ taskId, citationId, phrase, conversationTi
     setError('')
     retry.current = () => { void jump(target) }
     try {
-      const next = await readCitation({ taskId, citationId, fragmentIndex: target })
+      const next = await readCitation({ taskId, citationId, fragmentIndex: target,
+        ...(target === initialFragmentIndex && quoteMessageId ? { messageId: quoteMessageId } : {}) })
       if (active.current !== request) return
       if (next.status !== 'available') {
         operation.step('locate', { found: false }); operation.end('failed')
@@ -63,20 +70,20 @@ export function InsightSourceDialog({ taskId, citationId, phrase, conversationTi
     } finally {
       if (active.current === request) track(null)
     }
-  }, [taskId, citationId, readCitation, track])
+  }, [taskId, citationId, initialFragmentIndex, quoteMessageId, readCitation, track])
 
   useLayoutEffect(() => {
     source.current = undefined
     restore.current = null
     setCurrent(undefined)
     setAway(false)
-    setFragment(0)
-    void jump(0)
+    setFragment(initialFragmentIndex)
+    void jump(initialFragmentIndex)
     return () => { active.current = null; locating.current?.end('unknown'); locating.current = null }
-  }, [jump])
+  }, [jump, initialFragmentIndex])
 
   function returnToCitation() {
-    const element = scroll.current?.querySelector<HTMLElement>('[data-citation=true]')
+    const element = scroll.current && citationElements(scroll.current)[0]
     element?.scrollIntoView({ block: 'center', behavior: 'instant' })
     setAway(false)
     return !!element
@@ -127,7 +134,7 @@ export function InsightSourceDialog({ taskId, citationId, phrase, conversationTi
     const viewport = scroll.current
     if (!viewport || !source.current) return
     const bounds = viewport.getBoundingClientRect()
-    const cited = [...viewport.querySelectorAll<HTMLElement>('[data-citation=true]')]
+    const cited = citationElements(viewport)
     if (viewport.clientHeight > 0) setAway(!cited.some(item => { const rect = item.getBoundingClientRect(); return rect.bottom > bounds.top && rect.top < bounds.bottom }))
     if (error || active.current) return
     if (viewport.scrollTop < 120 && source.current.page.beforeCursor) void load('before')
@@ -139,6 +146,7 @@ export function InsightSourceDialog({ taskId, citationId, phrase, conversationTi
     void jump(target)
   }
   const requestedFragment = pending?.kind === 'fragment' ? pending.index : undefined
+  const selectedMessageId = fragment === initialFragmentIndex ? quoteMessageId : undefined
 
   return <ReaderDialog busy={false} onDismiss={onClose} returnFocus={returnFocus} labelledBy={heading}>
     <div className="reader-modal-overlay" onClick={event => { if (event.target === event.currentTarget) onClose() }}>
@@ -151,7 +159,9 @@ export function InsightSourceDialog({ taskId, citationId, phrase, conversationTi
           <button type="button" disabled={!current || fragment === 0 || requestedFragment === fragment - 1} onClick={() => navigate(fragment - 1)}><ChevronUp aria-hidden="true" />上一段</button>
         </div>
         <div ref={scroll} className="insight-source-scroll" role="region" aria-label="引用聊天记录" tabIndex={0} aria-busy={!!pending} onScroll={onScroll}>
-          {current && <ReadOnlyMessages messages={current.page.items} highlightIds={current.highlightIds} />}
+          {current && <ReadOnlyMessages messages={current.page.items}
+            highlightIds={selectedMessageId ? current.highlightIds.filter(id => id === selectedMessageId) : current.highlightIds}
+            quote={fragment === initialFragmentIndex ? quote : undefined} />}
         </div>
         {error && <div className="insight-source-error">
           <ExceptionNotice title={error} />

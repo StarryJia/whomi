@@ -37,7 +37,14 @@ function ReplyQuote({ reply, target, onOpen, busy }: {
     onClick={event => { event.stopPropagation(); onOpen(targetId) }}>{content}</button>
 }
 
-export function ChatMessageContent({ message, groupedByDate, firstUnknownTime, sourceLabel, replyTarget, onOpenReply, replyBusy }: {
+function highlightQuote(text: string, quote?: string) {
+  if (!quote) return text
+  const start = text.indexOf(quote)
+  if (start < 0) return text
+  return <>{text.slice(0, start)}<mark>{quote}</mark>{text.slice(start + quote.length)}</>
+}
+
+export function ChatMessageContent({ message, groupedByDate, firstUnknownTime, sourceLabel, replyTarget, onOpenReply, replyBusy, highlightText }: {
   message: MessageView
   groupedByDate?: boolean
   firstUnknownTime?: boolean
@@ -45,9 +52,16 @@ export function ChatMessageContent({ message, groupedByDate, firstUnknownTime, s
   replyTarget?: MessageView
   onOpenReply?: (targetId: string) => void
   replyBusy?: boolean
+  highlightText?: string
 }) {
   const date = messageDate(message)
   const time = date ? (groupedByDate ? clockFormat.format(date) : date.toLocaleString('zh-CN')) : message.timeRaw
+  if (message.kind === 'system') return <div className="message-notice">
+    {firstUnknownTime && <span>时间未知</span>}
+    {time && <span>{time}</span>}
+    <p className="message-notice-text">{highlightQuote(message.text, highlightText) || '系统消息'}</p>
+    {sourceLabel && <span className="source-range-label">{sourceLabel}</span>}
+  </div>
   return <>
     <ConversationAvatar name={message.senderName} />
     <div className="message-content">
@@ -57,7 +71,7 @@ export function ChatMessageContent({ message, groupedByDate, firstUnknownTime, s
         {time && <span>{time}</span>}
         {sourceLabel && <span className="source-range-label">{sourceLabel}</span>}
       </div>
-      <p className="message-text">{message.text}</p>
+      <p className="message-text">{highlightQuote(message.text, highlightText)}</p>
       {message.reply && <ReplyQuote reply={message.reply} target={replyTarget} onOpen={onOpenReply} busy={replyBusy} />}
     </div>
   </>

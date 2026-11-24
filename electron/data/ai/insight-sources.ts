@@ -1,5 +1,7 @@
 import { createHash } from 'node:crypto'
-import type { InsightScope, InsightScopePreview, InsightSnapshot, InsightSourceMessage, InsightSourceRef } from '../../../src/shared/conversation-insights'
+import type { InsightReport, InsightScope, InsightScopePreview, InsightSnapshot, InsightSourceMessage, InsightSourceRef } from '../../../src/shared/conversation-insights'
+import { defaultProcessing, type ProcessingSettings } from '../../../src/shared/settings-contract'
+import { createMessageProcessor } from '../../main/message-processing'
 import { BoundaryError } from '../../../src/shared/desktop-validation'
 import type { Store } from '../db/open'
 import { confirmedSelfSql } from '../db/self'
@@ -40,10 +42,15 @@ function sourceMessage(row: SourceRow): InsightSourceMessage & Pick<StoredInsigh
 
 function insightRows(db: Store['reader'], conversationId: bigint, messageIds?: readonly string[]): SourceRow[] {
   const ids = messageIds === undefined ? '' : ' AND x.id IN (SELECT CAST(value AS INTEGER) FROM json_each(?))'
-  return db.prepare(`SELECT x.id,x.conversation_id,x.member_id,x.sender_kind,x.sender_name,x.kind,x.text,x.sent_at_ms,
-    coalesce((SELECT ${confirmedSelfSql} FROM memberships m WHERE m.id=x.member_id AND m.conversation_id=x.conversation_id),0) AS is_self,
+  // 逐条读取只来自任务启动时保存的来源清单。新任务选材直接使用当前分类。
+  const legacyJoin = messageIds === undefined ? '' : 'LEFT JOIN legacy_insight_source_classification l ON l.message_id=x.id'
+  const field = (column: 'member_id' | 'sender_kind' | 'sender_name' | 'kind') =>
+    messageIds === undefined ? `x.${column}` : `CASE WHEN l.message_id IS NULL THEN x.${column} ELSE l.${column} END`
+  return db.prepare(`SELECT x.id,x.conversation_id,${field('member_id')} AS member_id,${field('sender_kind')} AS sender_kind,
+    ${field('sender_name')} AS sender_name,${field('kind')} AS kind,x.text,x.sent_at_ms,
+    coalesce((SELECT ${confirmedSelfSql} FROM memberships m WHERE m.id=(${field('member_id')}) AND m.conversation_id=x.conversation_id),0) AS is_self,
     r.target_message_id AS reply_to_message_id, r.original_id AS reply_original_id, r.id_namespace AS reply_namespace
-    FROM messages x LEFT JOIN message_replies r ON r.message_id=x.id AND r.conversation_id=x.conversation_id
+    FROM messages x ${legacyJoin} LEFT JOIN message_replies r ON r.message_id=x.id AND r.conversation_id=x.conversation_id
     WHERE x.conversation_id=?${ids} ORDER BY x.time_bucket,x.sort_time,x.id`)
     .all(conversationId, ...(messageIds === undefined ? [] : [JSON.stringify(messageIds)])) as SourceRow[]
 }
@@ -90,7 +97,8 @@ export function captureInsightSources(db: Store['reader'], conversationId: bigin
     const { id, revision, originalRevision } = sourceMessage(row)
     return { messageId: id, revision, originalRevision }
   })
-  return { ...preview, conversationMessages, snapshotMaxId, sources }
+  const sourceTextBytes = analyzable.reduce((bytes, row) => bytes + Buffer.byteLength(row.text), 0)
+  return { ...preview, conversationMessages, snapshotMaxId, sources, sourceTextBytes }
 }
 
 export function readCurrentInsightSources(db: Store['reader'], conversationId: bigint, messageIds: readonly string[]): InsightSourceMessage[] {
@@ -100,24 +108,92 @@ export function readCurrentInsightSources(db: Store['reader'], conversationId: b
   })
 }
 
+function readSavedInsightSources(
+  db: Store['reader'], conversationId: bigint, snapshot: StoredInsightSnapshot, ids: ReadonlySet<string>,
+) {
+  const frozen = snapshot.sources.filter(source => ids.has(source.messageId))
+  const current = new Map(insightRows(db, conversationId, frozen.map(source => source.messageId)).map(row => {
+    const source = sourceMessage(row)
+    return [source.id, source]
+  }))
+  const verified = new Map<string, { revision: string; text: string }>()
+  for (const saved of frozen) {
+    const source = current.get(saved.messageId)
+    if (source && source.originalRevision === saved.originalRevision) {
+      verified.set(saved.messageId, { revision: saved.revision, text: source.text })
+    }
+  }
+  return verified
+}
+
+export function quotedInsightPhrases(prose: string): Set<string> {
+  return new Set(Array.from(prose.matchAll(/「([^「」]{1,240})」|“([^“”]{1,240})”|『([^『』]{1,240})』|"([^"]{1,240})"|‘([^‘’]{1,240})’/gu),
+    match => (match[1] ?? match[2] ?? match[3] ?? match[4] ?? match[5]).trim()).filter(phrase => phrase.length > 0 && phrase.length <= 240))
+}
+
+export function populateReportExcerpts(db: Store['reader'], conversationId: bigint, snapshot: StoredInsightSnapshot | undefined, report: InsightReport, processing?: ProcessingSettings) {
+  const judgments = report.judgments ?? []
+  const citations = new Map(report.citations.map(citation => [citation.id, citation]))
+  const refs = judgments.flatMap(item => [...item.supportingSources, ...item.counterexampleSources])
+  const ids = new Set(refs.map(ref => ref.messageId))
+  for (const citation of citations.values()) {
+    for (const fragment of citation.fragments) for (const ref of fragment.sources) ids.add(ref.messageId)
+  }
+  if (!ids.size) return
+  const originals = snapshot ? readSavedInsightSources(db, conversationId, snapshot, ids) : new Map<string, { revision: string; text: string }>()
+  const processor = createMessageProcessor(processing ?? defaultProcessing, [])
+  const protectedTexts = new Map<string, string>()
+  for (const [id, source] of originals) {
+    const message = processor.prepare([{ id, text: source.text, senderName: '', kind: 'text' }])[0]
+    protectedTexts.set(id, message?.text ?? '')
+  }
+  function originalText(ref: InsightSourceRef) {
+    const source = originals.get(ref.messageId)
+    return source?.revision === ref.revision ? source.text : undefined
+  }
+  function matches(ref: InsightSourceRef, phrase: string) {
+    return originalText(ref)?.includes(phrase) && protectedTexts.get(ref.messageId)?.includes(phrase)
+  }
+  for (const judgment of judgments) {
+    const prose = [judgment.text, ...judgment.alternativeExplanations, ...judgment.limitations].join('\n')
+    const quoted = quotedInsightPhrases(prose)
+    for (const ref of [...judgment.supportingSources, ...judgment.counterexampleSources]) {
+      const original = originalText(ref)
+      if (original === undefined) {
+        delete ref.excerpts
+        continue
+      }
+      const candidates = ref.excerpts?.length ? ref.excerpts : [...quoted]
+      ref.excerpts = candidates.filter(phrase => matches(ref, phrase)).slice(0, 400)
+      // 只有完整短消息才可替代未保存的引语，避免任取首句或展开已脱敏资料。
+      const whole = original.trim()
+      if (!ref.excerpts.length && processing && whole && whole.length <= 64 && protectedTexts.get(ref.messageId)?.trim() === whole) {
+        ref.excerpts = [whole]
+      }
+    }
+  }
+  for (const paragraph of [...report.aboutYou, ...report.relationship]) {
+    for (const part of paragraph.content) {
+      const citation = part.citationId && citations.get(part.citationId)
+      if (!citation || citation.fragments.some(fragment => fragment.sources.some(ref => originalText(ref) === undefined))) continue
+      const positions = citation.fragments.flatMap((fragment, index) => fragment.sources
+        .filter(ref => matches(ref, part.text)).map(ref => ({ index, messageId: ref.messageId })))
+      if (positions.length === 1) {
+        part.quoteFragmentIndex = positions[0].index
+        part.quoteMessageId = positions[0].messageId
+      }
+    }
+  }
+}
+
 export function readInsightCitationIds(
   db: Store['reader'], conversationId: bigint, snapshot: StoredInsightSnapshot, refs: readonly InsightSourceRef[],
 ): string[] | null {
   if (!refs.length) return null
   const ids = new Set(refs.map(source => source.messageId))
   if (ids.size !== refs.length) return null
-  const cited = snapshot.sources.filter(source => ids.has(source.messageId))
-  const frozen = new Map(cited.map(source => [source.messageId, source]))
-  const current = new Map(insightRows(db, conversationId, [...ids]).map(row => {
-    const source = sourceMessage(row)
-    return [source.id, source.originalRevision]
-  }))
-  if (refs.some(source => {
-    const saved = frozen.get(source.messageId)
-    const original = current.get(source.messageId)
-    return !saved || !original || saved.revision !== source.revision || original !== saved.originalRevision
-  })) return null
-  return cited.map(source => source.messageId)
+  const sources = readSavedInsightSources(db, conversationId, snapshot, ids)
+  return refs.every(ref => sources.get(ref.messageId)?.revision === ref.revision) ? [...sources.keys()] : null
 }
 
 export function readInsightSources(snapshot: InsightSnapshot, messageIds: readonly string[], current: readonly InsightSourceMessage[]): InsightSourceMessage[] {

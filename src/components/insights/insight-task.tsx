@@ -106,9 +106,7 @@ export function InsightTaskDetails({ usage, range, outputSpeed }: { usage?: Anal
   const id = useId()
   const cacheRead = usage?.cacheReadTokens
   const cacheWrite = usage?.cacheWriteTokens
-  const partialCache = usage?.cacheReadTokensIncomplete || usage?.cacheWriteTokensIncomplete || known(cacheRead) !== known(cacheWrite)
   const input = usage?.totalInputTokens ?? (known(usage?.inputTokens) ? usage.inputTokens + (cacheRead ?? 0) + (cacheWrite ?? 0) : undefined)
-  const partialInput = usage?.incomplete || usage?.totalInputTokens === undefined && partialCache
   const computed = known(usage?.outputTokens) && known(usage.durationMs) && usage.durationMs > 0
     ? usage.outputTokens * 1000 / usage.durationMs : outputSpeed ?? usage?.outputTokensPerSecond
   return <div className="insight-task-details">
@@ -118,11 +116,11 @@ export function InsightTaskDetails({ usage, range, outputSpeed }: { usage?: Anal
     <div id={id} hidden={!open}>
       <dl className="insight-usage" role="group" aria-label="分析用量">
         {range && <div className="insight-detail-wide"><dt>分析范围</dt><dd>{range}</dd></div>}
-        <div><dt>输入词元</dt><dd>{known(input) ? (partialInput ? '至少 ' : '') + formatInsightNumber(input) : '—'}</dd></div>
-        <div><dt>输出词元</dt><dd>{known(usage?.outputTokens) ? formatInsightNumber(usage.outputTokens) : '—'}</dd></div>
-        <div className="insight-detail-wide"><dt>平均输出速度</dt><dd>{known(computed) ? formatInsightNumber(computed) + ' 词元/秒' : '—'}</dd></div>
-        <div><dt>缓存读取</dt><dd>{!usage?.cacheReadTokensIncomplete && known(cacheRead) ? formatInsightNumber(cacheRead) + ' 词元' : '—'}</dd></div>
-        <div><dt>缓存写入</dt><dd>{!usage?.cacheWriteTokensIncomplete && known(cacheWrite) ? formatInsightNumber(cacheWrite) + ' 词元' : '—'}</dd></div>
+        <div><dt>输入 token</dt><dd>{known(input) ? formatInsightNumber(input) : '—'}</dd></div>
+        <div><dt>输出 token</dt><dd>{known(usage?.outputTokens) ? formatInsightNumber(usage.outputTokens) : '—'}</dd></div>
+        <div className="insight-detail-wide"><dt>平均输出速度</dt><dd>{known(computed) ? formatInsightNumber(computed) + ' token/秒' : '—'}</dd></div>
+        <div><dt>缓存读取</dt><dd>{known(cacheRead) ? formatInsightNumber(cacheRead) + ' token' : '—'}</dd></div>
+        <div><dt>缓存写入</dt><dd>{known(cacheWrite) ? formatInsightNumber(cacheWrite) + ' token' : '—'}</dd></div>
       </dl>
     </div>
   </div>

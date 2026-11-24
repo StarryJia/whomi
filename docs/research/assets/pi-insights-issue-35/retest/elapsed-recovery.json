@@ -1,0 +1,11 @@
+{
+  "taskId": "1",
+  "exit": {
+    "code": 91,
+    "signal": null
+  },
+  "atRequest": 1828,
+  "displayedAtExit": 13000,
+  "savedAtExit": 10018,
+  "recovered": 10018
+}

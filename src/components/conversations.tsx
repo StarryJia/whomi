@@ -191,7 +191,7 @@ export function ConversationReader({ conversation, initialAnalysisTaskId, openAn
     setSelectedMemberId(null)
     if (!onEntry) setSelfModalOpen(true)
     try {
-      const list = api?.listMembers ? await api.listMembers(conversation.id) : [...new Set(conversation.messages.map(m => m.senderName))].map((name, index) => ({
+      const list = api?.listMembers ? await api.listMembers(conversation.id) : [...new Set(conversation.messages.filter(m => m.senderKind === 'member').map(m => m.senderName))].map((name, index) => ({
         id: String(index + 1), displayName: name, selfHint: null,
         confirmedSelf: conversation.messages.some(m => m.senderName === name && m.isSelf),
       }))
@@ -468,7 +468,7 @@ export function ConversationReader({ conversation, initialAnalysisTaskId, openAn
           const replyTarget = replyId ? conversation.messages.find(item => item.id === replyId) : undefined
           return <li key={message.id} data-message-id={message.id}
           ref={start ? firstSource : undefined}
-          role={selectionMode ? 'option' : undefined} aria-selected={selectionMode ? selected : undefined} aria-label={`${message.senderName}：${message.text || messageKinds[message.kind]}`}
+          role={selectionMode ? 'option' : undefined} aria-selected={selectionMode ? selected : undefined} aria-label={`${message.kind === 'system' ? '系统消息' : message.senderName}：${message.text || messageKinds[message.kind]}`}
           tabIndex={selectionMode && !referencesLocked && tabStopId === message.id ? 0 : -1} {...(selectionMode && !referencesLocked ? selection.bindings(message) : {})} onFocus={() => setFocusedMessageId(message.id)}
           className={clsx('message', message.isSelf && 'message-self', highlighted && 'message-source', showSelected && 'message-selected',
             joinedBefore && 'selection-joined-before', joinedAfter && 'selection-joined-after',

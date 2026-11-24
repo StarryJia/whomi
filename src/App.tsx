@@ -554,6 +554,7 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
         {view === 'cover' ? <HelloCover key={coverKey} name={name} buttonRef={greetingRef} onEnter={enterOverview}>{revealing => overviewContent(!revealing)}</HelloCover>
           : view === 'library' ? <InsightsLibrary tasks={tasks} selectedId={selectedReportId} onSelect={id => { reportOrigin.current = 'library'; setSelectedReportId(id) }}
             conversations={reader.conversations} onReturn={returnFromReport} onTask={(id, taskId) => openConversation(id, { origin: 'library', taskId })}
+            getReport={api?.ai?.getReport}
             onConversations={revealConversations}
             arrange={api?.ai?.arrangeAnalysis && (async change => { await api.ai!.arrangeAnalysis(change); refreshReports() })}
             rename={api?.ai?.renameAnalysis && (async (taskId, title) => {

@@ -102,6 +102,7 @@ export function normalizeMessage(id: string, raw: Raw, parsed: UpMessage | undef
   if (message.sentAtMs === null) { message.timePrecision = 'unknown'; message.timezone = null }
   message.senderKind = message.kind === 'system' ? 'system' : message.senderKey ? 'member' : 'unknown'
   if (message.senderKind !== 'member') message.senderKey = null
+  if (message.senderKind === 'system') message.senderName = ''
   if (!message.attachments.length && ['image', 'audio', 'video', 'file', 'sticker'].includes(message.kind)) message.attachments.push({ kind: message.kind, locator: null, name: null, state: 'missing' })
   return normalizeModel(message)
 }

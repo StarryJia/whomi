@@ -183,9 +183,9 @@ describe('会话工作区的明确入口和独立对话', () => {
     expect(screen.queryByText('统计不完整')).not.toBeInTheDocument()
     await user.click(await screen.findByRole('button', { name: /输出 12/ }))
     const stats = screen.getByRole('region', { name: '生成统计' })
-    expect(stats).toHaveTextContent('12 Tokens')
+    expect(stats).toHaveTextContent('12 token')
     expect(stats).toHaveTextContent('模型生成速度')
-    expect(stats).not.toHaveTextContent('0 Tokens')
+    expect(stats).not.toHaveTextContent('0 token')
   })
 
   it('新建和切换对话保持独立消息、草稿，并将请求发到所选线程', async () => {

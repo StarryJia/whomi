@@ -42,7 +42,7 @@ export function currentOverviewContributions(tasks: readonly AnalysisTask[]): Ov
   }
   for (const task of valid) {
     for (const judgment of task.report?.judgments ?? []) {
-      if (!judgment.supportingSources.length) continue
+      if (!judgment.supportingSources.length && (judgment.direction !== null || !judgment.counterexampleSources.length)) continue
       const entry = relation(task.conversationId, task.id), axis = judgment.dimension
       entry.directions[axis].add(judgment.direction)
       for (const source of [...judgment.supportingSources, ...judgment.counterexampleSources]) {

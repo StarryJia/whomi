@@ -189,7 +189,11 @@ test('analysis processing is pinned per task and removed with its conversation',
     INSERT INTO memberships(id,conversation_id,source_conversation_id,source_key,display_name) VALUES(1,1,1,'me','本人');
     INSERT INTO self_confirmations(conversation_id,member_id,status,source) VALUES(1,1,'confirmed','user');
     INSERT INTO messages(id,conversation_id,member_id,sender_kind,sender_name,kind,text,ordinal,sent_at_ms) VALUES(1,1,1,'member','本人','text','示例正文',0,1234)`)
-  const prepared = await ai.prepareAnalysis({ conversationId: '1', modelId: model.id }), task = await ai.confirmAnalysis({ token: prepared.token, requestId: 'analysis' })
+  const prepared = await ai.prepareAnalysis({ conversationId: '1', modelId: model.id })
+  const chosen = await settings.saveProcessing({ ...defaultProcessing, rules: ['email'] })
+  const task = await ai.confirmAnalysis({ token: prepared.token, requestId: 'analysis' })
+  await settings.saveProcessing({ ...chosen, redact: false })
+  expect(ai.analysisContext(task.id).processing).toEqual(chosen)
   expect(ai.readInsightSources({ taskId: task.id, messageIds: ['1'] })[0]).toMatchObject({ sentAtMs: 1234, memberId: '1' })
   await settings.claimProcessing(task.id, 'first-processing')
   await settings.claimProcessing(task.id, 'first-processing')
@@ -274,6 +278,7 @@ test('reauthorizing the original account resumes its saved task; a replacement a
   const prep = await ai.prepareAnalysis({ conversationId: '1', modelId: model.id })
   const task = await ai.confirmAnalysis({ token: prep.token, requestId: 'resume-reauth' })
   await ai.saveAnalysis(task.id, { state: 'stopped' })
+  await settings.saveModel({ ...modelInput, id: model.id, providerId: 'cherry:openai-codex', maxInputTokens: 3000 }, 'catalog')
   await settings.setAccountConnection('openai-codex', null)
   await settings.setAccountConnection('openai-codex', 'account-two', true)
   await expect(ai.resumeAnalysis(task.id)).rejects.toMatchObject({ code: 'MODEL_CHANGED' })

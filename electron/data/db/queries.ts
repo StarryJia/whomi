@@ -1,6 +1,6 @@
 import type { Store } from './open'
 import { confirmedSelfSql } from './self'
-import type { ConversationQueries, ConversationSummary, MessagePage, MessagePosition, MessageView, ReplyView } from '../../../src/shared/desktop-api'
+import type { ConversationQueries, ConversationSummary, LocateSourceInput, MessagePage, MessagePosition, MessageView, ReplyView, SourceWindow } from '../../../src/shared/desktop-api'
 
 const maxId = 9223372036854775807n
 type Anchor = { id: bigint; time_bucket: bigint; sort_time: bigint }
@@ -69,7 +69,11 @@ function compare(left: Anchor, right: Anchor): number {
 }
 function position(row: Anchor): MessagePosition { return { id: String(row.id), timeBucket: integer(row.time_bucket) as 0 | 1, sortTime: integer(row.sort_time) } }
 
-export function createQueries(store: Store): ConversationQueries {
+type StoreQueries = Omit<ConversationQueries, 'locateSource'> & {
+  locateSource(input: LocateSourceInput, anchorMessageId?: string): Promise<SourceWindow>
+}
+
+export function createQueries(store: Store): StoreQueries {
   const db = store.reader
   function conversationBoundary(cursor: ConversationCursor) {
     const rowId = id(cursor.id)
@@ -101,7 +105,7 @@ export function createQueries(store: Store): ConversationQueries {
   }
   function view(row: MessageRow): MessageView {
     const reply = db.prepare(`SELECT r.target_message_id,r.original_id,r.id_namespace,
-      coalesce(r.text,m.text) AS text,coalesce(r.sender_name,m.sender_name) AS sender_name,
+      coalesce(r.text,m.text) AS text,CASE WHEN m.kind='system' THEN NULL ELSE coalesce(r.sender_name,m.sender_name) END AS sender_name,
       coalesce(r.sent_at_ms,m.sent_at_ms) AS sent_at_ms,r.state
       FROM message_replies r LEFT JOIN messages m ON m.id=r.target_message_id AND m.conversation_id=r.conversation_id AND r.state='resolved'
       WHERE r.message_id=? AND r.conversation_id=?`).get(row.id, row.conversation_id) as { target_message_id: bigint | null; original_id: string | null; id_namespace: string | null; text: string | null; sender_name: string | null; sent_at_ms: bigint | null; state: ReplyView['state'] } | undefined
@@ -109,7 +113,7 @@ export function createQueries(store: Store): ConversationQueries {
     const isSelf = row.member_id !== null && (self.get(row.conversation_id, row.member_id) as { confirmed: bigint } | undefined)?.confirmed === 1n
     return {
       id: String(row.id), conversationId: String(row.conversation_id), memberId: row.member_id === null ? null : String(row.member_id),
-      senderKind: row.sender_kind, senderName: row.sender_name, isSelf, sentAtMs: timestamp(row.sent_at_ms), timeRaw: row.time_raw,
+      senderKind: row.sender_kind, senderName: row.kind === 'system' ? '' : row.sender_name, isSelf, sentAtMs: timestamp(row.sent_at_ms), timeRaw: row.time_raw,
       timePrecision: row.time_precision, timezone: row.timezone, timeBucket: integer(row.time_bucket) as 0 | 1, sortTime: integer(row.sort_time),
       ordinal: integer(row.ordinal), kind: row.kind, sourceType: row.source_type, text: row.text,
       reply: reply ? { targetMessageId: reply.target_message_id === null ? null : String(reply.target_message_id), originalId: reply.original_id, idNamespace: reply.id_namespace, text: reply.text, senderName: reply.sender_name, sentAtMs: timestamp(reply.sent_at_ms), state: reply.state } : null,
@@ -156,14 +160,15 @@ export function createQueries(store: Store): ConversationQueries {
         return page(conversationId, snapshotMaxId, rows, count)
       })()
     },
-    async locateSource(input) {
+    async locateSource(input, anchorMessageId) {
       const conversationId = id(input.conversationId), startId = id(input.messageId), endId = id(input.endMessageId ?? input.messageId)
       return db.transaction(() => {
         const start = anchor(conversationId, startId), end = anchor(conversationId, endId)
-        if (!start || !end || compare(start, end) > 0) return { status: 'unavailable' as const }
+        const focus = anchorMessageId && anchorMessageId !== input.messageId ? anchor(conversationId, id(anchorMessageId)) : start
+        if (!start || !end || !focus || compare(start, focus) > 0 || compare(focus, end) > 0) return { status: 'unavailable' as const }
         const snapshotMaxId = snapshot(conversationId)
-        const before = range(conversationId, snapshotMaxId, start, 'before', 20).reverse()
-        const after = range(conversationId, snapshotMaxId, start, 'after', 80, true)
+        const before = range(conversationId, snapshotMaxId, focus, 'before', 20).reverse()
+        const after = range(conversationId, snapshotMaxId, focus, 'after', 80, true)
         return { status: 'available' as const, conversationId: String(conversationId), startMessageId: String(startId), endMessageId: String(endId), start: position(start), end: position(end), page: page(conversationId, snapshotMaxId, [...before, ...after], 100), rangeEndCursor: messageCursor(conversationId, end, snapshotMaxId, 100) }
       })()
     },

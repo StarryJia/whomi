@@ -1,4 +1,6 @@
 import { readPromptValues } from './system-prompts'
+import { defaultProcessing, type ProcessingSettings } from '../../../src/shared/settings-contract'
+import { validateProcessing } from '../settings/validation'
 import { defaultPrompts, type PromptValues } from '../../../src/shared/system-prompts'
 import { isThinkingLevel, type ThinkingLevel } from '../../../src/shared/thinking'
 import { arrangeList, threadOrder } from '../db/list-order'
@@ -12,15 +14,16 @@ import type { WriterQueue } from '../import/runner'
 import { confirmedSelfSql } from '../db/self'
 import { INSIGHT_PROMPT_VERSION } from './insight-prompts'
 import { isInsightCitation, isInsightCitationId, validateAiCall, validateAiResult } from '../../../src/shared/ai-validation'
-import { defaultInsightTitle, insightTitle, isInsightReport, isInsightScope, type InsightCitation, type InsightCitationInput, type InsightCitationWindow, type InsightReport, type InsightScope, type InsightScopeInput, type InsightSnapshot, type InsightSourceRef } from '../../../src/shared/conversation-insights'
+import { defaultInsightTitle, insightTitle, isInsightReport, isInsightScope, resolveReportCitation, type InsightCitation, type InsightCitationInput, type InsightCitationWindow, type InsightReport, type InsightScope, type InsightScopeInput, type InsightSnapshot, type InsightSourceRef } from '../../../src/shared/conversation-insights'
 import { defaultModelProtocol, isModelProtocol } from '../../../src/shared/model-protocol'
 import { BoundaryError, localId } from '../../../src/shared/desktop-validation'
 import type { AiModel, AiSkill, AiState, AiThread, AiThreadSummary, AiTurn, AiUsage, AnalysisPreparation, AnalysisTask, AnalysisUsage, PrepareAnalysisInput } from '../../../src/shared/ai-contract'
 import { threadTitle } from './thread-title'
-import { captureInsightSources, previewInsightScope, readCurrentInsightSources, readInsightCitationIds, readInsightSources, type StoredInsightSnapshot, type StoredInsightSourceRef } from './insight-sources'
+import { prepareTurnProfile } from './turn-profile'
+import { captureInsightSources, populateReportExcerpts, previewInsightScope, readCurrentInsightSources, readInsightCitationIds, readInsightSources, type StoredInsightSnapshot, type StoredInsightSourceRef } from './insight-sources'
 
 export type AiSourceMessage = { id: string; senderName: string; text: string; isSelf: boolean; kind: string; sentAtMs: number | null; memberId: string | null }
-export type AnalysisContext = { systemPrompts?: PromptValues; task: AnalysisTask; model: AiModel; checkpoint: string | null; snapshot: InsightSnapshot }
+export type AnalysisContext = { processing?: ProcessingSettings; systemPrompts?: PromptValues; task: AnalysisTask; model: AiModel; checkpoint: string | null; snapshot: InsightSnapshot }
 export type RegisteredSkill = AiSkill & { content: string; enabled?: boolean }
 type TurnReferences = { references: AiSourceMessage[]; referenceBreaks?: string[] }
 export type TurnContext = TurnReferences & { systemPrompt?: string; turn: AiTurn; threadId: string; conversationId: string; model: AiModel; selfFingerprint: string; history: ({ role: 'user' | 'assistant'; text: string } & Partial<TurnReferences>)[]; profile: InsightReport | null; skill: RegisteredSkill | null; checkpoint: string | null }
@@ -30,7 +33,7 @@ export type NewTurn = { thinkingLevel?: ThinkingLevel; threadId: string; request
 export type ModelInput = Omit<AiModel, 'version' | 'hasCredential'>
 export type UsageRecord = { ownerKind: 'analysis' | 'turn'; ownerId: string; requestId: string; usage: AiUsage }
 type AnalysisRow = { title: string | null; elapsed_ms: bigint; prompt_snapshot: string | null; thinking_level: ThinkingLevel | null; id: bigint; conversation_id: bigint; model_id: string; model_version: bigint; created_at_ms: bigint | null; completed_at_ms: bigint | null; pinned: bigint; prompt_version: string; self_fingerprint: string; snapshot_max_id: bigint; state: AiState; total_messages: bigint; skipped_messages: bigint; event_sequence: bigint; error: string | null; checkpoint: string | null }
-type InsightSnapshotRow = { scope: string; timezone: string; source_start_time_ms: bigint | null; source_end_time_ms: bigint | null; created_at_ms: bigint; sources: string }
+type InsightSnapshotRow = { scope: string; timezone: string; source_start_time_ms: bigint | null; source_end_time_ms: bigint | null; source_text_bytes: bigint | null; created_at_ms: bigint; sources: string }
 type ReportRow = { data: string; content_revision: string | null }
 function readInsightReport(data: string, conversationId: bigint): InsightReport {
   const report = parse<InsightReport>(data)
@@ -55,6 +58,8 @@ function readInsightReport(data: string, conversationId: bigint): InsightReport 
     for (const paragraph of section) {
       if (!Array.isArray(paragraph?.content)) continue
       for (const part of paragraph.content) {
+        delete part?.quoteFragmentIndex
+        delete part?.quoteMessageId
         if (part?.citationId !== undefined && !isInsightCitationId(part.citationId)) part.citationId = unavailableId
       }
     }
@@ -88,12 +93,12 @@ function usage(value: AiUsage): AiUsage {
   if (value.incomplete !== undefined && typeof value.incomplete !== 'boolean') fail('INVALID_USAGE')
   return value
 }
-export function saveAiModelVersion(db: Store['writer'], input: ModelInput, encryptedKey?: string | null): AiModel {
+export function saveAiModelVersion(db: Store['writer'], input: ModelInput, encryptedKey?: string | null, source: 'settings' | 'catalog' | 'account' = 'settings'): AiModel {
   const previous = db.prepare('SELECT version,encrypted_key FROM ai_models WHERE id=?').get(input.id) as { version: bigint; encrypted_key: string | null } | undefined
   const secret = encryptedKey === undefined ? previous?.encrypted_key ?? null : encryptedKey
   const model: AiModel = { ...(input.thinkingLevels ? { thinkingLevels: input.thinkingLevels } : {}), ...(input.planAccount ? { planAccount: input.planAccount, planProvider: input.planProvider } : {}), id: input.id, label: input.label, model: input.model, baseUrl: input.baseUrl, protocol: input.protocol ?? defaultModelProtocol, contextWindow: input.contextWindow, maxTokens: input.maxTokens, ...(input.maxInputTokens !== undefined ? { maxInputTokens: input.maxInputTokens } : {}), enabled: input.enabled, version: Number(previous?.version ?? 0n) + 1, hasCredential: secret !== null }
   db.prepare('INSERT INTO ai_models(id,version,data,encrypted_key) VALUES(?,?,?,?) ON CONFLICT(id) DO UPDATE SET version=excluded.version,data=excluded.data,encrypted_key=excluded.encrypted_key').run(model.id, model.version, JSON.stringify(model), secret)
-  db.prepare('INSERT INTO ai_model_versions(model_id,version,data,encrypted_key) VALUES(?,?,?,?)').run(model.id, model.version, JSON.stringify(model), secret)
+  db.prepare('INSERT INTO ai_model_versions(model_id,version,data,encrypted_key,change_source) VALUES(?,?,?,?,?)').run(model.id, model.version, JSON.stringify(model), secret, source)
   return model
 }
 
@@ -126,15 +131,18 @@ export function createAiRepository(store: Store, write: WriterQueue) {
   function sameModelConfiguration(id: string, version: number) {
     const current = enabledModel(id)
     if (current.version === version) return true
-    if (!current.planAccount) return false
     const original = modelSecret(id, version).model
+    // 自动补全容量、原套餐重新登录后，旧任务仍使用冻结版本。
+    const manualChange = reader.prepare("SELECT 1 FROM ai_model_versions WHERE model_id=? AND version>? AND change_source='settings' LIMIT 1").get(id, version)
+    if (!manualChange) return current.planAccount === original.planAccount
+    if (!current.planAccount) return false
     // 同一套餐账号重新授权只改变可用状态；任务仍使用保存时的完整配置。
     const { thinkingLevels: _snapshotLevels, ...snapshotConfig } = original
     const { thinkingLevels: _currentLevels, ...currentConfig } = current
     return isDeepStrictEqual({ ...snapshotConfig, version: current.version, enabled: current.enabled }, currentConfig)
   }
-  function analysisRow(taskId: string): AnalysisRow {
-    const row = reader.prepare('SELECT * FROM ai_analysis_tasks WHERE id=?').get(id(taskId)) as AnalysisRow | undefined
+  function analysisRow(taskId: string) {
+    const row = reader.prepare('SELECT * FROM ai_analysis_tasks WHERE id=?').get(id(taskId)) as (AnalysisRow & { processing_snapshot: string | null }) | undefined
     if (!row) fail('INVALID_TASK', '请刷新分析任务后重试。')
     return row
   }
@@ -144,6 +152,7 @@ export function createAiRepository(store: Store, write: WriterQueue) {
     return {
       taskId: String(row.id), scope: parse<InsightScope>(saved.scope), timezone: saved.timezone, createdAtMs: Number(saved.created_at_ms),
       sourceStartTimeMs: optionalNumber(saved.source_start_time_ms), sourceEndTimeMs: optionalNumber(saved.source_end_time_ms),
+      ...(saved.source_text_bytes === null ? {} : { sourceTextBytes: Number(saved.source_text_bytes) }),
       sources: parse<StoredInsightSourceRef[]>(saved.sources),
     }
   }
@@ -167,8 +176,10 @@ export function createAiRepository(store: Store, write: WriterQueue) {
       }
     }
     for (const judgment of report.judgments ?? []) {
-      if (!judgment.supportingSources.some(source => sources.get(source.messageId)?.isSelf) ||
-        [...judgment.supportingSources, ...judgment.counterexampleSources].some(source => !validRef(source))) {
+      if (((judgment.direction !== null || judgment.supportingSources.length > 0) &&
+          !judgment.supportingSources.some(source => sources.get(source.messageId)?.isSelf)) ||
+        [...judgment.supportingSources, ...judgment.counterexampleSources].some(source =>
+          !validRef(source) || source.excerpts?.some(phrase => !sources.get(source.messageId)?.text.includes(phrase)))) {
         fail('INVALID_INSIGHT_JUDGMENT', '请重新生成这份报告。')
       }
     }
@@ -208,6 +219,14 @@ export function createAiRepository(store: Store, write: WriterQueue) {
     const records = reader.prepare('SELECT data FROM ai_request_usage WHERE owner_kind=? AND owner_id=? ORDER BY request_id').all(kind, id(ownerId)) as { data: string }[]
     if (!records.length) return {}
     const values = records.map(row => parse<AiUsage>(row.data)), result: AnalysisUsage = {}
+    if (kind === 'analysis') {
+      for (const usage of values) {
+        // 旧回执逐笔补上已知缓存，再与提供总量的新回执累计。
+        if (usage.totalInputTokens === undefined && usage.inputTokens !== undefined) {
+          usage.totalInputTokens = usage.inputTokens + (usage.cacheReadTokens ?? 0) + (usage.cacheWriteTokens ?? 0)
+        }
+      }
+    }
     for (const field of [...tokenFields, 'durationMs'] as const) {
       const reported = values.filter(value => value[field] !== undefined)
       if (!reported.length) continue
@@ -367,12 +386,16 @@ export function createAiRepository(store: Store, write: WriterQueue) {
         if (db.prepare("SELECT 1 FROM ai_analysis_tasks WHERE conversation_id=? AND state IN ('queued','running')").get(id(preparation.conversationId))) fail('ANALYSIS_BUSY', '请先完成或停止当前分析。')
         const snapshot = row.insight_snapshot ? parse<Omit<StoredInsightSnapshot, 'taskId'>>(row.insight_snapshot) : null
         if (!snapshot) fail('INSIGHT_SNAPSHOT_UNAVAILABLE', '请重新准备分析。')
-        const taskId = db.prepare(`INSERT INTO ai_analysis_tasks(conversation_id,request_id,preparation_token,model_id,model_version,prompt_version,self_fingerprint,snapshot_max_id,state,total_messages,skipped_messages,created_at_ms,thinking_level,prompt_snapshot,title)
-          VALUES(?,?,?,?,?,?,?,?,'queued',?,?,?,?,?,?)`).run(id(preparation.conversationId), input.requestId, input.token, model.id, model.version, row.prompt_version, self.fingerprint,
+        const hasSettings = db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='app_settings'").get()
+        const saved = hasSettings ? db.prepare("SELECT data FROM app_settings WHERE key='processing'").get() as { data: string } | undefined : undefined
+        const processing = saved ? parse<ProcessingSettings>(saved.data) : defaultProcessing
+        validateProcessing(processing)
+        const taskId = db.prepare(`INSERT INTO ai_analysis_tasks(conversation_id,request_id,preparation_token,model_id,model_version,prompt_version,self_fingerprint,snapshot_max_id,state,total_messages,skipped_messages,created_at_ms,thinking_level,prompt_snapshot,title,processing_snapshot)
+          VALUES(?,?,?,?,?,?,?,?,'queued',?,?,?,?,?,?,?)`).run(id(preparation.conversationId), input.requestId, input.token, model.id, model.version, row.prompt_version, self.fingerprint,
           BigInt(preparation.snapshotMaxId), preparation.analyzableMessages, preparation.totalMessages - preparation.analyzableMessages,
-          now, preparation.thinkingLevel ?? null, JSON.stringify(readPromptValues(db)), defaultInsightTitle).lastInsertRowid
-        db.prepare('INSERT INTO ai_insight_snapshots(task_id,scope,timezone,created_at_ms,source_start_time_ms,source_end_time_ms,sources) VALUES(?,?,?,?,?,?,?)')
-          .run(taskId, JSON.stringify(snapshot.scope), snapshot.timezone, snapshot.createdAtMs, snapshot.sourceStartTimeMs, snapshot.sourceEndTimeMs, JSON.stringify(snapshot.sources))
+          now, preparation.thinkingLevel ?? null, JSON.stringify(readPromptValues(db)), defaultInsightTitle, JSON.stringify(processing)).lastInsertRowid
+        db.prepare('INSERT INTO ai_insight_snapshots(task_id,scope,timezone,created_at_ms,source_start_time_ms,source_end_time_ms,sources,source_text_bytes) VALUES(?,?,?,?,?,?,?,?)')
+          .run(taskId, JSON.stringify(snapshot.scope), snapshot.timezone, snapshot.createdAtMs, snapshot.sourceStartTimeMs, snapshot.sourceEndTimeMs, JSON.stringify(snapshot.sources), snapshot.sourceTextBytes ?? null)
         db.prepare('UPDATE ai_preparations SET insight_snapshot=NULL WHERE token=?').run(input.token)
         return String(taskId)
       })())
@@ -414,7 +437,22 @@ export function createAiRepository(store: Store, write: WriterQueue) {
         purgeAnalysis(db, row.id)
       })())
     },
-    getReport(taskId: string): InsightReport { const task = repository.getAnalysis(taskId); if (task.state !== 'completed' || !task.report) fail('REPORT_UNAVAILABLE', '生成完成后再查看文稿。'); return task.report },
+    getReport(taskId: string): InsightReport {
+      const row = analysisRow(taskId)
+      const saved = reader.prepare('SELECT data,content_revision FROM ai_reports WHERE task_id=?').get(row.id) as ReportRow | undefined
+      if (row.state !== 'completed' || !saved) fail('REPORT_UNAVAILABLE', '生成完成后再查看文稿。')
+      const report = readInsightReport(saved.data, row.conversation_id)
+      let snapshot: StoredInsightSnapshot | undefined
+      if (createHash('sha256').update(saved.data).digest('hex') === saved.content_revision) {
+        try {
+          snapshot = insightSnapshot(row)
+        } catch (error) {
+          if (!(error instanceof BoundaryError && error.code === 'INSIGHT_SNAPSHOT_UNAVAILABLE')) throw error
+        }
+      }
+      populateReportExcerpts(reader, row.conversation_id, snapshot, report, row.processing_snapshot ? parse<ProcessingSettings>(row.processing_snapshot) : undefined)
+      return report
+    },
     readInsightSources(input: { taskId: string; messageIds: readonly string[] }) {
       fields(input, ['taskId', 'messageIds'])
       if (!Array.isArray(input.messageIds) || input.messageIds.some(messageId => !localId(messageId))) fail('INVALID_ARGUMENT')
@@ -430,9 +468,9 @@ export function createAiRepository(store: Store, write: WriterQueue) {
       if (!saved) return { status: 'unavailable' }
       if (saved.content_revision !== createHash('sha256').update(saved.data).digest('hex')) return { status: 'expired' }
       const report = readInsightReport(saved.data, row.conversation_id)
-      const citation = report.citations.find(item => item.id === input.citationId)
+      const citation = resolveReportCitation(report, String(row.conversation_id), input.citationId)
       const fragment = citation?.fragments[input.fragmentIndex]
-      if (!citation || !fragment) return { status: 'unavailable' }
+      if (!citation || !fragment || !isInsightCitation({ ...citation, fragments: [fragment] })) return { status: 'unavailable' }
       let highlightIds: string[] | null
       try {
         highlightIds = readInsightCitationIds(reader, row.conversation_id, insightSnapshot(row), fragment.sources)
@@ -441,7 +479,8 @@ export function createAiRepository(store: Store, write: WriterQueue) {
         throw error
       }
       if (!highlightIds) return { status: 'expired' }
-      const window = await queries.locateSource({ conversationId: citation.conversationId, messageId: highlightIds[0], endMessageId: highlightIds.at(-1)! })
+      if (input.messageId && !highlightIds.includes(input.messageId)) return { status: 'unavailable' }
+      const window = await queries.locateSource({ conversationId: citation.conversationId, messageId: highlightIds[0], endMessageId: highlightIds.at(-1)! }, input.messageId)
       return window.status === 'available' ? { ...window, highlightIds } : { status: 'expired' }
     },
     analysisContext(taskId: string): AnalysisContext {
@@ -449,6 +488,7 @@ export function createAiRepository(store: Store, write: WriterQueue) {
       const model = modelSecret(row.model_id, Number(row.model_version)).model
       const { sources, ...snapshot } = insightSnapshot(row)
       return {
+        processing: row.processing_snapshot ? parse<ProcessingSettings>(row.processing_snapshot) : undefined,
         systemPrompts: row.prompt_snapshot ? parse<PromptValues>(row.prompt_snapshot) : undefined,
         task: taskView(row), model, checkpoint: row.checkpoint,
         snapshot: { ...snapshot, sources: sources.map(({ messageId, revision }) => ({ messageId, revision })) },
@@ -474,7 +514,7 @@ export function createAiRepository(store: Store, write: WriterQueue) {
       })
       return repository.getAnalysis(taskId)
     },
-    async saveInsightCheckpoint(taskId: string, checkpoint: string, completedMessageIds: readonly string[], elapsedMs?: number): Promise<AnalysisTask> {
+    async saveInsightCheckpoint(taskId: string, checkpoint: string, completedMessageIds: readonly string[], elapsedMs?: number, receipt?: Pick<UsageRecord, 'requestId' | 'usage'>): Promise<AnalysisTask> {
       if (!text(checkpoint, 16 * 1024 * 1024) || !Array.isArray(completedMessageIds) || completedMessageIds.some(messageId => !localId(messageId)) ||
         (elapsedMs !== undefined && (!Number.isSafeInteger(elapsedMs) || elapsedMs < 0))) fail('INVALID_INSIGHT_CHECKPOINT', '请继续分析。')
       const coverage = new Set(completedMessageIds)
@@ -491,7 +531,8 @@ export function createAiRepository(store: Store, write: WriterQueue) {
         const added = completedMessageIds.filter(messageId => !previous.has(messageId))
         if (added.length) checkedInsightSources(row, snapshot, added)
         const elapsed = elapsedMs ?? row.elapsed_ms
-        if (!added.length && checkpoint === row.checkpoint && BigInt(elapsed) === row.elapsed_ms) return
+        if (receipt) insertUsage({ ownerKind: 'analysis', ownerId: taskId, requestId: receipt.requestId, usage: receipt.usage })
+        if (!receipt && !added.length && checkpoint === row.checkpoint && BigInt(elapsed) === row.elapsed_ms) return
         const cover = db.prepare('INSERT INTO ai_analysis_coverage(task_id,message_id) VALUES(?,?)')
         for (const messageId of added) cover.run(row.id, id(messageId))
         db.prepare('UPDATE ai_analysis_tasks SET checkpoint=?,elapsed_ms=?,event_sequence=event_sequence+1 WHERE id=?').run(checkpoint, elapsed, row.id)
@@ -592,7 +633,8 @@ export function createAiRepository(store: Store, write: WriterQueue) {
       })())
       return turnView(turnRow(turnId))
     },
-    turnContext(turnId: string): TurnContext {
+    turnContext(turnId: string, processing?: ProcessingSettings): TurnContext {
+      if (processing !== undefined) validateProcessing(processing)
       const row = turnRow(turnId), conversationId = threadConversation(String(row.thread_id)), self = identity(conversationId)
       if (row.self_fingerprint !== self.fingerprint) fail('IDENTITY_CHANGED', '本人身份已更新，请重新提问。')
       const previous = reader.prepare("SELECT * FROM ai_turns WHERE thread_id=? AND id<? AND state='completed' AND self_fingerprint=? ORDER BY id").all(row.thread_id, row.id, self.fingerprint) as TurnRow[]
@@ -604,6 +646,7 @@ export function createAiRepository(store: Store, write: WriterQueue) {
       const latest = previous.at(-1), skill = row.skill ? parse<RegisteredSkill>(row.skill) : null
       const sameCheckpointContext = latest?.model_id === row.model_id && latest?.model_version === row.model_version && latest?.skill === row.skill && (latest?.system_prompt ?? defaultPrompts.dialogue) === (row.system_prompt ?? defaultPrompts.dialogue)
       const profile = repository.listAnalyses(conversationId).find(task => task.state === 'completed' && task.valid && task.report)?.report ?? null
+      if (profile) prepareTurnProfile(reader, id(conversationId), profile, processing)
       return { systemPrompt: row.system_prompt ?? defaultPrompts.dialogue, turn: turnView(row), threadId: String(row.thread_id), conversationId, model: modelSecret(row.model_id, Number(row.model_version)).model, selfFingerprint: self.fingerprint, ...sources(conversationId, parse<string[]>(row.reference_ids)), history, profile, skill, checkpoint: sameCheckpointContext ? latest!.checkpoint : null }
     },
     async saveTurn(turnId: string, patch: TurnPatch): Promise<AiTurn> {

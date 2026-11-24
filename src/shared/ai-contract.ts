@@ -18,7 +18,7 @@ export type AiThreadSummary = { pinned?: boolean; id: string; conversationId: st
 export type AiThread = AiThreadSummary & { turns: AiTurn[] }
 export type AiEvent = { kind: 'analysis'; snapshot: AnalysisTask } | { kind: 'analysis-deleted'; taskId: string; conversationId: string } | { kind: 'turn'; snapshot: AiTurn }
 export type AiMethods = {
-  listModels(): Promise<AiModel[]>
+  listModels(): Promise<(AiModel & { insightThinkingLevels?: ThinkingLevel[] })[]>
   saveModel(input: SaveAiModel): Promise<AiModel>
   testModel(modelId: string): Promise<void>
   listSkills(): Promise<AiSkill[]>

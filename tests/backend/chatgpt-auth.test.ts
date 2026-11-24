@@ -10,6 +10,9 @@ import { openStore } from '../../electron/data/db/open'
 import { createAiRepository } from '../../electron/data/ai/repository'
 import { createSettingsRepository } from '../../electron/data/settings/repository'
 import { createAiService } from '../../electron/main/ai-service'
+import { createInsightCheckpoint } from '../../electron/main/insight-checkpoint'
+import { defaultInsightRunLimits } from '../../electron/main/insight-policy'
+import { defaultInsightPrompts } from '../../electron/data/ai/insight-prompts'
 import { temporaryStore } from './helpers'
 import { sourceMessages } from '../desktop/fixtures/moving-chat.mjs'
 import { simpleInsightReply } from '../desktop/fixtures/insight-model.mjs'
@@ -213,7 +216,7 @@ test('a transient remote revocation failure retries and an unconfirmed sign-out 
   expect((await createChatgptAuth(f.options).getStatus()).state).toBe('disconnected')
 })
 
-test('a ChatGPT-authenticated insight pauses between reading batches, rotates the protected credential after restart and only resumes the remaining messages',async()=>{
+test('a legacy ChatGPT-authenticated insight pauses between reading batches, rotates the protected credential after restart and only resumes the remaining messages',async()=>{
   const f = fixture()
   f.config.expire = 120
   const signedIn = f.auth.signIn()
@@ -270,7 +273,11 @@ test('a ChatGPT-authenticated insight pauses between reading batches, rotates th
   let worker = service(data,f.auth)
   try {
     const prepared=await worker.prepareAnalysis({conversationId:'1',modelId:model.id})
-    const task=await worker.confirmAnalysis({token:prepared.token,requestId:'signed-insight'})
+    const task=await data.ai.confirmAnalysis({token:prepared.token,requestId:'signed-insight'})
+    const legacy = createInsightCheckpoint(task.id, model, defaultInsightPrompts, defaultInsightRunLimits)
+    await data.ai.saveInsightCheckpoint(task.id, JSON.stringify(legacy), [])
+    await data.ai.saveAnalysis(task.id, { state: 'stopped' })
+    await worker.continueAnalysis(task.id)
     await blocked.promise
     await worker.stopAnalysis(task.id)
     await worker.idle()

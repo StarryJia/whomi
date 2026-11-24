@@ -293,17 +293,17 @@ describe('checked data relocation', () => {
     } finally { db.close() }
   })
 
-  it('preserves the processing version while relocating the wrapped runtime checkpoint', async () => {
+  it.each([['ai_turns', 'dialogue'], ['ai_analysis_tasks', 'pi-insight-v1']])('preserves %s task state while relocating its native session', async (table, version) => {
     const { source, target, service } = await fixture()
     const { session } = await seed(source)
-    const original = JSON.stringify({ processing: 'example-settings-version', checkpoint: JSON.stringify({ sessionFile: session, leafId: 'example-leaf' }) })
+    const original = JSON.stringify({ version, processing: 'example-settings-version', checkpoint: JSON.stringify({ sessionFile: session, leafId: 'example-leaf' }) })
     const db = new Database(join(source, 'whomi.db'))
-    try { db.prepare('UPDATE ai_turns SET checkpoint=?').run(original) } finally { db.close() }
+    try { db.prepare(`UPDATE ${table} SET checkpoint=?`).run(original) } finally { db.close() }
     const choice = await service.issueChoice(1, target)
     await service.relocateStorage(1, choice.token)
     const copied = new Database(join(target, 'whomi.db'), { readonly: true })
     try {
-      const row = copied.prepare('SELECT checkpoint FROM ai_turns').get() as { checkpoint: string }
+      const row = copied.prepare(`SELECT checkpoint FROM ${table}`).get() as { checkpoint: string }
       const wrapped = JSON.parse(row.checkpoint)
       expect(wrapped.processing).toBe('example-settings-version')
       expect(JSON.parse(wrapped.checkpoint)).toEqual({ sessionFile: join(target, 'ai-runtime', 'sessions', 'test-model', 'conversation.jsonl'), leafId: 'example-leaf' })

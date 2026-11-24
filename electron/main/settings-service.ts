@@ -1,6 +1,6 @@
 import type { ThinkingLevel } from '../../src/shared/thinking'
 import { validatePrompt } from '../../src/shared/system-prompts'
-import type { AccountUsage, SettingsApi, Provider, ProviderInput, SettingsSnapshot } from '../../src/shared/settings-contract'
+import type { AccountUsage, SettingsApi, CatalogModel, Provider, ProviderInput, SettingsSnapshot } from '../../src/shared/settings-contract'
 import { failSettings, settingsId, validateProcessing, validateProvider, validateSettingsModel } from '../data/settings/validation'
 import { defaultModelProtocol } from '../../src/shared/model-protocol'
 import { getSubscriptionId, isSubscriptionId, type SubscriptionProviderId, type ChatgptStatus } from '../../src/shared/chatgpt-plan'
@@ -18,7 +18,7 @@ export type SettingsServiceOptions = {
     signIn(newAccount?: boolean): Promise<ChatgptStatus>
     cancel(): void
     signOut(): Promise<void>
-    listModels(accountId: string): Promise<{ id: string; name: string; thinkingLevels?: ThinkingLevel[] }[]>
+    listModels(accountId: string): Promise<(CatalogModel & { name: string; thinkingLevels?: ThinkingLevel[] })[]>
   }>>
   fetch?: typeof globalThis.fetch
 }
@@ -42,6 +42,32 @@ export function createSettingsService(options: SettingsServiceOptions): Settings
     const status = await account(id).getStatus()
     if (status.state !== 'pending') await storage('setAccountConnection', id, status.state === 'connected' ? status.accountId : null, enabled)
     return status
+  }
+  async function fillCatalogLimits(provider: Provider, catalog: CatalogModel[]) {
+    await mutate(async () => {
+      const settings = await get()
+      const current = settings.providers.find(item => item.id === provider.id)
+      if (!current || current.protocol !== provider.protocol || current.baseUrl !== provider.baseUrl || current.planAccount !== provider.planAccount) return
+      for (const existing of settings.models.filter(model => model.providerId === provider.id)) {
+        const entry = catalog.find(item => item.id === existing.model)
+        if (!entry) continue
+        const levels = accountCatalog.get(provider.id)?.get(existing.model) ?? existing.thinkingLevels
+        const context = existing.contextWindow ?? entry.contextWindow ?? null
+        const output = existing.maxTokens ?? entry.maxTokens ?? null
+        const input = existing.maxInputTokens ?? entry.maxInputTokens
+        // 用户手填的上限可能与服务返回的另一项上限冲突。
+        const contextWindow = context != null && ((existing.maxTokens ?? 0) >= context || (existing.maxInputTokens ?? 0) > context) ? existing.contextWindow : context
+        const maxTokens = contextWindow != null && output != null && output >= contextWindow ? existing.maxTokens : output
+        const maxInputTokens = contextWindow != null && input != null && input > contextWindow ? existing.maxInputTokens : input
+        if (contextWindow == existing.contextWindow && maxTokens == existing.maxTokens && maxInputTokens == existing.maxInputTokens &&
+            JSON.stringify(levels) === JSON.stringify(existing.thinkingLevels)) continue
+        try {
+          await storage('saveModel', { id: existing.id, providerId: provider.id, model: existing.model, label: existing.label, group: existing.group,
+            enabled: existing.enabled, contextWindow, maxTokens, maxInputTokens, thinkingLevels: levels }, 'catalog')
+        } catch (error) { if ((error as { code?: string }).code !== 'MODEL_BUSY') throw error }
+      }
+    })
+    return catalog
   }
   return {
     getPrompts: () => storage('getPrompts'),
@@ -123,18 +149,15 @@ export function createSettingsService(options: SettingsServiceOptions): Settings
         const items = await account(serviceId).listModels(provider.planAccount)
         if (serviceId === 'openai-codex') {
           accountCatalog.set(providerId, new Map(items.flatMap(item => item.thinkingLevels ? [[item.id, item.thinkingLevels] as const] : [])))
-          for (const existing of (await get()).models.filter(model => model.providerId === providerId)) {
-            const levels = accountCatalog.get(providerId)?.get(existing.model)
-            if (!levels || JSON.stringify(levels) === JSON.stringify(existing.thinkingLevels)) continue
-            try { await storage('saveModel', { id: existing.id, providerId, model: existing.model, label: existing.label, group: existing.group, contextWindow: existing.contextWindow, maxTokens: existing.maxTokens, maxInputTokens: existing.maxInputTokens, enabled: existing.enabled, thinkingLevels: levels }) } catch (error) { if ((error as { code?: string }).code !== 'MODEL_BUSY') throw error }
-          }
         }
-        return items.map(item => ({ id: item.id, label: item.name }))
+        return fillCatalogLimits(provider, items.map(({ id, name, contextWindow, maxTokens, maxInputTokens }) => ({
+          id, label: name, ...(contextWindow == null ? {} : { contextWindow }), ...(maxTokens == null ? {} : { maxTokens }), ...(maxInputTokens == null ? {} : { maxInputTokens }),
+        })))
       }
       const key = encryptedKey === null ? null : options.secrets.decrypt(encryptedKey)
       const controller = new AbortController(), timeout = setTimeout(() => controller.abort(), 10000)
       try {
-        return await fetchModelCatalog(provider, key, options.fetch ?? globalThis.fetch, controller.signal)
+        return await fillCatalogLimits(provider, await fetchModelCatalog(provider, key, options.fetch ?? globalThis.fetch, controller.signal))
       } catch { failSettings('MODEL_SYNC_FAILED', '模型列表获取失败，请检查服务地址和密钥后重试，或手动添加模型。') }
       finally { clearTimeout(timeout) }
     },

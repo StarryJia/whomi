@@ -76,24 +76,42 @@ button.insight-report-row:active { background: var(--pressed); }
 .insight-list-error { color: #a62328; font-size: 14px; }
 .insight-reader .overview-return { margin: 0 0 18px; }
 .insight-reader-content { width: min(100%, 790px); margin: 0 auto; }
-.insight-reader-header { margin: 0 0 36px; }
+.insight-reader-header { margin: 0 0 24px; }
 .insight-reader-title { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; }
 .insight-reader-title h1 { margin: 0; font-size: 37px; font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
 .insight-reader-meta { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 14px 0 0; color: var(--text-muted); font-size: 13px; }
 .insight-reader-meta div { display: flex; flex-wrap: wrap; gap: 4px; }
 .insight-reader-meta dt::after { content: '：'; }
 .insight-reader-meta dd { margin: 0; }
-.insight-prose { max-width: 72ch; font-size: 17px; line-height: 1.8; white-space: pre-wrap; overflow-wrap: anywhere; }
-.insight-prose section + section { margin-top: 32px; }
-.insight-prose h2 { margin: 0 0 14px; font-size: 24px; line-height: 1.45; }
-.insight-prose p { margin: 0 0 14px; }
-.insight-limitations { margin-top: 28px; padding-top: 14px; border-top: 1px solid var(--line); color: var(--text-muted); }
-.insight-prose footer { margin-top: 40px; color: var(--text-muted); font-size: 13px; text-align: center; }
+.insight-prose { font-size: clamp(16px, 1.4vw, 18px); line-height: 1.85; overflow-wrap: break-word; line-break: strict; }
+.insight-prose p { margin: 0; }
+.insight-prediction { text-align: center; padding: clamp(12px, 2vw, 28px) 0 clamp(24px, 3vw, 36px); border-bottom: 1px solid var(--line); }
+.insight-prediction-label { font-size: 14px; color: var(--text-muted); letter-spacing: .06em; }
+.insight-prediction-label abbr { text-decoration: none; }
+.insight-prediction-letters {
+  display: flex; justify-content: center; gap: .1em;
+  margin: 6px 0 10px; font: 750 clamp(70px, 10vw, 140px)/1.05 "Segoe UI", Arial, sans-serif;
+}
+.insight-prediction-unknown { color: var(--text-muted); }
+.insight-prediction-meaning { font-size: clamp(19px, 2vw, 26px); font-weight: 600; line-height: 1.5; }
+.insight-prediction-meaning span { display: inline-block; }
+.insight-prediction + .insight-chapter { padding-top: clamp(24px, 3vw, 34px); }
+.insight-chapter + .insight-chapter { margin-top: 32px; padding-top: 28px; border-top: 1px solid var(--line); }
+.insight-chapter h2 { margin: 0 0 14px; font-size: clamp(26px, 2.7vw, 34px); line-height: 1.35; letter-spacing: -.035em; }
+.insight-chapter p { max-width: 44em; }
+.insight-chapter > p + p, .insight-personal-observations > p + p { margin-top: 14px; }
+.insight-analysis > h3, .insight-personal-observations > h3 { margin: 0 0 14px; font-size: clamp(21px, 1.9vw, 25px); line-height: 1.4; }
+.insight-personal-observations { margin-top: 28px; }
+.insight-dimension + .insight-dimension { margin-top: 22px; }
+.insight-dimension h4 { margin: 0 0 7px; font-size: clamp(18px, 1.6vw, 21px); line-height: 1.5; }
+.insight-observation + .insight-observation { margin-top: 10px; }
+.insight-observation p.insight-observation-context { margin-top: 5px; color: var(--text-muted); font-size: .94em; }
 .insight-citation {
-  display: inline; margin: 0; padding: 0; border: 0; color: var(--focus); background: transparent; font: inherit;
-  text-align: inherit; text-decoration: underline; text-underline-offset: .16em; cursor: pointer;
+  color: var(--focus); text-decoration: underline; text-underline-offset: .2em; cursor: pointer;
 }
 .insight-citation:hover { text-decoration-thickness: 2px; }
+.insight-citation:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.insight-citation[aria-disabled=true] { color: inherit; text-decoration: none; cursor: text; }
 .insight-delete-details { max-height: 45vh; overflow-y: auto; overflow-wrap: anywhere; }
 .insight-delete-details > p { line-height: 1.65; }
 .insight-delete-conversation { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

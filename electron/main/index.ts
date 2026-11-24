@@ -1,3 +1,5 @@
+import { subscriptionHeaders } from './cherry-accounts-runner'
+import { createInsightSessionCleanup } from './insight-session-cleanup'
 import { app, BrowserWindow, Menu, session, ipcMain, dialog, safeStorage, shell } from 'electron'
 import { dirname, join } from 'node:path'
 import { randomUUID } from 'node:crypto'
@@ -15,7 +17,7 @@ import { createAiRouter } from './ai-router'
 import { createCredentialVault } from './ai-credentials'
 import { aiChannels, type AiMethods } from '../../src/shared/ai-contract'
 import { createCherryAccount } from './cherry-accounts'
-import type { SubscriptionProviderId } from '../../src/shared/chatgpt-plan'
+import { subscriptionProviders, type SubscriptionProviderId } from '../../src/shared/chatgpt-plan'
 import { createChatgptAuth } from './chatgpt-auth'
 import { createCodexQuota } from './codex-quota'
 import { createChatgptRunner } from './chatgpt-responses'
@@ -114,12 +116,34 @@ else {
       const failures = await requestData<StoredImportDiagnostic[]>('unresolvedImportDiagnostics', null)
       for (const { diagnostic, counts, jobCreatedAt } of failures) void importDiagnostics.report(diagnostic, counts, jobCreatedAt).catch(() => {})
       dataHost.onEvent(snapshot => publishImport(snapshot))
+      const insightSessions = createInsightSessionCleanup(directory, async id => {
+        try { await dataHost!.request('aiStorage', ['getAnalysis', [id]]); return true }
+        catch (error) {
+          if (error instanceof BoundaryError && error.code === 'INVALID_TASK') return false
+          throw error
+        }
+      })
+      await insightSessions.recover().catch(error => appErrorLogs.record({ area: 'data', phase: 'insight-cleanup', error }))
       agentHost = startAgentHost(directory)
-      aiService = createAiService({ storage: (method, args) => requestData('aiStorage', [method, args]), runtime: { run: (input, options) => {
+      aiService = createAiService({ storage: (method, args) => requestData('aiStorage', [method, args]), runtime: { run: async (input, options) => {
           if (!input.model.planAccount) return agentHost!.run(input, options)
           const provider: SubscriptionProviderId = input.model.planProvider ?? 'openai-codex'
+          if (input.insightSession) {
+            const authorized = subscriptionProviders[provider]
+            if (!authorized || input.model.baseUrl !== authorized.baseUrl || input.model.protocol !== authorized.protocol) {
+              throw new BoundaryError('INVALID_MODEL', '请重新选择此账户的模型。')
+            }
+            const headers = provider === 'openai-codex' ? undefined : subscriptionHeaders(provider, input.model.model)
+            return agentHost!.run({ ...input, insightSession: { ...input.insightSession, headers } }, options)
+          }
           return accountRunners[provider].run(input, options)
-        } }, secrets, diagnostics: operations,
+        } }, secrets, diagnostics: operations, deleteInsightSessions: insightSessions.remove,
+        insightAccountAccess: async (model, accountId, signal) => {
+          const provider = model.planProvider ?? 'openai-codex'
+          return provider === 'openai-codex'
+            ? { token: await chatgpt.accessToken(accountId, signal), baseUrl: subscriptionProviders[provider].baseUrl }
+            : accounts[provider].access(accountId, signal)
+        },
         changed: event => publishAi(event),
         logError: appErrorLogs.record,
         processing: async conversationId => {

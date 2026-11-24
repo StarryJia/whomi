@@ -1,0 +1,19 @@
+{
+  "chatlab": { "version": "0.0.2" },
+  "meta": { "name": "合成会话 · 周末逛书店", "platform": "discord", "type": "direct", "groupId": "issue35-bookshop", "ownerId": "self" },
+  "members": [{ "platformId": "self", "accountName": "合成本人" }, { "platformId": "peer", "accountName": "合成对方" }],
+  "messages": [
+    {"sender":"peer","accountName":"合成对方","type":0,"timestamp":1791367800,"platformMessageId":"1","content":"明天旧书店开门，你还去吗？"},
+    {"sender":"self","accountName":"合成本人","type":0,"timestamp":1791367880,"platformMessageId":"2","content":"去。我这两天没睡够，想晚一点出门。"},
+    {"sender":"peer","accountName":"合成对方","type":0,"timestamp":1791367960,"platformMessageId":"3","content":"那就不赶早场。中午在那里吃面？"},
+    {"sender":"self","accountName":"合成本人","type":0,"timestamp":1791368040,"platformMessageId":"4","content":"行。我查了下，十一点半开始下单，十二点以后一般要等。"},
+    {"sender":"peer","accountName":"合成对方","type":0,"timestamp":1791368120,"platformMessageId":"5","content":"小林也有空，问能不能一起。"},
+    {"sender":"self","accountName":"合成本人","type":0,"timestamp":1791368200,"platformMessageId":"6","content":"可以啊，我也正想把借的书还给她。"},
+    {"sender":"peer","accountName":"合成对方","type":0,"timestamp":1791368280,"platformMessageId":"7","content":"她下午要去医院看家人，可能临时走。"},
+    {"sender":"self","accountName":"合成本人","type":0,"timestamp":1791368360,"platformMessageId":"8","content":"那我把书装包里，碰上就还。你要是想多逛，我可以陪你。"},
+    {"sender":"peer","accountName":"合成对方","type":0,"timestamp":1791368440,"platformMessageId":"9","content":"先看她那边。对了，你借我的那本，最后一篇读完了吗？"},
+    {"sender":"self","accountName":"合成本人","type":0,"timestamp":1791368520,"platformMessageId":"10","content":"读了。结尾那段对话我看了两遍，第一次觉得在吵架，第二次倒觉得两个人都挺累。"},
+    {"sender":"peer","accountName":"合成对方","type":0,"timestamp":1791368600,"platformMessageId":"11","content":"我读到那里也停了一下。明天聊。"},
+    {"sender":"self","accountName":"合成本人","type":0,"timestamp":1791368680,"platformMessageId":"12","content":"好，见面说。"}
+  ]
+}

@@ -1,3 +1,4 @@
+import { withInsightClock, type SampleElapsed } from './insight-clock'
 import type { AiModel, AiUsage } from '../../src/shared/ai-contract'
 import type {
   InsightCitation, InsightInline, InsightJudgment, InsightParagraph, InsightReport, InsightSnapshot, InsightSourceMessage, InsightSourceRef,
@@ -20,7 +21,6 @@ const maxShrinkDepth = 8
 const maxOutputRepairs = 1
 const maximumNotesPerBatch = 48
 const maximumEvidenceNotes = 24
-const elapsedPersistenceIntervalMs = 5000
 
 export type InsightGenerationDeps = {
   run: RuntimeRunner['run']
@@ -308,9 +308,9 @@ function parseChecking(
   return { action: 'finish', finding }
 }
 
-function parseReport(
+export function parseReport(
   response: RuntimeResult, conversationId: string, refs: ReadonlyMap<string, InsightSourceRef>,
-  writtenEvidence: ReadonlySet<string>, selfIds: ReadonlySet<string>, checks: readonly InsightCheck[],
+  writtenEvidence: ReadonlySet<string>, selfIds: ReadonlySet<string>, checks: readonly InsightCheck[] | null,
 ): InsightReport {
   const body = outputObject(response)
   if (body.format !== undefined && body.format !== INSIGHT_PROMPT_VERSION) return invalidOutput()
@@ -341,26 +341,50 @@ function parseReport(
   const aboutYou = parseSection(body.aboutYou)
   const relationship = parseSection(body.relationship)
   if (usedCitations.size !== citationIds.size) return invalidOutput()
-  const findings = checks.flatMap(check => check.finding ? [check.finding] : [])
-  const supports = new Set(findings.flatMap(finding => finding.supportingIds))
-  const counterexamples = new Set(findings.flatMap(finding => finding.counterexampleIds))
+  if (checks === null && (!aboutYou.length || !relationship.length || !usedCitations.size)) return invalidOutput()
+  const findings = (checks ?? []).flatMap(check => check.finding ? [check.finding] : [])
+  const supports = checks === null ? writtenEvidence : new Set(findings.flatMap(finding => finding.supportingIds))
+  const counterexamples = checks === null ? writtenEvidence : new Set(findings.flatMap(finding => finding.counterexampleIds))
+  const emptyLists = checks === null ? { supportingIds: [], counterexampleIds: [], alternativeExplanations: [], limitations: [] } : {}
   const judgments = array(body.judgments ?? [], 100, (value): InsightJudgment => {
-    const judgment = object(value)
+    const judgment: Record<string, unknown> = { ...emptyLists, ...object(value) }
     const dimension = dimensionKeys.find(key => key === judgment.dimension)
     const direction = judgment.direction
     if (!dimension || (direction !== null && (typeof direction !== 'string' || ![...dimension].includes(direction)))) return invalidOutput()
-    const supportingIds = sourceIds(judgment.supportingIds, supports, true)
+    const supportingIds = sourceIds(judgment.supportingIds, supports, checks !== null || direction !== null)
     const counterexampleIds = sourceIds(judgment.counterexampleIds, counterexamples)
-    if (!supportingIds.some(id => selfIds.has(id)) || supportingIds.some(id => counterexampleIds.includes(id))) return invalidEvidence()
+    if ((supportingIds.length > 0 && !supportingIds.some(id => selfIds.has(id))) ||
+      supportingIds.some(id => counterexampleIds.includes(id))) return invalidEvidence()
+    const excerpts = new Map<string, string[]>()
+    if (checks === null && judgment.excerpts !== undefined) {
+      const cited = new Set([...supportingIds, ...counterexampleIds])
+      for (const part of array(judgment.excerpts, 400, object)) {
+        const messageId = string(part.messageId, 256)
+        const excerpt = string(part.text, 240)
+        const phrases = excerpts.get(messageId) ?? []
+        if (!cited.has(messageId) || phrases.includes(excerpt)) return invalidEvidence()
+        phrases.push(excerpt)
+        excerpts.set(messageId, phrases)
+      }
+    }
+    const source = (id: string) => {
+      const ref = refs.get(id)!
+      const phrases = excerpts.get(id)
+      return phrases ? { ...ref, excerpts: phrases } : ref
+    }
     return {
       dimension, direction, text: string(judgment.text, 3000),
-      supportingSources: supportingIds.map(id => refs.get(id)!),
-      counterexampleSources: counterexampleIds.map(id => refs.get(id)!),
+      supportingSources: supportingIds.map(source),
+      counterexampleSources: counterexampleIds.map(source),
       alternativeExplanations: explanations(judgment.alternativeExplanations), limitations: explanations(judgment.limitations),
     } as InsightJudgment
   })
+  if (checks === null && (judgments.length !== dimensionKeys.length ||
+      new Set(judgments.map(item => item.dimension)).size !== dimensionKeys.length)) {
+    throw new BoundaryError('INVALID_INSIGHT_OUTPUT', '请补齐精力来源、理解信息、做决定和安排方式四项分析。')
+  }
   const limitations = explanations(body.limitations)
-  if (checks.some(check => check.state === 'inconclusive')) limitations.push('部分观察缺少新增依据，仍无法确认。')
+  if (checks?.some(check => check.state === 'inconclusive')) limitations.push('部分观察缺少新增依据，仍无法确认。')
   return { format: INSIGHT_PROMPT_VERSION, aboutYou, relationship, citations, limitations, judgments }
 }
 
@@ -448,46 +472,10 @@ function mayRepair(error: unknown, used: number): boolean {
   return used < maxOutputRepairs && ['INVALID_INSIGHT_OUTPUT', 'MODEL_OUTPUT_LIMIT'].includes(String(codeOf(error)))
 }
 
-type SampleElapsed = () => { elapsedMs: number; sampledAtMs: number }
-
 export async function generateInsight(input: InsightGenerationInput, deps: InsightGenerationDeps): Promise<InsightReport> {
-  const clock = deps.now ?? Date.now
-  const startedAtMs = clock()
-  let sampledAtMs = startedAtMs
-  // 状态提交和计时采样都可能晚于最后一个完整断点。
-  const previousElapsedMs = Math.max(input.checkpoint?.elapsedMs ?? 0, input.elapsedMs ?? 0)
-  const sampleElapsed: SampleElapsed = () => {
-    sampledAtMs = Math.max(sampledAtMs, clock())
-    return { elapsedMs: previousElapsedMs + sampledAtMs - startedAtMs, sampledAtMs }
-  }
-  const { saveElapsed } = deps
-  if (!saveElapsed) return generateInsightReport(input, deps, sampleElapsed)
-
-  let write: Promise<void> | undefined
-  async function persist(operation: () => Promise<void>) {
-    const pending = Promise.resolve(write).then(operation)
-    write = pending
-    try { await pending } finally { if (write === pending) write = undefined }
-  }
-
-  const timer = setInterval(() => {
-    if (deps.signal.aborted || write) return
-    const sample = sampleElapsed()
-    void persist(async () => {
-      try { await saveElapsed(sample.elapsedMs, sample.sampledAtMs) }
-      catch { /* 下一次采样或完整断点会继续持久化用时。 */ }
-    })
-  }, elapsedPersistenceIntervalMs)
-  timer.unref()
-  try {
-    return await generateInsightReport(input, {
-      ...deps,
-      saveCheckpoint: (state, time) => persist(() => deps.saveCheckpoint(state, time)),
-    }, sampleElapsed)
-  } finally {
-    clearInterval(timer)
-    await write
-  }
+  const elapsed = Math.max(input.checkpoint?.elapsedMs ?? 0, input.elapsedMs ?? 0)
+  return withInsightClock(elapsed, deps.signal, deps.saveElapsed, (sample, persist) =>
+    generateInsightReport(input, { ...deps, saveCheckpoint: (state, time) => persist(() => deps.saveCheckpoint(state, time)) }, sample), deps.now)
 }
 
 async function generateInsightReport(input: InsightGenerationInput, deps: InsightGenerationDeps, sampleElapsed: SampleElapsed): Promise<InsightReport> {

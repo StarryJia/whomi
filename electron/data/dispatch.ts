@@ -16,13 +16,13 @@ import { isOperationId } from '../../src/shared/operation-diagnostics'
 const aiStorageArity = {
   listModels: [0, 0], saveModel: [1, 2], modelSecret: [1, 2], listSkills: [0, 0], registerSkill: [1, 1],
   previewInsightScope: [1, 1], prepareAnalysis: [1, 2], discardAnalysisPreparation: [1, 1], confirmAnalysis: [1, 2], getAnalysis: [1, 1], listAnalyses: [0, 1], arrangeAnalysis: [1, 1], renameAnalysis: [1, 1], deleteAnalysis: [1, 1], getReport: [1, 1],
-  readInsightSources: [1, 1], readInsightCitation: [1, 1], saveInsightCheckpoint: [3, 4], saveInsightElapsed: [2, 2],
+  readInsightSources: [1, 1], readInsightCitation: [1, 1], saveInsightCheckpoint: [3, 5], saveInsightElapsed: [2, 2],
   analysisContext: [1, 1], saveAnalysis: [2, 3], completeAnalysis: [2, 3], resumeAnalysis: [1, 1],
-  openThread: [1, 1], listThreads: [1, 1], createThread: [1, 1], getThread: [1, 1], arrangeThread: [2, 2], deleteThread: [2, 2], createTurn: [1, 1], turnContext: [1, 1], saveTurn: [2, 2], beginRetryTurn: [1, 1],
+  openThread: [1, 1], listThreads: [1, 1], createThread: [1, 1], getThread: [1, 1], arrangeThread: [2, 2], deleteThread: [2, 2], createTurn: [1, 1], turnContext: [1, 2], saveTurn: [2, 2], beginRetryTurn: [1, 1],
   recordUsage: [1, 1], recover: [0, 0],
 } as const satisfies Record<keyof AiRepository, readonly [number, number]>
 
-const settingsStorageArity = { getPrompts: [0, 0], savePrompt: [2, 2], accountUsage: [2, 2], setAccountConnection: [2, 3], get: [0, 0], providerSecret: [1, 1], saveProvider: [1, 2], removeProvider: [1, 1], saveModel: [1, 1], removeModel: [1, 1], saveProcessing: [1, 1], selectModel: [2, 2], setDebug: [1, 1], claimProcessing: [2, 2] } as const
+const settingsStorageArity = { getPrompts: [0, 0], savePrompt: [2, 2], accountUsage: [2, 2], setAccountConnection: [2, 3], get: [0, 0], providerSecret: [1, 1], saveProvider: [1, 2], removeProvider: [1, 1], saveModel: [1, 2], removeModel: [1, 1], saveProcessing: [1, 1], selectModel: [2, 2], setDebug: [1, 1], claimProcessing: [2, 2] } as const
 
 export function createDataDispatcher(store: Store, service: ReturnType<typeof createDataService>, ai?: AiRepository, settings?: SettingsRepository) {
   const queries = createQueries(store), db = store.reader
@@ -77,7 +77,7 @@ export function createDataDispatcher(store: Store, service: ReturnType<typeof cr
         const id = args[0] as string; conversation(id)
         const rows = db.prepare(`SELECT m.id,m.display_name,m.self_hint,
           ${confirmedSelfSql} AS confirmed
-          FROM memberships m WHERE m.conversation_id=? ORDER BY m.id`).all(BigInt(id)) as { id: bigint; display_name: string; self_hint: bigint | null; confirmed: bigint }[]
+          FROM visible_memberships m WHERE m.conversation_id=? ORDER BY m.id`).all(BigInt(id)) as { id: bigint; display_name: string; self_hint: bigint | null; confirmed: bigint }[]
         result = rows.map(row => ({ id: row.id.toString(), displayName: row.display_name, selfHint: row.self_hint === null ? null : row.self_hint === 1n, confirmedSelf: row.confirmed === 1n } satisfies MemberView))
         break
       }

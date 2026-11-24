@@ -1,6 +1,7 @@
 import { SaxesParser } from 'saxes'
 import type { MessageKind, ParsedMessage, ParsedReply } from '../../../src/shared/conversation-model'
 import type { SiwxCompatibility } from './types'
+import { hasWechatRecallMarker, wechatTypeNumber } from './wechat-recall'
 
 export const sourceKey = (value: unknown): string | null =>
   typeof value === 'string' ? value.length ? value : null : typeof value === 'number' && Number.isSafeInteger(value) ? String(value) : null
@@ -32,11 +33,6 @@ type ReportUnknownType = (detail: UnknownTypeDetail) => void
 function unknownKind(report: ReportUnknownType | undefined, detail: UnknownTypeDetail): MessageKind {
   report?.(detail)
   return 'unknown'
-}
-
-function typeNumber(value: unknown): number | undefined {
-  const number = typeof value === 'string' && /^\d+$/.test(value) ? Number(value) : value
-  return typeof number === 'number' && Number.isSafeInteger(number) && number > 0 ? number : undefined
 }
 
 function withoutTrailingNullPadding(content: string): string {
@@ -87,8 +83,8 @@ function readSiwxPayload(content: unknown) {
     return null
   }
 
-  const elementType = typeNumber(typeField.text.trim())
-  const attribute = typeNumber(attributeType?.trim())
+  const elementType = wechatTypeNumber(typeField.text.trim())
+  const attribute = wechatTypeNumber(attributeType?.trim())
   let subtype: number | undefined
   if (applications === 1) {
     if (typeField.count === 1 && (attributeType === undefined || attribute === elementType)) subtype = elementType
@@ -115,8 +111,9 @@ function readSiwxPayload(content: unknown) {
 export function siwxKind(raw: Record<string, any>, report?: ReportUnknownType, markExpandedShare?: () => void): MessageKind {
   if (siwxQuote(raw)) return 'reply'
   const label = sourceKey(raw.typeName ?? raw.type)
+  const localType = wechatTypeNumber(raw.localType)
+  if (hasWechatRecallMarker(label, localType, raw.content)) return 'system'
   if (label && Object.hasOwn(named, label)) return named[label]
-  const localType = typeNumber(raw.localType)
   const isApplicationType = localType !== undefined && localType % applicationTypeBase === 49
   const type = isApplicationType ? 49 : localType
   if (isApplicationType || label === '链接/文件') {
@@ -225,7 +222,7 @@ export function normalizeSiwx(raw: Record<string, any>, base: ParsedMessage, rep
     idNamespace: originalId && originalId !== '0' ? 'wechat:server-message' : null,
     senderKey: kind === 'system' ? null : sender,
     senderKind: kind === 'system' ? 'system' : sender ? 'member' : 'unknown',
-    senderName: typeof raw.senderDisplayName === 'string' && raw.senderDisplayName ? raw.senderDisplayName : sender ?? '未知发送者',
+    senderName: kind === 'system' ? '' : typeof raw.senderDisplayName === 'string' && raw.senderDisplayName ? raw.senderDisplayName : sender ?? '未知发送者',
     sentAtMs, timeRaw: sourceKey(raw.formattedTime) ?? sourceKey(raw.createTime),
     timePrecision: sentAtMs === null ? 'unknown' : unit, timezone: sentAtMs === null ? null : 'UTC', kind,
     text: typeof raw.content === 'string' ? raw.content : raw.content == null ? '' : JSON.stringify(raw.content),
@@ -233,7 +230,7 @@ export function normalizeSiwx(raw: Record<string, any>, base: ParsedMessage, rep
     reply: quote ? parsedReply(quote, replyId) : null,
     attachments: ['image', 'audio', 'video', 'file', 'sticker'].includes(kind)
       ? [{ kind, locator: sourceKey(raw.mediaFile), name: null, state: raw.mediaFile ? 'unresolved' : 'missing' }] : [],
-    extra: { ...(raw.localType !== undefined ? { localType: raw.localType } : {}), ...(raw.isSend === 1 ? { selfHint: true } : {}) },
+    extra: { ...(raw.localType !== undefined ? { localType: raw.localType } : {}), ...(kind !== 'system' && raw.isSend === 1 ? { selfHint: true } : {}) },
   }
   if (reportCompatibility) {
     const hadQuote = Boolean(raw.quote && typeof raw.quote === 'object' && Object.keys(raw.quote).length)

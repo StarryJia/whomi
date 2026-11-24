@@ -2,14 +2,19 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import { createServer, type ServerResponse } from 'node:http'
 import fs from 'node:fs'
 import { syncBuiltinESMExports } from 'node:module'
+import { sampleJudgments } from '../desktop/fixtures/pi-insight-model.mjs'
 import { mkdtempSync, rmSync, writeFileSync, mkdirSync, existsSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { join, resolve, sep } from 'node:path'
 import { PiRuntime } from '../../electron/agent/runtime'
 import type { AiModel } from '../../src/shared/ai-contract'
 import { generateInsight } from '../../electron/main/insight-generation'
+import { generatePiInsight, type PiInsightCheckpoint } from '../../electron/main/pi-insight-generation'
+import { aiOperation } from '../../electron/main/ai-operation-diagnostics'
 import { defaultInsightRunLimits } from '../../electron/main/insight-policy'
 import { defaultInsightPrompts } from '../../electron/data/ai/insight-prompts'
+import { defaultProcessing } from '../../src/shared/settings-contract'
+import type { InsightRuntimeEvent } from '../../electron/agent/protocol'
 
 describe('Pi runtime over a controlled OpenAI compatible service', () => {
   beforeAll(async () => { await import('@earendil-works/pi-coding-agent') }, 30000)
@@ -47,6 +52,221 @@ describe('Pi runtime over a controlled OpenAI compatible service', () => {
   const options = () => ({ signal: new AbortController().signal, onText: () => {} })
   const input = (model: AiModel, prompt = '示例提问') => ({ key: 'example-thread', model, systemPrompt: '仅依据本轮许可材料回答。', prompt })
 
+  function overloadFixture() {
+    const states: PiInsightCheckpoint[] = []
+    const events: InsightRuntimeEvent[] = []
+    const runtime = new PiRuntime(directory)
+    const controller = new AbortController()
+    const operation = aiOperation(undefined, 'insight', 'generate')
+    const source = { id: '1', revision: 'a'.repeat(64), senderName: '本人', isSelf: true, text: '周三散步。', replyToMessageId: null, sentAtMs: 0 }
+    const read = vi.fn(async () => [source])
+    const run = (checkpoint: PiInsightCheckpoint | null = null) => generatePiInsight({
+      snapshot: { taskId: '7', scope: { kind: 'all' }, timezone: 'UTC', createdAtMs: 0, sourceStartTimeMs: 0, sourceEndTimeMs: 0,
+        sources: [{ messageId: source.id, revision: source.revision }] },
+      conversationId: '1', model: { ...model, protocol: 'openai-responses' }, thinkingLevel: undefined,
+      prompts: defaultInsightPrompts, processing: defaultProcessing, checkpoint, signal: controller.signal, operation, read,
+      save: async state => { states.push(structuredClone(state)) },
+      run: (request, io) => runtime.run(request, { signal: controller.signal, onText: () => {}, insight: {
+        read: io.read, record: async event => { events.push(event); return io.record(event) } } }),
+    })
+    return { run, events, states, operation, controller, read }
+  }
+  function frames(response: ServerResponse, ...events: unknown[]) {
+    response.writeHead(200, { 'Content-Type': 'text/event-stream' })
+    response.end(events.map(event => 'data: ' + JSON.stringify(event) + '\n\n').join(''))
+  }
+  const busy = { type: 'response.failed', response: { status: 'failed', error: {
+    code: 'server_error', message: 'The server is overloaded. Please try again later.' } } }
+  function jsonError(response: ServerResponse, status: number, code: string, message: string) {
+    response.writeHead(status, { 'Content-Type': 'application/json' })
+    response.end(JSON.stringify({ error: { code, message } }))
+  }
+
+  it('resumes the native tool result after two explicit overloads, keeps receipts and never resends the saved report', async () => {
+    const fixture = overloadFixture()
+    const received: number[] = []
+    const sections = [{ content: [{ text: '周三散步', citationId: 'c1' }] }]
+    const report = { aboutYou: sections, relationship: sections, citations: [{ id: 'c1', fragments: [{ messageIds: ['1'] }] }], limitations: [], judgments: sampleJudgments() }
+    answer = response => {
+      received.push(Date.now())
+      if (requests.length === 2) return frames(response, busy)
+      if (requests.length === 3) return jsonError(response, 503, 'service_unavailable', 'The service is temporarily unavailable.')
+      const item = requests.length === 1 ? { type: 'function_call', id: 'fc_1', call_id: 'call_1', name: 'read_messages', arguments: '{}' }
+        : { type: 'message', id: 'msg_1', role: 'assistant', content: [{ type: 'output_text', text: JSON.stringify(report) }] }
+      frames(response, { type: 'response.output_item.done', output_index: 0, item },
+        { type: 'response.completed', response: { status: 'completed', output: [item], usage: { input_tokens: 15, output_tokens: 5 } } })
+    }
+    const saved = await fixture.run()
+    expect(requests).toHaveLength(4)
+    expect(received[2] - received[1]).toBeGreaterThanOrEqual(1950)
+    expect(received[3] - received[2]).toBeGreaterThanOrEqual(7950)
+    for (const request of requests.slice(1)) expect(request).toMatchObject({ input: expect.arrayContaining([
+      expect.objectContaining({ type: 'function_call_output', call_id: 'call_1', output: expect.stringContaining('周三散步。') }),
+    ]) })
+    expect(fixture.read).toHaveBeenCalledTimes(1)
+    expect(fixture.events.filter(event => event.type === 'request').map(event => [event.success, event.spans.length]))
+      .toEqual([[true, 0], [false, 0], [false, 0], [true, 1]])
+    const checkpoints = fixture.states.flatMap(state => state.checkpoint ? [JSON.parse(state.checkpoint).sessionFile] : [])
+    expect(new Set(checkpoints).size).toBe(1)
+    expect(fixture.states.at(-1)).toMatchObject({ requests: 4, taskId: '7', input: 30, output: 10, coverage: { coveredMessageIds: ['1'] }, report: saved })
+    expect(await fixture.run(fixture.states.at(-1))).toEqual(saved)
+    expect(requests).toHaveLength(4)
+  }, 30000)
+
+  it.each(['invalid', 'unavailable-model', 'quota', 'partial', 'interrupted', 'exhausted', 'paused'] as const)(
+    'handles %s without uncontrolled resubmission', async mode => {
+      const fixture = overloadFixture()
+      answer = response => {
+        if (mode === 'invalid') return jsonError(response, 400, 'invalid_request_error', 'Unsupported tool parameter: server_overloaded')
+        if (mode === 'unavailable-model') return jsonError(response, 400, 'model_not_found', 'The model is unavailable for this account.')
+        if (mode === 'quota') return jsonError(response, 429, 'insufficient_quota', 'The server is overloaded.')
+        if (mode === 'partial') return frames(response,
+          { type: 'response.output_item.added', output_index: 0, item: { type: 'message', id: 'msg_1', role: 'assistant', content: [] } },
+          { type: 'response.content_part.added', item_id: 'msg_1', output_index: 0, content_index: 0, part: { type: 'output_text', text: '' } },
+          { type: 'response.output_text.delta', item_id: 'msg_1', output_index: 0, content_index: 0, delta: '已开始撰写。' }, busy)
+        if (mode === 'interrupted') return frames(response, { type: 'response.created', response: { id: 'resp_incomplete', status: 'in_progress' } })
+        frames(response, busy)
+      }
+      const retry = vi.spyOn(fixture.operation, 'event')
+      if (mode === 'paused') retry.mockImplementation(stage => {
+        if (stage === 'retry') setTimeout(() => fixture.controller.abort(), 10)
+      })
+      await expect(fixture.run()).rejects.toMatchObject(mode === 'paused' ? { name: 'AbortError' }
+        : { code: mode === 'exhausted' ? 'MODEL_UNAVAILABLE' : 'MODEL_REQUEST_FAILED' })
+      expect(requests).toHaveLength(mode === 'exhausted' ? 3 : 1)
+      expect(retry.mock.calls.filter(([stage]) => stage === 'retry')).toHaveLength(mode === 'exhausted' ? 2 : mode === 'paused' ? 1 : 0)
+      expect(fixture.states.at(-1)).toMatchObject({ requests: requests.length, checkpoint: expect.any(String), coverage: { coveredMessageIds: [] } })
+    }, 30000)
+
+  it.each(['openai-completions', 'openai-responses'] as const)('runs the official insight from %s on Responses and replays the tool output with its source', async protocol => {
+    const localFetch = globalThis.fetch
+    const routes: string[] = []
+    vi.spyOn(globalThis, 'fetch').mockImplementation((url, init) => {
+      routes.push(String(url))
+      return localFetch(model.baseUrl + '/local-fixture', init)
+    })
+    const selected = { ...model, model: 'gpt-6.1-sol', baseUrl: 'https://api.openai.com/v1', protocol, contextWindow: null, maxTokens: null }
+    const section = [{ content: [{ text: '一起散步', citationId: 'c1' }] }]
+    const report = { aboutYou: section, relationship: section, citations: [{ id: 'c1', fragments: [{ messageIds: ['1'] }] }], limitations: [], judgments: sampleJudgments() }
+    const normalAnswer = answer
+    answer = response => {
+      if (!routes.at(-1)?.endsWith('/responses')) {
+        response.writeHead(400, { 'Content-Type': 'application/json' })
+        response.end(JSON.stringify({ error: { message: 'Use /responses for function tools with this model.' } }))
+        return
+      }
+      const first = requests.length === 1
+      const item = first ? { type: 'function_call', id: 'fc_read', call_id: 'call_read', name: 'read_messages', arguments: '{}' }
+        : { type: 'message', id: 'msg_report', role: 'assistant', content: [{ type: 'output_text', text: JSON.stringify(report) }] }
+      response.writeHead(200, { 'Content-Type': 'text/event-stream' })
+      const frames = [{ type: 'response.output_item.done', output_index: 0, item },
+        { type: 'response.completed', response: { id: first ? 'resp_read' : 'resp_report', status: 'completed', output: [item],
+          usage: { input_tokens: 15, output_tokens: 5, input_tokens_details: { cached_tokens: 4 } } } }]
+      response.end(frames.map(frame => 'data: ' + JSON.stringify(frame) + '\n\n').join(''))
+    }
+    const runtime = new PiRuntime(directory)
+    const settled: InsightRuntimeEvent[] = []
+    const source = { id: '1', revision: 'a'.repeat(64), senderName: '本人', isSelf: true, text: '周末一起散步', replyToMessageId: null, sentAtMs: 0 }
+    const saved = await generatePiInsight({
+      snapshot: { taskId: '1', scope: { kind: 'all' }, timezone: 'UTC', createdAtMs: 0, sourceStartTimeMs: 0, sourceEndTimeMs: 0,
+        sources: [{ messageId: source.id, revision: source.revision }] },
+      conversationId: '1', model: selected, thinkingLevel: undefined, prompts: defaultInsightPrompts, processing: defaultProcessing,
+      checkpoint: null, signal: AbortSignal.timeout(10000), operation: aiOperation(undefined, 'insight', 'generate'), save: async () => {},
+      read: async () => [source], run: (request, io) => runtime.run(request, { ...options(), insight: { read: io.read,
+        record: async event => { settled.push(event); await io.record(event) } } }),
+    })
+    expect(saved.citations[0].fragments[0].sources).toEqual([{ messageId: '1', revision: source.revision }])
+    expect(routes).toEqual(Array(2).fill('https://api.openai.com/v1/responses'))
+    expect(selected.protocol).toBe(protocol)
+    for (const req of requests) {
+      expect(req).toMatchObject({ model: 'gpt-6.1-sol', max_output_tokens: 128000, store: false, tools: [expect.objectContaining({ type: 'function', name: 'read_messages', strict: false })],
+        include: expect.arrayContaining(['reasoning.encrypted_content']) })
+      expect(req).not.toHaveProperty('reasoning')
+      expect(req).not.toHaveProperty('previous_response_id')
+    }
+    expect(requests[1]).toMatchObject({ input: expect.arrayContaining([
+      expect.objectContaining({ type: 'function_call', call_id: 'call_read', id: 'fc_read' }),
+      expect.objectContaining({ type: 'function_call_output', call_id: 'call_read', output: expect.stringContaining(source.text) }),
+    ]) })
+    const expectedUsage = { inputTokens: 11, totalInputTokens: 15, cacheReadTokens: 4, outputTokens: 5 }
+    expect(settled.filter(event => event.type === 'request')).toMatchObject([
+      { success: true, spans: [], usage: expectedUsage }, { success: true, spans: [{ messageId: '1' }], usage: expectedUsage },
+    ])
+    const checkpoint = settled.find(event => event.type === 'checkpoint')!.checkpoint
+    const protocols = fs.readFileSync(JSON.parse(checkpoint).sessionFile, 'utf8').trim().split('\n').map(line => JSON.parse(line).message)
+      .filter(message => message?.role === 'assistant').map(message => message.api)
+    expect(protocols).toEqual(['openai-responses', 'openai-responses'])
+    await runtime.run({ ...input(selected), key: 'explicit-thinking', thinkingLevel: 'high', insightSession: { processing: defaultProcessing } },
+      { ...options(), insight: { read: vi.fn(), record: async () => {} } })
+    expect(requests.at(-1)).toMatchObject({ reasoning: { effort: 'high' } })
+    answer = normalAnswer
+    await runtime.run(input({ ...selected, protocol: 'openai-completions' }), options())
+    await runtime.run({ ...input({ ...selected, protocol: 'openai-completions', baseUrl: model.baseUrl }), insightSession: { processing: defaultProcessing } },
+      { ...options(), insight: { read: vi.fn(), record: async () => {} } })
+    expect(routes.slice(3)).toEqual(['https://api.openai.com/v1/chat/completions', model.baseUrl + '/chat/completions'])
+  }, 20000)
+
+  it('opens the first user-message checkpoint in a new runtime when the first model request gets no answer', async () => {
+    const runInput = { ...input(model), purpose: 'insight' as const, insightSession: { processing: defaultProcessing } }
+    const events: InsightRuntimeEvent[] = []
+    const callbacks = { read: vi.fn(), record: async (event: InsightRuntimeEvent) => { events.push(event) } }
+    const success = answer
+    answer = response => { response.writeHead(503); response.end() }
+    await expect(new PiRuntime(directory).run(runInput, { ...options(), insight: callbacks })).rejects.toMatchObject({ code: 'MODEL_REQUEST_FAILED' })
+    const checkpoint = events.find(e => e.type === 'checkpoint')?.checkpoint
+    expect(checkpoint).toBeTruthy()
+    expect(existsSync(JSON.parse(checkpoint!).sessionFile)).toBe(true)
+    expect(events.filter(e => e.type === 'request')).toMatchObject([{ success: false, spans: [], usage: { incomplete: true } }])
+    answer = success
+    const resumed = await new PiRuntime(directory).run({ ...runInput, checkpoint, prompt: '继续同一项洞察。' }, { ...options(), insight: callbacks })
+    expect(JSON.parse(resumed.checkpoint).sessionFile).toBe(JSON.parse(checkpoint!).sessionFile)
+    expect(requests[1].messages.filter(message => message.role === 'user')).toMatchObject([
+      { content: [{ text: '示例提问' }] }, { content: [{ text: '继续同一项洞察。' }] },
+    ])
+    expect(callbacks.read).not.toHaveBeenCalled()
+  }, 20000)
+
+  it('resumes the same Pi tool result after pausing before inference and confirms it only after a successful request', async () => {
+    const events: InsightRuntimeEvent[] = []
+    const span = { messageId: 'm3', start: 0, end: 3, length: 3 }
+    const controller = new AbortController()
+    const runInput = { ...input(model), purpose: 'insight' as const, insightSession: { processing: defaultProcessing } }
+    const read = vi.fn(async () => ({ page: { status: 'ok' as const, nextCursor: null, messages: [{ id: 'm3', text: '周五见', sentAtMs: 0, senderName: '本人', isSelf: true, replyToMessageId: null }] }, spans: [span] }))
+    const normalAnswer = answer
+    answer = response => {
+      if (requests.length === 1) {
+        response.writeHead(200, { 'Content-Type': 'text/event-stream' })
+        const delta = { role: 'assistant', content: '回查邮箱 pi-note@example.org', tool_calls: [
+          { index: 0, id: 'call1', type: 'function', function: { name: 'read_messages', arguments: '{}' } },
+        ] }
+        response.end('data: ' + JSON.stringify({ choices: [{ index: 0, delta, finish_reason: 'tool_calls' }], usage: { prompt_tokens: 11, completion_tokens: 4 } }) + '\n\ndata: [DONE]\n\n')
+      } else if (requests.length === 2) controller.abort()
+      else normalAnswer(response)
+    }
+    const callbacks = { read, record: async (event: InsightRuntimeEvent) => { events.push(event) } }
+    const runtime = new PiRuntime(directory)
+    await expect(runtime.run(runInput, { ...options(), signal: controller.signal, insight: callbacks })).rejects.toMatchObject({ name: 'AbortError' })
+    expect(events.filter(e => e.type === 'request' && e.success).flatMap(e => e.type === 'request' ? e.spans : [])).toEqual([])
+    const checkpoint = events.filter(e => e.type === 'checkpoint').at(-1)?.checkpoint
+    expect(checkpoint).toBeTruthy()
+    const result = await runtime.run({ ...runInput, checkpoint }, { ...options(), insight: callbacks })
+    expect(result.text).toBe('已收到')
+    expect(read).toHaveBeenCalledTimes(1)
+    expect(requests).toHaveLength(3)
+    expect(requests[0].tools).toMatchObject([{ function: { name: 'read_messages' } }])
+    for (const req of requests.slice(1)) {
+      expect(JSON.stringify(req)).toContain('周五见')
+      expect(JSON.stringify(req)).toContain('[邮箱]')
+      expect(JSON.stringify(req)).not.toContain('pi-note@example.org')
+    }
+    expect(events.filter(e => e.type === 'request')).toMatchObject([
+      { success: true, spans: [], usage: { inputTokens: 11, outputTokens: 4 } },
+      { success: false, spans: [], usage: { incomplete: true } },
+      { success: true, spans: [span], usage: { inputTokens: 12, outputTokens: 3 } },
+    ])
+    expect(JSON.parse(result.checkpoint).sessionFile).toBe(JSON.parse(checkpoint!).sessionFile)
+  }, 30000)
+
   it('recognizes an upstream gateway timeout for insights while keeping normal dialogue errors unchanged', async () => {
     answer = response => {
       response.writeHead(504, { 'Content-Type': 'application/json' })
@@ -57,6 +277,44 @@ describe('Pi runtime over a controlled OpenAI compatible service', () => {
       await expect(result).rejects.toMatchObject({ code: purpose ? 'MODEL_TIMEOUT' : 'MODEL_REQUEST_FAILED' })
     }
   }, 20000)
+
+  it('counts native compaction requests and protects the model-written summary before continuing with the read result', async () => {
+    const events: InsightRuntimeEvent[] = []
+    const longMessage = '约在周五。'.repeat(1800)
+    const span = { messageId: 'm1', start: 0, end: longMessage.length, length: longMessage.length }
+    let ordinaryRequests = 0
+    answer = response => {
+      response.writeHead(200, { 'Content-Type': 'text/event-stream' })
+      const compacting = JSON.stringify(requests.at(-1)?.messages[0]).includes('context summarization assistant')
+      if (!compacting) ordinaryRequests++
+      const tool = !compacting && ordinaryRequests === 1
+      const delta = tool ? { role: 'assistant', content: '先查看发言。', tool_calls: [{ index: 0, id: 'call-a', type: 'function', function: { name: 'read_messages', arguments: '{}' } }] }
+        : { role: 'assistant', content: compacting ? '压缩笔记：示例联系值 summary@example.org。' : '首次报告' }
+      response.end('data: ' + JSON.stringify({ choices: [{ index: 0, delta, finish_reason: tool ? 'tool_calls' : 'stop' }],
+        usage: { prompt_tokens: tool ? 5800 : 20, completion_tokens: 12 } }) + '\n\ndata: [DONE]\n\n')
+    }
+    const privateFolder = 'synthetic-personal-insight-folder'
+    const result = await new PiRuntime(join(directory, privateFolder)).run({ ...input({ ...model, contextWindow: 8000 }), insightSession: { processing: defaultProcessing } }, {
+      ...options(), insight: {
+        read: async () => ({ page: { status: 'ok', messages: [{ id: 'm1', isSelf: true, senderName: '本人', text: longMessage, replyToMessageId: null, sentAtMs: 0 }], nextCursor: null }, spans: [span] }),
+        record: async event => { events.push(event) },
+      },
+    })
+    expect(result.text).toBe('首次报告')
+    const receipts = events.filter(e => e.type === 'request')
+    expect(receipts.filter(e => e.kind === 'compaction').length).toBeGreaterThan(0)
+    expect(receipts.length).toBe(requests.length)
+    expect(receipts.every(e => e.success && e.usage.outputTokens === 12)).toBe(true)
+    for (const request of requests) {
+      expect(JSON.stringify(request.messages[0])).toContain('仅依据本轮许可材料回答')
+      expect(JSON.stringify(request)).not.toContain(privateFolder)
+      expect(JSON.stringify(request)).not.toContain('<cwd>')
+    }
+    expect(receipts.at(-1)?.spans).toEqual([span])
+    expect(JSON.stringify(requests.at(-1))).toContain('压缩笔记')
+    expect(JSON.stringify(requests.at(-1))).toContain('仅依据本轮许可材料回答')
+    expect(JSON.stringify(requests.at(-1))).not.toContain('summary@example.org')
+  }, 30000)
 
   it('keeps an ordinary Google validation error out of the timeout retry', async () => {
     answer = response => {
@@ -93,14 +351,49 @@ describe('Pi runtime over a controlled OpenAI compatible service', () => {
     expect(report.limitations).toEqual(['材料有限。'])
   }, 20000)
 
-  it('uses the upstream request fallback without saving invented model capacities', async () => {
+  it('uses the estimated output ceiling on a short request without persisting it to the model', async () => {
     const unknown = { ...model, contextWindow: null, maxTokens: null }
     const result = await new PiRuntime(directory).run(input(unknown as unknown as AiModel), options())
     expect(result.text).toBe('已收到')
     const request = requests[0] as Record<string, unknown>
-    expect(request.max_tokens ?? request.max_completion_tokens).toBe(8192)
+    expect(request.max_tokens ?? request.max_completion_tokens).toBe(128000)
     expect(unknown.contextWindow).toBeNull()
     expect(unknown.maxTokens).toBeNull()
+  }, 20000)
+
+  it('uses the catalog capacity for a standard chat request to the configured official endpoint', async () => {
+    const localFetch = globalThis.fetch
+    const endpoint = 'https://dashscope.aliyuncs.com/compatible-mode/v1'
+    const official = { ...model, model: 'qwen3.7-plus', baseUrl: endpoint, contextWindow: null, maxTokens: null }
+    const intercepted = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, init) => {
+      expect(String(url)).toBe(endpoint + '/chat/completions')
+      return localFetch(model.baseUrl + '/chat/completions', init)
+    })
+    expect((await new PiRuntime(directory).run(input(official), options())).text).toBe('已收到')
+    expect(intercepted).toHaveBeenCalledTimes(1)
+    const request = requests[0] as Record<string, unknown>
+    expect(request.max_tokens ?? request.max_completion_tokens).toBe(131072)
+  }, 20000)
+
+  it('reduces output when the service reports that the previous turn used most of the input window', async () => {
+    const runtime = new PiRuntime(directory)
+    const unknown = { ...model, contextWindow: null, maxTokens: null }
+    answer = response => frames(response, { id: 'large-turn', choices: [{ index: 0, delta: { role: 'assistant', content: '收到' }, finish_reason: 'stop' }],
+      usage: { prompt_tokens: 143990, completion_tokens: 10, total_tokens: 144000 } })
+    const first = await runtime.run(input(unknown), options())
+    await runtime.run({ ...input(unknown, '继续'), checkpoint: first.checkpoint }, options())
+    const request = requests[1] as Record<string, unknown>
+    const output = request.max_tokens ?? request.max_completion_tokens
+    expect(output).toBeGreaterThan(100000)
+    expect(output).toBeLessThanOrEqual(112000)
+  }, 20000)
+
+  it('honors the remaining output budget for a packed first turn before the service can report usage', async () => {
+    const unknown = { ...model, contextWindow: null, maxTokens: null }
+    const request = { ...input(unknown, '读'.repeat(47500)), outputTokenLimit: 112000 }
+    await new PiRuntime(directory).run(request, options())
+    const body = requests[0] as Record<string, unknown>
+    expect(body.max_tokens ?? body.max_completion_tokens).toBe(112000)
   }, 20000)
 
   it('streams real Pi output, records reported usage, and exposes no tools or ambient instructions', async () => {

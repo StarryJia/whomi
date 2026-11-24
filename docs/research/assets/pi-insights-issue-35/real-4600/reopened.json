@@ -1,0 +1,23 @@
+{
+  "id": "1",
+  "state": "stopped",
+  "covered": 526,
+  "total": 4600,
+  "usage": {
+    "inputTokens": 864,
+    "totalInputTokens": 208255,
+    "outputTokens": 25550,
+    "cacheReadTokens": 93743,
+    "cacheReadTokensIncomplete": true,
+    "cacheWriteTokens": 113648,
+    "cacheWriteTokensIncomplete": true,
+    "durationMs": 402239,
+    "incomplete": true,
+    "outputTokensPerSecond": 63.519449879300616,
+    "startedAt": 1795450068324,
+    "completedAt": 1795450471893
+  },
+  "elapsedMs": 405170,
+  "canResume": true,
+  "resumed": false
+}

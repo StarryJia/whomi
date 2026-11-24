@@ -1,0 +1,63 @@
+{
+  "format": "conversation-insights-v1",
+  "aboutYou": [
+    {
+      "content": [
+        {
+          "text": "你说这次张罗聚会让你累了",
+          "citationId": "early"
+        },
+        {
+          "text": "。这句话能说明你当时的感受。"
+        }
+      ]
+    }
+  ],
+  "relationship": [
+    {
+      "content": [
+        {
+          "text": "ta 回忆上次由自己联系场地和约人",
+          "citationId": "later"
+        },
+        {
+          "text": "。可以把两次聚会分开讨论，再约定下次谁来联系。"
+        }
+      ]
+    }
+  ],
+  "citations": [
+    {
+      "id": "early",
+      "conversationId": "1",
+      "fragments": [
+        {
+          "sources": [
+            {
+              "messageId": "2",
+              "revision": "6e5daa54467d7af72c51ac62db5f05beae42b77652cafa4bfcd1a7b8098b0ffb"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "later",
+      "conversationId": "1",
+      "fragments": [
+        {
+          "sources": [
+            {
+              "messageId": "3128",
+              "revision": "062b64e5a0d652486bd943e4085d5232393b6aea02bc00c2232126b43adfec8d"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "两次聚会不足以判断更长时间里的分工。"
+  ],
+  "judgments": []
+}

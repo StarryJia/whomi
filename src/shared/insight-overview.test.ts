@@ -58,3 +58,14 @@ test('改名不改变判断，明确的不确定判断不会被同来源多数�
   expect(currentOverviewContributions([renamed])[0].dimensions).toEqual(currentOverviewContributions([original])[0].dimensions)
   expect(currentOverviewContributions([renamed, task('24', [judgment(null)])])[0].dimensions.JP).toBeNull()
 })
+
+test('只含反例的不确定判断纳入总览，删除来源报告后恢复原有倾向', () => {
+  const initial = task('23', [judgment('J')])
+  const exception = task('24', [{ ...judgment(null, []), counterexampleSources: [ref('2')] }])
+  const unsupported = task('25', [judgment(null, [])])
+  const [combined] = currentOverviewContributions([initial, exception, unsupported])
+  expect(combined.dimensions.JP).toBeNull()
+  expect(combined.sourceTaskIds).toEqual(['23', '24'])
+  expect(combined.evidence.JP.map(source => source.messageId)).toEqual(['1', '2'])
+  expect(currentOverviewContributions([initial, unsupported])[0]).toMatchObject({ dimensions: { JP: 'J' }, sourceTaskIds: ['23'] })
+})

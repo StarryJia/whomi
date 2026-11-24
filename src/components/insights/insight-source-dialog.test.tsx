@@ -15,6 +15,16 @@ function source(ids = ['10', '11', '12'], highlightIds = ['10', '12']): InsightC
     start: { id: ids[0], timeBucket: 0, sortTime: 10 }, end: { id: ids.at(-1)!, timeBucket: 0, sortTime: 12 }, rangeEndCursor: 'end',
     page: { items: ids.map(message), beforeCursor: 'before', afterCursor: 'after', snapshotMaxId: '40' }, highlightIds }
 }
+test('旧报告的引用位置按系统通知展示，保留高亮和原文', async () => {
+  const data = source(['10'], ['10'])
+  if (data.status !== 'available') throw Error('缺少测试原文')
+  Object.assign(data.page.items[0], { kind: 'system', senderKind: 'system', memberId: null, senderName: '旧导出昵称', text: '你撤回了一条消息' })
+  render(<InsightSourceDialog {...props(vi.fn(async () => data))} />)
+  const notice = await screen.findByText('你撤回了一条消息')
+  expect(notice.closest('[data-citation="true"]')).toHaveAttribute('data-message-id', '10')
+  expect(notice.closest('li')?.querySelector('.conversation-avatar,.message-meta,.message-text')).toBeNull()
+  expect(screen.queryByText('旧导出昵称')).not.toBeInTheDocument()
+})
 function props(readCitation = vi.fn(async () => source())) {
   return { taskId: '7', citationId: 'e1', phrase: '那次准备', conversationTitle: '小林', onClose: vi.fn(), returnFocus: createRef<HTMLButtonElement>(), fragmentCount: 2,
     readCitation, client: { locateSource: vi.fn(), readMessages: vi.fn(async (input: { limit?: number }) => {
@@ -22,6 +32,37 @@ function props(readCitation = vi.fn(async () => source())) {
       return { items: [message('9')], beforeCursor: null, afterCursor: 'before', snapshotMaxId: '40' }
     }) } }
 }
+test('点击第二段引文直接定位原句，只标记这条来源消息中的引文', async () => {
+  const window = source(['20', '21'], ['20', '21'])
+  if (window.status !== 'available') throw Error('缺少测试原文')
+  window.page.items[0].text = '我们周末再约，好吗？'
+  window.page.items[1].text = '好呀，我们周末再约。'
+  const read = vi.fn().mockResolvedValue(window)
+  render(<InsightSourceDialog {...props(read)} initialFragmentIndex={1} quote="周末再约" quoteMessageId="21" />)
+  expect(await screen.findByText('2 / 2')).toBeVisible()
+  expect(read).toHaveBeenCalledWith({ taskId: '7', citationId: 'e1', fragmentIndex: 1, messageId: '21' })
+  const region = screen.getByRole('region', { name: '引用聊天记录' })
+  const mark = region.querySelector('mark')
+  expect(mark).toHaveTextContent('周末再约')
+  expect(mark?.closest('[data-message-id]')).toHaveAttribute('data-message-id', '21')
+  expect(region.querySelector('[data-message-id="20"] mark')).toBeNull()
+
+  Object.defineProperties(region, { clientHeight: { value: 300 }, scrollHeight: { value: 1500 } })
+  vi.spyOn(region, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 400, 300))
+  vi.spyOn(region.querySelector('[data-message-id="21"]')!, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, -700, 400, 900))
+  vi.spyOn(mark!, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, -690, 80, 20))
+  fireEvent.scroll(region, { target: { scrollTop: 700 } })
+  fireEvent.click(screen.getByRole('button', { name: '回到引用' }))
+  expect(region).toHaveFocus()
+
+  fireEvent.click(screen.getByRole('button', { name: '上一段' }))
+  expect(await screen.findByText('1 / 2')).toBeVisible()
+  expect(read).toHaveBeenLastCalledWith({ taskId: '7', citationId: 'e1', fragmentIndex: 0 })
+  expect(region.querySelector('mark')).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: '下一段' }))
+  expect(await screen.findByText('2 / 2')).toBeVisible()
+  expect(read).toHaveBeenLastCalledWith({ taskId: '7', citationId: 'e1', fragmentIndex: 1, messageId: '21' })
+})
 test('records the actual missing highlight separately from a successful citation read', async () => {
   const saved = window.whomi, conversation = vi.fn()
   window.whomi = { ...saved, operationDiagnostics: { conversation, importRefresh: vi.fn() } } as NonNullable<typeof saved>

@@ -178,8 +178,8 @@ test('Cherry restores terminal and interrupted turns and shows real aggregate us
       expect(requests).toHaveLength(5)
       await answer.getByRole('button', { name: /^输出 18 token\b/ }).click()
       const stats = page.getByRole('region', { name: '生成统计' })
-      await expect(stats.getByTestId('message-metric-input')).toContainText('90 Tokens')
-      await expect(stats.getByTestId('message-metric-output')).toContainText('18 Tokens')
+      await expect(stats.getByTestId('message-metric-input')).toContainText('90 token')
+      await expect(stats.getByTestId('message-metric-output')).toContainText('18 token')
       await page.keyboard.press('Escape')
     })
 

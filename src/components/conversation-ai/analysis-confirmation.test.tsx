@@ -53,7 +53,7 @@ describe('会话洞察确认与任务用量', () => {
     expect(screen.getByRole('status')).toHaveTextContent(pending)
     expect(screen.getByRole('button', { name: action })).toBeDisabled()
     expect(screen.getByRole('button', { name: '再次洞察' })).toBeDisabled()
-    expect(screen.getByText('已处理 8 / 24 条')).toBeVisible()
+    expect(screen.getByText('已提交分析 8 / 24 条')).toBeVisible()
 
     await act(async () => rejectResume(new Error('请重试。')))
     expect(screen.getByRole('status')).toHaveTextContent(previous)
@@ -144,7 +144,7 @@ describe('会话洞察确认与任务用量', () => {
 
     if (state === 'failed' || state === 'stopped') {
       await user.click(screen.getByRole('button', { name: '返回上次任务' }))
-      expect(screen.getByText('已处理 8 / 24 条')).toBeVisible()
+      expect(screen.getByText('已提交分析 8 / 24 条')).toBeVisible()
       expect(screen.getByRole('button', { name: state === 'stopped' ? '继续洞察' : '重试' })).toBeEnabled()
       expect(adapter.continueAnalysis).not.toHaveBeenCalled()
     }
@@ -166,7 +166,7 @@ describe('会话洞察确认与任务用量', () => {
     await user.click(screen.getByRole('button', { name: '会话洞察' }))
     await user.click(screen.getByRole('button', { name: '继续洞察' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('请恢复原消息处理设置或重新生成。')
-    expect(screen.getByText('已处理 8 / 24 条')).toBeVisible()
+    expect(screen.getByText('已提交分析 8 / 24 条')).toBeVisible()
     expect(screen.queryByRole('button', { name: '继续洞察' })).toBeNull()
     await user.click(screen.getByRole('button', { name: '再次洞察' }))
     expect(screen.getByRole('button', { name: '开始洞察' })).toBeEnabled()
@@ -202,13 +202,13 @@ describe('会话洞察确认与任务用量', () => {
     const stats = screen.getByRole('group', { name: '分析用量' })
     expect(within(stats).getByText('1,200')).toBeInTheDocument()
     expect(within(stats).getByText('180')).toBeInTheDocument()
-    expect(within(stats).getByText('平均输出速度').nextElementSibling).toHaveTextContent('58.3 词元/秒')
+    expect(within(stats).getByText('平均输出速度').nextElementSibling).toHaveTextContent('58.3 token/秒')
     expect(within(stats).queryByText('总耗时')).not.toBeInTheDocument()
     await act(async () => finish({ taskId: 'analysis-example-42', usage: { inputTokens: 2400, outputTokens: 386, outputTokensPerSecond: 58.3, durationMs: 2000 } }))
     expect(screen.getByText('已完成')).toBeInTheDocument()
     expect(within(stats).getByText('2,400')).toBeInTheDocument()
     expect(within(stats).getByText('386')).toBeInTheDocument()
-    expect(within(stats).getByText('平均输出速度').nextElementSibling).toHaveTextContent('193 词元/秒')
+    expect(within(stats).getByText('平均输出速度').nextElementSibling).toHaveTextContent('193 token/秒')
     expect(within(stats).queryByText('总耗时')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '查看报告' }))
     expect(navigate).toHaveBeenCalledWith('analysis-example-42')
@@ -231,8 +231,8 @@ describe('会话洞察确认与任务用量', () => {
     expect(screen.queryByRole('group', { name: '分析用量' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '详情' }))
     const stats = screen.getByRole('group', { name: '分析用量' })
-    expect(within(stats).getByText('输入词元').nextElementSibling).toHaveTextContent('—')
-    expect(within(stats).getByText('输出词元').nextElementSibling).toHaveTextContent('—')
+    expect(within(stats).getByText('输入 token').nextElementSibling).toHaveTextContent('—')
+    expect(within(stats).getByText('输出 token').nextElementSibling).toHaveTextContent('—')
   })
 
   it('停止后重新生成先回到确认，不将重新请求表达为恢复任务', async () => {
@@ -276,7 +276,7 @@ it('对话洞察列表只订阅选中的任务，新建洞察独立启动', asyn
       {({ analysisControl }) => analysisControl}</ConversationWorkspace>
   }
   const { rerender } = render(workspace('7'))
-  expect(await screen.findByText('已处理 9 / 16 条')).toBeVisible()
+  expect(await screen.findByText('已提交分析 9 / 16 条')).toBeVisible()
   expect(adapter.watchAnalysis).toHaveBeenCalledWith('c', expect.any(Function), expect.any(AbortSignal), '7')
   expect(adapter.continueAnalysis).not.toHaveBeenCalled()
   rerender(workspace())

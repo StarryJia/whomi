@@ -4,7 +4,7 @@ import { createServer } from 'node:http'
 import { mkdtemp, writeFile, rm, mkdir } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import { insightModelPrompt, simpleInsightReply } from './fixtures/insight-model.mjs'
+import { completeModel, readTurns, sampleJudgments } from './fixtures/pi-insight-model.mjs'
 
 test('real Pi process persists analysis reports and dialogue through the isolated desktop bridge', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'whomi-runtime-'))
@@ -16,11 +16,16 @@ test('real Pi process persists analysis reports and dialogue through the isolate
     request.on('data', chunk => { body += chunk })
     request.on('end', () => {
       const input = JSON.parse(body); requests.push({ input, authorization: request.headers.authorization })
-      const prompt = insightModelPrompt(input)
-      const text = prompt.stage ? JSON.stringify(simpleInsightReply(prompt)) : '这段示例中，你约定了一个明确的时间。'
-      response.writeHead(200, { 'Content-Type': 'text/event-stream' })
-      response.write(`data: ${JSON.stringify({ id: 'example', choices: [{ index: 0, delta: { content: text }, finish_reason: null }] })}\n\n`)
-      response.end(`data: ${JSON.stringify({ id: 'example', choices: [{ index: 0, delta: {}, finish_reason: 'stop' }], usage: { prompt_tokens: 20, completion_tokens: 10, total_tokens: 30 } })}\n\ndata: [DONE]\n\n`)
+      if (!input.tools?.some(tool => tool.function.name === 'read_messages')) {
+        return completeModel(response, { text: '这段示例中，你约定了一个明确的时间。' })
+      }
+      const source = readTurns(input).at(-1)?.result?.messages[0]
+      if (!source) return completeModel(response, { read: {} })
+      completeModel(response, { text: JSON.stringify({
+        aboutYou: [{ content: [{ text: '你约定了时间。', citationId: 'time' }] }],
+        relationship: [{ content: [{ text: '你们商量了见面的时间。' }] }],
+        citations: [{ id: 'time', fragments: [{ messageIds: [source.id] }] }], limitations: [], judgments: sampleJudgments(),
+      }) })
     })
   })
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve))
@@ -147,7 +152,8 @@ test('real Pi process persists analysis reports and dialogue through the isolate
       }
     }
     expect(requests.every(value => value.authorization === 'Bearer test-only-key')).toBe(true)
-    expect(requests.every(value => !(value.input.tools?.length))).toBe(true)
+    expect(requests.slice(0, 2).every(value => value.input.tools?.length === 1 && value.input.tools[0].function.name === 'read_messages')).toBe(true)
+    expect(requests.slice(2).every(value => !(value.input.tools?.length))).toBe(true)
     await application.close()
     application = await electron.launch({ args: [resolve('out/main/index.cjs'), '--whomi-runtime-test'], env: { ...process.env, WHOMI_RUNTIME_TEST: directory } })
     const restarted = await application.firstWindow()
