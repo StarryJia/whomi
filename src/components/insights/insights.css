@@ -86,8 +86,7 @@ button.insight-report-row:active { background: var(--pressed); }
 .insight-prose { font-size: clamp(16px, 1.4vw, 18px); line-height: 1.85; overflow-wrap: anywhere; }
 .insight-prose p { margin: 0; white-space: pre-wrap; }
 .insight-prediction { text-align: center; padding: clamp(12px, 2vw, 28px) 0 clamp(24px, 3vw, 36px); border-bottom: 1px solid var(--line); }
-.insight-prediction-label, .insight-prediction-limit { font-size: 14px; color: var(--text-muted); }
-.insight-prediction-label { letter-spacing: .06em; }
+.insight-prediction-label { font-size: 14px; color: var(--text-muted); letter-spacing: .06em; }
 .insight-prediction-label abbr { text-decoration: none; }
 .insight-prediction-letters {
   display: flex; justify-content: center; gap: .1em;
@@ -95,7 +94,6 @@ button.insight-report-row:active { background: var(--pressed); }
 }
 .insight-prediction-unknown { color: var(--text-muted); }
 .insight-prediction-meaning { font-size: clamp(19px, 2vw, 26px); font-weight: 600; line-height: 1.5; }
-.insight-prediction p.insight-prediction-limit { margin-top: 4px; }
 .insight-prediction + .insight-chapter { padding-top: clamp(24px, 3vw, 34px); }
 .insight-chapter + .insight-chapter { margin-top: 32px; padding-top: 28px; border-top: 1px solid var(--line); }
 .insight-chapter h2 { margin: 0 0 14px; font-size: clamp(26px, 2.7vw, 34px); line-height: 1.35; letter-spacing: -.035em; }

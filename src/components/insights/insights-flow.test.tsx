@@ -107,6 +107,7 @@ it('先读本次四维预测，再从判断正文里的原话打开对应依据�
   const region = screen.getByRole('region', { name: 'MBTI 人格倾向' })
   const article = within(screen.getByRole('article'))
   expect(region).toHaveTextContent('???J')
+  expect(region).not.toHaveTextContent('暂难判断')
   expect(region.compareDocumentPosition(article.getByRole('heading', { name: '关于你' }))).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
   expect(article.getAllByRole('heading', { level: 2 }).map(h => h.textContent)).toEqual(['关于你', '你们的相处'])
   expect(article.getAllByRole('heading', { level: 3 }).map(h => h.textContent)).toEqual(['精力来源 · 暂难判断', '安排方式 · 偏向判断'])

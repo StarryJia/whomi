@@ -28,16 +28,12 @@ function dimensionRows(judgments: InsightJudgment[]) {
 
 function Prediction({ rows }: { rows: ReturnType<typeof dimensionRows> }) {
   const known = rows.filter(row => row.direction)
-  const unknown = rows.filter(row => !row.direction).map(row => row.name)
-  const last = unknown.pop()
-  const unknownNames = unknown.length ? unknown.join('、') + '和' + last : last
   return <section className="insight-prediction" aria-label="MBTI 人格倾向">
     <p className="insight-prediction-label">本次 <abbr title="迈尔斯–布里格斯性格类型指标">MBTI</abbr> 预测</p>
     <strong className="insight-prediction-letters" aria-label={'本次会话的倾向 ' + rows.map(row => row.direction ?? '?').join('')}>
       {rows.map(({ axis, direction }) => <span key={axis} className={direction ? undefined : 'insight-prediction-unknown'}>{direction ?? '?'}</span>)}
     </strong>
     {!!known.length && <p className="insight-prediction-meaning">{known.map(row => directionLabel(row.axis, row.direction)).join(' · ')}</p>}
-    {unknownNames && <p className="insight-prediction-limit">{unknownNames}，暂难判断。</p>}
   </section>
 }
 
