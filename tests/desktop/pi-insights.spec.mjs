@@ -6,16 +6,38 @@ import { DatabaseSync } from 'node:sqlite'
 import { basename, dirname, join, resolve } from 'node:path'
 import { correction, detailQuote, early, excerptCaption, imaginedQuote, mapQuote, meetingChat, meetingModel } from './fixtures/pi-insight-model.mjs'
 
+function quoteLines(link) {
+  const lines = []
+  const reader = document.createTreeWalker(link.closest('p'), NodeFilter.SHOW_TEXT)
+  while (reader.nextNode()) {
+    const node = reader.currentNode
+    const range = document.createRange()
+    for (let i = 0; i < node.length; i++) {
+      range.setStart(node, i)
+      range.setEnd(node, i + 1)
+      const rect = range.getBoundingClientRect()
+      if (!rect.width) continue
+      if (!lines.length || Math.abs(lines.at(-1).top - rect.top) > 2) lines.push({ top: rect.top, text: '', quoted: '' })
+      const line = lines.at(-1)
+      line.text += node.data[i]
+      if (link.contains(node)) line.quoted += node.data[i]
+    }
+  }
+  return lines
+}
+
 for (const { count, overloadOnPage } of [{ count: 8 }, { count: 4600 }, { count: 8, overloadOnPage: 2 }]) {
   test((overloadOnPage ? '模型连续两次过载后自动恢复，' : '') + '从当前会话洞察 ' + count + ' 条，回查远距回复并打开两处原文', async ({}, info) => {
     test.setTimeout(count === 8 ? 120_000 : 600_000)
     const directory = resolve(await mkdtemp(join(tmpdir(), 'whomi-runtime-issue35-')))
     const file = info.outputPath('合成聚会聊天.json')
-    const chat = meetingChat(count)
+    const checkLayout = count === 8 && !overloadOnPage
+    const scene = checkLayout ? '像把大家的客厅搬到了一起，有人可以在窗边安静地看书，有人可以在桌边慢慢聊起最近的生活，等茶凉了再去添一杯，谁都不用赶着把自己的话说完\n' : imaginedQuote
+    const chat = meetingChat(count, scene)
     await writeFile(file, JSON.stringify(chat, null, 2))
     const evidence = (name, value) => writeFile(info.outputPath(name + '.json'), JSON.stringify(value, null, 2))
     const track = []
-    const model = await meetingModel({ count, holdPage: count > 8, overloadOnPage, profileDirectory: directory, observe: item => {
+    const model = await meetingModel({ count, scene, holdPage: count > 8, overloadOnPage, profileDirectory: directory, observe: item => {
       track.push(item)
       appendFileSync(info.outputPath('model-trace.jsonl'), JSON.stringify(item) + '\n')
     } })
@@ -138,9 +160,12 @@ for (const { count, overloadOnPage } of [{ count: 8 }, { count: 4600 }, { count:
       const prediction = article.getByText('ES??', { exact: true })
       await expect(prediction).toBeInViewport()
       await expect(article.getByRole('heading', { level: 2 })).toHaveText(['关于你', '你们的相处'])
-      await expect(article.getByRole('heading', { level: 3 })).toHaveText([
-        /精力来源.*外向/, /理解信息.*实感/, /做决定.*暂难判断/, /安排方式.*暂难判断/,
+      await expect(article.getByRole('heading', { level: 3 })).toHaveText(['MBTI 人格倾向', '个人观察'])
+      await expect(article.getByRole('heading', { level: 4 })).toHaveText([
+        /E.*偏向外向/, /S.*偏向实感/, /T\s*\/\s*F.*暂难判断/, /J\s*\/\s*P.*暂难判断/,
       ])
+      await expect(page.getByRole('button', { name: /打开完整会话|回到开头/ })).toHaveCount(0)
+      await expect(article.getByText(report.limitations[0], { exact: true })).toHaveCount(0)
       const placement = await prediction.evaluate(element => {
         const article = element.closest('article').getBoundingClientRect()
         const range = document.createRange()
@@ -154,25 +179,37 @@ for (const { count, overloadOnPage } of [{ count: 8 }, { count: 4600 }, { count:
       expect(placement.height).toBeGreaterThan(48)
       expect(placement.gaps).toHaveLength(3)
       expect(Math.min(...placement.gaps)).toBeGreaterThan(0)
-      await article.getByRole('heading', { name: /理解信息/ }).scrollIntoViewIfNeeded()
+      await article.getByRole('heading', { level: 4, name: /偏向实感/ }).scrollIntoViewIfNeeded()
       await shot('03-personality')
-      const narrow = count === 8 && !overloadOnPage
-      if (narrow) {
-        await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setContentSize(960, 640))
-        await expect.poll(() => page.evaluate(() => window.innerWidth)).toBe(960)
+      if (checkLayout) {
+        for (const [width, height] of [[1280, 800], [960, 640]]) {
+          await app.evaluate(({ BrowserWindow }, [w, h]) => BrowserWindow.getAllWindows()[0].setContentSize(w, h), [width, height])
+          await expect.poll(() => page.evaluate(() => [innerWidth, innerHeight])).toEqual([width, height])
+          const link = article.getByRole('button', { name: scene.trim(), exact: true })
+          await link.evaluate(el => el.scrollIntoView({ block: 'center' }))
+          const lines = await link.evaluate(quoteLines)
+          await evidence('quote-lines-' + width, lines)
+          const quotedLines = lines.filter(line => line.quoted)
+          expect(quotedLines.length).toBeGreaterThan(1)
+          expect(quotedLines[0].text.slice(0, quotedLines[0].text.indexOf(quotedLines[0].quoted))).toMatch(/\p{Script=Han}/u)
+          expect(lines.map(line => line.text)).not.toContainEqual(expect.stringMatching(/^[，。！？、；：」』”）]|[「『“（]$/u))
+          expect(await link.evaluate(el => el.closest('article').scrollWidth <= el.closest('article').clientWidth)).toBe(true)
+          await shot('03-personality-quote-' + width)
+        }
         await prediction.evaluate(element => element.scrollIntoView({ block: 'center' }))
         await expect(prediction).toBeInViewport()
         expect(await article.evaluate(element => element.scrollWidth <= element.clientWidth &&
           document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
         await shot('03-personality-narrow')
       }
-      const quoteTargets = [[detailQuote, model.state.detailId], [mapQuote, model.state.imaginedId], [imaginedQuote, model.state.imaginedId]]
+      const quoteTargets = [[detailQuote, model.state.detailId], [mapQuote, model.state.imaginedId], [scene, model.state.imaginedId]]
       for (const [index, [quote, messageId]] of quoteTargets.entries()) {
-        const sourceButton = article.getByRole('button', { name: new RegExp(quote) })
+        const sourceButton = article.getByRole('button', { name: quote.trim(), exact: true })
         await sourceButton.click()
         const detail = page.getByRole('region', { name: '引用聊天记录' }).locator('[data-citation=true]')
         await expect(detail).toHaveAttribute('data-message-id', messageId)
         await expect(detail.locator('mark')).toHaveText(quote)
+        if (quote.endsWith('\n')) expect(await detail.locator('mark').textContent()).toBe(quote)
         await shot('04-personality-source-' + (index + 1))
         await page.keyboard.press('Escape')
         await expect(sourceButton).toBeFocused()

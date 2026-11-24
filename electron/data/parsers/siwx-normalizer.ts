@@ -1,7 +1,7 @@
 import { SaxesParser } from 'saxes'
 import type { MessageKind, ParsedMessage, ParsedReply } from '../../../src/shared/conversation-model'
 import type { SiwxCompatibility } from './types'
-import { hasWechatRecallMarker } from './wechat-recall'
+import { hasWechatRecallMarker, wechatTypeNumber } from './wechat-recall'
 
 export const sourceKey = (value: unknown): string | null =>
   typeof value === 'string' ? value.length ? value : null : typeof value === 'number' && Number.isSafeInteger(value) ? String(value) : null
@@ -33,11 +33,6 @@ type ReportUnknownType = (detail: UnknownTypeDetail) => void
 function unknownKind(report: ReportUnknownType | undefined, detail: UnknownTypeDetail): MessageKind {
   report?.(detail)
   return 'unknown'
-}
-
-function typeNumber(value: unknown): number | undefined {
-  const number = typeof value === 'string' && /^\d+$/.test(value) ? Number(value) : value
-  return typeof number === 'number' && Number.isSafeInteger(number) && number > 0 ? number : undefined
 }
 
 function withoutTrailingNullPadding(content: string): string {
@@ -88,8 +83,8 @@ function readSiwxPayload(content: unknown) {
     return null
   }
 
-  const elementType = typeNumber(typeField.text.trim())
-  const attribute = typeNumber(attributeType?.trim())
+  const elementType = wechatTypeNumber(typeField.text.trim())
+  const attribute = wechatTypeNumber(attributeType?.trim())
   let subtype: number | undefined
   if (applications === 1) {
     if (typeField.count === 1 && (attributeType === undefined || attribute === elementType)) subtype = elementType
@@ -116,7 +111,7 @@ function readSiwxPayload(content: unknown) {
 export function siwxKind(raw: Record<string, any>, report?: ReportUnknownType, markExpandedShare?: () => void): MessageKind {
   if (siwxQuote(raw)) return 'reply'
   const label = sourceKey(raw.typeName ?? raw.type)
-  const localType = typeNumber(raw.localType)
+  const localType = wechatTypeNumber(raw.localType)
   if (hasWechatRecallMarker(label, localType, raw.content)) return 'system'
   if (label && Object.hasOwn(named, label)) return named[label]
   const isApplicationType = localType !== undefined && localType % applicationTypeBase === 49

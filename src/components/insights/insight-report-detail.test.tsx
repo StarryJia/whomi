@@ -32,7 +32,7 @@ it('打开报告后才读取引文，失败时可继续阅读并重试', async (
   expect(getReport.mock.calls).toEqual([['24'], ['24']])
   expect(screen.getByText('你提了一个出游建议。')).toBeVisible()
   const quote = screen.getByRole('button', { name: '我来安排' })
-  expect(quote).toBeDisabled()
+  expect(quote).toHaveAttribute('aria-disabled', 'true')
   await user.click(quote)
   expect(readInsightCitation).not.toHaveBeenCalled()
   await act(async () => finish({ ...report, relationship: [{ content: [{ text: '我来安排', citationId: 'trip', quoteFragmentIndex: 1, quoteMessageId: '21' }] }],
@@ -43,12 +43,8 @@ it('打开报告后才读取引文，失败时可继续阅读并重试', async (
   fireEvent(screen.getByRole('dialog'), new Event('cancel', { cancelable: true }))
   expect(quote).toHaveFocus()
 
-  const main = screen.getByRole('main')
-  main.scrollTop = 900
-  await user.click(screen.getByRole('button', { name: '回到开头' }))
-  expect(main.scrollTop).toBe(0)
-  expect(screen.getByRole('heading', { level: 1, name: '会话洞察' })).toHaveFocus()
-  await user.click(screen.getByRole('button', { name: '打开完整会话' }))
-  expect(await screen.findByRole('heading', { name: '小林' })).toBeVisible()
-  expect(screen.getByText('明天一起去？')).toBeVisible()
+  expect(screen.queryByRole('button', { name: '回到开头' })).toBeNull()
+  expect(screen.queryByRole('button', { name: '打开完整会话' })).toBeNull()
+  await user.click(screen.getByRole('button', { name: '返回' }))
+  expect(await screen.findByRole('button', { name: /小林.*会话洞察.*#24/ })).toHaveFocus()
 })

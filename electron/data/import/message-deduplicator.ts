@@ -3,7 +3,7 @@ import type { Store } from '../db/open'
 import type { Candidate } from '../../../src/shared/import-contract'
 import type { ParsedMessage, ParsedReply } from '../../../src/shared/conversation-model'
 import { checkSignal } from './limits'
-import { hasWechatRecallMarker } from '../parsers/wechat-recall'
+import { hasWechatRecallMarker, wechatTypeNumber } from '../parsers/wechat-recall'
 
 export function prepareFallbackLedger(store:Store) {
   // 文件存储限制大文件重导时的临时计数内存，不复制原始聊天正文。
@@ -17,6 +17,14 @@ type SavedMessage={id:bigint;sent_at_ms:bigint;sender:string|null;kind:string;te
   has_reply:bigint;legacy_wechat_bucket:LegacyWeChatBucket|null}
 const signature=(time:number,sender:string|null,kind:string,text:string,reply:unknown,attachments:unknown,sourceType:string|null,extra:unknown)=>
   createHash('sha256').update(JSON.stringify([time,sender,kind,text,reply,attachments,sourceType,extra])).digest('hex')
+
+function recallSignature(time: number, text: string, sourceType: string | null, extra: Record<string, unknown>): string {
+  const { selfHint: _selfHint, ...fields } = extra
+  if (Object.hasOwn(fields, 'localType')) fields.localType = wechatTypeNumber(fields.localType) ?? fields.localType
+  // 未提供文字标签时，导出会用数字类型作来源标签。旧分类附带的回复和附件不属于通知。
+  const label = wechatTypeNumber(sourceType)?.toString() ?? sourceType
+  return signature(time, null, 'system', text, null, [], label, fields)
+}
 
 type LegacyWeChatBucket = 'legacy-wechat' | 'legacy-wechat-app' | 'legacy-wechat-reply'
 const legacyWeChatKey = (bucket: LegacyWeChatBucket, key: string) => `${bucket}:${key}`
@@ -70,13 +78,15 @@ export function createFallbackDeduplicator(store:Store,conversationId:string,sig
       if(!batch.length)break
       // 关闭读取游标后再写入临时表，避免同连接读写游标冲突。
       for(const row of batch) {
-        const media=attachments.all(row.id) as {kind:string;locator:string|null;name:string|null;state:string}[]
-        const reply=row.has_reply===0n || row.sender===null ? null:[row.reply_namespace,row.reply_id,row.reply_text,row.reply_sender,row.reply_time===null ? null:Number(row.reply_time)]
         const extra=JSON.parse(row.extra) as Record<string,unknown>
         if (row.sender === null) {
-          if (!hasWechatRecallMarker(row.source_type, extra.localType, row.text)) continue
-          delete extra.selfHint
+          if (hasWechatRecallMarker(row.source_type, extra.localType, row.text)) {
+            add.run(recallSignature(Number(row.sent_at_ms), row.text, row.source_type, extra))
+          }
+          continue
         }
+        const media=attachments.all(row.id) as {kind:string;locator:string|null;name:string|null;state:string}[]
+        const reply=row.has_reply===0n ? null:[row.reply_namespace,row.reply_id,row.reply_text,row.reply_sender,row.reply_time===null ? null:Number(row.reply_time)]
         const key=signature(Number(row.sent_at_ms),row.sender,row.kind,row.text,reply,media.map(a=>[a.kind,a.locator,a.name,a.state]),row.source_type,extra)
         const bucket=row.legacy_wechat_bucket
         // 两种匹配路径共用旧记录的剩余次数。
@@ -96,7 +106,8 @@ export function createFallbackDeduplicator(store:Store,conversationId:string,sig
     if (!sender && !recall) return false
     if(!built)await build()
     const reply=replyFields(m.reply)
-    const key=signature(m.sentAtMs,sender ?? null,m.kind,m.text,reply,m.attachments.map(a=>[a.kind,a.locator,a.name,a.state]),m.sourceType,m.extra)
+    const key = recall ? recallSignature(m.sentAtMs, m.text, m.sourceType, m.extra)
+      : signature(m.sentAtMs,sender ?? null,m.kind,m.text,reply,m.attachments.map(a=>[a.kind,a.locator,a.name,a.state]),m.sourceType,m.extra)
     if(consume.run(key).changes===1)return true
     if (!sender) return false
     if(m.kind==='reply' && consume.run(legacyWeChatKey('legacy-wechat-reply',key)).changes===1)return true

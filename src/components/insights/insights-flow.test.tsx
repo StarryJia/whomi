@@ -84,10 +84,11 @@ it('任务请求等待时运行时间递增，失败后保留同口径的覆盖�
   }
 })
 
-it('报告只有材料不足说明时保留模型的限定并沿用两节阅读结构', () => {
+it('旧报告只有全局限制时显示正文空状态', () => {
   render(<InsightArticle report={{ ...report, aboutYou: [], relationship: [], limitations: ['只有一次改期，暂时不能判断相处习惯。'] }} />)
-  expect(screen.getByText('只有一次改期，暂时不能判断相处习惯。')).toBeVisible()
-  expect(screen.getAllByRole('heading').map(heading => heading.textContent)).toEqual(['关于你', '你们的相处'])
+  expect(screen.queryByText('只有一次改期，暂时不能判断相处习惯。')).toBeNull()
+  expect(screen.getByText('这份报告没有分析正文。')).toBeVisible()
+  expect(screen.queryAllByRole('heading')).toHaveLength(0)
 })
 
 it('先读本次四维预测，再从判断正文里的原话打开对应依据或反例', async () => {
@@ -107,16 +108,20 @@ it('先读本次四维预测，再从判断正文里的原话打开对应依据�
   const region = screen.getByRole('region', { name: 'MBTI 人格倾向' })
   const article = within(screen.getByRole('article'))
   expect(region).toHaveTextContent('???J')
+  expect(region).toHaveTextContent('J · 偏向判断')
   expect(region).not.toHaveTextContent('暂难判断')
   expect(region.compareDocumentPosition(article.getByRole('heading', { name: '关于你' }))).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
   expect(article.getAllByRole('heading', { level: 2 }).map(h => h.textContent)).toEqual(['关于你', '你们的相处'])
-  expect(article.getAllByRole('heading', { level: 3 }).map(h => h.textContent)).toEqual(['精力来源 · 暂难判断', '安排方式 · 偏向判断'])
+  expect(article.getAllByRole('heading', { level: 3 }).map(h => h.textContent)).toEqual(['MBTI 人格倾向', '个人观察'])
+  expect(article.getAllByRole('heading', { level: 4 }).map(h => h.textContent)).toEqual(['E / I · 暂难判断', 'J · 偏向判断'])
   expect(article.getByText('你这次负责订票。', { exact: false })).toBeVisible()
   expect(article.getByText('只涉及这次见面。', { exact: false })).toBeVisible()
   for (const [kind, fragmentIndex, quote] of [
     ['supporting', 1, '在哪一站集合'], ['counterexample', 0, '到时再定'], ['supporting', 0, '先看早场'], ['supporting', 0, '我来订票'],
   ] as const) {
     const button = await article.findByRole('button', { name: new RegExp(quote) })
+    expect(button.tagName).toBe('SPAN')
+    expect(button.textContent).toBe('「' + quote + '」')
     expect(button.closest('p')).not.toBeNull()
     await user.click(button)
     expect(readInsightCitation).toHaveBeenLastCalledWith({ taskId: '24', fragmentIndex, citationId: judgmentCitation(saved, '1', 0, kind)!.id })
@@ -131,9 +136,9 @@ it('旧报告同一维度的相反观察都可阅读，不合成单一倾向', (
     supportingSources: [{ messageId: '10', revision: 'source-10' }], counterexampleSources: [], alternativeExplanations: [], limitations: [] }
   render(<InsightArticle report={{ ...report, judgments: [original, { ...original, direction: 'F', text: '你先问了对方是否愿意。' }] }} />)
   const article = within(screen.getByRole('article'))
-  expect(article.getByRole('heading', { level: 3, name: '做决定 · 暂难判断' })).toBeVisible()
-  expect(article.getByText('偏向思考。')).toBeVisible()
-  expect(article.getByText('偏向情感。')).toBeVisible()
+  expect(article.getByRole('heading', { level: 4, name: 'T / F · 暂难判断' })).toBeVisible()
+  expect(article.getByText('T · 偏向思考。')).toBeVisible()
+  expect(article.getByText('F · 偏向情感。')).toBeVisible()
   expect(article.getByRole('region', { name: 'MBTI 人格倾向' })).toHaveTextContent('????')
 })
 
@@ -146,7 +151,8 @@ it('分析中长短摘录重叠时保留各自的引语位置，无法摘出短�
     alternativeExplanations: [], limitations: [] }] }
   render(<InsightArticle report={saved} conversationId="1" onOpenCitation={onOpenCitation} />)
   const short = screen.getByRole('button', { name: '一起约' })
-  expect(short.previousSibling?.textContent).toBe('」，对方又说「')
+  expect(short.previousSibling?.textContent).toBe('，对方又说')
+  expect(short.textContent).toBe('「一起约」')
   const source = screen.getByRole('button', { name: /消息/ })
   await userEvent.click(source)
   expect(onOpenCitation).toHaveBeenLastCalledWith(judgmentCitation(saved, '1', 0, 'counterexample'), source, 1)
@@ -157,19 +163,26 @@ it('正文逐字引文直接定位已核对的片段，历史摘要仍按原有�
   const reference = { ...report.citations[0], fragments: [...report.citations[0].fragments,
     { sources: [{ messageId: '13', revision: 'r13' }, { messageId: '14', revision: 'r14' }] }] }
   const saved = { ...report, citations: [reference], relationship: [{ content: [
+    { text: '你先提议“' },
     { text: '周三见', citationId: reference.id, quoteFragmentIndex: 1, quoteMessageId: '14' },
+    { text: '”，接着说' },
     { text: '我再查查', citationId: reference.id, quoteFragmentIndex: 1 },
   ] }] }
   const { rerender } = render(<InsightArticle report={saved} citationsLoading conversationId="1" onOpenCitation={onOpenCitation} />)
   const quote = screen.getByRole('button', { name: '周三见' })
-  expect(quote).toBeDisabled()
-  await userEvent.click(quote)
+  expect(quote).toHaveAttribute('aria-disabled', 'true')
+  expect(quote).toHaveAttribute('tabindex', '-1')
+  quote.focus()
+  await userEvent.keyboard('{Enter}')
+  expect(quote.textContent).toBe('“周三见”')
   expect(onOpenCitation).not.toHaveBeenCalled()
   rerender(<InsightArticle report={saved} conversationId="1" onOpenCitation={onOpenCitation} />)
-  await userEvent.click(quote)
+  quote.focus()
+  await userEvent.keyboard('{Enter}')
   expect(onOpenCitation).toHaveBeenLastCalledWith(reference, quote, 1, '周三见', '14')
   const oldQuote = screen.getByRole('button', { name: '我再查查' })
-  await userEvent.click(oldQuote)
+  oldQuote.focus()
+  await userEvent.keyboard(' ')
   expect(onOpenCitation).toHaveBeenLastCalledWith(reference, oldQuote, 1, '我再查查', undefined)
   const summary = screen.getByRole('button', { name: '那次改期' })
   await userEvent.click(summary)

@@ -14,7 +14,7 @@ type PendingRead = { kind: 'fragment'; index: number } | { kind: 'context' }
 export type InsightSourceDialogProps = {
   taskId: string; citationId: string; phrase: string; conversationTitle: string; fragmentCount: number
   initialFragmentIndex?: number; quote?: string; quoteMessageId?: string
-  onClose: () => void; returnFocus: RefObject<HTMLButtonElement | null>
+  onClose: () => void; returnFocus: RefObject<HTMLElement | null>
   client: Pick<DesktopApi, 'readMessages'>; readCitation: AiApi['readInsightCitation']
 }
 

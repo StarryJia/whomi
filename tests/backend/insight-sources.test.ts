@@ -369,14 +369,17 @@ test('回复补全或重新确认本人后，旧报告仍能定位原文，未�
   expect(await read()).toEqual({ status: 'expired' })
 })
 
-test.each([10, 12])('版本 %i 升级时按真实引用识别微信撤回，已冻结的输入和报告引用仍可定位', async version => {
+test.each([10, 12, 13])('版本 %i 升级时按真实引用识别微信撤回，已冻结的输入和报告引用仍可定位', async version => {
   const { store, repository } = await setup()
-  store.writer.exec(`UPDATE messages SET kind='reply',text='你撤回了一条消息',source_type='引用消息',extra='{"localType":10000}' WHERE id IN (1,4);
+  const localType = version === 13 ? '010000' : 10000
+  store.writer.prepare("UPDATE messages SET kind='reply',text='你撤回了一条消息',source_type='引用消息',extra=? WHERE id IN (1,4)")
+    .run(JSON.stringify({ localType }))
+  store.writer.exec(`
     INSERT INTO message_replies(message_id,conversation_id) VALUES(1,1);
     UPDATE messages SET text='他说撤回了一条消息，十一月再联系。',source_type='文本消息',extra='{"localType":10000}' WHERE id=2;
     INSERT INTO memberships(id,conversation_id,source_conversation_id,source_key,display_name) VALUES(4,1,1,'placeholder','导出占位');
     INSERT INTO messages(id,conversation_id,member_id,sender_kind,sender_name,kind,text,ordinal,source_type,extra)
-      VALUES(6,1,4,'member','导出占位','text','对方撤回了一条消息',5,'文本消息','{"localType":10002}');
+      VALUES(6,1,4,'member','导出占位','text','对方撤回了一条消息',5,'文本消息','{"localType":"0010002"}');
     INSERT INTO import_jobs(id,status,created_at_ms) VALUES(1,'completed',0);
     INSERT INTO import_results(id,job_id,candidate_id,conversation_id,status,committed_at_ms) VALUES(1,1,'demo',1,'committed',0);
     INSERT INTO message_origins(message_id,conversation_id,import_result_id,file_fingerprint,source_conversation_key,ordinal,parser_id,parser_version)

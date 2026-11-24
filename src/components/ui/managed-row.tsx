@@ -9,7 +9,7 @@ export function ReaderDialog({ children, busy, onDismiss, returnFocus, labelledB
   children: ReactNode
   busy: boolean
   onDismiss: () => void
-  returnFocus: RefObject<HTMLButtonElement | null>
+  returnFocus: RefObject<HTMLElement | null>
   labelledBy: string
 }) {
   const dialog = useRef<HTMLDialogElement>(null)

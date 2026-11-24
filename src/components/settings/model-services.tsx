@@ -85,6 +85,20 @@ export function ModelServices({ api, snapshot, setSnapshot, onChanged, registerG
   const selectedPreset = listedPresetAccounts.get(selectedId)
   const selectedAccount = getSubscriptionId(selectedId)
   const provider = snapshot.providers.find(item => item.id === selectedId) ?? (selectedAccount && selectedPreset ? unconfiguredAccount(selectedAccount) : undefined)
+  async function refreshCatalog(source: Provider) {
+    const next = await api.get()
+    const matchesSource = (item: Provider | undefined) => item?.id === source.id && item.baseUrl === source.baseUrl && item.protocol === source.protocol && item.planAccount === source.planAccount
+    if (!matchesSource(next.providers.find(item => item.id === source.id))) return
+    const refreshed = new Map(next.models.filter(model => model.providerId === source.id && model.planAccount === source.planAccount).map(model => [model.id, model]))
+    setSnapshot(current => {
+      if (!current || !matchesSource(current.providers.find(item => item.id === source.id))) return current
+      return { ...current, models: current.models.map(model => {
+        const saved = refreshed.get(model.id)
+        return saved && model.providerId === source.id && model.planAccount === source.planAccount && saved.version >= model.version ? saved : model
+      }) }
+    })
+    onChanged()
+  }
   async function refreshAccount(isCurrent: () => boolean) {
     const next = await api.get()
     if (!isCurrent()) return
@@ -99,6 +113,17 @@ export function ModelServices({ api, snapshot, setSnapshot, onChanged, registerG
   useEffect(() => { registerGuard(navigate); return () => registerGuard(null) })
   useEffect(() => { onBusy(busy); return () => onBusy(false) }, [busy, onBusy])
   function savedProvider(saved: Provider) { setSnapshot(current => current && { ...current, providers: current.providers.some(item => item.id === saved.id) ? current.providers.map(item => item.id === saved.id ? saved : item) : [...current.providers, saved] }); onChanged() }
+  function savedModels(saved: SettingsModel[]) {
+    setSnapshot(current => {
+      if (!current) return current
+      const models = new Map(current.models.map(model => [model.id, model]))
+      for (const model of saved) {
+        if (model.version >= (models.get(model.id)?.version ?? 0)) models.set(model.id, model)
+      }
+      return { ...current, models: [...models.values()] }
+    })
+    onChanged()
+  }
   const configuredIds = new Set(snapshot.providers.map(item => item.id))
   const keywords = query.toLowerCase().split(/\s+/).filter(Boolean)
   const visiblePresets = (filter === 'all' || filter === 'unconfigured' ? listedCherryProviderPresets : []).filter(preset => {
@@ -138,14 +163,14 @@ export function ModelServices({ api, snapshot, setSnapshot, onChanged, registerG
       <button className="ms-button ms-add-provider" disabled={busy} onClick={() => navigate(() => setEditor('new'))}><Plus size={14} />添加服务商</button>
       {listPane.divider}
     </aside>
-    {provider ? <ProviderDetail key={`${provider.id}:${editor ? 'editing' : 'detail'}`} api={api} provider={provider} refreshAccount={refreshAccount} models={snapshot.models.filter(model => model.providerId === provider.id)} savedProvider={savedProvider} savedModels={models => { setSnapshot(current => current && { ...current, models: [...current.models.filter(model => !models.some(saved => saved.id === model.id)), ...models] }); onChanged() }} removedModels={ids => { setSnapshot(current => current && { ...current, models: current.models.filter(model => !ids.includes(model.id)) }); onChanged() }} onBusy={onBusy} registerGuard={guard => { detailGuard.current = guard }} onBack={() => setShowDetail(false)} /> : selectedPreset ? <PresetDetail preset={selectedPreset} onConfigure={() => setEditor('preset')} onBack={() => setShowDetail(false)} /> : <section className="ms-detail ms-empty ms-empty-detail"><p className="ms-hint">添加服务商以配置模型。</p></section>}
+    {provider ? <ProviderDetail key={`${provider.id}:${editor ? 'editing' : 'detail'}`} api={api} provider={provider} refreshAccount={refreshAccount} refreshCatalog={refreshCatalog} models={snapshot.models.filter(model => model.providerId === provider.id)} savedProvider={savedProvider} savedModels={savedModels} removedModels={ids => { setSnapshot(current => current && { ...current, models: current.models.filter(model => !ids.includes(model.id)) }); onChanged() }} onBusy={onBusy} registerGuard={guard => { detailGuard.current = guard }} onBack={() => setShowDetail(false)} /> : selectedPreset ? <PresetDetail preset={selectedPreset} onConfigure={() => setEditor('preset')} onBack={() => setShowDetail(false)} /> : <section className="ms-detail ms-empty ms-empty-detail"><p className="ms-hint">添加服务商以配置模型。</p></section>}
     {editor && <ProviderEditor api={api} provider={typeof editor === 'object' ? editor : undefined} preset={editor === 'preset' ? selectedPreset : undefined} onClose={() => setEditor(null)} onSaved={value => { savedProvider(value); setSelectedId(value.id); setShowDetail(true) }} />}
     {notes && <ProviderNotes api={api} provider={notes} onSaved={savedProvider} onClose={() => setNotes(null)} />}
     {removal && <Modal title="删除服务商" help="已有分析报告和对话记录会保留。" busy={busy} onClose={() => setRemoval(null)}><div className="ms-modal-body"><p>删除 {removal.name} 及其模型配置？</p>{error && <ExceptionNotice title="无法删除服务商" detail={error} className="ms-error" />}</div><footer className="ms-modal-footer"><button className="ms-button" disabled={busy} onClick={() => setRemoval(null)}>取消</button><button className="ms-button ms-primary" disabled={busy} onClick={() => void remove()}>{stopRequired ? '停止任务并重试' : '确认删除'}</button></footer></Modal>}
   </div>
 }
 
-function ProviderDetail({ api, provider, refreshAccount, models, savedProvider, savedModels, removedModels, registerGuard, onBusy, onBack }: { api: SettingsApi; provider: Provider; refreshAccount: (isCurrent: () => boolean) => Promise<void>; models: SettingsModel[]; savedProvider: (value: Provider) => void; savedModels: (value: SettingsModel[]) => void; removedModels: (ids: string[]) => void; registerGuard: RegisterGuard; onBusy: (value: boolean) => void; onBack: () => void }) {
+function ProviderDetail({ api, provider, refreshAccount, refreshCatalog, models, savedProvider, savedModels, removedModels, registerGuard, onBusy, onBack }: { api: SettingsApi; provider: Provider; refreshAccount: (isCurrent: () => boolean) => Promise<void>; refreshCatalog: (source: Provider) => Promise<void>; models: SettingsModel[]; savedProvider: (value: Provider) => void; savedModels: (value: SettingsModel[]) => void; removedModels: (ids: string[]) => void; registerGuard: RegisterGuard; onBusy: (value: boolean) => void; onBack: () => void }) {
   const subscriptionId = getSubscriptionId(provider.id)
   const [account, setAccount] = useState<{ state: 'disconnected' | 'pending' | 'connected' | 'unknown'; id?: string }>({ state: 'unknown' })
   const accountState = account.state
@@ -160,6 +185,7 @@ function ProviderDetail({ api, provider, refreshAccount, models, savedProvider, 
   const [draft, setDraft] = useState(() => providerInput(provider)), latest = useRef(draft); latest.current = draft
   const saved = useRef(providerInput(provider)), [showKey, setShowKey] = useState(false), [errors, setErrors] = useState<Record<string, string>>({}), [error, setError] = useState('')
   const [picker, setPicker] = useState(false), [editor, setEditor] = useState<SettingsModel | 'new' | null>(null), [busy, setBusy] = useState(false), [stopRequired, setStopRequired] = useState(false)
+  const editedModel = editor && editor !== 'new' ? visibleModels.find(model => model.id === editor.id) : undefined
   const modelSearch = useRef<HTMLInputElement>(null)
   const [detections, setDetections] = useState<Record<string, string>>({}), [modelQuery, setModelQuery] = useState('')
   useEffect(() => { mounted.current = true; return () => { mounted.current = false } }, [])
@@ -218,7 +244,7 @@ function ProviderDetail({ api, provider, refreshAccount, models, savedProvider, 
       {groups.map(group => <div className="cherry-model-group" key={group}><h4>{group}</h4>{filtered.filter(model => (model.group || '模型') === group).map(model => <div className="ms-model-row" key={model.id}><button className="cherry-model-name" title={`${model.label} · ${model.model}`} disabled={busy || saver.pending || accountUnavailable} onClick={() => setEditor(model)}><strong>{model.label}</strong>{model.label !== model.model && <span>{model.model}</span>}</button><div className="settings-model-actions"><span className="cherry-health" role="status">{detections[model.id]}</span><button className="ms-icon" aria-label={`检测${model.label}`} title="检测连接" disabled={busy || saver.pending || !provider.enabled || !model.enabled || accountUnavailable} onClick={() => void test(model)}><RefreshCw size={14} /></button><button className="ms-icon" aria-label={`编辑${model.label}`} disabled={busy || saver.pending || accountUnavailable} onClick={() => setEditor(model)}><Pencil size={14} /></button><Switch label={`启用${model.label}`} checked={model.enabled} disabled={busy || saver.pending || accountUnavailable} onChange={() => void toggle(model)} /></div></div>)}</div>)}
     </section>
     </div>
-    {picker && !accountUnavailable && <ModelPicker api={api} provider={provider} models={visibleModels} onSynced={() => refreshAccount(isCurrent)} onClose={() => { if (isCurrent()) setPicker(false) }} onAdded={values => { if (isCurrent()) savedModels(values) }} onRemoved={ids => { if (isCurrent()) removedModels(ids) }} onBusy={modelBusy} />}
-    {editor && !accountUnavailable && <ModelEditor api={api} provider={provider} models={visibleModels} existing={editor === 'new' ? undefined : editor} onClose={() => { if (isCurrent()) setEditor(null) }} onSaved={value => { if (isCurrent()) savedModels([value]) }} />}
+    {picker && !accountUnavailable && <ModelPicker api={api} provider={provider} models={visibleModels} onSynced={() => refreshCatalog(provider)} onClose={() => { if (isCurrent()) setPicker(false) }} onAdded={values => { if (isCurrent()) savedModels(values) }} onRemoved={ids => { if (isCurrent()) removedModels(ids) }} onBusy={modelBusy} />}
+    {(editor === 'new' || editedModel) && !accountUnavailable && <ModelEditor api={api} provider={provider} models={visibleModels} existing={editedModel} onClose={() => { if (isCurrent()) setEditor(null) }} onSaved={value => { if (isCurrent()) savedModels([value]) }} />}
   </section>
 }

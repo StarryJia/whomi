@@ -11,11 +11,13 @@ test('Cherry settings menus, auto-save, sync recovery and capacity drawers work 
   const evidence = info.outputPath('screenshots')
   await mkdir(evidence, { recursive: true })
   let failCatalog = true
-  const server = createServer((request, response) => {
+  const syncing = Promise.withResolvers(), releaseCatalog = Promise.withResolvers()
+  const server = createServer(async (request, response) => {
     if (request.url?.endsWith('/models')) {
+      if (!failCatalog) { syncing.resolve(); await releaseCatalog.promise }
       response.writeHead(failCatalog ? 503 : 200, { 'Content-Type': 'application/json' })
       response.end(JSON.stringify(failCatalog ? {} : { data: [{ id: 'catalog-model', name: '目录示例模型', context_length: 200000, max_output_tokens: 32768, max_input_tokens: 150000, group: '示例模型组' },
-        { id: 'long-model', name: '已有模型', context_length: 128000 }, { id: 'unused-model', name: '暂不添加的模型', group: '示例模型组' }] }))
+        { id: 'long-model', name: '已有模型', context_length: 128000, max_input_tokens: 10000 }, { id: 'unused-model', name: '暂不添加的模型', group: '示例模型组' }] }))
     } else { response.writeHead(404); response.end('{}') }
   })
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve))
@@ -52,6 +54,19 @@ test('Cherry settings menus, auto-save, sync recovery and capacity drawers work 
     await page.screenshot({ path: join(evidence, '02-sync-failed-retry.png') })
     failCatalog = false
     await catalog.getByRole('button', { name: '重试同步', exact: true }).click()
+    await syncing.promise
+    await catalog.getByRole('button', { name: '取消', exact: true }).click()
+    await page.getByRole('button', { name: '编辑' + state.model.label, exact: true }).click()
+    const synced = page.getByRole('dialog', { name: '编辑模型', exact: true })
+    const inputLimit = synced.getByLabel('最大输入长度', { exact: true })
+    await expect(inputLimit).toHaveValue('')
+    releaseCatalog.resolve()
+    await expect(inputLimit).toHaveValue('10000')
+    await inputLimit.click()
+    await inputLimit.press('Tab')
+    await synced.getByRole('button', { name: '关闭编辑模型', exact: true }).click()
+    expect((await page.evaluate(() => window.whomi.settings.get())).models[0].maxInputTokens).toBe(10000)
+    await page.getByRole('button', { name: '同步模型', exact: true }).click()
     await expect(catalog.getByRole('checkbox', { name: '选择目录示例模型', exact: true })).toBeVisible()
     await catalog.getByRole('button', { name: '全选', exact: true }).click()
     await expect(catalog.getByRole('checkbox', { name: '选择目录示例模型', exact: true })).toBeChecked()
@@ -60,13 +75,13 @@ test('Cherry settings menus, auto-save, sync recovery and capacity drawers work 
     await catalog.getByRole('button', { name: '取消', exact: true }).click()
     expect((await page.evaluate(() => window.whomi.settings.get())).models.map(model => model.model)).toEqual(['long-model'])
     await page.getByRole('button', { name: '编辑' + state.model.label, exact: true }).click()
-    const synced = page.getByRole('dialog', { name: '编辑模型', exact: true })
     await expect(synced.getByLabel('上下文长度', { exact: true })).toHaveValue('128000')
     await synced.getByLabel('显示名称', { exact: true }).fill('同步后改名')
     await synced.getByRole('button', { name: '关闭编辑模型', exact: true }).click()
     await page.getByRole('button', { name: '编辑同步后改名', exact: true }).click()
     await expect(synced.getByLabel('上下文长度', { exact: true })).toHaveValue('128000')
-    await page.screenshot({ path: join(evidence, 'synced-model-after-rename.png') })
+    await expect(inputLimit).toHaveValue('10000')
+    await page.screenshot({ path: join(evidence, 'synced-model-after-rename.png'), animations: 'disabled' })
     await synced.getByRole('button', { name: '关闭编辑模型', exact: true }).click()
     const catalogOpener = page.getByRole('button', { name: '添加模型', exact: true })
     await catalogOpener.click()
@@ -118,5 +133,5 @@ test('Cherry settings menus, auto-save, sync recovery and capacity drawers work 
     await page.screenshot({ path: join(evidence, '08-models-minimum-desktop.png') })
     await page.getByRole('switch', { name: '启用服务商', exact: true }).click()
     await expect.poll(() => page.evaluate(async () => (await window.whomi.settings.get()).providers[0].enabled)).toBe(false)
-  } finally { await app?.close(); server.closeAllConnections(); await new Promise(resolve => server.close(resolve)) }
+  } finally { releaseCatalog.resolve(); await app?.close(); server.closeAllConnections(); await new Promise(resolve => server.close(resolve)) }
 })

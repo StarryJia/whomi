@@ -52,7 +52,7 @@ export function migrateStore(store: Pick<Store, 'writer'>): void {
           OR EXISTS (SELECT 1 FROM messages x WHERE x.member_id=m.id AND x.conversation_id=m.conversation_id)
           OR EXISTS (SELECT 1 FROM self_confirmations s WHERE s.member_id=m.id AND s.source='user');`)
       }
-      if (version < 13n) {
+      if (version < 14n) {
         db.function('whomi_is_recall', { deterministic: true }, (label, localType, content) => Number(hasWechatRecallMarker(label, localType, content)))
         db.exec(`INSERT INTO legacy_insight_source_classification SELECT m.id,m.member_id,m.sender_kind,m.sender_name,m.kind
           FROM messages m WHERE m.kind!='system'

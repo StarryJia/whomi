@@ -83,8 +83,8 @@ button.insight-report-row:active { background: var(--pressed); }
 .insight-reader-meta div { display: flex; flex-wrap: wrap; gap: 4px; }
 .insight-reader-meta dt::after { content: '：'; }
 .insight-reader-meta dd { margin: 0; }
-.insight-prose { font-size: clamp(16px, 1.4vw, 18px); line-height: 1.85; overflow-wrap: anywhere; }
-.insight-prose p { margin: 0; white-space: pre-wrap; }
+.insight-prose { font-size: clamp(16px, 1.4vw, 18px); line-height: 1.85; overflow-wrap: break-word; line-break: strict; }
+.insight-prose p { margin: 0; }
 .insight-prediction { text-align: center; padding: clamp(12px, 2vw, 28px) 0 clamp(24px, 3vw, 36px); border-bottom: 1px solid var(--line); }
 .insight-prediction-label { font-size: 14px; color: var(--text-muted); letter-spacing: .06em; }
 .insight-prediction-label abbr { text-decoration: none; }
@@ -94,26 +94,24 @@ button.insight-report-row:active { background: var(--pressed); }
 }
 .insight-prediction-unknown { color: var(--text-muted); }
 .insight-prediction-meaning { font-size: clamp(19px, 2vw, 26px); font-weight: 600; line-height: 1.5; }
+.insight-prediction-meaning span { display: inline-block; }
 .insight-prediction + .insight-chapter { padding-top: clamp(24px, 3vw, 34px); }
 .insight-chapter + .insight-chapter { margin-top: 32px; padding-top: 28px; border-top: 1px solid var(--line); }
 .insight-chapter h2 { margin: 0 0 14px; font-size: clamp(26px, 2.7vw, 34px); line-height: 1.35; letter-spacing: -.035em; }
-.insight-chapter > p, .insight-dimension { max-width: 44em; }
-.insight-chapter > p + p { margin-top: 14px; }
-.insight-dimension { margin-top: 22px; }
-.insight-dimension h3 { margin: 0 0 7px; font-size: clamp(18px, 1.6vw, 21px); line-height: 1.5; }
-.insight-dimension h3 span { font-weight: 500; color: var(--text-muted); }
+.insight-chapter p { max-width: 44em; }
+.insight-chapter > p + p, .insight-personal-observations > p + p { margin-top: 14px; }
+.insight-analysis > h3, .insight-personal-observations > h3 { margin: 0 0 14px; font-size: clamp(21px, 1.9vw, 25px); line-height: 1.4; }
+.insight-personal-observations { margin-top: 28px; }
+.insight-dimension + .insight-dimension { margin-top: 22px; }
+.insight-dimension h4 { margin: 0 0 7px; font-size: clamp(18px, 1.6vw, 21px); line-height: 1.5; }
 .insight-observation + .insight-observation { margin-top: 10px; }
 .insight-observation p.insight-observation-context { margin-top: 5px; color: var(--text-muted); font-size: .94em; }
-.insight-dimension + p { margin-top: 22px; }
-.insight-limitations { margin-top: 24px; color: var(--text-muted); font-size: 15px; }
-.insight-limitations p + p { margin-top: 6px; }
-.insight-reader-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 20px; margin-top: 28px; padding-top: 12px; border-top: 1px solid var(--line); }
 .insight-citation {
-  display: inline; margin: 0; padding: 0; border: 0; color: var(--focus); background: transparent; font: inherit;
-  max-width: 100%; overflow-wrap: anywhere; white-space: inherit; text-align: inherit; text-decoration: underline; text-underline-offset: .2em; cursor: pointer;
+  color: var(--focus); text-decoration: underline; text-underline-offset: .2em; cursor: pointer;
 }
 .insight-citation:hover { text-decoration-thickness: 2px; }
-.insight-citation:disabled { color: inherit; text-decoration: none; cursor: text; }
+.insight-citation:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.insight-citation[aria-disabled=true] { color: inherit; text-decoration: none; cursor: text; }
 .insight-delete-details { max-height: 45vh; overflow-y: auto; overflow-wrap: anywhere; }
 .insight-delete-details > p { line-height: 1.65; }
 .insight-delete-conversation { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

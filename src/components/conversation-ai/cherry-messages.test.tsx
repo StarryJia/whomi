@@ -108,7 +108,13 @@ describe('Cherry 消息模块', () => {
     await screen.findByText('开头')
     const viewport = screen.getByRole('region', { name: '对话消息' })
     let height = 640
-    Object.defineProperties(viewport, { scrollHeight: { get: () => height }, clientHeight: { value: 640 } })
+    let scrollTop = 0
+    // jsdom 没有布局引擎；普通滚动区域须像 Chromium 一样限制滚动范围。
+    Object.defineProperties(viewport, {
+      scrollHeight: { get: () => height },
+      clientHeight: { value: 640 },
+      scrollTop: { get: () => scrollTop, set: (value: number) => { scrollTop = Math.max(0, Math.min(value, height - 640)) } },
+    })
     act(() => { handle.current?.scrollToBottom(); viewport.focus() })
     await user.keyboard('{Home}{End}')
     expect(viewport.scrollTop).toBe(0)

@@ -14,12 +14,12 @@ type CitationTarget = {
   taskId: string; citationId: string; phrase: string; conversationTitle: string; fragmentCount: number
   initialFragmentIndex?: number; quote?: string; quoteMessageId?: string
 }
-export type RenderInsightSource = (target: CitationTarget & { onClose: () => void; returnFocus: RefObject<HTMLButtonElement | null> }) => ReactNode
+export type RenderInsightSource = (target: CitationTarget & { onClose: () => void; returnFocus: RefObject<HTMLElement | null> }) => ReactNode
 
-function ReportPage({ task, report, onBack, rename, onRenameBusy, renderSource, getReport, onOpenConversation }: {
+function ReportPage({ task, report, onBack, rename, onRenameBusy, renderSource, getReport }: {
   task: AnalysisTask; report: InsightReport; onBack: () => void; rename?: RenameReport
   onRenameBusy: (busy: boolean) => void; renderSource?: RenderInsightSource
-  getReport?: AiApi['getReport']; onOpenConversation?: (id: string) => void
+  getReport?: AiApi['getReport']
 }) {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -32,7 +32,7 @@ function ReportPage({ task, report, onBack, rename, onRenameBusy, renderSource, 
   const verifiedReport = detail === 'failed' ? undefined : detail
   const heading = useRef<HTMLHeadingElement>(null)
   const edit = useRef<HTMLButtonElement>(null)
-  const sourceTrigger = useRef<HTMLButtonElement>(null)
+  const sourceTrigger = useRef<HTMLElement>(null)
   const title = insightTaskTitle(task)
   useEffect(() => {
     if (!hasSources || !getReport) return
@@ -52,7 +52,7 @@ function ReportPage({ task, report, onBack, rename, onRenameBusy, renderSource, 
     setEditing(false)
     requestAnimationFrame(() => edit.current?.focus({ preventScroll: true }))
   }
-  function openCitation(reference: InsightCitation | undefined, trigger: HTMLButtonElement, initialFragmentIndex?: number, quote?: string, quoteMessageId?: string) {
+  function openCitation(reference: InsightCitation | undefined, trigger: HTMLElement, initialFragmentIndex?: number, quote?: string, quoteMessageId?: string) {
     if (!reference) {
       setCitationErrorAttempt(attempt => attempt + 1)
       return
@@ -92,15 +92,6 @@ function ReportPage({ task, report, onBack, rename, onRenameBusy, renderSource, 
         }}>重新读取引文</button>
       </>}
       {hasSources && getReport && !detail && <p role="status">正在读取引文…</p>}
-      <footer className="insight-reader-footer">
-        {onOpenConversation && <button className="analysis-link" type="button" disabled={editing}
-          onClick={() => onOpenConversation(task.conversationId)}>打开完整会话</button>}
-        <button className="analysis-link" type="button" disabled={editing} onClick={() => {
-          heading.current?.focus({ preventScroll: true })
-          const viewport = heading.current?.closest('main')
-          if (viewport) viewport.scrollTop = 0
-        }}>回到开头</button>
-      </footer>
     </div>
     {citation && renderSource?.({ ...citation, onClose: () => setCitation(undefined), returnFocus: sourceTrigger })}
   </section>
@@ -169,7 +160,7 @@ function visibleTaskRows(list: HTMLElement | null) {
 }
 
 export function InsightsLibrary({ tasks, conversations, selectedId, onSelect, onReturn, onTask, onConversations, loading, error, retry, arrange, rename,
-  remove, onStop, onContinue, onRenameBusy, renderSource, getReport, onOpenConversation }: {
+  remove, onStop, onContinue, onRenameBusy, renderSource, getReport }: {
   tasks: readonly AnalysisTask[]
   conversations: readonly { id: string; title: string; pinned?: boolean }[]
   selectedId?: string
@@ -188,7 +179,6 @@ export function InsightsLibrary({ tasks, conversations, selectedId, onSelect, on
   onRenameBusy: (busy: boolean) => void
   renderSource?: RenderInsightSource
   getReport?: AiApi['getReport']
-  onOpenConversation?: (id: string) => void
 }) {
   const id = useId()
   const [collapsed, setCollapsed] = useState(() => new Set<string>())
@@ -332,7 +322,7 @@ export function InsightsLibrary({ tasks, conversations, selectedId, onSelect, on
       </>}
     </section></ExceptionNoticeScope>
     {selected && selectedReport && <ReportPage key={selected.id + ':' + (selected.insightContentRevision ?? '')}
-      task={selected} report={selectedReport} onBack={onReturn} getReport={getReport} onOpenConversation={onOpenConversation}
+      task={selected} report={selectedReport} onBack={onReturn} getReport={getReport}
       rename={rename} onRenameBusy={onRenameBusy} renderSource={renderSource} />}
   </>
 }

@@ -239,16 +239,16 @@ test('真实模型经桌面入口阅读所选的合成聊天', async ({}, info) 
     await expect(page.getByRole('heading', { name: '你们的相处' })).toBeVisible()
     await shot('02-report')
     const article = page.getByRole('article')
-    const axes = { EI: '精力来源', SN: '理解信息', TF: '做决定', JP: '安排方式' }
-    expect(report.judgments.map(judgment => judgment.dimension).sort()).toEqual(Object.keys(axes).sort())
+    expect(report.judgments.map(judgment => judgment.dimension).sort()).toEqual(['EI', 'JP', 'SN', 'TF'])
     for (const judgment of report.judgments) {
-      const heading = article.getByRole('heading', { level: 3, name: new RegExp(axes[judgment.dimension]) })
+      const letters = judgment.direction ?? judgment.dimension.split('').join(' / ')
+      const heading = article.getByRole('heading', { level: 4, name: new RegExp('^' + letters + ' ') })
       await expect(heading).toBeVisible()
       for (const sources of [judgment.supportingSources, judgment.counterexampleSources]) {
         const first = sources[0]
         if (first) {
           const quote = first.excerpts?.[0]
-          const links = heading.locator('..').locator('button[data-source-message="' + first.messageId + '"]')
+          const links = heading.locator('..').locator('[data-source-message="' + first.messageId + '"]')
           await (quote ? links.filter({ hasText: quote }) : links).first().click()
           const region = page.getByRole('region', { name: '引用聊天记录' })
           const message = region.locator('[data-citation=true][data-message-id="' + first.messageId + '"]')
@@ -267,7 +267,7 @@ test('真实模型经桌面入口阅读所选的合成聊天', async ({}, info) 
       if (inspected.has(link.citationId)) continue
       inspected.add(link.citationId)
       const citation = report.citations.find(c => c.id === link.citationId)
-      await page.locator('.insight-prose section > p button.insight-citation').nth(index).click()
+      await page.locator('.insight-prose .insight-chapter > p .insight-citation, .insight-personal-observations > p .insight-citation').nth(index).click()
       const region = page.getByRole('region', { name: '引用聊天记录' })
       if (link.quoteFragmentIndex !== undefined) {
         await expect(region.locator('[data-citation=true] mark')).toHaveText(link.text)

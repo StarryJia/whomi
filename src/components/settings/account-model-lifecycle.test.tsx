@@ -180,6 +180,24 @@ test('已登录账户与缓存绑定不一致时不显示旧模型', async () =>
   expectEmptyModels()
 })
 
+test('切换订阅账号后，旧账号的目录刷新不能替换新账号的同编号模型', async () => {
+  const { api, user, snapshot } = setup()
+  await screen.findByText('a@example.invalid')
+  const accountSnapshot = snapshot()
+  accountSnapshot.models = accountSnapshot.models.map(model => ({ ...model, version: 9, contextWindow: 128000 }))
+  const pending = deferred<SettingsSnapshot>()
+  vi.mocked(api.get).mockReturnValueOnce(pending.promise)
+  await user.click(screen.getByRole('button', { name: '同步模型' }))
+  await waitFor(() => expect(vi.mocked(api.get).mock.results.at(-1)?.value).toBe(pending.promise))
+  await user.click(screen.getByRole('button', { name: '取消' }))
+  await logout(user)
+  await user.click(await screen.findByRole('button', { name: '使用其他账号登录' }))
+  await screen.findByText('b@example.invalid')
+  await act(async () => { pending.resolve(accountSnapshot) })
+  await user.click(screen.getByRole('button', { name: '编辑甲模型' }))
+  expect(screen.getByLabelText('上下文长度')).toHaveValue(8000)
+})
+
 test.each(['编辑甲模型', '同步模型'])('账户绑定失效时清除%s抽屉及迟到目录结果', async opener => {
   const { api, user, publish, snapshot } = setup()
   await screen.findByText('a@example.invalid')
