@@ -122,6 +122,7 @@ Whomi 注重用户的自我理解，希望让人从真实经历中看见被忽�
 ## Product Principles
 
 - 让复杂的功能看起来简单，让简单的操作感到愉悦，让整个页面既有设计感，又不需要用户思考如何使用。
+- Avoid unnecessary secondary labels and descriptions. Let the layout do the explaining. [界面布局与辅助文案原则](DESIGN.md#核心原则)
 - 常用操作应容易发现，精简不能隐藏范围、进度和失败结果。
 - 用户决定导入哪些材料、何时分析，结果应能追溯与纠正。
 - 优先复用现成能力，技术选择以剩余工作量和长期维护成本为依据。

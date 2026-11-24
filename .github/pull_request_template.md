@@ -10,7 +10,12 @@
 
 记录实际执行的检查、步骤和结果。代码修改附类型检查与相关测试结果，文档修改说明事实和链接检查情况。
 
-涉及界面时，附关键状态截图，说明正常完成、取消、失败重试和窄窗口的核对结果。
+涉及界面时，附关键状态截图，并核对以下两项。
+
+> Avoid unnecessary secondary labels and descriptions. Let the layout do the explaining.
+
+- [ ] 已记录正常完成、取消、失败重试和窄窗口的实际结果。
+- [ ] 已对照截图检查辅助标签和说明。布局或控件已表达的信息只出现一次，必要的名称、状态和操作仍然清楚。[文案取舍与示例](https://github.com/StarryJia/whomi/blob/main/DESIGN.md#文案与信息只出现一次)
 
 ## 待完成事项与限制
 
