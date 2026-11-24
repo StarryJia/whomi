@@ -32,6 +32,93 @@ function props(readCitation = vi.fn(async () => source())) {
       return { items: [message('9')], beforeCursor: null, afterCursor: 'before', snapshotMaxId: '40' }
     }) } }
 }
+test('署名旁显示完整日期，并保留无法解析的原始时间', async () => {
+  const data = source(['1', '2', '3'])
+  if (data.status !== 'available') throw Error('缺少测试原文')
+  for (const [index, row] of data.page.items.entries()) {
+    row.sentAtMs = new Date(2026, 9, 10 + index, 9, 30).getTime()
+  }
+  Object.assign(data.page.items[2], { sentAtMs: null, timeBucket: 1, timeRaw: '周三上午' })
+  render(<InsightSourceDialog {...props(vi.fn(async () => data))} />)
+  await screen.findByText('原文1')
+  const meta = (id: string) => document.querySelector(`[data-message-id="${id}"] .message-meta`)
+  expect(meta('1')).toHaveTextContent('2026/10/10 09:30:00')
+  expect(meta('2')).toHaveTextContent('2026/10/11 09:30:00')
+  expect(meta('3')).toHaveTextContent('周三上午')
+})
+function replySource(targetId: string) {
+  const data = source(['10', '11', '12'], ['10'])
+  if (data.status !== 'available') throw Error('缺少测试原文')
+  data.page.items[1].reply = { targetMessageId: targetId, originalId: null, idNamespace: null, text: '被回复的消息',
+    senderName: null, sentAtMs: null, state: 'resolved' }
+  data.page.items[2].reply = { ...data.page.items[1].reply, targetMessageId: null, state: 'unresolved' }
+  return data
+}
+test.each(['12', '90'])('点回复定位原消息 %s，返回同一条回复并保留当前片段', async target => {
+  const p = props(vi.fn(async () => replySource(target)))
+  p.client.locateSource.mockResolvedValue(source(['89', '90']))
+  render(<InsightSourceDialog {...p} />)
+  const quote = await screen.findByRole('button', { name: /查看引用原消息/ })
+  expect(screen.getByRole('blockquote')).toHaveTextContent('被回复的消息')
+  fireEvent.click(quote)
+  const row = (id: string) => document.querySelector(`[data-message-id="${id}"]`)
+  await waitFor(() => expect(row(target)).toHaveFocus())
+  expect(row(target)).toHaveClass('message-reference-target')
+  expect(row(target)).toHaveAttribute('data-citation', 'false')
+  if (target === '90') {
+    expect(p.client.locateSource).toHaveBeenCalledWith({ conversationId: '9', messageId: '90' })
+    expect(row('10')).toBeNull()
+  } else expect(p.client.locateSource).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByRole('button', { name: '返回引用位置' }))
+  expect(row('11')).toHaveFocus()
+  expect(row('10')).toHaveAttribute('data-citation', 'true')
+  expect(screen.getByText('1 / 2')).toBeVisible()
+  expect(screen.queryByRole('button', { name: '返回引用位置' })).toBeNull()
+})
+test('回复定位提示自动消退，保留报告证据和返回入口', async () => {
+  render(<InsightSourceDialog {...props(vi.fn(async () => replySource('12')))} />)
+  const link = await screen.findByRole('button', { name: /查看引用原消息/ })
+  vi.useFakeTimers()
+  try {
+    fireEvent.click(link)
+    const row = screen.getByText('原文12').closest('li')
+    expect(row).toHaveClass('message-reference-target')
+    act(() => vi.advanceTimersByTime(1800))
+    expect(row).not.toHaveClass('message-reference-target')
+    expect(screen.getByText('原文10').closest('li')).toHaveAttribute('data-citation', 'true')
+    expect(screen.getByRole('button', { name: '返回引用位置' })).toBeEnabled()
+  } finally { vi.useRealTimers() }
+})
+test('跨页原消息读取失败后可重试，切到下一段会丢弃迟到的定位结果', async () => {
+  let finish!: (value: InsightCitationWindow) => void
+  const p = props(vi.fn().mockResolvedValueOnce(replySource('90')).mockResolvedValueOnce(source(['30'], ['30'])))
+  p.client.locateSource.mockResolvedValueOnce({ status: 'unavailable' }).mockImplementationOnce(() => new Promise(resolve => { finish = resolve }))
+  render(<InsightSourceDialog {...p} />)
+  fireEvent.click(await screen.findByRole('button', { name: /查看引用原消息/ }))
+  expect(await screen.findByRole('alert')).toHaveTextContent('未找到原消息')
+  expect(screen.getByText('原文11')).toBeVisible()
+  fireEvent.click(screen.getByRole('button', { name: '重试' }))
+  fireEvent.click(screen.getByRole('button', { name: '下一段' }))
+  await screen.findByText('原文30')
+  await act(async () => { finish(source(['90'], ['90'])) })
+  expect(screen.queryByText('原文90')).not.toBeInTheDocument()
+  expect(screen.getByText('2 / 2')).toBeVisible()
+  expect(screen.queryByRole('button', { name: '返回引用位置' })).toBeNull()
+})
+test('从跨页回复直接回到报告引用后仍能切换片段', async () => {
+  const read = vi.fn().mockResolvedValueOnce(replySource('90')).mockResolvedValueOnce(replySource('90')).mockResolvedValueOnce(source(['30'], ['30']))
+  const p = props(read)
+  p.client.locateSource.mockResolvedValue(source(['90'], []))
+  render(<InsightSourceDialog {...p} />)
+  fireEvent.click(await screen.findByRole('button', { name: /查看引用原消息/ }))
+  await screen.findByText('原文90')
+  fireEvent.click(screen.getByRole('button', { name: '回到引用' }))
+  expect(await screen.findByText('原文10')).toBeVisible()
+  expect(screen.queryByRole('button', { name: '返回引用位置' })).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: '下一段' }))
+  expect(await screen.findByText('原文30')).toBeVisible()
+  expect(screen.getByText('2 / 2')).toBeVisible()
+})
 test('点击第二段引文直接定位原句，只标记这条来源消息中的引文', async () => {
   const window = source(['20', '21'], ['20', '21'])
   if (window.status !== 'available') throw Error('缺少测试原文')

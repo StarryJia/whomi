@@ -62,7 +62,7 @@ async function failNext(app, method, fragmentIndex, channel = 'whomi:ai-call', h
   }, { method, fragmentIndex, channel, hold })
 }
 
-async function harness({ model = true, self = true, hold = true, reject = true, longReport = false, extraConversations = 0, distinctOverviewJudgments = false, conversationTitle = syntheticInsightConversation } = {}) {
+async function harness({ model = true, self = true, hold = true, reject = true, longReport = false, extraConversations = 0, distinctOverviewJudgments = false, replyExamples = false, conversationTitle = syntheticInsightConversation } = {}) {
   const evidence = test.info().outputPath('screenshots')
   const directory = resolve(await mkdtemp(join(tmpdir(), 'whomi-runtime-insight-ui-')))
   const requests = [], errors = [], fixtureErrors = []
@@ -86,6 +86,11 @@ async function harness({ model = true, self = true, hold = true, reject = true, 
         }
         if (prompt.read) return completeModel(response, { read: prompt.read })
         const result = suggestionReport()
+        if (replyExamples) {
+          result.aboutYou[0].content[0].text = '先给你三个办法'
+          result.relationship[0].content[0].text = '想先说完'
+          result.citations[1].fragments[0].messageIds = ['2']
+        }
         if (distinctOverviewJudgments && prompt.messages.some(message => message.id === '4')) {
           Object.assign(result.judgments.find(item => item.dimension === 'JP'), { direction: 'J', text: '你提前定好了见面时间。', supportingIds: ['4'],
             counterexampleIds: [], alternativeExplanations: [], limitations: ['仅限这次见面。'] })
@@ -124,9 +129,18 @@ async function harness({ model = true, self = true, hold = true, reject = true, 
       }
       if (!${self}) writer.exec('DELETE FROM self_confirmations')
       const add = writer.prepare("INSERT INTO messages(id,conversation_id,member_id,sender_kind,sender_name,kind,text,ordinal,sent_at_ms,time_precision) VALUES(?,1,?,'member',?,'text',?,?,?,'minute')")
-      for (let i = 0; i < 140; i++) {
+      for (let i = 0; i < ${replyExamples ? 60 : 140}; i++) {
         add.run(100 + i, i % 2 + 1, i % 2 ? '合成对方' : '合成本人', '范围外较早聊天 ' + (i + 1), i + 144, Date.UTC(2026, 9, 1, 1, i))
-        add.run(300 + i, i % 2 + 1, i % 2 ? '合成对方' : '合成本人', '范围外较晚聊天 ' + (i + 1), i + 4, Date.UTC(2026, 9, 12, 1, i))
+        if (!${replyExamples}) add.run(300 + i, i % 2 + 1, i % 2 ? '合成对方' : '合成本人', '范围外较晚聊天 ' + (i + 1), i + 4, Date.UTC(2026, 9, 12, 1, i))
+      }
+      if (${replyExamples}) {
+        writer.exec("UPDATE messages SET kind='system',sender_kind='system',member_id=NULL,sender_name='',text='合成系统通知' WHERE id=100")
+        writer.prepare('UPDATE messages SET sent_at_ms=? WHERE id=?').run(Date.UTC(2026, 9, 9, 1, 30), 1)
+        writer.prepare('UPDATE messages SET sent_at_ms=? WHERE id=?').run(Date.UTC(2026, 9, 10, 1, 30), 2)
+        writer.exec("INSERT INTO message_keys VALUES(1,'synthetic-insights','early',100)")
+        writer.exec("INSERT INTO message_replies(message_id,conversation_id,target_message_id,original_id,id_namespace,state) VALUES(2,1,100,'early','synthetic-insights','resolved')")
+        writer.exec("UPDATE messages SET sent_at_ms=NULL,time_precision='unknown',time_raw='周三上午' WHERE id=4")
+        writer.exec("INSERT INTO message_replies(message_id,conversation_id,text,state) VALUES(4,1,'未关联的摘录','unresolved')")
       }
       return true
     })()
@@ -164,6 +178,10 @@ async function harness({ model = true, self = true, hold = true, reject = true, 
     await window.whomi.settings.saveModel({ providerId: provider.id, label: '合成洞察模型', model: 'example', contextWindow: 12000, maxTokens: 1000, enabled: true })
   }, `http://127.0.0.1:${server.address().port}/v1`)
   const window = await restart()
+  if (replyExamples) {
+    const session = await window.page.context().newCDPSession(window.page)
+    await session.send('Emulation.setTimezoneOverride', { timezoneId: syntheticInsightScope.timezone })
+  }
   if (await window.btn('展开会话列表').isVisible()) await window.btn('展开会话列表').click()
   await window.btn(conversationTitle).click()
   return { ...window, requests, errors, fixtureErrors, evidence, restart, close }
@@ -213,12 +231,30 @@ test('task row opens its progress from mouse and keyboard while actions stay on 
     await task.getByRole('button', { name: '详情' }).click()
     await title.press('Enter')
     await showList()
+    const pause = task.getByRole('button', { name: '暂停', exact: true })
+    await page.mouse.move(2, 2)
+    await expect(pause).toHaveCSS('border-top-width', '1px')
+    await expect(pause).toHaveCSS('border-top-style', 'solid')
+    await page.screenshot({ path: info.outputPath('pause-button.png') })
     await title.focus()
     await page.keyboard.press('Tab')
-    const pause = task.getByRole('button', { name: '暂停', exact: true })
     await expect(pause).toBeFocused()
+    await expect(pause).toHaveCSS('outline-style', 'solid')
+    await page.screenshot({ path: info.outputPath('pause-button-focused.png') })
+    const transitions = await task.getByRole('status').evaluateHandle(node => {
+      const states = [node.textContent]
+      const observer = new MutationObserver(() => {
+        if (states.at(-1) !== node.textContent) states.push(node.textContent)
+        if (node.textContent === '已暂停') observer.disconnect()
+      })
+      observer.observe(node, { subtree: true, childList: true, characterData: true })
+      return states
+    })
     await page.keyboard.press('Space')
     await expect(task.getByRole('status')).toHaveText('已暂停')
+    expect(await transitions.jsonValue()).toEqual(['生成中', '正在暂停', '已暂停'])
+    await expect(task).toHaveAttribute('data-insight-task', id)
+    await expect(task.getByRole('button', { name: '继续洞察' })).toBeEnabled()
     await expect(progress).toHaveCount(0)
     await resize(480)
     await expect.poll(() => page.evaluate(() => innerWidth)).toBe(480)
@@ -530,6 +566,76 @@ async function holdNextSourceReply(app, method) {
     })
   }, method)
 }
+
+test('citation reply navigation returns to the reply and matches conversation timestamps', async () => {
+  const h = await harness({ hold: false, reject: false, replyExamples: true }), { page, btn, shot } = h
+  const row = (region, id) => region.locator(`[data-message-id="${id}"]`)
+  const meta = (region, id) => row(region, id).locator('.message-meta')
+  async function expectSystemHighlight(region) {
+    const notice = row(region, '100').locator('.message-notice-text')
+    await expect(notice).toHaveText('合成系统通知')
+    await expect(notice).toHaveCSS('outline-width', '2px')
+    await expect(notice).toHaveCSS('outline-style', 'solid')
+    await expect(notice).toHaveCSS('outline-style', 'none')
+  }
+  try {
+    const chat = page.getByRole('region', { name: '聊天记录', exact: true })
+    const times = []
+    for (const id of ['1', '2', '4']) times.push(await meta(chat, id).textContent())
+    expect(times[0]).toContain('2026/10/9 09:30')
+    expect(times[1]).toContain('2026/10/10 09:30')
+    expect(times[2]).toContain('周三上午')
+    for (const [reply, target] of [['3', '1'], ['2', '100']]) {
+      await row(chat, reply).getByRole('button', { name: /查看引用原消息/ }).click()
+      await expect(row(chat, target)).toBeFocused()
+      if (target === '100') await expectSystemHighlight(chat)
+      await btn('返回引用位置').click()
+      await expect(row(chat, reply)).toBeFocused()
+    }
+    const task = await page.evaluate(async scope => {
+      const [model] = await window.whomi.ai.listModels()
+      const prepared = await window.whomi.ai.prepareAnalysis({ conversationId: '1', modelId: model.id, scope })
+      return window.whomi.ai.confirmAnalysis({ token: prepared.token, requestId: 'citation-reply-navigation' })
+    }, syntheticInsightScope)
+    await expect.poll(() => page.evaluate(id => window.whomi.ai.getAnalysis(id), task.id), { timeout: 20_000 }).toMatchObject({ state: 'completed' })
+    await btn('对话洞察').click()
+    await page.locator('.insight-report-row[data-list-id]').click()
+    const trigger = btn('先给你三个办法')
+    const dialog = page.getByRole('dialog', { name: /^原文 · / })
+    const quotes = ['先给你三个办法', '想先说完']
+    for (const [index, quote] of quotes.entries()) {
+      const link = btn(quote)
+      await link.click()
+      const cited = dialog.locator('[data-citation=true]')
+      await expect(cited).toHaveAttribute('data-message-id', String(index + 1))
+      await expect(cited.locator('mark')).toHaveText(quote)
+      await expect(cited.locator('.message-meta')).toBeInViewport({ ratio: 1 })
+      await expect(cited.locator('.message-meta')).toHaveText(times[index])
+      await shot('citation-direct-timestamp-' + (index + 1))
+      await btn('关闭原文').click()
+      await expect(link).toBeFocused()
+    }
+    await trigger.click()
+    await expect(meta(dialog, '4')).toHaveText(times[2])
+    await expect(row(dialog, '4').getByRole('blockquote')).toHaveText('未关联的摘录')
+    for (const [reply, target] of [['3', '1'], ['2', '100']]) {
+      if (target === '100') await expect(row(dialog, target)).toHaveCount(0)
+      await row(dialog, reply).getByRole('button', { name: /查看引用原消息/ }).click()
+      await expect(row(dialog, target)).toBeFocused()
+      await expect(row(dialog, target)).toBeInViewport()
+      await expect(row(dialog, target)).toHaveClass(/message-reference-target/)
+      await shot('citation-reply-target-' + target)
+      if (target === '100') await expectSystemHighlight(dialog)
+      await dialog.getByRole('button', { name: '返回引用位置' }).click()
+      await expect(row(dialog, reply)).toBeFocused()
+      await expect(row(dialog, reply)).toBeInViewport()
+      await expect(dialog.locator('.insight-source-footer')).toContainText('1 / 2')
+    }
+    await shot('citation-reply-return')
+    await btn('关闭原文').click()
+    await expect(trigger).toBeFocused()
+  } finally { await h.close() }
+})
 
 test('narrow citation dialog can close a pending read and change fragments during pagination', async ({}, info) => {
   const conversationTitle = '合成会话 · ' + 'QuarterlyReview'.repeat(15)

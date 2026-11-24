@@ -5,7 +5,6 @@ export function ConversationAvatar({ name }: { name: string }) {
 }
 
 const dayFormat = new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' })
-const clockFormat = new Intl.DateTimeFormat('zh-CN', { hour: '2-digit', minute: '2-digit' })
 
 function messageDate(message: MessageView) {
   if (message.timeBucket === 1 || message.sentAtMs === null) return null
@@ -44,9 +43,8 @@ function highlightQuote(text: string, quote?: string) {
   return <>{text.slice(0, start)}<mark>{quote}</mark>{text.slice(start + quote.length)}</>
 }
 
-export function ChatMessageContent({ message, groupedByDate, firstUnknownTime, sourceLabel, replyTarget, onOpenReply, replyBusy, highlightText }: {
+export function ChatMessageContent({ message, firstUnknownTime, sourceLabel, replyTarget, onOpenReply, replyBusy, highlightText }: {
   message: MessageView
-  groupedByDate?: boolean
   firstUnknownTime?: boolean
   sourceLabel?: string
   replyTarget?: MessageView
@@ -55,7 +53,7 @@ export function ChatMessageContent({ message, groupedByDate, firstUnknownTime, s
   highlightText?: string
 }) {
   const date = messageDate(message)
-  const time = date ? (groupedByDate ? clockFormat.format(date) : date.toLocaleString('zh-CN')) : message.timeRaw
+  const time = date ? date.toLocaleString('zh-CN') : message.timeRaw
   if (message.kind === 'system') return <div className="message-notice">
     {firstUnknownTime && <span>时间未知</span>}
     {time && <span>{time}</span>}

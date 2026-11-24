@@ -107,6 +107,57 @@
 .import-step-centered { display: flex; flex-direction: column; justify-content: center; text-align: center; }
 .import-step-centered > p { margin: 0; }
 .import-step-centered .import-step-actions { justify-content: center; }
+.reader-modal-card.import-details {
+  width: min(100%, 660px);
+  max-width: none;
+  min-width: 0;
+  max-height: min(640px, calc(100dvh - 64px));
+  padding: 16px 20px;
+  gap: 6px;
+}
+.import-details header { display: flex; align-items: center; flex: none; gap: 12px; }
+.import-details header button {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin-left: auto;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+.import-details header button:hover { background: var(--hover); }
+.import-detail-list {
+  min-height: 0;
+  margin: 0;
+  padding: 0 4px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+}
+.import-detail-list li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 46px;
+  padding-block: 7px;
+  border-top: 1px solid var(--line);
+  font-size: 14px;
+}
+.import-detail-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.import-detail-name h3 { margin: 0; font-size: 15px; font-weight: 550; }
+.import-detail-list .reader-modal-btn { flex: none; }
+.import-detail-state { padding: 2px 8px; border-radius: 6px; background: var(--hover); }
+.import-detail-state:is([data-state=processed], [data-state=saved], [data-state=duplicate]) { color: #395c40; background: #edf5ec; }
+.import-detail-state[data-state=committing] { color: #8a441d; background: #fff1df; }
+.import-details :is(button, ul):focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+@media (max-width: 480px) {
+  .import-detail-list li:has(button) { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; }
+  .import-detail-list li:has(button) span { grid-column: 1; }
+  .import-detail-list li button { grid-column: 2; grid-row: 1 / 3; }
+}
 .import-result-single .import-status { margin: 0 0 16px; font-size: 20px; font-weight: 550; }
 .import-result-single .import-results { margin: 0; }
 .import-result-single .import-results li { border: 0; padding: 0; }

@@ -17,7 +17,7 @@ const fixture = {
   })),
 }
 
-for (const width of [1280, 360]) test(`在 ${width} 像素窗口双向切换选择与引用，逐组管理时保留草稿`, async () => {
+for (const width of [1280, 360]) test(`在 ${width} 像素窗口双向切换选择与引用，逐组管理时保留草稿`, async ({}, info) => {
   test.setTimeout(90000)
   const directory = await mkdtemp(join(tmpdir(), 'whomi-runtime-composer-'))
   const source = join(directory, 'picnic.json')
@@ -93,10 +93,46 @@ for (const width of [1280, 360]) test(`在 ${width} 像素窗口双向切换选�
     await button('新建 AI 对话').click()
     await expect(editor).toBeFocused()
     await expect(editor).toHaveText(question)
-    await button('显示对话列表').click()
     const history = page.getByRole('navigation', { name: 'AI 对话列表' })
+    const scrim = button('关闭对话列表')
+    const inputBar = panel.locator('[data-composer-inputbar]')
+    await expect(history).toHaveCount(0)
+    await expect(button('显示对话列表')).toHaveAttribute('aria-expanded', 'false')
+    await button('显示对话列表').click()
+    await expect(button('收起对话列表')).toHaveAttribute('aria-expanded', 'true')
+    await expect(scrim).toBeVisible()
     await expect(history.getByRole('button', { name: '新对话', exact: true })).toHaveCount(1)
+    // 输入框左边缘与空白列表重合，录下实际颜色以识别穿透列表的描边。
+    const inputBox = await inputBar.boundingBox()
+    const listBox = await history.boundingBox()
+    const sample = { x: Math.floor(inputBox.x) - 2, y: Math.floor(inputBox.y + inputBox.height / 2), width: 6, height: 1 }
+    expect(sample.x).toBeGreaterThan(listBox.x)
+    expect(sample.x + sample.width).toBeLessThan(listBox.x + listBox.width)
+    const listColor = await history.evaluate(node => getComputedStyle(node).backgroundColor.match(/\d+/g).slice(0, 3).reverse().map(Number))
+    const colors = await app.evaluate(async ({ BrowserWindow }, rectangle) => {
+      const image = await BrowserWindow.getAllWindows()[0].webContents.capturePage(rectangle)
+      const pixels = image.toBitmap()
+      return Array.from({ length: pixels.length / 4 }, (_, index) => [...pixels.subarray(index * 4, index * 4 + 3)])
+    }, sample)
+    await page.screenshot({ path: info.outputPath('thread-list-open.png') })
+    for (const color of colors) expect(color).toEqual(listColor)
     await button('收起对话列表').click()
+    await expect(button('显示对话列表')).toHaveAttribute('aria-expanded', 'false')
+    await expect(history).toHaveCount(0)
+    await expect(scrim).toHaveCount(0)
+    await expect(panel).toBeVisible()
+    const chatArea = await panel.boundingBox()
+    const composer = await inputBar.boundingBox()
+    expect(composer.x).toBeGreaterThanOrEqual(chatArea.x)
+    expect(composer.x + composer.width).toBeLessThanOrEqual(chatArea.x + chatArea.width)
+    expect(composer.y).toBeGreaterThanOrEqual(chatArea.y)
+    expect(composer.y + composer.height).toBeLessThanOrEqual(chatArea.y + chatArea.height)
+    await editor.click()
+    await editor.press('End')
+    await page.keyboard.insertText('请列清单。')
+    await expect(editor).toHaveText(question + '请列清单。')
+    await page.screenshot({ path: info.outputPath('thread-list-closed-typing.png') })
+    await editor.fill(question)
     await expect(entry).toBeVisible()
 
     await showSource()

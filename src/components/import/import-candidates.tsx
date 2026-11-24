@@ -1,14 +1,8 @@
 import { useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { Candidate, DiscoveryEntry } from '../../shared/import-contract'
 
-function nameChoices(candidates: readonly Candidate[], entries?: readonly DiscoveryEntry[]) {
-  const sources = new Map(entries?.map(entry => [entry.entryId, entry.displayName]))
-  const rows = candidates.map(candidate => ({
-    id: candidate.candidateId,
-    title: candidate.title.trim() || '未命名会话',
-    source: sources.get(candidate.entryId) ?? '',
-    detail: '',
-  }))
+export function distinguishImportRows<T extends { title: string; source: string }>(items: readonly T[]) {
+  const rows = items.map(item => ({ ...item, detail: '' }))
   const byTitle = new Map<string, Array<typeof rows[number]>>()
   for (const row of rows) {
     const group = byTitle.get(row.title)
@@ -41,7 +35,12 @@ export function ConversationChoices({ candidates, entries, busy, onImport, onCan
   onCancel: () => void
 }) {
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set())
-  const choices = useMemo(() => nameChoices(candidates, entries), [candidates, entries])
+  const choices = useMemo(() => {
+    const sources = new Map(entries?.map(entry => [entry.entryId, entry.displayName]))
+    return distinguishImportRows(candidates.map(candidate => ({
+      id: candidate.candidateId, title: candidate.title.trim() || '未命名会话', source: sources.get(candidate.entryId) ?? '',
+    })))
+  }, [candidates, entries])
   const titleId = useId()
   const heading = useRef<HTMLHeadingElement>(null)
   useLayoutEffect(() => { heading.current?.focus({ preventScroll: true }) }, [])

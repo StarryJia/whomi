@@ -12,7 +12,7 @@ import { ImportFailure, issue } from './import/limits'
 import { rebuildSummary } from './import/summary'
 import type { ImportPreview, PreviewOptions } from '../../src/shared/desktop-api'
 export type DataServiceOptions = {store:Store;appDataDirectory:string;staging?:Omit<StagingOptions,'appDataDirectory'|'registerArea'>;runner?:Omit<RunnerDependencies,'write'|'changed'>;changed?:(snapshot:ImportSnapshot)=>void}
-type ActiveImport={id:string;operationId?:string;signal:AbortController;discovery?:Discovery;staged?:StagedImport;progress?:ImportSnapshot['progress'];finishedCandidates?:Set<string>}
+type ActiveImport={id:string;operationId?:string;signal:AbortController;discovery?:Discovery;staged?:StagedImport;progress?:ImportSnapshot['progress'];finishedCandidates?:Set<string>;selectedCandidates?:Set<string>}
 export function createDataService(options:DataServiceOptions) {
   const {store}=options
   let queue:Promise<unknown>=Promise.resolve(),task:Promise<unknown>=Promise.resolve(),active:ActiveImport|undefined,lastEvent=0
@@ -56,7 +56,10 @@ export function createDataService(options:DataServiceOptions) {
     if (undurableFailure?.id === id) {
       return {...snapshot, status:'failed', failurePhase:undurableFailure.phase, issues:[issue(undurableFailure.code)]}
     }
-    return snapshot.status === 'committing' && current?.progress ? {...snapshot,progress:current.progress}:snapshot
+    if (snapshot.status !== 'committing' || !current?.progress) return snapshot
+    const selected = current.selectedCandidates
+    return { ...snapshot, progress: current.progress,
+      results: selected ? snapshot.results.filter(result => selected.has(result.candidateId)) : snapshot.results }
   }
   function metadata(id:string, value:Record<string,unknown>) {store.writer.prepare('UPDATE import_jobs SET metadata=? WHERE id=?').run(JSON.stringify({...value,operationId:active?.id === id ? active.operationId : undefined}),BigInt(id))}
   async function cleanup(current:ActiveImport) {
@@ -136,6 +139,10 @@ export function createDataService(options:DataServiceOptions) {
       setJobState(store,id,'committing')
       const finished = new Set<string>()
       current.finishedCandidates = finished
+      const selected = plan.candidateIds ? new Set(plan.candidateIds) : undefined
+      current.selectedCandidates = selected
+      current.progress = { processed: 0, total: current.staged.candidates.reduce((total, candidate) =>
+        total + (!selected || selected.has(candidate.candidateId) ? candidate.counts.validRecords : 0), 0) }
       task=(async()=> {
         try {
           await runImport(store,current.staged!,plan,current.signal.signal,{

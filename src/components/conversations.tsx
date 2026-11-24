@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { actionError, ManagedRow, ReaderDialog } from './ui/managed-row'
 import { ExceptionNotice } from './ui/exception-notices'
 import { ChatMessageContent, ConversationAvatar } from './chat-message-content'
+import { useMessageJump } from './use-message-jump'
 import { ArrowLeft, ChevronRight, MousePointer2, Plus, UserRound } from 'lucide-react'
 import clsx from 'clsx'
 import { Tooltip } from './ui/tooltip'
@@ -153,7 +154,7 @@ export function ConversationReader({ conversation, initialAnalysisTaskId, openAn
   const selectionMode = readerMode === 'selecting'
   const selectionButton = useRef<HTMLButtonElement>(null)
   const selection = useMessageSelection(conversation.messages, selectionMode)
-  const [jump, setJump] = useState<QuoteJump>()
+  const [jump, setJump] = useMessageJump<QuoteJump>()
   const [highlightedReferences, setHighlightedReferences] = useState<{ ids: ReadonlySet<string>; pending?: boolean }>()
   const [quoteReturnId, setQuoteReturnId] = useState<string>()
   const [quoteBusy, setQuoteBusy] = useState(false)
@@ -343,12 +344,6 @@ export function ConversationReader({ conversation, initialAnalysisTaskId, openAn
       .find(item => item.dataset.messageId === jump.targetId)
     element?.focus({ preventScroll: true })
     element?.scrollIntoView?.({ block: 'center', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
-  }, [jump])
-
-  useEffect(() => {
-    if (!jump) return
-    const timer = window.setTimeout(() => setJump(undefined), 1800)
-    return () => window.clearTimeout(timer)
   }, [jump])
 
   function rememberPosition() {
