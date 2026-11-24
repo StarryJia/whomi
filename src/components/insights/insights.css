@@ -90,8 +90,8 @@ button.insight-report-row:active { background: var(--pressed); }
 .insight-prediction-label { letter-spacing: .06em; }
 .insight-prediction-label abbr { text-decoration: none; }
 .insight-prediction-letters {
-  display: block; margin: 6px 0 10px; font: 750 clamp(70px, 10vw, 140px)/1.05 "Segoe UI", Arial, sans-serif;
-  letter-spacing: -.055em; white-space: nowrap;
+  display: flex; justify-content: center; gap: .1em;
+  margin: 6px 0 10px; font: 750 clamp(70px, 10vw, 140px)/1.05 "Segoe UI", Arial, sans-serif;
 }
 .insight-prediction-unknown { color: var(--text-muted); }
 .insight-prediction-meaning { font-size: clamp(19px, 2vw, 26px); font-weight: 600; line-height: 1.5; }

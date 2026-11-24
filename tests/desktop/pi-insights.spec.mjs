@@ -146,10 +146,14 @@ for (const { count, overloadOnPage } of [{ count: 8 }, { count: 4600 }, { count:
         const range = document.createRange()
         range.selectNodeContents(element)
         const letters = range.getBoundingClientRect()
-        return { offset: Math.abs(letters.x + letters.width / 2 - article.x - article.width / 2), height: letters.height }
+        const glyphs = Array.from(element.children, glyph => glyph.getBoundingClientRect())
+        const gaps = glyphs.slice(1).map((glyph, i) => glyph.left - glyphs[i].right)
+        return { offset: Math.abs(letters.x + letters.width / 2 - article.x - article.width / 2), height: letters.height, gaps }
       })
       expect(placement.offset).toBeLessThan(8)
       expect(placement.height).toBeGreaterThan(48)
+      expect(placement.gaps).toHaveLength(3)
+      expect(Math.min(...placement.gaps)).toBeGreaterThan(0)
       await article.getByRole('heading', { name: /理解信息/ }).scrollIntoViewIfNeeded()
       await shot('03-personality')
       const narrow = count === 8 && !overloadOnPage
