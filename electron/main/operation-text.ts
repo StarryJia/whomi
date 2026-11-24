@@ -89,8 +89,10 @@ function decodeRow(line: string): Row {
   const data: Record<string, unknown> = {}
   for (const part of details) {
     const [key, value] = part.split('=')
-    if (key === '任务编号') row.taskId = value
-    else if (key === '任务创建时间') row.createdAt = Number(value)
+    if (key === '任务编号') {
+      if (kind === 'bind') row.taskId = value
+      else data.taskId = value
+    } else if (key === '任务创建时间') row.createdAt = Number(value)
     else if (key === '阶段' && !row.stage && kind !== 'end' && stages.has(value)) row.stage = stages.get(value)
     else if (key === '结果' && kind === 'end' && !row.outcome) row.outcome = outcomes.get(value) as Outcome
     else {

@@ -1,3 +1,4 @@
+import { localId } from '../../src/shared/desktop-validation'
 import { isDiagnosticCode } from './app-error-logs'
 import { importCodes } from './import-diagnostics'
 
@@ -16,6 +17,7 @@ export const stageLabels: Readonly<Record<string, string>> = {
 }
 
 export const fieldLabels: Readonly<Record<string, string>> = {
+  taskId: '任务编号',
   contextWindow: '上下文容量', outputLimit: '单次输出上限', inputLimit: '单次输入上限',
   estimatedContext: '上下文容量为估算', estimatedOutput: '输出长度为估算', requestLimit: '请求保护次数', inputProtection: '输入保护 token', outputProtection: '输出保护 token',
   catalogContext: '上下文容量来自模型目录', catalogOutput: '输出长度依据模型目录',
@@ -62,6 +64,8 @@ export function safeFields(input?: Record<string, unknown>): SafeFields {
     if (value == null || !Object.hasOwn(fieldLabels, key)) continue
     if (key === 'code' || key === 'reason') {
       fields[key] = typeof value === 'string' && (isDiagnosticCode(value) || importCodes.has(value) || extraCodes.has(value)) ? value : 'OPERATION_FAILED'
+    } else if (key === 'taskId') {
+      if (typeof value === 'string' && localId(value)) fields[key] = value
     } else if (key === 'responseReceived' && value === 'unknown') {
       fields[key] = value
     } else if (key === 'httpStatus') {

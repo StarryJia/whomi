@@ -13,6 +13,7 @@ const resumeActions: Readonly<Record<string, string>> = {
   INVALID_STATE: '任务状态已变化，请刷新洞察进度。',
   ANALYSIS_BUSY: '请等待当前洞察完成，或暂停后再继续。',
   DATA_PROCESS_GONE: '无法读取任务，请重新打开应用后继续洞察。',
+  SERVICE_UNAVAILABLE: '请重新打开应用后继续洞察。',
 }
 export function insightResumeFailureAction(code: string) {
   return Object.hasOwn(resumeActions, code) ? resumeActions[code] : '请打开本次操作日志，核对后重试。'
@@ -45,6 +46,9 @@ function providerDetail(message: string) {
       const error = body?.error ?? body
       return { codes: [error?.code, error?.type, error?.status].filter((v): v is string => typeof v === 'string'),
         text: typeof error?.message === 'string' ? error.message : '', param: typeof error?.param === 'string' ? error.param : '',
+        invalidGoogleApiKey: Array.isArray(error?.details) && error.details.some((item: unknown) =>
+          item !== null && typeof item === 'object' && '@type' in item && item['@type'] === 'type.googleapis.com/google.rpc.ErrorInfo'
+          && 'reason' in item && item.reason === 'API_KEY_INVALID'),
         structured: typeof error?.message === 'string' && body?.error != null }
     } catch { /* 服务可能只返回非结构化说明。 */ }
   }
@@ -54,20 +58,21 @@ function providerDetail(message: string) {
 
 function classify(api: ModelProtocol, message: string, detail: ReturnType<typeof providerDetail>, responseReceived?: boolean, status?: number): InsightFailureCode {
   const { codes, text, param } = detail
-  if (status === 401 || status === 403 || codes.includes('UNAUTHENTICATED') || codes.includes('PERMISSION_DENIED')) return 'INSIGHT_AUTH_FAILED'
+  if (status === 401 || status === 403 || codes.includes('UNAUTHENTICATED') || codes.includes('PERMISSION_DENIED')
+    || (api === 'google-generative-ai' && detail.invalidGoogleApiKey)) return 'INSIGHT_AUTH_FAILED'
   if (status === 408 || status === 504 || isPiTimeout(api, message)) return 'MODEL_TIMEOUT'
   if (responseReceived === false) return 'INSIGHT_CONNECTION_FAILED'
   if (status === 400 || status === 422 || codes.includes('INVALID_ARGUMENT')) {
     if (/\b(?:tools?|function[ _-]?call(?:ing|s)?)\b/i.test(text) && /\b(?:reasoning(?:[ _-]effort)?|thinking)\b/i.test(text)
       && /\b(?:not supported|unsupported|incompatible|cannot|only supported|require[sd]?|not compatible|not allowed)\b/i.test(text)) return 'INSIGHT_TOOL_REASONING_CONFLICT'
-    if (/\breasoning[ _-]effort\b/i.test(param + ' ' + text) && /\b(?:invalid|unsupported|not supported|allowed|supported values)\b/i.test(text)) return 'INSIGHT_REASONING_UNSUPPORTED'
+    if (/\breasoning[ ._-]effort\b/i.test(param + ' ' + text) && /\b(?:invalid|unsupported|not supported|allowed|supported values)\b/i.test(text)) return 'INSIGHT_REASONING_UNSUPPORTED'
     if (codes.includes('unsupported_parameter') || /\b(?:unsupported[_ ](?:parameter|value|tool)|invalid[_ ]parameter|unrecognized request argument)\b/i.test(text)) return 'INSIGHT_REQUEST_INCOMPATIBLE'
     return 'MODEL_REQUEST_FAILED'
   }
   if (codes.some(value => value === 'invalid_request_error' || value === 'insufficient_quota')) return 'MODEL_REQUEST_FAILED'
   if (codes.some(value => /^(?:overloaded_error|server_overloaded|server_busy)$/i.test(value))
     || /^(?:(?:the )?(?:server|service|model) (?:is )?(?:currently |temporarily )?)?overloaded(?:[.!:,\s]|$)/i.test(text)) return 'INSIGHT_PROVIDER_OVERLOADED'
-  if (codes.includes('service_unavailable') || codes.includes('UNAVAILABLE')
+  if (status === 503 || codes.includes('service_unavailable') || codes.includes('UNAVAILABLE')
     || /^(?:the )?(?:server|service|model) (?:is )?(?:currently |temporarily )?unavailable(?:[.!:,\s]|$)/i.test(text)) return 'INSIGHT_SERVICE_UNAVAILABLE'
   return 'MODEL_REQUEST_FAILED'
 }

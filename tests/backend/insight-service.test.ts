@@ -128,6 +128,35 @@ test('两次服务拒绝分别关联对应的提醒、操作日志和错误摘�
   } finally { await operations.close(); await rm(directory, { recursive: true, force: true }) }
 })
 
+test.each(['getAnalysis', 'analysisContext'])('恢复时 %s 遇到资料进程退出，提醒与日志指向本次尝试', async failingRead => {
+  const directory = await mkdtemp(join(tmpdir(), 'whomi-insight-unavailable-'))
+  const diagnostics = createOperationDiagnostics(directory, '1.0.0')
+  const logError = vi.fn()
+  const task = { id: '1', conversationId: '2', state: 'interrupted', createdAtMs: 1000, analyzedMessages: 3 }
+  const service = createAiService({
+    diagnostics, logError, secrets: { encrypt: value => value, decrypt: value => value }, runtime: { run: vi.fn() },
+    storage: async method => {
+      if (method === failingRead) throw new BoundaryError('SERVICE_UNAVAILABLE', '请重新打开应用。')
+      if (method === 'getAnalysis') return task
+      throw new Error(method)
+    },
+  })
+  try {
+    const failure = await service.continueAnalysis(task.id).catch((error: BoundaryError) => error)
+    expect(failure).toMatchObject({ code: 'SERVICE_UNAVAILABLE', action: expect.stringContaining('重新打开应用'),
+      operationId: expect.any(String), failureAtMs: expect.any(Number) })
+    const [operation] = await diagnostics.list()
+    expect(failure).toHaveProperty('operationId', operation.id)
+    expect(operation).toMatchObject({ area: 'insight', outcome: 'failed' })
+    const log = await diagnostics.withFile(operation.id, path => readFile(path, 'utf8'))
+    expect(log).toMatch(/准备恢复洞察.*SERVICE_UNAVAILABLE.*重新打开应用/)
+    expect(log).toContain('任务编号=' + task.id)
+    if (failingRead === 'getAnalysis') expect(log).not.toMatch(/任务创建时间=|累计已读=/)
+    expect(logError).toHaveBeenCalledWith(expect.objectContaining({ area: 'insight', phase: 'resumePreparation',
+      taskId: task.id, operationId: operation.id, analyzedMessages: failingRead === 'getAnalysis' ? undefined : task.analyzedMessages }))
+  } finally { await diagnostics.close(); await rm(directory, { recursive: true, force: true }) }
+})
+
 test('the fourth reading batch times out once, retries in the same operation and exports its final result without private input', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'whomi-insight-timeout-'))
   const diagnostics = createOperationDiagnostics(directory, 'test')

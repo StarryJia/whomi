@@ -137,6 +137,35 @@ test('普通操作日志分别记录压缩结束原因和摘要是否保存，�
   expect(text).toMatch(/处理建议=.*调整模型接口或参数设置.*重新开始洞察/)
 })
 
+test.each([true, false])('交稿后压缩时，报告校验与保存沿用推理请求序号（稿件有效=%s）', async valid => {
+  const diagnostics: Record<string, unknown>[] = []
+  let attempt = 0
+  let savedWith: unknown
+  const run = generatePiInsight({ ...options, onDiagnostic: fields => diagnostics.push(fields),
+    save: async state => { if (state.report) savedWith = diagnostics.at(-1)?.requestNumber },
+    run: async (_, io) => {
+      const reportId = 'report-' + ++attempt
+      const summaryId = 'summary-' + attempt
+      const page = await io.read({}, 500)
+      await io.record({ type: 'requestStart', kind: 'inference', requestId: reportId })
+      await io.record({ type: 'request', kind: 'inference', requestId: reportId, success: true, stopReason: 'stop',
+        spans: page.spans, usage: {}, checkpoint: 'leaf' })
+      await io.record({ type: 'requestStart', kind: 'compaction', requestId: summaryId })
+      await io.record({ type: 'request', kind: 'compaction', requestId: summaryId, success: true, stopReason: 'stop',
+        spans: [], usage: {}, checkpoint: 'leaf' })
+      await io.record({ type: 'summary', requestId: summaryId, saved: true })
+      return { text: valid ? JSON.stringify(draft) : '{}', checkpoint: 'done', usage: {} }
+    } })
+  if (valid) {
+    await expect(run).resolves.toMatchObject({ aboutYou: section })
+    expect(savedWith).toBe(1)
+  } else {
+    await expect(run).rejects.toMatchObject({ code: 'INVALID_INSIGHT_OUTPUT' })
+  }
+  expect(diagnostics.filter(fields => fields.phase === 'writing').map(fields => fields.requestNumber)).toEqual(valid ? [1] : [1, 3])
+  expect(diagnostics.filter(fields => fields.summarySaved === true).map(fields => fields.requestNumber)).toEqual(valid ? [2] : [2, 4])
+})
+
 test('断点恢复后原文仍未送阅时，保护记录未读数量和实际触发值', async () => {
   const { operation, contents } = await openLog()
   const checkpoint: PiInsightCheckpoint = {

@@ -102,6 +102,7 @@ export async function generatePiInsight(options: Options): Promise<InsightReport
   const covered = () => state.coverage.coveredMessageIds.length
   const readPhase = () => covered() === refs.size ? 'checking' : 'reading'
   let diagnostic: Diagnostic = { phase: readPhase() }
+  let lastSuccessfulInferenceNumber: number | undefined
   function diagnose(fields: Diagnostic) {
     diagnostic = fields
     options.onDiagnostic?.(fields)
@@ -202,10 +203,12 @@ export async function generatePiInsight(options: Options): Promise<InsightReport
         return readingStatus()
       }
       if (!calls.delete(event.requestId)) throw new BoundaryError('INVALID_INSIGHT_CHECKPOINT', '请继续洞察以恢复进度。')
+      const requestNumber = requestNumbers.get(event.requestId)
       const phase = event.kind === 'compaction' ? 'compaction' : readPhase()
       const before = state.coverage
       let newRange: boolean | undefined
       if (event.success && event.kind === 'inference') {
+        lastSuccessfulInferenceNumber = requestNumber
         if (event.spans.some(span => !refs.has(span.messageId))) throw new BoundaryError('INVALID_EVIDENCE', '请检查聊天来源后继续。')
         state.coverage = addInsightCoverage(before, event.spans)
         const reviewing = before.coveredMessageIds.length === refs.size
@@ -220,7 +223,7 @@ export async function generatePiInsight(options: Options): Promise<InsightReport
       state.output += event.usage.outputTokens ?? 0
       if (event.checkpoint) state.checkpoint = event.checkpoint
       await options.save(state, { requestId: event.requestId, usage: event.usage })
-      const fields = { phase, kind: event.kind, requestNumber: requestNumbers.get(event.requestId),
+      const fields = { phase, kind: event.kind, requestNumber,
         stopReason: event.stopReason ?? 'unknown', responseReceived: event.responseReceived ?? (event.success ? undefined : 'unknown'),
         httpStatus: event.httpStatus, code: event.failureCode,
         readCount: covered(), newRange, stalledCount: newRange === undefined ? undefined : state.stalled,
@@ -244,6 +247,7 @@ export async function generatePiInsight(options: Options): Promise<InsightReport
   const correctedStages = new Set<'reading' | 'writing'>()
   let retries = 0
   for (;;) {
+    lastSuccessfulInferenceNumber = undefined
     diagnose({ phase: readPhase() })
     const prompt = (state.checkpoint ? '继续同一项洞察。' : '开始本次会话洞察。') +
       JSON.stringify({ scope: snapshot.scope, timezone: snapshot.timezone, totalMessages: refs.size, ...remaining() }) + correction
@@ -265,11 +269,12 @@ export async function generatePiInsight(options: Options): Promise<InsightReport
       continue
     }
     signal.throwIfAborted()
+    // Pi 可能在交稿后压缩。校验与保存沿用产生稿件的推理请求。
+    diagnose({ phase: covered() === refs.size ? 'writing' : 'reading', requestNumber: lastSuccessfulInferenceNumber })
     state.checkpoint = result.checkpoint
     await options.save(state)
     try {
       if (covered() !== refs.size) throw new BoundaryError('ANALYSIS_INCOMPLETE', '还有原文未提交分析，请继续洞察。')
-      diagnose({ phase: 'writing', requestNumber: diagnostic.requestNumber })
       const allowed = new Set(state.coverage.coveredMessageIds)
       const report = parseReport(result, options.conversationId, refs, allowed, allowed, null)
       const judgments = report.judgments ?? []

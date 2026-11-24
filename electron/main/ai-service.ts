@@ -200,6 +200,13 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
     publish({ kind: 'analysis', snapshot })
     return snapshot
   }
+  function resumePreparationFailure(id: string, error: unknown, operation: AiOperation, current?: AnalysisTask) {
+    const code = diagnosticErrorCode(error)
+    const phase = 'resumePreparation'
+    operation.end('failed', { phase, code, ...(current ? { readCount: current.analyzedMessages } : { taskId: id }) })
+    options.logError?.({ area: 'insight', phase, error, taskId: id, operationId: operation.id, analyzedMessages: current?.analyzedMessages })
+    return new BoundaryError(code, '准备恢复洞察失败。' + insightResumeFailureAction(code), operation.id, Date.now())
+  }
   async function submitTask<T extends AnalysisTask | AiTurn>(kind: 'analysis' | 'turn',
     prepare: () => Promise<{ task: T; conversationId: string }>,
     execute: (task: T, signal: AbortSignal, operation: AiOperation) => Promise<void>) {
@@ -498,7 +505,9 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
       return saveAnalysis(id, { state: 'stopped' }, elapsedSample?.sampledAtMs)
     }),
     continueAnalysis: id => control(async () => {
-      const current = await storage<AnalysisTask>('getAnalysis', id)
+      const current = await storage<AnalysisTask>('getAnalysis', id).catch(error => {
+        throw resumePreparationFailure(id, error, aiOperation(options.diagnostics, 'insight', 'generate'))
+      })
       available(current.conversationId)
       if (!['stopped', 'interrupted', 'failed'].includes(current.state)) throw new BoundaryError('INVALID_STATE', '请刷新分析进度。')
       const key = `analysis:${id}`
@@ -517,10 +526,7 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
         if (!launch(key, task.conversationId, signal => executeAnalysis(id, signal, operation, processor), task.modelId)) operation.end('interrupted')
         return task
       } catch (error) {
-        const code = diagnosticErrorCode(error)
-        operation.end('failed', { phase: 'resumePreparation', code, readCount: current.analyzedMessages })
-        options.logError?.({ area: 'insight', phase: 'resumePreparation', error, taskId: id, operationId: operation.id, analyzedMessages: current.analyzedMessages })
-        throw new BoundaryError(code, '准备恢复洞察失败。' + insightResumeFailureAction(code), operation.id, Date.now())
+        throw resumePreparationFailure(id, error, operation, current)
       }
     }),
     openThread: id => control(async () => { available(id); return storage('openThread', id) }), getThread: id => storage('getThread', id),
