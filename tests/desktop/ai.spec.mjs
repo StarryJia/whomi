@@ -4,7 +4,7 @@ import { createServer } from 'node:http'
 import { mkdtemp, writeFile, rm, mkdir } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import { completeModel, readTurns } from './fixtures/pi-insight-model.mjs'
+import { completeModel, readTurns, sampleJudgments } from './fixtures/pi-insight-model.mjs'
 
 test('real Pi process persists analysis reports and dialogue through the isolated desktop bridge', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'whomi-runtime-'))
@@ -24,7 +24,7 @@ test('real Pi process persists analysis reports and dialogue through the isolate
       completeModel(response, { text: JSON.stringify({
         aboutYou: [{ content: [{ text: '你约定了时间。', citationId: 'time' }] }],
         relationship: [{ content: [{ text: '你们商量了见面的时间。' }] }],
-        citations: [{ id: 'time', fragments: [{ messageIds: [source.id] }] }], limitations: [], judgments: [],
+        citations: [{ id: 'time', fragments: [{ messageIds: [source.id] }] }], limitations: [], judgments: sampleJudgments(),
       }) })
     })
   })

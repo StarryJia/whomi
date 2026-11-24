@@ -87,6 +87,19 @@ button.insight-report-row:active { background: var(--pressed); }
 .insight-prose section + section { margin-top: 32px; }
 .insight-prose h2 { margin: 0 0 14px; font-size: 24px; line-height: 1.45; }
 .insight-prose p { margin: 0 0 14px; }
+.insight-personality { margin-top: 24px; }
+.insight-personality-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.insight-personality-title h3 { margin: 0; font-size: 20px; line-height: 1.5; }
+.insight-personality-title > strong { color: var(--focus); letter-spacing: .08em; }
+.insight-dimension { margin-top: 15px; }
+.insight-dimension h4 { margin: 0 0 3px; font-size: 16px; }
+.insight-observation p { margin: 0; }
+.insight-observation + .insight-observation { margin-top: 8px; }
+.insight-observation-notes { margin-top: 5px; font-size: 15px; }
+.insight-observation-notes b { margin-inline-end: .65em; }
+.insight-observation-notes p:first-of-type { display: inline; }
+.insight-observation-sources { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 14px; }
+.insight-observation-sources:not(:empty) { margin-top: 4px; }
 .insight-limitations { margin-top: 28px; padding-top: 14px; border-top: 1px solid var(--line); color: var(--text-muted); }
 .insight-prose footer { margin-top: 40px; color: var(--text-muted); font-size: 13px; text-align: center; }
 .insight-citation {

@@ -5,7 +5,7 @@ import { openStore } from '../../electron/data/db/open'
 import { migrateStore } from '../../electron/data/db/migrate'
 import { purgeConversation } from '../../electron/data/db/purge'
 import { validateAiCall, validateAiResult } from '../../src/shared/ai-validation'
-import type { InsightReport } from '../../src/shared/conversation-insights'
+import { judgmentCitation, type InsightReport } from '../../src/shared/conversation-insights'
 import { temporaryStore } from './helpers'
 
 const cleanup: (() => void)[] = []
@@ -467,4 +467,57 @@ test('保存后引用只高亮实际证据，报告删除和整会话删除撤�
   expect(store.reader.prepare('SELECT task_id FROM ai_insight_snapshots').all()).toEqual([{ task_id: BigInt(other.id) }])
   expect(store.reader.prepare('SELECT COUNT(*) AS n FROM messages WHERE conversation_id=1').get()).toEqual({ n: 0n })
   expect(store.reader.pragma('foreign_key_check')).toEqual([])
+})
+
+test('人格观察可保留未知，依据与反例按保存的版本分别回查', async () => {
+  const { repository, store } = await setup()
+  const preparation = await repository.prepareAnalysis({ conversationId: '1', modelId: 'example', scope: october })
+  const task = await repository.confirmAnalysis({ token: preparation.token, requestId: 'personality-evidence' })
+  const [self, other] = repository.analysisContext(task.id).snapshot.sources
+  await repository.saveInsightCheckpoint(task.id, 'done', [self.messageId, other.messageId])
+  const narrativeId = 'mbti.0.supporting'
+  const report: InsightReport = {
+    format: 'conversation-insights-v1', aboutYou: [{ content: [{ text: '对方答复', citationId: narrativeId }] }],
+    relationship: [], citations: [{ id: narrativeId, conversationId: '1', fragments: [{ sources: [other] }] }], limitations: [],
+    judgments: [
+      { dimension: 'JP', direction: 'J', text: '你先确认了开始时间。', supportingSources: [self], counterexampleSources: [other], alternativeExplanations: [], limitations: [] },
+      { dimension: 'EI', direction: null, text: '这些发言没有描述你独处或社交后的感受。', supportingSources: [], counterexampleSources: [], alternativeExplanations: [], limitations: [] },
+    ],
+  }
+  await repository.completeAnalysis(task.id, report)
+  const saved = repository.getReport(task.id)
+  expect(saved.judgments).toEqual(report.judgments)
+  const support = judgmentCitation(saved, '1', 0, 'supporting')!
+  const counter = judgmentCitation(saved, '1', 0, 'counterexample')!
+  const read = (citationId: string, fragmentIndex = 0) => repository.readInsightCitation({ taskId: task.id, citationId, fragmentIndex })
+  expect(support.id).not.toBe(narrativeId)
+  expect(await read(support.id)).toMatchObject({ status: 'available', highlightIds: [self.messageId] })
+  expect(await read(narrativeId)).toMatchObject({ status: 'available', highlightIds: [other.messageId] })
+  expect(await read(counter.id)).toMatchObject({ status: 'available', highlightIds: [other.messageId] })
+  expect(judgmentCitation(saved, '1', 1, 'supporting')).toBeUndefined()
+  expect(await read(support.id, 1)).toEqual({ status: 'unavailable' })
+  store.writer.prepare('UPDATE messages SET text=? WHERE id=?').run('过期原文', self.messageId)
+  expect(await read(support.id)).toEqual({ status: 'expired' })
+})
+
+test('已保存的人格观察可按单条依据打开第 201 个来源', async () => {
+  const { repository, store } = await setup()
+  const insert = store.writer.prepare(`INSERT INTO messages(id,conversation_id,member_id,sender_kind,sender_name,kind,text,ordinal,sent_at_ms)
+    VALUES(?,1,1,'member','本人','text','合成安排',?,?)`)
+  store.writer.transaction(() => {
+    for (let index = 0; index < 201; index++) insert.run(100 + index, 10 + index, start + 1 + index)
+  })()
+  const preparation = await repository.prepareAnalysis({ conversationId: '1', modelId: 'example', scope: october })
+  const task = await repository.confirmAnalysis({ token: preparation.token, requestId: 'long-personality-evidence' })
+  const { sources } = repository.analysisContext(task.id).snapshot
+  const report: InsightReport = {
+    format: 'conversation-insights-v1', aboutYou: [], relationship: [], citations: [], limitations: [],
+    judgments: [{ dimension: 'JP', direction: 'J', text: '安排时间', supportingSources: sources.filter(ref => Number(ref.messageId) >= 100),
+      counterexampleSources: [], alternativeExplanations: [], limitations: [] }],
+  }
+  await repository.saveInsightCheckpoint(task.id, 'done', sources.map(ref => ref.messageId))
+  await repository.completeAnalysis(task.id, report)
+  const citation = judgmentCitation(report, '1', 0, 'supporting')!
+  expect(await repository.readInsightCitation({ taskId: task.id, citationId: citation.id, fragmentIndex: 200 }))
+    .toMatchObject({ status: 'available', highlightIds: ['300'] })
 })

@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { expect, it, vi } from 'vitest'
 import App from '../../App'
 import type { AiEvent, AnalysisTask } from '../../shared/ai-contract'
+import { judgmentCitation, type InsightJudgment, type InsightReport } from '../../shared/conversation-insights'
 import type { DesktopApi } from '../../shared/desktop-api'
 import { ConversationWorkspace } from '../conversation-ai/workspace'
 import type { ConversationAiAdapter } from '../conversation-ai/types'
@@ -87,6 +88,49 @@ it('报告只有材料不足说明时保留模型的限定并沿用两节阅读�
   render(<InsightArticle report={{ ...report, aboutYou: [], relationship: [], limitations: ['只有一次改期，暂时不能判断相处习惯。'] }} />)
   expect(screen.getByText('只有一次改期，暂时不能判断相处习惯。')).toBeVisible()
   expect(screen.getAllByRole('heading').map(heading => heading.textContent)).toEqual(['关于你', '你们的相处'])
+})
+
+it('人格观察放在关于你，按维度读分析、从独立于正文的依据和反例打开原文', async () => {
+  const user = userEvent.setup()
+  const unknown: InsightJudgment = { dimension: 'EI', direction: null, text: '这段对话只谈了见面时间。',
+    supportingSources: [], counterexampleSources: [], alternativeExplanations: [], limitations: [] }
+  const observed: InsightJudgment = { dimension: 'JP', direction: 'J', text: '你先确认了集合地点。',
+    supportingSources: [{ messageId: '20', revision: 'r20' }], counterexampleSources: [{ messageId: '28', revision: 'r28' }],
+    alternativeExplanations: ['你这次负责订票。'], limitations: ['只涉及这次见面。'] }
+  const saved: InsightReport = { ...report, judgments: [observed, unknown] }
+  const readInsightCitation = vi.fn(async () => ({ status: 'expired' }))
+  const api = { ai: { listAnalyses: async () => [{ ...completed, report: saved }], readInsightCitation, onEvent: () => () => {} } } as unknown as DesktopApi
+  render(<App preview conversations={[]} importApi={api} />)
+  await user.click(screen.getByRole('button', { name: '对话洞察' }))
+  await user.click(await screen.findByRole('button', { name: /小林.*会话洞察.*#24/ }))
+  const region = screen.getByRole('region', { name: 'MBTI 人格倾向' })
+  expect(screen.getByRole('heading', { name: '关于你' }).parentElement).toContainElement(region)
+  const mbti = within(region)
+  expect(mbti.getAllByRole('heading', { level: 4 }).map(h => h.textContent)).toEqual(['精力来源', '安排方式'])
+  expect(mbti.getByText('???J')).toBeVisible()
+  expect(mbti.getByText('暂难判断')).toBeVisible()
+  expect(mbti.queryByRole('button', { name: '精力来源的依据原文' })).toBeNull()
+  expect(mbti.getByText('偏向判断 J')).toBeVisible()
+  expect(mbti.getByText('你这次负责订票。')).toBeVisible()
+  expect(mbti.getByText('只涉及这次见面。')).toBeVisible()
+  for (const [kind, name] of [['supporting', '安排方式的依据原文'], ['counterexample', '安排方式的反例原文']] as const) {
+    const button = mbti.getByRole('button', { name })
+    await user.click(button)
+    expect(readInsightCitation).toHaveBeenLastCalledWith({ taskId: '24', fragmentIndex: 0, citationId: judgmentCitation(saved, '1', 0, kind)!.id })
+    await user.click(screen.getByRole('button', { name: '关闭原文' }))
+    expect(button).toHaveFocus()
+  }
+})
+
+it('旧报告同一维度的相反观察都可阅读，不合成单一倾向', () => {
+  const original: InsightJudgment = { dimension: 'TF', direction: 'T', text: '你先比较了时间成本。',
+    supportingSources: [{ messageId: '10', revision: 'source-10' }], counterexampleSources: [], alternativeExplanations: [], limitations: [] }
+  render(<InsightArticle report={{ ...report, judgments: [original, { ...original, direction: 'F', text: '你先问了对方是否愿意。' }] }} />)
+  const mbti = within(screen.getByRole('region', { name: 'MBTI 人格倾向' }))
+  expect(mbti.getByRole('heading', { level: 4, name: '做决定' })).toBeVisible()
+  expect(mbti.getByText('偏向思考 T')).toBeVisible()
+  expect(mbti.getByText('偏向情感 F')).toBeVisible()
+  expect(mbti.queryByText(/\?\?[TF]\?/)).toBeNull()
 })
 
 it.each([

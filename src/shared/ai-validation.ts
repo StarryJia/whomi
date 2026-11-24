@@ -1,7 +1,7 @@
 import { isSubscriptionId } from './chatgpt-plan'
 import type { AiEvent, AiMethods } from './ai-contract'
 import { BoundaryError, availableSourceWindowFields, listArrangement, localId } from './desktop-validation'
-import { insightTitle, isInsightScope, isInsightTimezone, type InsightCitation, type InsightCitationWindow } from './conversation-insights'
+import { dimensionKeys, insightTitle, isInsightScope, isInsightTimezone, type InsightCitation, type InsightCitationWindow, type InsightJudgment } from './conversation-insights'
 import { isModelProtocol } from './model-protocol'
 
 type Check = (value: unknown) => boolean
@@ -37,8 +37,12 @@ const citation = object({ id: isInsightCitationId, conversationId: localId, frag
 export function isInsightCitation(value: unknown): value is InsightCitation { return citation(value) }
 const paragraphs = array(object({ content: array(object({ text: text(20000, true), citationId: optional(isInsightCitationId) }), 200) }), 200)
 const notes = array(text(4000, true), 200)
-const judgmentFields = { text: text(4000, true), supportingSources: value => sourceRefs(value) && (value as unknown[]).length > 0, counterexampleSources: sourceRefs, alternativeExplanations: notes, limitations: notes } satisfies Record<string, Check>
-const judgments = array(value => ['EI', 'SN', 'TF', 'JP'].some(dimension => object({ dimension: name => name === dimension, direction: direction(dimension), ...judgmentFields })(value)), 200)
+const judgmentFields = { text: text(4000, true), supportingSources: sourceRefs, counterexampleSources: sourceRefs, alternativeExplanations: notes, limitations: notes }
+const judgments = array(value => {
+  if (!dimensionKeys.some(dimension => object({ dimension: name => name === dimension, direction: direction(dimension), ...judgmentFields })(value))) return false
+  const judgment = value as InsightJudgment
+  return judgment.direction === null || judgment.supportingSources.length > 0
+}, 200)
 const insightReport = object({ format: value => value === 'conversation-insights-v1', aboutYou: paragraphs, relationship: paragraphs, citations: array(citation, 2000), limitations: notes, judgments: optional(judgments) })
 const modelIdentity = object({ id: key, version: positive, label: text(256, true), model: key })
 const analysis = object({ id: localId, conversationId: localId, conversationTitle: optional(text(100000)), counterpartName: optional(text(100000)), title: optional(value => typeof value === 'string' && insightTitle(value) === value), scope: optional(isInsightScope), timezone: optional(isInsightTimezone), insightContentRevision: optional(revision), insightSelfFingerprint: optional(revision), elapsedMs: optional(count), elapsedSampledAtMs: optional(count), modelId: key, modelIdentity: optional(modelIdentity), createdAtMs: optional(nullable(count)), completedAtMs: optional(nullable(count)), sourceStartTimeMs: optional(nullable(timestamp)), sourceEndTimeMs: optional(nullable(timestamp)), pinned: optional(bool), thinkingLevel: optional(thinking), state, analyzedMessages: count, totalMessages: count, skippedMessages: count, usage: analysisUsage, error: optional(text(2000)), report: optional(insightReport), valid: bool, eventSequence: count })

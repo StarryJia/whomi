@@ -2,6 +2,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import { createServer, type ServerResponse } from 'node:http'
 import fs from 'node:fs'
 import { syncBuiltinESMExports } from 'node:module'
+import { sampleJudgments } from '../desktop/fixtures/pi-insight-model.mjs'
 import { mkdtempSync, rmSync, writeFileSync, mkdirSync, existsSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { join, resolve, sep } from 'node:path'
@@ -85,7 +86,7 @@ describe('Pi runtime over a controlled OpenAI compatible service', () => {
     const fixture = overloadFixture()
     const received: number[] = []
     const sections = [{ content: [{ text: '周三散步', citationId: 'c1' }] }]
-    const report = { aboutYou: sections, relationship: sections, citations: [{ id: 'c1', fragments: [{ messageIds: ['1'] }] }], limitations: [] }
+    const report = { aboutYou: sections, relationship: sections, citations: [{ id: 'c1', fragments: [{ messageIds: ['1'] }] }], limitations: [], judgments: sampleJudgments() }
     answer = response => {
       received.push(Date.now())
       if (requests.length === 2) return frames(response, busy)
@@ -146,7 +147,7 @@ describe('Pi runtime over a controlled OpenAI compatible service', () => {
     })
     const selected = { ...model, model: 'gpt-6.1-sol', baseUrl: 'https://api.openai.com/v1', protocol }
     const section = [{ content: [{ text: '一起散步', citationId: 'c1' }] }]
-    const report = { aboutYou: section, relationship: section, citations: [{ id: 'c1', fragments: [{ messageIds: ['1'] }] }], limitations: [] }
+    const report = { aboutYou: section, relationship: section, citations: [{ id: 'c1', fragments: [{ messageIds: ['1'] }] }], limitations: [], judgments: sampleJudgments() }
     const normalAnswer = answer
     answer = response => {
       if (!routes.at(-1)?.endsWith('/responses')) {

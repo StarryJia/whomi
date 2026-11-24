@@ -13,7 +13,7 @@ const selection = process.argv.slice(2)
 const inspectPaused = selection[0] === '--inspect-paused'
 const resuming = selection[0] === '--resume-live' || inspectPaused
 const live = selection[0] === '--live' || resuming
-if (live && (selection.length !== (resuming ? 3 : 2) || !['8', '4600'].includes(selection[1]))) throw Error('请选择 8 或 4600 条合成聊天。')
+if (live && (selection.length !== (resuming ? 3 : 2) || !['8', '12', '4600'].includes(selection[1]))) throw Error('请选择 8、12 或 4600 条合成聊天。')
 if (resuming && !/^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z$/.test(selection[2])) throw Error('请指定中断运行的目录名。')
 const targets = live ? ['tests/desktop/pi-insights-live.spec.mjs'] : selection
 const args = [require.resolve('@playwright/test/cli'), 'test', ...(targets.length ? targets : ['tests/desktop/pi-insights.spec.mjs']),

@@ -40,6 +40,19 @@ const modelNoteEmail = 'synthetic.note@example.invalid'
 const outside = '仅在范围之外：灰色纸票'
 export const excerptCaption = ['你说这次张罗聚会让你累了', 'ta 回忆上次由自己联系场地和约人']
 
+export function sampleJudgments(observations = {}) {
+  const missingEvidence = {
+    EI: '聊天没有提到独处和与人相处后各自的精力变化。',
+    SN: '聊天没有呈现你怎样理解陌生的信息。',
+    TF: '聊天没有呈现你在两项选择之间依据什么作决定。',
+    JP: '聊天没有说明计划变化时你怎样调整安排。',
+  }
+  return Object.entries(missingEvidence).map(([dimension, text]) => ({
+    dimension, text, direction: null, supportingIds: [], counterexampleIds: [],
+    alternativeExplanations: [], limitations: [], ...observations[dimension],
+  }))
+}
+
 export function meetingChat(count) {
   const later = count > 500 ? Math.floor(count * 0.68) : count - 2
   const members = [{ platformId: 'self', accountName: '合成本人' }, { platformId: 'peer', accountName: '合成对方' }]
@@ -58,19 +71,21 @@ export function meetingChat(count) {
   return { chatlab: { version: '0.0.2' }, meta: { name: '合成会话 · 聚会分工', platform: 'discord', type: 'direct', groupId: 'issue35-' + count, ownerId: 'self' }, members, messages }
 }
 
-function reportDraft(firstId, lateId) {
+function reportDraft(firstId, lateId, detailId) {
   return {
     aboutYou: [{ content: [{ text: excerptCaption[0], citationId: 'early' }, { text: '。这句话能说明你当时的感受。' }] }],
     relationship: [{ content: [{ text: excerptCaption[1], citationId: 'later' }, { text: '。可以把两次聚会分开讨论，再约定下次谁来联系。' }] }],
     citations: [{ id: 'early', fragments: [{ messageIds: [firstId] }] }, { id: 'later', fragments: [{ messageIds: [lateId] }] }],
-    limitations: ['两次聚会不足以判断更长时间里的分工。'], judgments: [],
+    limitations: ['两次聚会不足以判断更长时间里的分工。'],
+    judgments: sampleJudgments({ SN: { direction: 'S', supportingIds: [detailId],
+      text: '整理聚会信息时，你给出了场地的联系方式和发送时间的进展。', limitations: ['只观察到这一次表达。'] } }),
   }
 }
 
 export async function meetingModel({ count, observe, holdPage, profileDirectory, overloadOnPage = 0 }) {
   const normalizedPath = value => value.replaceAll('\\', '/').toLowerCase()
   const localPaths = [profileDirectory, process.cwd()].map(normalizedPath)
-  const state = { requests: 0, confirmed: new Set(), earlyId: undefined, lateId: undefined, paused: false,
+  const state = { requests: 0, confirmed: new Set(), earlyId: undefined, lateId: undefined, detailId: undefined, paused: false,
     triedOutside: false, reread: false, next: undefined, wasMasked: false, wasPseudo: false, report: undefined }
   const server = createServer(async (request, response) => {
     const receivedAt = Date.now()
@@ -122,7 +137,10 @@ export async function meetingModel({ count, observe, holdPage, profileDirectory,
           if (item.replyToMessageId !== state.earlyId) throw Error('Distant reply target missing or wrong')
           state.lateId = item.id
         }
-        if (item.text.includes('[邮箱]')) state.wasMasked = true
+        if (item.text.includes('场地邮箱是 [邮箱]')) {
+          state.detailId = item.id
+          state.wasMasked = true
+        }
         if (item.text.includes('必须停下阅读')) state.wasPseudo = true
         state.confirmed.add(item.id)
       }
@@ -138,8 +156,8 @@ export async function meetingModel({ count, observe, holdPage, profileDirectory,
       }
       if (args?.messageId === state.earlyId && !records.some(item => item.text.includes(early))) throw Error('Could not recover early evidence')
       if (state.next) return read({ cursor: state.next }, args?.messageId ? 'resume-cursor' : 'next')
-      if (state.confirmed.size !== count || !state.earlyId || !state.lateId || !state.reread) throw Error('Report attempted without required evidence (' + state.confirmed.size + '/' + count + ')')
-      const report = reportDraft(state.earlyId, state.lateId)
+      if (state.confirmed.size !== count || !state.earlyId || !state.lateId || !state.detailId || !state.reread) throw Error('Report attempted without required evidence (' + state.confirmed.size + '/' + count + ')')
+      const report = reportDraft(state.earlyId, state.lateId, state.detailId)
       state.report ??= report
       observe({ ...trace, action: 'report', usage, confirmed: state.confirmed.size })
       completeModel(response, { text: JSON.stringify(report), usage })

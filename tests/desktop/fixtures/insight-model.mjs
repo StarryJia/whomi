@@ -1,4 +1,4 @@
-import { readTurns } from './pi-insight-model.mjs'
+import { readTurns, sampleJudgments } from './pi-insight-model.mjs'
 export const syntheticInsightConversation = '合成会话 · 建议和倾听'
 export const syntheticInsightReportTitle = '合成报告 · 建议与倾听'
 export const syntheticInsightMessages = [
@@ -60,9 +60,9 @@ export function suggestionReport() {
       { id: 'asked-later', fragments: [{ messageIds: ['3'] }] },
     ],
     limitations: ['你可以先问 ta 想听建议，还是想接着说。'],
-    judgments: [{
-      dimension: 'TF', direction: null, text: '不同阶段对建议的需要不同。',
+    judgments: sampleJudgments({ TF: {
+      direction: null, text: '不同阶段对建议的需要不同。',
       supportingIds: ['1'], counterexampleIds: ['3'], alternativeExplanations: ['有时 ta 只想先说完。'], limitations: ['仅限该次聊天。'],
-    }],
+    } }),
   }
 }

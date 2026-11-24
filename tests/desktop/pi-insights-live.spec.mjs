@@ -7,7 +7,7 @@ import { setTimeout as wait } from 'node:timers/promises'
 import { meetingChat } from './fixtures/pi-insight-model.mjs'
 
 const selected = process.env.WHOMI_REAL_INSIGHT_COUNT
-test.skip(!['8', '4600'].includes(selected), '通过 verify-pi-insights.mjs --live 8 或 --live 4600 显式运行。')
+test.skip(!['8', '12', '4600'].includes(selected), '通过 verify-pi-insights.mjs --live 选择合成样本。')
 
 async function files(directory) {
   try { return await readdir(directory) } catch (error) {
@@ -16,7 +16,7 @@ async function files(directory) {
   }
 }
 
-async function takeOverInterruptedRun(count, priorRun, expectedState) {
+async function takeOverInterruptedRun(count, priorRun, expectedState, title) {
   const previous = resolve('artifacts', 'issue-35', priorRun)
   const metadata = JSON.parse(await readFile(join(previous, 'run.json'), 'utf8'))
   if (metadata.realModelSample !== count) throw Error('请选择同一样本的运行目录。')
@@ -43,7 +43,7 @@ async function takeOverInterruptedRun(count, priorRun, expectedState) {
     const tasks = await window.whomi.ai.listAnalyses()
     return { directory: (await window.whomi.settings.getStorage()).path, task: tasks.length === 1 ? tasks[0] : null }
   })
-  if (!task || task.state !== expectedState || task.totalMessages !== count || task.conversationTitle !== '合成会话 · 聚会分工'
+  if (!task || task.state !== expectedState || task.totalMessages !== count || task.conversationTitle !== title
     || dirname(resolve(directory)) !== resolve(tmpdir()) || !basename(directory).startsWith('whomi-runtime-real-insight-' + count + '-')) {
     throw Error('请选择本次合成样本的失败任务。')
   }
@@ -103,17 +103,19 @@ async function snapshotEvidence(directory, target, taskId) {
   for (const [index, draft] of drafts.entries()) await writeFile(join(target, 'model-report-' + (index + 1) + '.txt'), draft)
 }
 
-test('真实模型经桌面入口阅读所选的合成聚会聊天', async ({}, info) => {
+test('真实模型经桌面入口阅读所选的合成聊天', async ({}, info) => {
   test.setTimeout(0)
   const count = Number(selected)
   const prior = process.env.WHOMI_REAL_INSIGHT_PRIOR_RUN
   const inspectPaused = process.env.WHOMI_REAL_INSIGHT_INSPECT_PAUSED === '1'
-  const handoff = prior ? await takeOverInterruptedRun(count, prior, inspectPaused ? 'stopped' : 'failed') : undefined
+  const source = count === 12
+    ? JSON.parse(await readFile(new URL('./fixtures/bookshop.chatlab.json', import.meta.url), 'utf8'))
+    : meetingChat(count)
+  const handoff = prior ? await takeOverInterruptedRun(count, prior, inspectPaused ? 'stopped' : 'failed', source.meta.name) : undefined
   const directory = handoff?.directory ?? resolve(await mkdtemp(join(tmpdir(), 'whomi-runtime-real-insight-' + count + '-')))
   let app, page, taskId, pausedCheckpoint
-  const source = meetingChat(count)
   const earlyId = '2'
-  const correctionId = source.messages.find(m => m.replyToMessageId === earlyId).platformMessageId
+  const correctionId = source.messages.find(m => m.replyToMessageId === earlyId)?.platformMessageId
   const save = (name, value) => writeFile(info.outputPath(name + '.json'), JSON.stringify(value, null, 2))
   const button = name => page.getByRole('button', { name, exact: true })
   const shot = name => page.screenshot({ path: info.outputPath(name + '.png'), animations: 'disabled', timeout: 15_000 })
@@ -122,7 +124,7 @@ test('真实模型经桌面入口阅读所选的合成聚会聊天', async ({}, 
       : await (await import('../../scripts/real-insight-profile.mjs')).prepareRealInsightProfile(directory)
     await save('model', { label: model.modelLabel, name: model.modelName, thinkingLevel: model.thinkingLevel ?? 'default' })
     if (!handoff) await writeFile(join(directory, 'probe.cjs'), 'module.exports = () => async () => true')
-    const input = info.outputPath('合成聚会聊天.json')
+    const input = info.outputPath('合成聊天.json')
     await writeFile(input, JSON.stringify(source, null, 2))
     app = await electron.launch({ args: [resolve('out/main/index.cjs'), '--whomi-runtime-test'], env: { ...process.env, WHOMI_RUNTIME_TEST: directory } })
     page = await app.firstWindow()
@@ -236,6 +238,23 @@ test('真实模型经桌面入口阅读所选的合成聚会聊天', async ({}, 
     await expect(page.getByRole('heading', { name: '关于你' })).toBeVisible()
     await expect(page.getByRole('heading', { name: '你们的相处' })).toBeVisible()
     await shot('02-report')
+    const mbti = page.getByRole('region', { name: 'MBTI 人格倾向' })
+    const axes = { EI: '精力来源', SN: '理解信息', TF: '做决定', JP: '安排方式' }
+    expect(report.judgments.map(judgment => judgment.dimension).sort()).toEqual(Object.keys(axes).sort())
+    for (const judgment of report.judgments) {
+      await expect(mbti.getByRole('heading', { name: axes[judgment.dimension], exact: true })).toBeVisible()
+      await expect(mbti).toContainText(judgment.text)
+      if (judgment.supportingSources.length) {
+        await mbti.getByRole('button', { name: axes[judgment.dimension] + '的依据原文' }).click()
+        const region = page.getByRole('region', { name: '引用聊天记录' })
+        const firstId = judgment.supportingSources[0].messageId
+        await expect(region.locator('[data-citation=true][data-message-id="' + firstId + '"]'))
+          .toContainText(source.messages[Number(firstId) - 1].content)
+        await button('关闭原文').click()
+      }
+    }
+    await mbti.getByRole('heading', { name: 'MBTI 人格倾向' }).scrollIntoViewIfNeeded()
+    await shot('03-mbti')
     const links = report.aboutYou.concat(report.relationship).flatMap(p => p.content.filter(part => part.citationId))
     const inspected = new Set()
     const highlights = []
@@ -243,7 +262,7 @@ test('真实模型经桌面入口阅读所选的合成聚会聊天', async ({}, 
       if (inspected.has(link.citationId)) continue
       inspected.add(link.citationId)
       const citation = report.citations.find(c => c.id === link.citationId)
-      await page.locator('button.insight-citation').nth(index).click()
+      await page.locator('.insight-prose section > p button.insight-citation').nth(index).click()
       const region = page.getByRole('region', { name: '引用聊天记录' })
       for (const [part, fragment] of citation.fragments.entries()) {
         if (part > 0) await button('下一段').click()

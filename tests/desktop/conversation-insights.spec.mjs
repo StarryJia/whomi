@@ -10,7 +10,7 @@ import { completeModel } from './fixtures/pi-insight-model.mjs'
 function replyForScope(messages) {
   const reply = suggestionReport()
   const includesLaterReply = messages.some(message => message.id === '4')
-  Object.assign(reply.judgments[0], includesLaterReply
+  Object.assign(reply.judgments.find(item => item.dimension === 'TF'), includesLaterReply
     ? { direction: 'F', text: '你这一次先回应了 ta 想被倾听的需要。', supportingIds: ['4'] }
     : { direction: 'T', text: '你起初先给出了解决办法。' })
   if (includesLaterReply) {
@@ -174,13 +174,12 @@ test('空库导入后保留一份报告与另一项暂停任务，重启回查�
     expect(fixtureErrors).toEqual([])
 
     const report = await page.evaluate(id => window.whomi.ai.getReport(id), task.id)
-    expect(report).toMatchObject({
-      format: 'conversation-insights-v1',
-      judgments: [{
-        dimension: 'TF', direction: 'T',
-        supportingSources: [{ messageId: '1', revision: expect.any(String) }],
-        counterexampleSources: [{ messageId: '3', revision: expect.any(String) }],
-      }],
+    expect(report.format).toBe('conversation-insights-v1')
+    const thinking = report.judgments.find(item => item.dimension === 'TF')
+    expect(thinking).toMatchObject({
+      direction: 'T',
+      supportingSources: [{ messageId: '1', revision: expect.any(String) }],
+      counterexampleSources: [{ messageId: '3', revision: expect.any(String) }],
     })
     for (const [fragmentIndex, id] of ['1', '3'].entries()) {
       const window = await page.evaluate(({ taskId, fragmentIndex }) => window.whomi.ai.readInsightCitation({
@@ -235,14 +234,12 @@ test('空库导入后保留一份报告与另一项暂停任务，重启回查�
     await expect(secondSource).toBeVisible({ timeout: 15_000 })
     await expect(observations.getByText('????', { exact: true })).toBeVisible()
     const saved = await page.evaluate(id => window.whomi.ai.getAnalysis(id), second.id)
-    expect(saved).toMatchObject({ id: second.id, state: 'completed', scope: { kind: 'all' }, totalMessages: 12, analyzedMessages: 12,
-      report: { judgments: [expect.objectContaining({ direction: 'F', supportingSources: [
-        { messageId: '4', revision: expect.any(String) },
-      ] })] },
-    })
-    expect(saved.report.judgments[0].counterexampleSources).toEqual(report.judgments[0].counterexampleSources)
+    expect(saved).toMatchObject({ id: second.id, state: 'completed', scope: { kind: 'all' }, totalMessages: 12, analyzedMessages: 12 })
+    const feeling = saved.report.judgments.find(item => item.dimension === 'TF')
+    expect(feeling).toMatchObject({ direction: 'F', supportingSources: [{ messageId: '4', revision: expect.any(String) }] })
+    expect(feeling.counterexampleSources).toEqual(thinking.counterexampleSources)
     expect(saved.report.citations.find(item => item.id === 'later-listening').fragments[0].sources)
-      .toEqual(saved.report.judgments[0].supportingSources)
+      .toEqual(feeling.supportingSources)
     await expect.poll(() => page.evaluate(() => window.syntheticInsightEvents)).toContainEqual({
       kind: 'analysis', snapshot: expect.objectContaining({
         id: saved.id, state: 'completed', scope: saved.scope, totalMessages: saved.totalMessages,

@@ -345,14 +345,16 @@ export function parseReport(
   const findings = (checks ?? []).flatMap(check => check.finding ? [check.finding] : [])
   const supports = checks === null ? writtenEvidence : new Set(findings.flatMap(finding => finding.supportingIds))
   const counterexamples = checks === null ? writtenEvidence : new Set(findings.flatMap(finding => finding.counterexampleIds))
+  const emptyLists = checks === null ? { supportingIds: [], counterexampleIds: [], alternativeExplanations: [], limitations: [] } : {}
   const judgments = array(body.judgments ?? [], 100, (value): InsightJudgment => {
-    const judgment = object(value)
+    const judgment: Record<string, unknown> = { ...emptyLists, ...object(value) }
     const dimension = dimensionKeys.find(key => key === judgment.dimension)
     const direction = judgment.direction
     if (!dimension || (direction !== null && (typeof direction !== 'string' || ![...dimension].includes(direction)))) return invalidOutput()
-    const supportingIds = sourceIds(judgment.supportingIds, supports, true)
+    const supportingIds = sourceIds(judgment.supportingIds, supports, checks !== null || direction !== null)
     const counterexampleIds = sourceIds(judgment.counterexampleIds, counterexamples)
-    if (!supportingIds.some(id => selfIds.has(id)) || supportingIds.some(id => counterexampleIds.includes(id))) return invalidEvidence()
+    if ((supportingIds.length > 0 && !supportingIds.some(id => selfIds.has(id))) ||
+      supportingIds.some(id => counterexampleIds.includes(id))) return invalidEvidence()
     return {
       dimension, direction, text: string(judgment.text, 3000),
       supportingSources: supportingIds.map(id => refs.get(id)!),
@@ -360,6 +362,10 @@ export function parseReport(
       alternativeExplanations: explanations(judgment.alternativeExplanations), limitations: explanations(judgment.limitations),
     } as InsightJudgment
   })
+  if (checks === null && (judgments.length !== dimensionKeys.length ||
+      new Set(judgments.map(item => item.dimension)).size !== dimensionKeys.length)) {
+    throw new BoundaryError('INVALID_INSIGHT_OUTPUT', '请补齐精力来源、理解信息、做决定和安排方式四项分析。')
+  }
   const limitations = explanations(body.limitations)
   if (checks?.some(check => check.state === 'inconclusive')) limitations.push('部分观察缺少新增依据，仍无法确认。')
   return { format: INSIGHT_PROMPT_VERSION, aboutYou, relationship, citations, limitations, judgments }

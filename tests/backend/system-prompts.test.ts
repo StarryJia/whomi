@@ -7,7 +7,7 @@ import { createSettingsRepository } from '../../electron/data/settings/repositor
 import { createAiRepository } from '../../electron/data/ai/repository'
 import { temporaryStore } from './helpers'
 import { createAiService } from '../../electron/main/ai-service'
-import { completeModel, readTurns } from '../desktop/fixtures/pi-insight-model.mjs'
+import { completeModel, readTurns, sampleJudgments } from '../desktop/fixtures/pi-insight-model.mjs'
 
 const cleanup: (() => void | Promise<void>)[] = []
 afterEach(async () => { for (const close of cleanup.splice(0).reverse()) await close() })
@@ -92,7 +92,7 @@ test('保存的对话和洞察提示词进入模型请求，连接检测保持�
     const turns = readTurns(input)
     if (!turns.length) return completeModel(response, { read: {} })
     const section = [{ content: [{ text: '约周末散步', citationId: 'walk' }] }]
-    const report = { aboutYou: section, relationship: section, limitations: [],
+    const report = { aboutYou: section, relationship: section, limitations: [], judgments: sampleJudgments(),
       citations: [{ id: 'walk', fragments: [{ messageIds: ['1'] }] }] }
     completeModel(response, { text: JSON.stringify(report) })
   })

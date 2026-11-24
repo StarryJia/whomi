@@ -87,7 +87,7 @@ async function harness({ model = true, self = true, hold = true, reject = true, 
         if (prompt.read) return completeModel(response, { read: prompt.read })
         const result = suggestionReport()
         if (distinctOverviewJudgments && prompt.messages.some(message => message.id === '4')) {
-          result.judgments.push({ dimension: 'JP', direction: 'J', text: '你提前定好了见面时间。', supportingIds: ['4'],
+          Object.assign(result.judgments.find(item => item.dimension === 'JP'), { direction: 'J', text: '你提前定好了见面时间。', supportingIds: ['4'],
             counterexampleIds: [], alternativeExplanations: [], limitations: ['仅限这次见面。'] })
         }
         if (longReport) {

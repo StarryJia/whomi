@@ -134,6 +134,37 @@ for (const { count, overloadOnPage } of [{ count: 8 }, { count: 4600 }, { count:
       await expect(page.getByRole('heading', { name: '你们的相处' })).toBeVisible()
       if (count > 8) await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setContentSize(960, 640))
       await shot('03-report')
+      const personality = page.getByRole('region', { name: 'MBTI 人格倾向' })
+      for (const heading of ['精力来源', '理解信息', '做决定', '安排方式']) {
+        await expect(personality.getByRole('heading', { name: heading })).toBeVisible()
+      }
+      for (const assessment of model.state.report.judgments) {
+        await expect(personality).toContainText(assessment.text)
+      }
+      await expect(personality.getByText('暂难判断', { exact: true })).toHaveCount(3)
+      await expect(personality.getByText('偏向实感 S', { exact: true })).toBeVisible()
+      await personality.scrollIntoViewIfNeeded()
+      await shot('03-personality')
+      const narrow = count === 8 && !overloadOnPage
+      if (narrow) {
+        await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setContentSize(960, 640))
+        await expect.poll(() => page.evaluate(() => window.innerWidth)).toBe(960)
+        const aboutYou = page.getByRole('heading', { name: '关于你' })
+        await aboutYou.evaluate(element => element.scrollIntoView({ block: 'start' }))
+        await expect(aboutYou).toBeInViewport()
+        await expect(personality.getByRole('heading', { name: 'MBTI 人格倾向' })).toBeInViewport()
+        expect(await personality.evaluate(element => element.scrollWidth <= element.clientWidth &&
+          document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+        await shot('03-personality-narrow')
+      }
+      const personalitySource = personality.getByRole('button', { name: '理解信息的依据原文' })
+      await personalitySource.click()
+      const detail = page.getByRole('region', { name: '引用聊天记录' }).locator('[data-citation=true]')
+      await expect(detail).toContainText('场地邮箱是')
+      await expect(detail).toContainText('我发过时间了')
+      await shot('04-personality-source')
+      await btn('关闭原文').click()
+      await expect(personalitySource).toBeFocused()
       for (const [index, original] of [early, correction].entries()) {
         await btn(excerptCaption[index]).click()
         const source = page.getByRole('region', { name: '引用聊天记录' }).locator('[data-citation=true]')

@@ -56,7 +56,7 @@ function ReportPage({ task, report, onBack, rename, onRenameBusy, renderSource }
         }
         setCitationErrorAttempt(0)
         sourceTrigger.current = trigger
-        setCitation({ taskId: task.id, citationId: reference.id, phrase: trigger.textContent ?? '', conversationTitle: task.conversationTitle ?? '会话', fragmentCount: reference.fragments.length })
+        setCitation({ taskId: task.id, citationId: reference.id, phrase: trigger.getAttribute('aria-label') ?? trigger.textContent ?? '', conversationTitle: task.conversationTitle ?? '会话', fragmentCount: reference.fragments.length })
       })} />
       {citationErrorAttempt > 0 && <ExceptionNotice key={citationErrorAttempt} title="无法定位这处引用的原文。" />}
     </div>

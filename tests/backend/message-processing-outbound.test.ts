@@ -7,7 +7,7 @@ import { createAiRepository } from '../../electron/data/ai/repository'
 import { createSettingsRepository } from '../../electron/data/settings/repository'
 import { createAiService } from '../../electron/main/ai-service'
 import { temporaryStore } from './helpers'
-import { completeModel, readTurns } from '../desktop/fixtures/pi-insight-model.mjs'
+import { completeModel, readTurns, sampleJudgments } from '../desktop/fixtures/pi-insight-model.mjs'
 import type { InsightReadRequest } from '../../src/shared/insight-reader'
 
 type ModelRequest = { messages: { role: string; content: string | { type: string; text?: string }[] }[] }
@@ -180,7 +180,7 @@ describe('processed messages in actual model requests', () => {
         aboutYou: [{ content: [{ text: '你发了一条号码记录。', citationId: 'a' }] }],
         relationship: [{ content: [{ text: '对方在聊天里约了见面。', citationId: 'b' }] }],
         citations: [{ id: 'a', fragments: [{ messageIds: ['6'] }] }, { id: 'b', fragments: [{ messageIds: ['3'] }] }],
-        judgments: [], limitations: [],
+        judgments: sampleJudgments(), limitations: [],
       })
     }
     const prepared = await service.prepareAnalysis({ conversationId: '1', modelId: 'model' })

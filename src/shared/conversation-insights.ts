@@ -42,6 +42,30 @@ export type InsightReport = {
   judgments?: InsightJudgment[]
 }
 
+export function judgmentCitation(report: InsightReport, conversationId: string, judgmentIndex: number, kind: 'supporting' | 'counterexample'): InsightCitation | undefined {
+  const judgment = report.judgments?.[judgmentIndex]
+  const sources = kind === 'supporting' ? judgment?.supportingSources : judgment?.counterexampleSources
+  if (!Array.isArray(sources) || !sources.length) return undefined
+  // 旧报告的正文可使用任意引用名，包括没有对应原文的引用。
+  const occupied = new Set(report.citations.map(citation => citation.id))
+  for (const paragraph of [...report.aboutYou, ...report.relationship]) {
+    for (const part of paragraph.content) if (part.citationId) occupied.add(part.citationId)
+  }
+  const base = 'mbti.' + judgmentIndex + '.' + kind
+  let id = base
+  for (let suffix = 1; occupied.has(id); suffix++) id = base + '.' + suffix
+  return { id, conversationId, fragments: sources.map(source => ({ sources: [source] })) }
+}
+
+export function resolveReportCitation(report: InsightReport, conversationId: string, id: string): InsightCitation | undefined {
+  const citation = report.citations.find(item => item.id === id)
+  if (citation) return citation
+  const match = /^mbti\.(\d+)\.(supporting|counterexample)(?:\.\d+)?$/.exec(id)
+  if (!match) return undefined
+  const derived = judgmentCitation(report, conversationId, Number(match[1]), match[2] === 'supporting' ? 'supporting' : 'counterexample')
+  return derived?.id === id ? derived : undefined
+}
+
 export type InsightSourceMessage = {
   id: string
   revision: string

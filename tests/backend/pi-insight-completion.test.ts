@@ -1,4 +1,5 @@
 import { expect, test } from 'vitest'
+import { sampleJudgments } from '../desktop/fixtures/pi-insight-model.mjs'
 import { generatePiInsight, type PiInsightCheckpoint } from '../../electron/main/pi-insight-generation'
 import { defaultInsightPrompts } from '../../electron/data/ai/insight-prompts'
 import { defaultProcessing } from '../../src/shared/settings-contract'
@@ -12,7 +13,7 @@ const options = { snapshot, conversationId: '2', thinkingLevel: undefined, promp
   model: { id: 'm', model: 'local', label: '本机模拟', baseUrl: 'http://localhost', enabled: true, hasCredential: false, version: 1, contextWindow: 16000, maxTokens: 800 },
   read: async () => [{ id: '11', revision: 'a'.repeat(64), text: '周三一起约。', senderName: '我', isSelf: true, sentAtMs: 0, replyToMessageId: null }] }
 const section = [{ content: [{ text: '一起约', citationId: 'c' }] }]
-const draft = { aboutYou: section, relationship: section, citations: [{ id: 'c', fragments: [{ messageIds: ['11'] }] }], limitations: [] }
+const draft = { aboutYou: section, relationship: section, citations: [{ id: 'c', fragments: [{ messageIds: ['11'] }] }], limitations: [], judgments: sampleJudgments() }
 
 test('官方模型按接口匹配容量，跨服务同名模型使用估值，保留手填长度', async () => {
   const configured = { ...options.model, model: 'gpt-6.1-sol', baseUrl: 'https://api.openai.com/v1', contextWindow: null, maxTokens: null }
@@ -40,16 +41,21 @@ test('提前交稿和坏引用可在同一会话修正，重试保存沿用已�
   let saved: PiInsightCheckpoint | null = null
   const save = async (state: PiInsightCheckpoint) => { saved = structuredClone(state) }
   const requests: (string | null | undefined)[] = []
+  const badDraft = { ...draft, citations: [{ id: 'c', fragments: [{ messageIds: ['12'] }] }] }
   await expect(generatePiInsight({ ...options, save, run: async (input, io) => {
     requests.push(input.checkpoint)
     if (requests.length === 1) return { text: JSON.stringify(draft), checkpoint: 'first', usage: {} }
+    if (requests.length === 3) {
+      expect(input.prompt).toContain('引用')
+      return { text: JSON.stringify(badDraft), checkpoint: 'bad-report', usage: {} }
+    }
     expect(input.prompt).toContain('resumeCursor')
     const page = await io.read({}, 2000)
     await io.record({ type: 'requestStart', requestId: 'r', kind: 'inference' })
     await io.record({ type: 'request', requestId: 'r', kind: 'inference', spans: page.spans, success: true, usage: { inputTokens: 100 }, checkpoint: 'second' })
-    return { text: JSON.stringify({ ...draft, citations: [{ id: 'c', fragments: [{ messageIds: ['12'] }] }] }), checkpoint: 'bad-report', usage: {} }
+    return { text: JSON.stringify(badDraft), checkpoint: 'bad-report', usage: {} }
   } })).rejects.toMatchObject({ code: 'INVALID_EVIDENCE' })
-  expect(requests).toEqual([null, 'first'])
+  expect(requests).toEqual([null, 'first', 'bad-report'])
   expect(saved).toMatchObject({ coverage: { coveredMessageIds: ['11'] }, input: 100, checkpoint: 'bad-report' })
   const fixed = await generatePiInsight({ ...options, checkpoint: saved, save, run: async input => {
     expect(input.checkpoint).toBe('bad-report')

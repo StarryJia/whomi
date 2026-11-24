@@ -1,5 +1,6 @@
 import { expect, test, vi } from 'vitest'
 import { performance } from 'node:perf_hooks'
+import { sampleJudgments } from '../desktop/fixtures/pi-insight-model.mjs'
 import { createAiService } from '../../electron/main/ai-service'
 import { defaultProcessing } from '../../src/shared/settings-contract'
 import type { AiModel, AnalysisTask } from '../../src/shared/ai-contract'
@@ -57,7 +58,7 @@ test('preparing and duplicate confirmation do not duplicate a model run; complet
     await insight!.record({ type: 'request', kind: 'inference', requestId: 'second', success: true,
       spans: result.spans, usage: { outputTokens: 50 }, checkpoint: 'test-leaf' })
     const section = [{ content: [{ text: '明天听你讲', citationId: 'c1' }] }]
-    return { text: JSON.stringify({ aboutYou: section, relationship: section, citations: [{ id: 'c1', fragments: [{ messageIds: ['1'] }] }], limitations: [] }),
+    return { text: JSON.stringify({ aboutYou: section, relationship: section, citations: [{ id: 'c1', fragments: [{ messageIds: ['1'] }] }], limitations: [], judgments: sampleJudgments() }),
       usage: {}, checkpoint: 'test-leaf' }
   } }, secrets: { encrypt: value => value, decrypt: value => value } })
   await service.prepareAnalysis({ conversationId: '1', modelId: 'm' })

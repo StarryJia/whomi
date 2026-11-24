@@ -14,7 +14,7 @@ import type { WriterQueue } from '../import/runner'
 import { confirmedSelfSql } from '../db/self'
 import { INSIGHT_PROMPT_VERSION } from './insight-prompts'
 import { isInsightCitation, isInsightCitationId, validateAiCall, validateAiResult } from '../../../src/shared/ai-validation'
-import { defaultInsightTitle, insightTitle, isInsightReport, isInsightScope, type InsightCitation, type InsightCitationInput, type InsightCitationWindow, type InsightReport, type InsightScope, type InsightScopeInput, type InsightSnapshot, type InsightSourceRef } from '../../../src/shared/conversation-insights'
+import { defaultInsightTitle, insightTitle, isInsightReport, isInsightScope, resolveReportCitation, type InsightCitation, type InsightCitationInput, type InsightCitationWindow, type InsightReport, type InsightScope, type InsightScopeInput, type InsightSnapshot, type InsightSourceRef } from '../../../src/shared/conversation-insights'
 import { defaultModelProtocol, isModelProtocol } from '../../../src/shared/model-protocol'
 import { BoundaryError, localId } from '../../../src/shared/desktop-validation'
 import type { AiModel, AiSkill, AiState, AiThread, AiThreadSummary, AiTurn, AiUsage, AnalysisPreparation, AnalysisTask, AnalysisUsage, PrepareAnalysisInput } from '../../../src/shared/ai-contract'
@@ -173,7 +173,8 @@ export function createAiRepository(store: Store, write: WriterQueue) {
       }
     }
     for (const judgment of report.judgments ?? []) {
-      if (!judgment.supportingSources.some(source => sources.get(source.messageId)?.isSelf) ||
+      if (((judgment.direction !== null || judgment.supportingSources.length > 0) &&
+          !judgment.supportingSources.some(source => sources.get(source.messageId)?.isSelf)) ||
         [...judgment.supportingSources, ...judgment.counterexampleSources].some(source => !validRef(source))) {
         fail('INVALID_INSIGHT_JUDGMENT', '请重新生成这份报告。')
       }
@@ -448,9 +449,9 @@ export function createAiRepository(store: Store, write: WriterQueue) {
       if (!saved) return { status: 'unavailable' }
       if (saved.content_revision !== createHash('sha256').update(saved.data).digest('hex')) return { status: 'expired' }
       const report = readInsightReport(saved.data, row.conversation_id)
-      const citation = report.citations.find(item => item.id === input.citationId)
+      const citation = resolveReportCitation(report, String(row.conversation_id), input.citationId)
       const fragment = citation?.fragments[input.fragmentIndex]
-      if (!citation || !fragment) return { status: 'unavailable' }
+      if (!citation || !fragment || !isInsightCitation({ ...citation, fragments: [fragment] })) return { status: 'unavailable' }
       let highlightIds: string[] | null
       try {
         highlightIds = readInsightCitationIds(reader, row.conversation_id, insightSnapshot(row), fragment.sources)
