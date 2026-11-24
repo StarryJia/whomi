@@ -1,4 +1,5 @@
 import type { AiModel, AiUsage } from '../../src/shared/ai-contract'
+import type { InsightReadSpan } from '../../src/shared/insight-reader'
 import type { InsightJudgmentSource, InsightReport, InsightSnapshot, InsightSourceMessage } from '../../src/shared/conversation-insights'
 import { BoundaryError } from '../../src/shared/desktop-validation'
 import type { ProcessingSettings } from '../../src/shared/settings-contract'
@@ -24,6 +25,7 @@ export type PiInsightCheckpoint = {
   requests: number
   stalled: number
   lastReviewWindow?: string
+  reviewCoverage?: Coverage
   input: number
   output: number
   workload?: { capacity: InsightCapacity; protection: InsightProtection }
@@ -93,21 +95,17 @@ export async function generatePiInsight(options: Options): Promise<InsightReport
   const ordinals = new Map(snapshot.sources.map((ref, i) => [ref.messageId, i + 1]))
   const calls = new Set<string>()
   const covered = () => state.coverage.coveredMessageIds.length
-  const reviewWindows = new Set<string>()
-  if (covered() === refs.size && state.lastReviewWindow === undefined) {
-    // 旧断点在全部读完后仍按新增覆盖计算停滞。
-    state.stalled = 0
-    state.lastReviewWindow = ''
+  const reviewSpans: InsightReadSpan[] = []
+  if (covered() === refs.size && !state.reviewCoverage) {
+    if (state.lastReviewWindow === undefined) state.stalled = 0
+    state.reviewCoverage = { coveredMessageIds: [], partial: {} }
   }
   const callbacks: InsightRuntimeCallbacks = {
     async read(request, capacity) {
       signal.throwIfAborted()
       const result = await read(request, capacity)
       const ids = result.spans.map(span => span.messageId)
-      if (covered() === refs.size && ids.length) {
-        const first = result.spans[0], last = result.spans.at(-1)!
-        reviewWindows.add([ordinals.get(first.messageId), first.start, ordinals.get(last.messageId), last.end].join('.'))
-      }
+      if (covered() === refs.size) reviewSpans.push(...result.spans)
       const seen = new Set(state.coverage.coveredMessageIds)
       operation.event('read', { action: request.messageId ? 'locate' : request.cursor ? 'continue' : 'first',
         targetOrdinal: request.messageId ? ordinals.get(request.messageId) : undefined, readStatus: result.page.status,
@@ -150,12 +148,14 @@ export async function generatePiInsight(options: Options): Promise<InsightReport
       if (event.success && event.kind === 'inference') {
         if (event.spans.some(span => !refs.has(span.messageId))) throw new BoundaryError('INVALID_EVIDENCE', '请检查聊天来源后继续。')
         state.coverage = addInsightCoverage(before, event.spans)
-        const review = [...reviewWindows].sort().join(';')
-        const advanced = before.coveredMessageIds.length === refs.size ? review !== '' && review !== state.lastReviewWindow
-          : before.coveredMessageIds.length !== covered() || JSON.stringify(before.partial) !== JSON.stringify(state.coverage.partial)
+        const reviewing = before.coveredMessageIds.length === refs.size
+        const previous = reviewing ? state.reviewCoverage! : before
+        const next = reviewing ? addInsightCoverage(previous, reviewSpans) : state.coverage
+        const advanced = previous.coveredMessageIds.length !== next.coveredMessageIds.length || JSON.stringify(previous.partial) !== JSON.stringify(next.partial)
         state.stalled = advanced ? 0 : state.stalled + 1
-        if (covered() === refs.size) state.lastReviewWindow = review || state.lastReviewWindow || ''
-        reviewWindows.clear()
+        if (reviewing) state.reviewCoverage = next
+        else if (covered() === refs.size) state.reviewCoverage = { coveredMessageIds: [], partial: {} }
+        reviewSpans.length = 0
       }
       state.input += event.usage.totalInputTokens ?? ((event.usage.inputTokens ?? 0) + (event.usage.cacheReadTokens ?? 0) + (event.usage.cacheWriteTokens ?? 0))
       state.output += event.usage.outputTokens ?? 0

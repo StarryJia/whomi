@@ -1,6 +1,6 @@
 import { withInsightClock } from './insight-clock'
 import { generatePiInsight, verifyInsightExcerpts, type PiInsightCheckpoint } from './pi-insight-generation'
-import type { AgentRunInput, AgentRunResult, InsightRuntimeCallbacks } from '../agent/protocol'
+import type { AgentRunInput, AgentRunResult, InsightRequestContext, InsightRuntimeCallbacks } from '../agent/protocol'
 import { defaultPrompts } from '../../src/shared/system-prompts'
 import type { AnalysisContext, TurnContext } from '../data/ai/repository'
 import { acceptedThinking, insightModelProtocol, reasoningCapabilities } from '../agent/reasoning-capabilities'
@@ -25,6 +25,7 @@ export type AiServiceOptions = { storage(method: string, args: unknown[]): Promi
   logError?: (entry: AppError) => void;
   deleteInsightSessions?: (taskIds: readonly string[], removeRecords: () => Promise<void>) => Promise<void>;
   diagnostics?: AiDiagnostics;
+  insightAccountAccess?: (model: AiModel, accountId: string, signal: AbortSignal) => Promise<NonNullable<InsightRequestContext['access']>>;
   processing?: (conversationId: string) => Promise<{ settings: ProcessingSettings; members: ProcessingMember[] }>;
   claimProcessing?: (taskId: string, signature: string) => Promise<void> }
 const dialogueSystem = defaultPrompts.dialogue
@@ -42,7 +43,7 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
   const deleting = new Set<string>()
   const elapsedSamples = new Map<string, { elapsedMs: number; sampledAtMs: number }>()
   const listeners = new Set<(event: AiEvent) => void>()
-  const pending: { priority: number; run(): Promise<void>; reject(error: unknown): void }[] = []
+  const pending: { priority: number; grant(): void }[] = []
   let working = false, closing = false
   let lifecycle = Promise.resolve()
   // 任务入库与登记运行器须连续完成，删除不能插入二者之间。
@@ -67,29 +68,69 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
   function available(conversationId: string) {
     if (deleting.has(conversationId)) throw new BoundaryError('CONVERSATION_DELETING', '会话正在删除，请稍后重试。')
   }
-  function schedule<T>(priority: number, run: () => Promise<T>, signal?: AbortSignal): Promise<T> {
-    return new Promise<T>((resolve, reject) => {
+  function acquireModel(priority: number, signal: AbortSignal): Promise<() => void> {
+    return new Promise((resolve, reject) => {
       const abort = () => {
         const index = pending.indexOf(item)
         if (index >= 0) pending.splice(index, 1)
-        signal?.removeEventListener('abort', abort)
         reject(new DOMException('已停止', 'AbortError'))
       }
-      const item = { priority, run: async () => {
-        signal?.removeEventListener('abort', abort)
-        if (signal?.aborted) throw new DOMException('已停止', 'AbortError')
-        resolve(await run())
-      }, reject }
-      if (signal?.aborted) { reject(new DOMException('已停止', 'AbortError')); return }
-      signal?.addEventListener('abort', abort, { once: true })
-      pending.push(item); pending.sort((a, b) => b.priority - a.priority)
-      void drain()
+      const item = { priority, grant() {
+        signal.removeEventListener('abort', abort)
+        working = true
+        resolve(() => {
+          working = false
+          pending.shift()?.grant()
+        })
+      } }
+      signal.throwIfAborted()
+      if (!working) { item.grant(); return }
+      signal.addEventListener('abort', abort, { once: true })
+      pending.push(item)
+      pending.sort((a, b) => b.priority - a.priority)
     })
   }
-  async function drain() {
-    if (working) return
-    working = true
-    try { while (pending.length) { const item = pending.shift()!; try { await item.run() } catch (error) { item.reject(error) } } } finally { working = false }
+  async function schedule<T>(priority: number, run: () => Promise<T>, signal: AbortSignal): Promise<T> {
+    const release = await acquireModel(priority, signal)
+    try { signal.throwIfAborted(); return await run() } finally { release() }
+  }
+  async function runInsightSession(input: RuntimeInput, insight: InsightRuntimeCallbacks, signal: AbortSignal) {
+    // Pi 在另一个进程里逐页请求，工具读取和两次请求之间应让出模型队列。
+    const ended = new AbortController()
+    const activeSignal = AbortSignal.any([signal, ended.signal])
+    const slots = new Map<string, () => void>()
+    const record: InsightRuntimeCallbacks['record'] = async event => {
+      if (event.type === 'checkpoint') return insight.record(event)
+      if (event.type === 'request') {
+        try { return await insight.record(event) }
+        finally { slots.get(event.requestId)?.(); slots.delete(event.requestId) }
+      }
+      const release = await acquireModel(0, activeSignal)
+      slots.set(event.requestId, release)
+      try {
+        activeSignal.throwIfAborted()
+        let access: InsightRequestContext['access']
+        if (input.model.planAccount) {
+          if (!options.insightAccountAccess) throw new BoundaryError('ACCOUNT_UNAVAILABLE', '请重新打开此服务商的账户设置。')
+          access = await options.insightAccountAccess(input.model, input.model.planAccount, activeSignal)
+        }
+        const context = await insight.record(event)
+        return access ? { ...context, access } : context
+      } catch (error) {
+        if (slots.delete(event.requestId)) release()
+        throw error
+      }
+    }
+    try {
+      activeSignal.throwIfAborted()
+      const apiKey = await modelSecret(input.model)
+      activeSignal.throwIfAborted()
+      return await options.runtime.run({ ...input, apiKey }, { signal: activeSignal, onText: () => {}, insight: { ...insight, record } })
+    } finally {
+      ended.abort()
+      for (const release of slots.values()) release()
+      slots.clear()
+    }
   }
   async function modelSecret(model: AiModel) {
     const secret = await storage<{ model: AiModel; encryptedKey: string | null }>('modelSecret', model.id, model.version)
@@ -219,8 +260,7 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
           analyzedMessages = task.analyzedMessages
           publish({ kind: 'analysis', snapshot: task })
         }),
-        run: (input, insight) => schedule(0, async () => options.runtime.run({ ...input, apiKey: await modelSecret(initial.model) },
-          { signal, insight, onText: () => {} }), signal),
+        run: (input, insight) => runInsightSession(input, insight, signal),
       })) : await generateInsight({ snapshot: initial.snapshot, conversationId: initial.task.conversationId, model: initial.model,
         prompts, limits: defaultInsightRunLimits, checkpoint: legacy, elapsedMs: running.elapsedMs, thinkingLevel: initial.task.thinkingLevel }, {
         signal, onText: () => {},

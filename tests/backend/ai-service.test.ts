@@ -32,10 +32,12 @@ function captureDiagnostics() {
   }
 }
 
-test('preparing and duplicate confirmation do not duplicate a model run; completion waits for report storage', async () => {
-  let runs = 0, release: (value: unknown) => void = () => {}, completed = false
+test('同一洞察跨页保持会话，压缩与下一次推理之间优先处理连接检测，成稿等候落盘', async () => {
+  let runs = 0, completed = false
+  const entered = Promise.withResolvers<void>(), release = Promise.withResolvers<void>()
+  const order: string[] = []
   const task: AnalysisTask = { id: '1', conversationId: '1', modelId: 'm', state: 'queued', analyzedMessages: 0, totalMessages: 1, skippedMessages: 0, usage: {}, valid: true, eventSequence: 1 }
-  const model = { id: 'm', label: '示例', model: 'm', baseUrl: 'http://127.0.0.1:9999/v1', contextWindow: 8000, maxTokens: 1000, version: 1, enabled: true, hasCredential: false }
+  const model = { id: 'm', label: '示例', model: 'm', planAccount: 'sample', baseUrl: 'http://127.0.0.1:9999/v1', contextWindow: 8000, maxTokens: 1000, version: 1, enabled: true, hasCredential: false }
   const storage = async (method: string, args: unknown[]) => {
     if (method === 'prepareAnalysis') return { token: 'token', conversationId: '1', title: '示例', selfName: '我', totalMessages: 1, analyzableMessages: 1, snapshotMaxId: '1', expiresAt: Date.now() + 10000, model }
     if (method === 'confirmAnalysis' || method === 'getAnalysis') return { ...task }
@@ -49,12 +51,22 @@ test('preparing and duplicate confirmation do not duplicate a model run; complet
     throw new Error(method)
   }
   const diagnostics = captureDiagnostics()
-  const service = createAiService({ storage, diagnostics, runtime: { run: async (_input, { insight }) => {
+  let now = 0
+  const insightAccountAccess = vi.fn(async () => ({ token: now < 120_000 ? 'example-first' : 'example-renewed', baseUrl: model.baseUrl }))
+  const service = createAiService({ storage, diagnostics, insightAccountAccess, runtime: { run: async (_input, { insight }) => {
+    if (!insight) { order.push('connection'); return { text: 'OK', usage: {}, checkpoint: '' } }
     runs++
-    await new Promise(resolve => { release = resolve })
+    const first = await insight.record({ type: 'requestStart', kind: 'compaction', requestId: 'first' })
+    expect(first?.access?.token).toBe('example-first')
+    order.push('compaction')
+    entered.resolve()
+    await release.promise
+    await insight.record({ type: 'request', kind: 'compaction', requestId: 'first', success: true, spans: [], usage: {}, checkpoint: 'summary' })
     const result = await insight!.read({}, 4000)
     expect(result.page.status).toBe('ok')
-    await insight!.record({ type: 'requestStart', kind: 'inference', requestId: 'second' })
+    const second = await insight.record({ type: 'requestStart', kind: 'inference', requestId: 'second' })
+    expect(second?.access?.token).toBe('example-renewed')
+    order.push('inference')
     await insight!.record({ type: 'request', kind: 'inference', requestId: 'second', success: true,
       spans: result.spans, usage: { outputTokens: 50 }, checkpoint: 'test-leaf' })
     const section = [{ content: [{ text: '明天听你讲', citationId: 'c1' }] }]
@@ -65,9 +77,16 @@ test('preparing and duplicate confirmation do not duplicate a model run; complet
   expect(runs).toBe(0)
   await service.confirmAnalysis({ token: 'token', requestId: 'same' })
   await service.confirmAnalysis({ token: 'token', requestId: 'same' })
-  await vi.waitFor(() => expect(runs).toBe(1))
-  release(undefined)
+  await entered.promise
+  const connection = service.testModel('m')
+  await new Promise<void>(resolve => setImmediate(resolve))
+  expect(order).toEqual(['compaction'])
+  now = 300_000
+  release.resolve()
+  await connection
   await service.idle()
+  expect(order).toEqual(['compaction', 'connection', 'inference'])
+  expect(insightAccountAccess).toHaveBeenCalledTimes(2)
   expect(diagnostics.discardUnstarted).toHaveBeenCalledWith(diagnostics.begin.mock.results[1].value)
   const operation = diagnostics.begin.mock.results[0].value
   expect(diagnostics.event.mock.calls.map(call => call[1])).toEqual(expect.arrayContaining(['reading', 'request', 'returned', 'saving']))

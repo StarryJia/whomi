@@ -16,16 +16,19 @@ type Request = { input?: InputItem[]; store?: boolean; previous_response_id?: st
 let server: ReturnType<typeof createServer>, directory: string, model: AiModel
 let answer: (path: string, body: Request, response: ServerResponse) => void
 const requests: Request[] = []
+const authorizations: (string | undefined)[] = []
 
 beforeEach(async () => {
   directory = await mkdtemp(join(tmpdir(), 'whomi-insight-response-replay-'))
   requests.length = 0
+  authorizations.length = 0
   server = createServer((req, response) => {
     let text = ''
     req.on('data', chunk => { text += chunk })
     req.on('end', () => {
       const body: Request = JSON.parse(text)
       requests.push(body)
+      authorizations.push(req.headers.authorization)
       answer(req.url!, body, response)
     })
   })
@@ -63,6 +66,27 @@ function sample(text: string) {
     input: { key: 'insight:1', model, purpose: 'insight' as const, insightSession: { processing: defaultProcessing },
       systemPrompt: '仅依据聊天原文回答。', prompt: '开始阅读。' } }
 }
+
+it('同一洞察的每次模型请求使用当轮服务地址与凭据', async () => {
+  const { input, options } = sample('合成原文。'.repeat(1800))
+  const kinds: string[] = []
+  answer = (_path, body, response) => {
+    if (JSON.stringify(body.input?.[0]).includes('context summarization assistant')) responses(response, [textItem('核查原话')])
+    else if (requests.length === 1) responses(response, [{ type: 'function_call', id: 'fc_read', call_id: 'call_read', name: 'read_messages', arguments: '{}' }], 5800)
+    else responses(response, [textItem('已成稿')])
+  }
+  const result = await new PiRuntime(directory).run({ ...input, model: { ...input.model, baseUrl: 'http://127.0.0.1:1' } },
+    { ...options, insight: { ...options.insight, record: async event => {
+      if (event.type !== 'requestStart') return
+      kinds.push(event.kind)
+      return { access: { token: 'sample-' + kinds.length, baseUrl: model.baseUrl } }
+    } } })
+  expect(result.text).toBe('已成稿')
+  expect(kinds).toEqual(['inference', 'compaction', 'inference'])
+  expect(authorizations).toEqual(['Bearer sample-1', 'Bearer sample-2', 'Bearer sample-3'])
+  const history = await readFile(JSON.parse(result.checkpoint).sessionFile, 'utf8')
+  expect(history).not.toMatch(/sample-[123]/)
+}, 30000)
 
 it('从 Chat Completions 工具断点向 Responses 实际重放相配的调用与原文', async () => {
   const { input, options, events, read, span } = sample('周五见。')
@@ -252,6 +276,46 @@ const signatureCases = [
   { label: '未知格式', extra: { unknownPart: '合成内容' }, keep: false },
   { label: '断点签名无法解析', corruptCheckpoint: true, keep: false },
 ]
+it.each([false, true])('Claude 压缩后的签名工具轮次与原文收据按脱敏规则恢复，含邮箱=%s', async sensitive => {
+  const { input, options, span, events } = sample('周五两点见。')
+  const claude = { ...input, model: { ...model, protocol: 'anthropic-messages' as const } }
+  const thinking = { type: 'thinking', thinking: sensitive ? 'fixture.secret@example.invalid' : '回查见面时间。', signature: 'signed-example' }
+  const redacted = { type: 'redacted_thinking', data: 'opaque-example' }
+  const tool = { type: 'tool_use', id: 'toolu_read', name: 'read_messages', input: {} }
+  answer = (_path, _body, response) => {
+    const first = requests.length === 1
+    const blocks = first ? [thinking, redacted, tool] : [{ type: 'text', text: '已核对。' }]
+    const stream = [
+      { type: 'message_start', message: { id: 'msg_example', type: 'message', role: 'assistant', model: model.model, content: [], usage: { input_tokens: 10, output_tokens: 0 } } },
+      ...blocks.flatMap((content_block, index) => [
+        { type: 'content_block_start', index, content_block }, { type: 'content_block_stop', index },
+      ]),
+      { type: 'message_delta', delta: { stop_reason: first ? 'tool_use' : 'end_turn' }, usage: { output_tokens: 20 } }, { type: 'message_stop' },
+    ]
+    response.writeHead(200, { 'content-type': 'text/event-stream' })
+    response.end(stream.map(event => 'event: ' + event.type + '\ndata: ' + JSON.stringify(event) + '\n\n').join(''))
+  }
+  const result = await new PiRuntime(directory).run(claude, options)
+  const { SessionManager } = await import('@earendil-works/pi-coding-agent')
+  const { sessionFile } = JSON.parse(result.checkpoint)
+  const manager = SessionManager.open(sessionFile)
+  const page = manager.getBranch().find(entry => entry.type === 'message' && entry.message.role === 'toolResult')!
+  manager.branch(page.id)
+  const leafId = manager.appendCompaction('已保存阅读笔记。', null, 5000)
+  await new PiRuntime(directory).run({ ...claude, checkpoint: JSON.stringify({ sessionFile, leafId }) }, options)
+  const wire = requests.at(-1)!.messages as { role: string; content: unknown }[]
+  expect(JSON.stringify(wire)).toContain('周五两点见。')
+  if (sensitive) {
+    expect(JSON.stringify(requests)).not.toContain(thinking.thinking)
+    expect(JSON.stringify(wire)).not.toMatch(/signed-example|opaque-example|tool_use|tool_result/)
+  } else {
+    const call = wire.findIndex(message => message.role === 'assistant' && Array.isArray(message.content) && message.content.some(block => block.type === 'tool_use'))
+    expect(wire[call].content).toEqual([thinking, redacted, tool])
+    expect(wire[call + 1].content).toEqual(expect.arrayContaining([expect.objectContaining({ type: 'tool_result', tool_use_id: tool.id })]))
+  }
+  expect(events.filter(event => event.type === 'request').at(-1)?.spans).toEqual([span])
+}, 30000)
+
 it.each(signatureCases)('压缩后按脱敏设置重放工具与推理配对：$label', async ({ text, encrypted = 'opaque-example', extra, corruptCheckpoint, keep }) => {
   const { input, options, events, span } = sample('合成原文。'.repeat(1800))
   let ordinaryRequests = 0

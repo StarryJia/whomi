@@ -66,8 +66,8 @@ test('提前交稿和坏引用可在同一会话修正，重试保存沿用已�
   expect(await generatePiInsight({ ...options, checkpoint: saved, save, run: () => { throw Error('unexpected model request') } })).toEqual(fixed)
 })
 
-test.each([false, true])('完整送阅后按实际核查窗口识别异常重复，连续重取同处=%s', async repeat => {
-  const refs = Array.from({ length: 18 }, (_, i) => ({ messageId: String(11 + i), revision: 'a'.repeat(64) }))
+test.each([1, 2, 20])('完整送阅后循环核查 %i 处，只有新增范围才推进', async distinct => {
+  const refs = Array.from({ length: 20 }, (_, i) => ({ messageId: String(11 + i), revision: 'a'.repeat(64) }))
   const run = generatePiInsight({ ...options, snapshot: { ...snapshot, sources: refs },
     read: async ids => ids.map(id => ({ id, revision: refs[0].revision, text: '合成原文。', senderName: '本人', isSelf: true, sentAtMs: 0, replyToMessageId: null })),
     save: async () => {}, run: async (_input, io) => {
@@ -80,15 +80,15 @@ test.each([false, true])('完整送阅后按实际核查窗口识别异常重复
       await io.record({ type: 'request', requestId: 'failed', kind: 'inference', spans: page.spans, success: false, usage: {}, checkpoint: 'summary' })
       expect(await start('first')).toBeUndefined()
       await io.record({ type: 'request', requestId: 'first', kind: 'inference', spans: page.spans, success: true, usage: {}, checkpoint: 'all' })
-      for (let i = 0; i < 18; i++) {
-        await io.read({ messageId: refs[repeat ? 0 : i].messageId, before: 0, after: 0 }, 500)
+      for (let i = 0; i < refs.length; i++) {
+        await io.read({ messageId: refs[i % distinct].messageId, before: 0, after: 0 }, 500)
         const id = 'review' + i
-        expect(await start(id)).toEqual({ fullyReviewed: 18 })
+        expect(await start(id)).toEqual({ fullyReviewed: refs.length })
         await io.record({ type: 'request', requestId: id, kind: 'inference', spans: [], success: true, usage: {}, checkpoint: 'all' })
       }
       return { text: JSON.stringify(draft), checkpoint: 'done', usage: {} }
     } })
-  if (repeat) await expect(run).rejects.toMatchObject({ code: 'INSIGHT_NO_PROGRESS' })
+  if (distinct < refs.length) await expect(run).rejects.toMatchObject({ code: 'INSIGHT_NO_PROGRESS' })
   else await expect(run).resolves.toMatchObject({ aboutYou: section })
 })
 

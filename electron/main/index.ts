@@ -133,15 +133,17 @@ else {
             if (!authorized || input.model.baseUrl !== authorized.baseUrl || input.model.protocol !== authorized.protocol) {
               throw new BoundaryError('INVALID_MODEL', '请重新选择此账户的模型。')
             }
-            const credentials = provider === 'openai-codex'
-              ? { token: await chatgpt.accessToken(input.model.planAccount, options.signal), baseUrl: authorized.baseUrl }
-              : await accounts[provider].access(input.model.planAccount, options.signal)
             const headers = provider === 'openai-codex' ? undefined : subscriptionHeaders(provider, input.model.model)
-            return agentHost!.run({ ...input, model: { ...input.model, baseUrl: credentials.baseUrl }, apiKey: credentials.token,
-              insightSession: { ...input.insightSession, headers } }, options)
+            return agentHost!.run({ ...input, insightSession: { ...input.insightSession, headers } }, options)
           }
           return accountRunners[provider].run(input, options)
         } }, secrets, diagnostics: operations, deleteInsightSessions: insightSessions.remove,
+        insightAccountAccess: async (model, accountId, signal) => {
+          const provider = model.planProvider ?? 'openai-codex'
+          return provider === 'openai-codex'
+            ? { token: await chatgpt.accessToken(accountId, signal), baseUrl: subscriptionProviders[provider].baseUrl }
+            : accounts[provider].access(accountId, signal)
+        },
         changed: event => publishAi(event),
         logError: appErrorLogs.record,
         processing: async conversationId => {
