@@ -41,24 +41,28 @@ export function migrateStore(store: Pick<Store, 'writer'>): void {
         ALTER TABLE ai_model_versions ADD COLUMN change_source TEXT NOT NULL DEFAULT 'settings' CHECK(change_source IN ('settings','catalog','account'));
         ALTER TABLE ai_analysis_tasks ADD COLUMN processing_snapshot TEXT CHECK(processing_snapshot IS NULL OR json_valid(processing_snapshot));`)
       if (version < 12n) {
-        db.function('whomi_is_recall', { deterministic: true }, (label, localType, content) => Number(hasWechatRecallMarker(label, localType, content)))
         // 冻结任务的修订号含原始发送者与类型；只在恢复旧任务或核对旧引用时使用这些字段。
         db.exec(`CREATE TABLE legacy_insight_source_classification (
           message_id INTEGER PRIMARY KEY REFERENCES messages(id) ON DELETE CASCADE,
           member_id INTEGER, sender_kind TEXT NOT NULL, sender_name TEXT NOT NULL, kind TEXT NOT NULL
         ) STRICT;
-        INSERT INTO legacy_insight_source_classification SELECT m.id,m.member_id,m.sender_kind,m.sender_name,m.kind
-          FROM messages m WHERE m.kind NOT IN ('system','reply')
-          AND (m.source_type IN ('撤回消息','消息撤回') OR m.text LIKE '%撤回了一条消息%')
-          AND whomi_is_recall(m.source_type,json_extract(m.extra,'$.localType'),m.text)
-          AND EXISTS (SELECT 1 FROM message_origins o WHERE o.message_id=m.id AND o.parser_id IN ('echotrace','weflow'));
-        UPDATE messages SET member_id=NULL,sender_kind='system',sender_name='',kind='system',extra=json_remove(extra,'$.selfHint')
-          WHERE id IN (SELECT message_id FROM legacy_insight_source_classification);
         CREATE INDEX legacy_insight_source_member ON legacy_insight_source_classification(member_id);
         CREATE VIEW visible_memberships AS SELECT m.* FROM memberships m
           WHERE NOT EXISTS (SELECT 1 FROM legacy_insight_source_classification l WHERE l.member_id=m.id)
           OR EXISTS (SELECT 1 FROM messages x WHERE x.member_id=m.id AND x.conversation_id=m.conversation_id)
-          OR EXISTS (SELECT 1 FROM self_confirmations s WHERE s.member_id=m.id AND s.source='user');
+          OR EXISTS (SELECT 1 FROM self_confirmations s WHERE s.member_id=m.id AND s.source='user');`)
+      }
+      if (version < 13n) {
+        db.function('whomi_is_recall', { deterministic: true }, (label, localType, content) => Number(hasWechatRecallMarker(label, localType, content)))
+        db.exec(`INSERT INTO legacy_insight_source_classification SELECT m.id,m.member_id,m.sender_kind,m.sender_name,m.kind
+          FROM messages m WHERE m.kind!='system'
+          AND (m.source_type IN ('撤回消息','消息撤回') OR m.text LIKE '%撤回了一条消息%')
+          AND whomi_is_recall(m.source_type,json_extract(m.extra,'$.localType'),m.text)
+          AND NOT EXISTS (SELECT 1 FROM message_replies r WHERE r.message_id=m.id AND
+            (r.target_message_id IS NOT NULL OR r.original_id IS NOT NULL OR r.text IS NOT NULL OR r.sender_name IS NOT NULL OR r.sent_at_ms IS NOT NULL))
+          AND EXISTS (SELECT 1 FROM message_origins o WHERE o.message_id=m.id AND o.parser_id IN ('echotrace','weflow'));
+        UPDATE messages SET member_id=NULL,sender_kind='system',sender_name='',kind='system',extra=json_remove(extra,'$.selfHint')
+          WHERE kind!='system' AND id IN (SELECT message_id FROM legacy_insight_source_classification);
         UPDATE conversation_summaries SET member_count=(SELECT count(*) FROM visible_memberships m WHERE m.conversation_id=conversation_summaries.conversation_id)
           WHERE conversation_id IN (SELECT x.conversation_id FROM messages x JOIN legacy_insight_source_classification l ON l.message_id=x.id);`)
       }

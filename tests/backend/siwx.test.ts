@@ -7,9 +7,10 @@ it.each(['echotrace', 'weflow'])('按微信结构标识处理撤回，不根据�
   const sample = JSON.parse(await readFile('tests/fixtures/import/echotrace/recall.json', 'utf8'))
   if (id === 'weflow') { delete sample.exportInfo; sample.weflow = { version: '1' } }
   sample.messages.push({ ...sample.messages[3], serverId: '107', localType: 10002, content: '他提过撤回了一条消息，周六再聊。' })
+  sample.messages.push({ ...sample.messages[1], serverId: '108', typeName: '引用消息' })
   const events = await parseSynthetic(id, JSON.stringify(sample))
   const messages = events.flatMap(event => event.type === 'message' ? [event.value] : [])
-  expect(messages.map(m => m.kind)).toEqual(['text', 'system', 'system', 'text', 'text', 'reply', 'text'])
+  expect(messages.map(m => m.kind)).toEqual(['text', 'system', 'system', 'text', 'text', 'reply', 'text', 'system'])
   expect(messages.slice(1, 3).map(m => [m.senderKind, m.senderKey, m.senderName, m.extra.selfHint])).toEqual([
     ['system', null, '', undefined], ['system', null, '', undefined],
   ])

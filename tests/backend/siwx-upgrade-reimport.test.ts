@@ -69,6 +69,19 @@ async function importFile(messages: ReturnType<typeof rawMessage>[], historical?
   } finally { await staged.cleanup() }
 }
 
+test('重叠微信导出按次数匹配没有服务器编号的撤回通知', async () => {
+  const sent = rawMessage(1, { senderUsername: 'example-owner', isSend: 1 })
+  const recall = rawMessage(2, { localType: 10000, content: '你撤回了一条消息' })
+  const first = [sent, recall, rawMessage(3)]
+  const previous = await importFile(first)
+  expect(previous.inserted).toBe(3)
+  expect(await importFile([...first, rawMessage(4)])).toMatchObject({ conversationId: previous.conversationId, inserted: 1, duplicates: 3 })
+  // 旧解析器可能为已迁移的撤回通知留下空的引用记录。
+  store.writer.exec("INSERT INTO message_replies(message_id,conversation_id) SELECT id,conversation_id FROM messages WHERE kind='system'")
+  expect(await importFile([...first, recall, rawMessage(4)])).toMatchObject({ conversationId: previous.conversationId, inserted: 1, duplicates: 4 })
+  expect(store.reader.prepare("SELECT count(*) AS n FROM messages WHERE kind='system'").get()).toEqual({ n: 2n })
+})
+
 test('a newly recognized contact between five known records still matches the conversation with no known owner', async () => {
   const messages = [1, 2, 3, 4, 5, 6].map(index => index === 3
     ? rawMessage(index, { localType: 42, typeName: '名片消息', content: '合成名片' }) : rawMessage(index))

@@ -369,9 +369,10 @@ test('回复补全或重新确认本人后，旧报告仍能定位原文，未�
   expect(await read()).toEqual({ status: 'expired' })
 })
 
-test('旧微信撤回改作通知，已冻结的输入和报告引用仍可定位', async () => {
+test.each([10, 12])('版本 %i 升级时按真实引用识别微信撤回，已冻结的输入和报告引用仍可定位', async version => {
   const { store, repository } = await setup()
-  store.writer.exec(`UPDATE messages SET text='你撤回了一条消息',source_type='文本消息',extra='{"localType":10000}' WHERE id=1;
+  store.writer.exec(`UPDATE messages SET kind='reply',text='你撤回了一条消息',source_type='引用消息',extra='{"localType":10000}' WHERE id IN (1,4);
+    INSERT INTO message_replies(message_id,conversation_id) VALUES(1,1);
     UPDATE messages SET text='他说撤回了一条消息，十一月再联系。',source_type='文本消息',extra='{"localType":10000}' WHERE id=2;
     INSERT INTO memberships(id,conversation_id,source_conversation_id,source_key,display_name) VALUES(4,1,1,'placeholder','导出占位');
     INSERT INTO messages(id,conversation_id,member_id,sender_kind,sender_name,kind,text,ordinal,source_type,extra)
@@ -381,6 +382,7 @@ test('旧微信撤回改作通知，已冻结的输入和报告引用仍可定�
     INSERT INTO message_origins(message_id,conversation_id,import_result_id,file_fingerprint,source_conversation_key,ordinal,parser_id,parser_version)
       VALUES(1,1,1,'synthetic','demo',0,'echotrace','f19beeadda27b-whomi.4'),
         (2,1,1,'synthetic','demo',1,'echotrace','f19beeadda27b-whomi.4'),
+        (4,1,1,'synthetic','demo',3,'echotrace','f19beeadda27b-whomi.4'),
         (6,1,1,'synthetic','demo',5,'echotrace','f19beeadda27b-whomi.4');`)
   async function begin(requestId: string) {
     const prep = await repository.prepareAnalysis({ conversationId: '1', modelId: 'example', scope: october })
@@ -394,10 +396,15 @@ test('旧微信撤回改作通知，已冻结的输入和报告引用仍可定�
   await repository.completeAnalysis(ready.id, report)
   const stopped = await begin('old-pause')
   await repository.saveAnalysis(stopped.id, { state: 'stopped' })
-  store.writer.exec('DROP VIEW visible_memberships; DROP TABLE legacy_insight_source_classification; PRAGMA user_version=11')
+  if (version === 10) store.writer.exec(`DROP VIEW visible_memberships; DROP TABLE legacy_insight_source_classification;
+    ALTER TABLE ai_insight_snapshots DROP COLUMN source_text_bytes;
+    ALTER TABLE ai_model_versions DROP COLUMN change_source;
+    ALTER TABLE ai_analysis_tasks DROP COLUMN processing_snapshot;`)
+  store.writer.pragma(`user_version=${version}`)
   migrateStore(store)
   expect(store.reader.prepare('SELECT id FROM visible_memberships WHERE conversation_id=1 ORDER BY id').all()).toEqual([{ id: 1n }, { id: 2n }])
   expect(store.reader.prepare('SELECT member_id,kind FROM messages WHERE id=2').get()).toEqual({ member_id: 2n, kind: 'text' })
+  expect(store.reader.prepare('SELECT member_id,kind FROM messages WHERE id=4').get()).toEqual({ member_id: 2n, kind: 'reply' })
   expect(repository.getAnalysis(ready.id).report).toEqual(report)
   expect(repository.readInsightSources({ taskId: stopped.id, messageIds: ['1'] })).toEqual([old])
   const citation = await repository.readInsightCitation({ taskId: ready.id, citationId: 'a', fragmentIndex: 0 })
