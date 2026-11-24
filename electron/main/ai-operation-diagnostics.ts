@@ -15,6 +15,7 @@ export function aiOperation(diagnostics: AiDiagnostics | undefined, area: 'model
   const id = recoveredId ?? diagnostics?.begin(area, action)
   if (id && recoveredId) diagnostics?.resume(id)
   return {
+    id,
     discardUnstarted() { if (id) return diagnostics?.discardUnstarted(id) },
     bind(taskId: string, createdAt: number | null | undefined) {
       if (id && typeof createdAt === 'number') diagnostics?.bind(id, taskId, createdAt)

@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { ChevronDown, CircleAlert, X } from 'lucide-react'
 import './exception-notices.css'
 
-type Notice = { key: string; title: string; detail?: string }
+type Notice = { key: string; title: string; detail?: ReactNode }
 type NoticeSource = { notice: Notice; visible: boolean } | { unresolved: ReadonlySet<string> }
 type NoticeState = { sources: ReadonlyMap<string, NoticeSource>; dismissed: ReadonlySet<string> }
 type NoticeContext = {
@@ -56,7 +56,7 @@ export function useExceptionNoticeLayer(ref: RefObject<HTMLElement | null>, acti
 }
 
 export function ExceptionNotice({ title, detail, noticeKey, className }: {
-  title: string; detail?: string; noticeKey?: string; className?: string
+  title: string; detail?: ReactNode; noticeKey?: string; className?: string
 }) {
   const source = useId()
   const context = useContext(ExceptionNotices)

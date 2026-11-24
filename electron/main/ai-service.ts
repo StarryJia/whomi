@@ -1,4 +1,6 @@
 import { withInsightClock } from './insight-clock'
+import { insightFailureAction, insightResumeFailureAction } from '../agent/insight-request-failure'
+import { safeFields } from './operation-fields'
 import { generatePiInsight, verifyInsightExcerpts, type PiInsightCheckpoint } from './pi-insight-generation'
 import type { AgentRunInput, AgentRunResult, InsightRequestContext, InsightRuntimeCallbacks } from '../agent/protocol'
 import { defaultPrompts } from '../../src/shared/system-prompts'
@@ -29,6 +31,9 @@ export type AiServiceOptions = { storage(method: string, args: unknown[]): Promi
   processing?: (conversationId: string) => Promise<{ settings: ProcessingSettings; members: ProcessingMember[] }>;
   claimProcessing?: (taskId: string, signature: string) => Promise<void> }
 const dialogueSystem = defaultPrompts.dialogue
+const insightStages: Readonly<Record<string, string>> = {
+  prepare: '准备洞察', reading: '阅读聊天', checking: '回查原文', compaction: '压缩阅读摘要', writing: '生成报告', saving: '保存报告',
+}
 const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex')
 function minimumTurnOutput(model: AiModel) {
   // Pi 会将 Responses 请求上调至 16；Grok 套餐直接按预算发送。
@@ -110,7 +115,7 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
     const activeSignal = AbortSignal.any([signal, ended.signal])
     const slots = new Map<string, () => void>()
     const record: InsightRuntimeCallbacks['record'] = async event => {
-      if (event.type === 'checkpoint') return insight.record(event)
+      if (event.type !== 'requestStart' && event.type !== 'request') return insight.record(event)
       if (event.type === 'request') {
         try { return await insight.record(event) }
         finally { slots.get(event.requestId)?.(); slots.delete(event.requestId) }
@@ -121,8 +126,13 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
         activeSignal.throwIfAborted()
         let access: InsightRequestContext['access']
         if (input.model.planAccount) {
-          if (!options.insightAccountAccess) throw new BoundaryError('ACCOUNT_UNAVAILABLE', '请重新打开此服务商的账户设置。')
-          access = await options.insightAccountAccess(input.model, input.model.planAccount, activeSignal)
+          try {
+            if (!options.insightAccountAccess) throw new BoundaryError('ACCOUNT_UNAVAILABLE', '请重新打开此服务商的账户设置。')
+            access = await options.insightAccountAccess(input.model, input.model.planAccount, activeSignal)
+          } catch (error) {
+            if (!activeSignal.aborted) await insight.record({ type: 'requestBlocked', kind: event.kind, code: diagnosticErrorCode(error) })
+            throw error
+          }
         }
         const context = await insight.record(event)
         return access ? { ...context, access } : context
@@ -190,6 +200,13 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
     publish({ kind: 'analysis', snapshot })
     return snapshot
   }
+  function resumePreparationFailure(id: string, error: unknown, operation: AiOperation, current?: AnalysisTask) {
+    const code = diagnosticErrorCode(error)
+    const phase = 'resumePreparation'
+    operation.end('failed', { phase, code, ...(current ? { readCount: current.analyzedMessages } : { taskId: id }) })
+    options.logError?.({ area: 'insight', phase, error, taskId: id, operationId: operation.id, analyzedMessages: current?.analyzedMessages })
+    return new BoundaryError(code, '准备恢复洞察失败。' + insightResumeFailureAction(code), operation.id, Date.now())
+  }
   async function submitTask<T extends AnalysisTask | AiTurn>(kind: 'analysis' | 'turn',
     prepare: () => Promise<{ task: T; conversationId: string }>,
     execute: (task: T, signal: AbortSignal, operation: AiOperation) => Promise<void>) {
@@ -219,6 +236,7 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
   }
   async function executeAnalysis(id: string, signal: AbortSignal, operation: AiOperation, resumeProcessor?: Awaited<ReturnType<typeof analysisProcessor>>) {
     let phase = 'prepare'
+    let requestFacts: ReturnType<typeof safeFields> | undefined
     let analyzedMessages: number | undefined
     let batch: number | undefined
     let attempt = 0
@@ -261,6 +279,10 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
       const report = !legacy ? await withInsightClock(elapsedSample.elapsedMs, signal, saveElapsed, (sample, persist) => generatePiInsight({
         snapshot: initial.snapshot, model: initial.model, conversationId: initial.task.conversationId, thinkingLevel: initial.task.thinkingLevel,
         prompts, processing: processor.settings, checkpoint: checkpoint?.version === 'pi-insight-v1' ? checkpoint : null, signal, operation, read,
+        onDiagnostic: ({ phase: current, ...facts }) => {
+          phase = current
+          requestFacts = safeFields(facts)
+        },
         save: (state, receipt) => persist(async () => {
           const { elapsedMs, sampledAtMs } = sample()
           const task = await storage<AnalysisTask>('saveInsightCheckpoint', id, JSON.stringify(state), state.coverage.coveredMessageIds, elapsedMs, ...(receipt ? [receipt] : []))
@@ -300,18 +322,22 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
       })
       signal.throwIfAborted()
       phase = 'saving'
-      operation.event('saving', { readCount: analyzedMessages })
+      requestFacts = requestFacts?.requestNumber === undefined ? undefined : { requestNumber: requestFacts.requestNumber }
+      operation.event('saving', { ...requestFacts, readCount: analyzedMessages })
       const snapshot = await storage<AnalysisTask>('completeAnalysis', id, report, elapsedSamples.get(id)?.sampledAtMs)
       publish({ kind: 'analysis', snapshot })
-      operation.event('saved', { readCount: snapshot.analyzedMessages })
-      operation.end('success', { readCount: snapshot.analyzedMessages })
+      operation.event('saved', { ...requestFacts, readCount: snapshot.analyzedMessages })
+      operation.end('success', { ...requestFacts, readCount: snapshot.analyzedMessages })
     } catch (error) {
       if (!signal.aborted) {
         if (error instanceof InsightBudgetError) operation.event('budget', { phase, budget: error.budget.name, limit: error.budget.limit })
-        operation.end('failed', { phase, code: diagnosticErrorCode(error), readCount: analyzedMessages })
-        options.logError?.({ area: 'insight', taskId: id, phase, error, analyzedMessages,
+        const code = diagnosticErrorCode(error)
+        const failureAtMs = Date.now()
+        operation.end('failed', { ...requestFacts, phase, code, readCount: analyzedMessages })
+        options.logError?.({ area: 'insight', taskId: id, phase, error, analyzedMessages, operationId: operation.id, requestFacts,
           budget: error instanceof InsightBudgetError ? error.budget : undefined })
-        await saveAnalysis(id, { state: 'failed', error: error instanceof BoundaryError ? error.action : '分析失败，请重试。' },
+        const action = insightFailureAction(code) ?? (error instanceof BoundaryError ? error.action : '请打开本次操作日志查看详情。')
+        await saveAnalysis(id, { state: 'failed', error: (insightStages[phase] ?? '洞察') + '失败。' + action, failureAtMs, failureOperationId: operation.id },
           elapsedSamples.get(id)?.sampledAtMs)
       }
     } finally {
@@ -479,14 +505,16 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
       return saveAnalysis(id, { state: 'stopped' }, elapsedSample?.sampledAtMs)
     }),
     continueAnalysis: id => control(async () => {
-      const current = await storage<AnalysisTask>('getAnalysis', id)
+      const current = await storage<AnalysisTask>('getAnalysis', id).catch(error => {
+        throw resumePreparationFailure(id, error, aiOperation(options.diagnostics, 'insight', 'generate'))
+      })
       available(current.conversationId)
       if (!['stopped', 'interrupted', 'failed'].includes(current.state)) throw new BoundaryError('INVALID_STATE', '请刷新分析进度。')
       const key = `analysis:${id}`
       // 旧请求可能还在登记用量或提交批次，等它退出后再开放本任务的写入。
       await active.get(key)?.task.catch(() => {})
       const recoveredId = current.state === 'interrupted' && typeof current.createdAtMs === 'number'
-        ? await options.diagnostics?.findByTask('insight', id, current.createdAtMs).catch(() => null) : null
+        ? await options.diagnostics?.findByTask('insight', id, current.createdAtMs, ['interrupted', 'unknown']).catch(() => null) : null
       const operation = aiOperation(options.diagnostics, 'insight', 'generate', recoveredId)
       operation.bind(id, current.createdAtMs)
       try {
@@ -498,8 +526,7 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
         if (!launch(key, task.conversationId, signal => executeAnalysis(id, signal, operation, processor), task.modelId)) operation.end('interrupted')
         return task
       } catch (error) {
-        operation.end('failed', { phase: 'prepare', code: diagnosticErrorCode(error) })
-        throw error
+        throw resumePreparationFailure(id, error, operation, current)
       }
     }),
     openThread: id => control(async () => { available(id); return storage('openThread', id) }), getThread: id => storage('getThread', id),

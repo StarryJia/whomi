@@ -11,7 +11,7 @@ import { BoundaryError } from '../../src/shared/desktop-validation'
 import type { AnalysisTask } from '../../src/shared/ai-contract'
 import { defaultProcessing } from '../../src/shared/settings-contract'
 import { defaultPrompts } from '../../src/shared/system-prompts'
-import type { AppError } from '../../electron/main/app-error-logs'
+import { createAppErrorLogs, type AppError } from '../../electron/main/app-error-logs'
 
 function fixture(run?: RuntimeRunner['run'], logError?: (entry: AppError) => void,
   beforeStopWrite?: () => void, beforeElapsedWrite?: () => Promise<void>, diagnostics?: AiServiceOptions['diagnostics']) {
@@ -87,10 +87,74 @@ test('reports the failed insight phase, saved coverage and the budget that stopp
   }, entry => { recorded.push(entry) })
   await f.service.confirmAnalysis({ token: 't', requestId: 'budget' })
   await f.service.idle()
-  expect(f.task).toMatchObject({ state: 'failed', analyzedMessages: 1, error: '已达到洞察预算。请缩短日期范围后重新生成。' })
+  expect(f.task).toMatchObject({ state: 'failed', analyzedMessages: 1, error: '生成报告失败。已达到洞察预算。请缩短日期范围后重新生成。' })
   expect(recorded).toEqual([expect.objectContaining({ area: 'insight', phase: 'writing', taskId: '1', analyzedMessages: 1,
     error: expect.objectContaining({ code: 'INSIGHT_BUDGET_EXHAUSTED' }),
     budget: { name: 'maxOutputTokens', limit: 32_768 } })])
+})
+
+test('两次服务拒绝分别关联对应的提醒、操作日志和错误摘要', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'whomi-insight-attempt-'))
+  const operations = createOperationDiagnostics(directory, '1.0.0')
+  const errors = createAppErrorLogs(directory, directory, '1.0.0', async () => '')
+  const codes = ['INSIGHT_TOOL_REASONING_CONFLICT', 'INSIGHT_REASONING_UNSUPPORTED']
+  const privateText = 'sk-test-only contact@example.test 聊天片段 https://example.test/?token=private'
+  try {
+    let attempt = 0
+    const f = fixture(async () => { throw new BoundaryError(codes[attempt++], privateText) },
+      errors.record, undefined, undefined, operations)
+    await f.service.confirmAnalysis({ token: 't', requestId: 'fail' })
+    const ids = new Set<string>()
+    for (const [index, code] of codes.entries()) {
+      if (index > 0) await f.service.continueAnalysis(f.task.id)
+      await f.service.idle()
+      const failed = await f.service.getAnalysis(f.task.id)
+      expect(failed.error).toContain('阅读')
+      expect(failed.error).not.toContain(privateText)
+      expect(failed.failureAtMs).toEqual(expect.any(Number))
+      const id = failed.failureOperationId!
+      expect(await operations.withFile(id, path => readFile(path, 'utf8'))).toContain(code)
+      ids.add(id)
+    }
+    expect(ids.size).toBe(2)
+    await errors.flush()
+    const root = join(directory, 'logs')
+    const files = (await readdir(root)).filter(name => name.endsWith('.json'))
+    const records = await Promise.all(files.map(async file => JSON.parse(await readFile(join(root, file), 'utf8'))))
+    expect(records.map(record => record.operationId).sort()).toEqual([...ids].sort())
+    expect(records.map(record => record.code).sort()).toEqual([...codes].sort())
+    expect(records.every(record => record.taskId === f.task.id && record.phase === 'reading')).toBe(true)
+    expect(JSON.stringify(records)).not.toContain(privateText)
+  } finally { await operations.close(); await rm(directory, { recursive: true, force: true }) }
+})
+
+test.each(['getAnalysis', 'analysisContext'])('恢复时 %s 遇到资料进程退出，提醒与日志指向本次尝试', async failingRead => {
+  const directory = await mkdtemp(join(tmpdir(), 'whomi-insight-unavailable-'))
+  const diagnostics = createOperationDiagnostics(directory, '1.0.0')
+  const logError = vi.fn()
+  const task = { id: '1', conversationId: '2', state: 'interrupted', createdAtMs: 1000, analyzedMessages: 3 }
+  const service = createAiService({
+    diagnostics, logError, secrets: { encrypt: value => value, decrypt: value => value }, runtime: { run: vi.fn() },
+    storage: async method => {
+      if (method === failingRead) throw new BoundaryError('SERVICE_UNAVAILABLE', '请重新打开应用。')
+      if (method === 'getAnalysis') return task
+      throw new Error(method)
+    },
+  })
+  try {
+    const failure = await service.continueAnalysis(task.id).catch((error: BoundaryError) => error)
+    expect(failure).toMatchObject({ code: 'SERVICE_UNAVAILABLE', action: expect.stringContaining('重新打开应用'),
+      operationId: expect.any(String), failureAtMs: expect.any(Number) })
+    const [operation] = await diagnostics.list()
+    expect(failure).toHaveProperty('operationId', operation.id)
+    expect(operation).toMatchObject({ area: 'insight', outcome: 'failed' })
+    const log = await diagnostics.withFile(operation.id, path => readFile(path, 'utf8'))
+    expect(log).toMatch(/准备恢复洞察.*SERVICE_UNAVAILABLE.*重新打开应用/)
+    expect(log).toContain('任务编号=' + task.id)
+    if (failingRead === 'getAnalysis') expect(log).not.toMatch(/任务创建时间=|累计已读=/)
+    expect(logError).toHaveBeenCalledWith(expect.objectContaining({ area: 'insight', phase: 'resumePreparation',
+      taskId: task.id, operationId: operation.id, analyzedMessages: failingRead === 'getAnalysis' ? undefined : task.analyzedMessages }))
+  } finally { await diagnostics.close(); await rm(directory, { recursive: true, force: true }) }
 })
 
 test('the fourth reading batch times out once, retries in the same operation and exports its final result without private input', async () => {
@@ -124,7 +188,7 @@ test('the fourth reading batch times out once, retries in the same operation and
   } finally { await diagnostics.close(); await rm(directory, { recursive: true, force: true }) }
 })
 
-test('reopening an interrupted insight appends to its original operation and preserves the unconfirmed request', async () => {
+test.each([false, true])('恢复中断的洞察时保留原请求记录及每次已知的失败结果（准备连续失败：%s）', async failPreparation => {
   const directory = await mkdtemp(join(tmpdir(), 'whomi-insight-resume-'))
   let diagnostics = createOperationDiagnostics(directory, 'test')
   const started = Promise.withResolvers<void>()
@@ -148,19 +212,37 @@ test('reopening an interrupted insight appends to its original operation and pre
     expect(original.outcome).toBe('interrupted')
     await diagnostics.close()
     diagnostics = createOperationDiagnostics(directory, 'test')
-    const claim = vi.fn(async () => {}).mockRejectedValueOnce(new BoundaryError('DATA_PROCESS_GONE'))
+    const claim = vi.fn(async () => {})
+    if (failPreparation) claim.mockRejectedValueOnce(new BoundaryError('DATA_PROCESS_GONE')).mockRejectedValueOnce(new BoundaryError('MODEL_CHANGED'))
     const reopened = f.createService(diagnostics, claim)
-    await expect(reopened.continueAnalysis(f.task.id)).rejects.toMatchObject({ code: 'DATA_PROCESS_GONE' })
-    expect(f.task.state).toBe('interrupted')
-    expect(await diagnostics.list()).toMatchObject([{ id: original.id, outcome: 'failed' }])
+    if (failPreparation) {
+      await expect(reopened.continueAnalysis(f.task.id)).rejects.toMatchObject({
+        code: 'DATA_PROCESS_GONE', operationId: original.id, failureAtMs: expect.any(Number),
+      })
+      await expect(reopened.continueAnalysis(f.task.id)).rejects.toMatchObject({
+        code: 'MODEL_CHANGED', operationId: expect.not.stringMatching(original.id),
+      })
+      expect(f.task.state).toBe('interrupted')
+    }
     await reopened.continueAnalysis(f.task.id)
     await reopened.idle()
-    expect(await diagnostics.list()).toMatchObject([{ id: original.id, outcome: 'success' }])
+    const operations = await diagnostics.list()
+    expect(operations).toHaveLength(failPreparation ? 3 : 1)
     const preview = await diagnostics.withFile(original.id, path => readFile(path, 'utf8'))
     expect(preview).toContain('尚未确认返回')
-    expect(preview).toContain('已恢复')
-    expect(preview).toContain('已保存')
-    expect(preview).toContain('DATA_PROCESS_GONE')
+    if (failPreparation) {
+      expect(preview).toContain('结果：失败')
+      expect(preview).toContain('DATA_PROCESS_GONE')
+      const otherFailure = operations.find(item => item.id !== original.id && item.outcome === 'failed')!
+      const second = await diagnostics.withFile(otherFailure.id, path => readFile(path, 'utf8'))
+      expect(second).toContain('结果：失败')
+      expect(second).toContain('MODEL_CHANGED')
+    }
+    const completed = operations.find(item => item.outcome === 'success')!
+    expect(completed.id === original.id).toBe(!failPreparation)
+    const completedLog = await diagnostics.withFile(completed.id, path => readFile(path, 'utf8'))
+    expect(completedLog).toContain('已恢复')
+    expect(completedLog).toContain('已保存')
   } finally { await diagnostics.close(); await rm(directory, { recursive: true, force: true }) }
 })
 

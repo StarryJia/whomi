@@ -24,7 +24,7 @@ export function startAgentHost(directory: string): AgentHost {
       const { id, callId, call } = message
       try {
         if (!current.insight) throw new BoundaryError('INVALID_ARGUMENT')
-        const work = call.type === 'read' ? current.insight.read(call.request, call.availableTokens) : current.insight.record(call.event)
+        const work = call.type === 'read' ? current.insight.read(call.request, call.availableTokens, call.originatingRequestId) : current.insight.record(call.event)
         current.inFlight.add(work)
         const result = await work.finally(() => current.inFlight.delete(work))
         if (!closed) child.postMessage({ id, callId, method: 'insightReply', result })
@@ -35,7 +35,7 @@ export function startAgentHost(directory: string): AgentHost {
       return
     }
     pending.delete(message.id); current.release()
-    if ('error' in message) { const error = new BoundaryError(message.error.code, message.error.action); Object.assign(error, { usage: message.error.usage }); current.reject(error) }
+    if ('error' in message) { const error = new BoundaryError(message.error.code, message.error.action); Object.assign(error, { usage: message.error.usage, retryable: message.error.retryable }); current.reject(error) }
     else if ('result' in message) current.resolve(message.result)
     else current.reject(new BoundaryError('INVALID_RESPONSE'))
   })

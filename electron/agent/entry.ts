@@ -35,8 +35,8 @@ parent.on('message', ({ data }) => {
   void runtime.run(data.payload, { signal: controller.signal, onText: text => {
     if (!controller.signal.aborted) parent.postMessage({ event: 'text', id: data.id, text })
   }, insight: data.payload.insightSession ? {
-    read: async (request, availableTokens) => {
-      const result = await callHost(data.id, { type: 'read', request, availableTokens })
+    read: async (request, availableTokens, originatingRequestId) => {
+      const result = await callHost(data.id, { type: 'read', request, availableTokens, originatingRequestId })
       if (!result || !('page' in result)) throw new Error('未收到聊天记录。')
       return result
     },
@@ -48,10 +48,11 @@ parent.on('message', ({ data }) => {
     if (controller.signal.aborted) parent.postMessage({ id: data.id, error: { code: 'AI_STOPPED', action: '回答已停止。' } })
     else parent.postMessage({ id: data.id, result })
   }).catch((error: unknown) => {
-    const failure = error as { code?: string; action?: string; name?: string; usage?: AiUsage }
+    const failure = error as { code?: string; action?: string; name?: string; usage?: AiUsage; retryable?: boolean }
     parent.postMessage({ id: data.id, error: failure.name === 'AbortError'
       ? { code: 'AI_STOPPED', action: '回答已停止。', usage: failure.usage }
-      : { code: failure.code ?? 'MODEL_REQUEST_FAILED', action: failure.action ?? '请检查模型服务后重试。', usage: failure.usage } })
+      : { code: failure.code ?? 'MODEL_REQUEST_FAILED', action: failure.action ?? '请检查模型服务后重试。', usage: failure.usage,
+        ...(failure.retryable === false && { retryable: false }) } })
   }).finally(() => active.delete(data.id))
 })
 process.on('exit', cancelAll)

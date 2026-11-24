@@ -102,6 +102,8 @@ test('版本 13 已归类的图片撤回通知带有旧附件，重叠导入保�
     SELECT id, NULL, 'unknown', '合成用户', 'image' FROM messages WHERE kind='system';
     INSERT INTO message_attachments(message_id,kind,state)
     SELECT id,'image','missing' FROM messages WHERE kind='system';
+    ALTER TABLE ai_analysis_tasks DROP COLUMN failure_operation_id;
+    ALTER TABLE ai_analysis_tasks DROP COLUMN failure_at_ms;
     PRAGMA user_version=13;`)
   store.close()
   store = openStore(temporary.path)

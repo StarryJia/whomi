@@ -82,6 +82,87 @@ describe('Pi runtime over a controlled OpenAI compatible service', () => {
     response.end(JSON.stringify({ error: { code, message } }))
   }
 
+  it.each([
+    [400, 'invalid_request_error', 'Function tools with reasoning are not supported on Chat Completions. Use Responses or set reasoning_effort to none.', 'INSIGHT_TOOL_REASONING_CONFLICT'],
+    [400, 'unsupported_value', "Unsupported value: 'none' for reasoning_effort. Supported values are low, medium, high, xhigh.", 'INSIGHT_REASONING_UNSUPPORTED'],
+    [401, 'invalid_api_key', 'Invalid API key', 'INSIGHT_AUTH_FAILED'],
+    [503, 'server_overloaded', 'The server is overloaded.', 'INSIGHT_PROVIDER_OVERLOADED'],
+    [503, 'service_unavailable', 'The service is temporarily unavailable.', 'INSIGHT_SERVICE_UNAVAILABLE'],
+    [503, 'server_error', 'Scheduled maintenance.', 'INSIGHT_SERVICE_UNAVAILABLE'],
+  ] as const)('区分服务实际响应 %i/%s 并仅交付可分享的原因', async (status, code, message, expected) => {
+    const privateData = 'sk-private-example user@example.org 合成聊天片段 https://example.org/?key=secret'
+    answer = response => jsonError(response, status, code, message + ' ' + privateData)
+    const events: InsightRuntimeEvent[] = []
+    const error = await new PiRuntime(directory).run({ ...input(model), purpose: 'insight', insightSession: { processing: defaultProcessing } },
+      { ...options(), insight: { read: vi.fn(), record: async event => { events.push(event) } } }).catch(error => error)
+    expect(error).toMatchObject({ code: expected, action: expect.any(String) })
+    expect(events.filter(e => e.type === 'request')).toMatchObject([{ responseReceived: true, httpStatus: status, failureCode: expected }])
+    expect(JSON.stringify([error, events])).not.toMatch(/sk-private-example|user@example|合成聊天片段|key=secret/)
+  }, 20000)
+
+  it('Responses 拒绝 reasoning.effort 时提示调整思考强度', async () => {
+    answer = response => {
+      response.writeHead(400, { 'Content-Type': 'application/json' })
+      response.end(JSON.stringify({ error: { type: 'invalid_request_error', code: 'unsupported_value', param: 'reasoning.effort',
+        message: "Unsupported value: 'none'. Supported values are low, medium, high." } }))
+    }
+    const events: InsightRuntimeEvent[] = []
+    const run = new PiRuntime(directory).run({ ...input({ ...model, protocol: 'openai-responses' }), purpose: 'insight',
+      insightSession: { processing: defaultProcessing } }, { ...options(), insight: { read: vi.fn(), record: async event => { events.push(event) } } })
+    await expect(run).rejects.toMatchObject({ code: 'INSIGHT_REASONING_UNSUPPORTED', action: expect.stringContaining('思考强度') })
+    expect(events.filter(e => e.type === 'request')).toMatchObject([{ responseReceived: true, httpStatus: 400, failureCode: 'INSIGHT_REASONING_UNSUPPORTED' }])
+  }, 20000)
+
+  it.each([
+    [401, 'UNAUTHENTICATED', 'Invalid credentials', 'INSIGHT_AUTH_FAILED'],
+    [403, 'PERMISSION_DENIED', 'Forbidden', 'INSIGHT_AUTH_FAILED'],
+    [503, 'UNAVAILABLE', 'The model is overloaded.', 'INSIGHT_PROVIDER_OVERLOADED'],
+    [503, 'UNAVAILABLE', 'Maintenance window', 'INSIGHT_SERVICE_UNAVAILABLE'],
+    [0, '', '', 'INSIGHT_CONNECTION_FAILED'],
+  ] as const)('Google 服务的 %i/%s 诊断仅使用已确认信息', async (status, googleStatus, detail, code) => {
+    answer = response => {
+      if (!status) { response.destroy(); return }
+      response.writeHead(status, { 'Content-Type': 'application/json' })
+      response.end(JSON.stringify({ error: { status: googleStatus, code: status, message: detail } }))
+    }
+    const events: InsightRuntimeEvent[] = []
+    const run = new PiRuntime(directory).run({ ...input({ ...model, protocol: 'google-generative-ai' }), purpose: 'insight', insightSession: { processing: defaultProcessing } },
+      { ...options(), insight: { read: vi.fn(), record: async event => { events.push(event) } } })
+    await expect(run).rejects.toMatchObject({ code })
+    const receipt = events.find(e => e.type === 'request')
+    expect(receipt).toMatchObject({ responseReceived: status !== 0, failureCode: code })
+    expect(receipt?.httpStatus).toBeUndefined()
+  }, 20000)
+
+  it('Google 说明密钥无效时返回认证指引并排除服务响应中的私密字段', async () => {
+    const secret = 'private-google-key-example'
+    answer = response => {
+      response.writeHead(400, { 'Content-Type': 'application/json' })
+      response.end(JSON.stringify({ error: { code: 400, status: 'INVALID_ARGUMENT', message: 'Request rejected: ' + secret,
+        details: [{ '@type': 'type.googleapis.com/google.rpc.ErrorInfo', reason: 'API_KEY_INVALID',
+          domain: 'googleapis.com', metadata: { apiKey: secret } }] } }))
+    }
+    const events: InsightRuntimeEvent[] = []
+    const error = await new PiRuntime(directory).run({ ...input({ ...model, protocol: 'google-generative-ai' }), purpose: 'insight',
+      insightSession: { processing: defaultProcessing } }, { ...options(), insight: { read: vi.fn(), record: async event => { events.push(event) } } })
+      .catch(error => error)
+    expect(error).toMatchObject({ code: 'INSIGHT_AUTH_FAILED', action: expect.stringContaining('密钥') })
+    const receipt = events.find(e => e.type === 'request')
+    expect(receipt).toMatchObject({ responseReceived: true, failureCode: 'INSIGHT_AUTH_FAILED' })
+    expect(receipt?.httpStatus).toBeUndefined()
+    expect(JSON.stringify([error, events])).not.toContain(secret)
+  }, 20000)
+
+  it('连接断开且未收到响应时，诊断没有服务状态码', async () => {
+    answer = response => response.destroy()
+    const events: InsightRuntimeEvent[] = []
+    await expect(new PiRuntime(directory).run({ ...input(model), purpose: 'insight', insightSession: { processing: defaultProcessing } },
+      { ...options(), insight: { read: vi.fn(), record: async event => { events.push(event) } } })).rejects.toMatchObject({ code: 'INSIGHT_CONNECTION_FAILED' })
+    const receipt = events.find(e => e.type === 'request')
+    expect(receipt).toMatchObject({ responseReceived: false, failureCode: 'INSIGHT_CONNECTION_FAILED' })
+    expect(receipt?.httpStatus).toBeUndefined()
+  }, 20000)
+
   it('resumes the native tool result after two explicit overloads, keeps receipts and never resends the saved report', async () => {
     const fixture = overloadFixture()
     const received: number[] = []
@@ -131,8 +212,11 @@ describe('Pi runtime over a controlled OpenAI compatible service', () => {
       if (mode === 'paused') retry.mockImplementation(stage => {
         if (stage === 'retry') setTimeout(() => fixture.controller.abort(), 10)
       })
-      await expect(fixture.run()).rejects.toMatchObject(mode === 'paused' ? { name: 'AbortError' }
-        : { code: mode === 'exhausted' ? 'MODEL_UNAVAILABLE' : 'MODEL_REQUEST_FAILED' })
+      const expected = {
+        invalid: 'INSIGHT_REQUEST_INCOMPATIBLE', 'unavailable-model': 'MODEL_REQUEST_FAILED', quota: 'MODEL_REQUEST_FAILED',
+        partial: 'INSIGHT_PROVIDER_OVERLOADED', interrupted: 'MODEL_REQUEST_FAILED', exhausted: 'INSIGHT_PROVIDER_OVERLOADED',
+      } as const
+      await expect(fixture.run()).rejects.toMatchObject(mode === 'paused' ? { name: 'AbortError' } : { code: expected[mode] })
       expect(requests).toHaveLength(mode === 'exhausted' ? 3 : 1)
       expect(retry.mock.calls.filter(([stage]) => stage === 'retry')).toHaveLength(mode === 'exhausted' ? 2 : mode === 'paused' ? 1 : 0)
       expect(fixture.states.at(-1)).toMatchObject({ requests: requests.length, checkpoint: expect.any(String), coverage: { coveredMessageIds: [] } })
@@ -212,11 +296,12 @@ describe('Pi runtime over a controlled OpenAI compatible service', () => {
     const callbacks = { read: vi.fn(), record: async (event: InsightRuntimeEvent) => { events.push(event) } }
     const success = answer
     answer = response => { response.writeHead(503); response.end() }
-    await expect(new PiRuntime(directory).run(runInput, { ...options(), insight: callbacks })).rejects.toMatchObject({ code: 'MODEL_REQUEST_FAILED' })
+    await expect(new PiRuntime(directory).run(runInput, { ...options(), insight: callbacks })).rejects.toMatchObject({ code: 'INSIGHT_SERVICE_UNAVAILABLE' })
     const checkpoint = events.find(e => e.type === 'checkpoint')?.checkpoint
     expect(checkpoint).toBeTruthy()
     expect(existsSync(JSON.parse(checkpoint!).sessionFile)).toBe(true)
-    expect(events.filter(e => e.type === 'request')).toMatchObject([{ success: false, spans: [], usage: { incomplete: true } }])
+    expect(events.filter(e => e.type === 'request')).toMatchObject([{ success: false, responseReceived: true, httpStatus: 503,
+      failureCode: 'INSIGHT_SERVICE_UNAVAILABLE', spans: [], usage: { incomplete: true } }])
     answer = success
     const resumed = await new PiRuntime(directory).run({ ...runInput, checkpoint, prompt: '继续同一项洞察。' }, { ...options(), insight: callbacks })
     expect(JSON.parse(resumed.checkpoint).sessionFile).toBe(JSON.parse(checkpoint!).sessionFile)

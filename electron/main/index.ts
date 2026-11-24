@@ -330,6 +330,15 @@ else {
     })
     ipcMain.handle(operationDiagnosticsChannel, async (event, method, value) => {
       if (window.isDestroyed() || !isTrustedCaller(event, window, appUrl)) return
+      if (method === 'openInsightLog') {
+        try {
+          if (!isOperationId(value)) throw new BoundaryError('INVALID_ARGUMENT')
+          await operations.withFile(value, async path => {
+            if (await shell.openPath(path)) throw new BoundaryError('ERROR_LOG_OPEN_FAILED', '无法打开日志。请检查默认文本查看应用后重试。')
+          }, true, 'insight')
+          return { ok: true }
+        } catch (error) { return { ok: false, error: serializableError(error) } }
+      }
       if (method === 'importRefresh' && value && typeof value.jobId === 'string'
         && (value.createdAt === undefined || Number.isSafeInteger(value.createdAt))
         && ['success', 'failed', 'unknown'].includes(value.result)) {

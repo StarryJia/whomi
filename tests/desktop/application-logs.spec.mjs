@@ -7,6 +7,9 @@ import { tmpdir } from 'node:os'
 import { basename, dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
+import { defaultInsightPrompts } from '../../electron/data/ai/insight-prompts.ts'
+import { createInsightCheckpoint } from '../../electron/main/insight-checkpoint.ts'
+import { defaultInsightRunLimits } from '../../electron/main/insight-policy.ts'
 
 const invoke = promisify(execFile)
 const explorerScript = fileURLToPath(new URL('./fixtures/windows-explorer.ps1', import.meta.url))
@@ -124,12 +127,26 @@ test('Windows data storage and import use installation logs across data changes 
       return (await window.whomi.settings.saveModel({ providerId: service.id, label: '合成错误模型', model: 'test-model', contextWindow: 16000, maxTokens: 1000, enabled: true })).id
     }, { url: `http://127.0.0.1:${server.address().port}/v1`, key: privateMarker })
     await expect(page.evaluate(id => window.whomi.settings.testModel(id), modelId)).rejects.toThrow()
-    const taskId = await page.evaluate(async modelId => {
+    // 固定输出预算属于旧版分阶段任务，恢复这种断点才能验证写作超限。
+    const preparation = await page.evaluate(modelId => window.whomi.ai.prepareAnalysis({ conversationId: '1', modelId }), modelId)
+    const task = await app.evaluate((_, token) => globalThis.__whomiRuntimeProbe.request('aiStorage',
+      ['confirmAnalysis', [{ token, requestId: 'insight-budget-log' }]]), preparation.token)
+    const taskId = task.id
+    const checkpoint = createInsightCheckpoint(taskId, preparation.model, defaultInsightPrompts, defaultInsightRunLimits)
+    await app.evaluate(async (_, checkpoint) => {
+      const store = globalThis.__whomiRuntimeProbe
+      await store.request('aiStorage', ['saveInsightCheckpoint', [checkpoint.taskId, JSON.stringify(checkpoint), []]])
+      await store.request('aiStorage', ['saveAnalysis', [checkpoint.taskId, { state: 'stopped' }]])
+    }, checkpoint)
+    await page.evaluate(async id => {
       try {
-        const preparation = await window.whomi.ai.prepareAnalysis({ conversationId: '1', modelId })
-        return (await window.whomi.ai.confirmAnalysis({ token: preparation.token, requestId: 'insight-budget-log' })).id
-      } catch (failure) { throw new Error(failure.code + ' ' + failure.action) }
-    }, modelId)
+        // 窗口读取历史任务后才可发起恢复。
+        await window.whomi.ai.getAnalysis(id)
+        await window.whomi.ai.continueAnalysis(id)
+      } catch (failure) {
+        throw new Error([failure.code, failure.action ?? failure.message].filter(Boolean).join(' '))
+      }
+    }, taskId)
     await expect.poll(() => page.evaluate(id => window.whomi.ai.getAnalysis(id), taskId), { timeout: 20_000 })
       .toMatchObject({ state: 'failed', analyzedMessages: 1, error: expect.stringContaining('已达到洞察预算') })
     await button('导入会话').click()

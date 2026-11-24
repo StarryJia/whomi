@@ -29,3 +29,10 @@ export const operationActionLabels: Readonly<Record<string, string>> = {
 export function isOperationId(value: unknown): value is string {
   return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
 }
+
+export type OperationFailure = { operationId: string; failureAtMs: number }
+export function operationFailure(value: unknown): OperationFailure | undefined {
+  if (!value || typeof value !== 'object' || !('operationId' in value) || !isOperationId(value.operationId)
+    || !('failureAtMs' in value) || typeof value.failureAtMs !== 'number' || !Number.isSafeInteger(value.failureAtMs) || value.failureAtMs < 0) return
+  return { operationId: value.operationId, failureAtMs: value.failureAtMs }
+}

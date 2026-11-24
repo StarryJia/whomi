@@ -14,7 +14,7 @@ import { ManagedRow } from '../ui/managed-row'
 import { ExceptionNotice, ExceptionNoticeScope, useExceptionNotice } from '../ui/exception-notices'
 import { isInsightScope, type InsightScope, type InsightScopePreview } from '../../shared/conversation-insights'
 import { InsightScopeFields } from '../insights/insight-scope-fields'
-import { formatInsightNumber, insightElapsed, insightPercentage, insightRange, insightSpeed, InsightRing, InsightStatus, insightTaskFailureKey, InsightTaskDetails, InsightTaskModel, useInsightRunDuration } from '../insights/insight-task'
+import { formatInsightNumber, insightElapsed, insightPercentage, insightRange, insightSpeed, InsightFailureNotice, InsightRing, InsightStatus, InsightTaskDetails, InsightTaskModel, useInsightRunDuration } from '../insights/insight-task'
 import { CherryComposer, clearComposerDraft, clearComposerInputHistory, moveComposerInputHistory, readComposerDraft, useComposerDraft, writeComposerDraft, type CherryComposerHandle } from './cherry/composer'
 import { CherryMessages, type CherryMessagesHandle, type CherryMessageTurn } from './cherry/messages'
 import { forgetScrollPosition } from '../../vendor/cherry-chat/messages/list/useScrollPositionMemory'
@@ -888,8 +888,10 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
           </dl>
           <InsightTaskModel task={activeTask} model={selectedAnalysisModel?.label} />
           <InsightTaskDetails usage={analysisUsage} range={activeTask ? insightRange(activeTask) : undefined} outputSpeed={progress?.outputTokensPerSecond} />
-            {analysisError && <ExceptionNotice title="会话洞察异常" detail={analysisError}
-              noticeKey={activeTask?.error === analysisError ? insightTaskFailureKey(activeTask) : undefined} className="conversation-error" />}
+          {analysisError && (activeTask && (activeTask.error === analysisError || analysis.errorOperation)
+            ? <InsightFailureNotice task={activeTask} className="conversation-error"
+                actionFailure={analysis.errorOperation && { detail: analysisError, operation: analysis.errorOperation }} />
+            : <ExceptionNotice title="会话洞察异常" detail={analysisError} className="conversation-error" />)}
           <footer>{analysisState === 'running'
             ? <button type="button" disabled={analysis.stopping || waitingForStart} className="analysis-secondary" onClick={() => { void analysis.stop() }}>
                 {pauseSupported ? <Pause aria-hidden="true" /> : <Square aria-hidden="true" />}{pauseSupported ? '暂停生成' : '停止生成'}</button> : null}

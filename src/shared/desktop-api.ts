@@ -102,6 +102,6 @@ export type DesktopApi = DesktopMethods & {
   onConversationDeleted?(listener: (id: LocalId) => void): () => void
 }
 export type DesktopMethod = keyof DesktopMethods
-export type DesktopError = { code: string; action: string; operationId?: string }
+export type DesktopError = { code: string; action: string; operationId?: string; failureAtMs?: number }
 export type DesktopResponse = { ok: true; value: unknown } | { ok: false; error: DesktopError }
 declare global { interface Window { whomi?: DesktopApi } }

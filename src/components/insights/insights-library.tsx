@@ -1,13 +1,14 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { ArrowLeft, ChevronDown, FileText, LoaderCircle, Pencil } from 'lucide-react'
 import type { AiApi, AnalysisTask } from '../../shared/ai-contract'
+import { operationFailure, type OperationFailure } from '../../shared/operation-diagnostics'
 import type { InsightCitation, InsightReport } from '../../shared/conversation-insights'
 import type { ListArrangement } from '../../shared/desktop-api'
 import { actionError } from '../ui/managed-row'
 import { ExceptionNotice, ExceptionNoticeScope } from '../ui/exception-notices'
 import { InsightArticle } from './insight-article'
 import { InsightRenameForm, InsightReportRow, type RenameReport } from './insight-report-menu'
-import { formatInsightNumber, insightCompletedAt, insightElapsed, insightPercentage, insightRange, insightReportRange, insightSpeed, InsightRing, InsightStatus, insightTaskFailed, insightTaskFailureKey, insightTaskNumber, insightTaskTitle, InsightTaskDetails, InsightTaskModel, useInsightRunDuration } from './insight-task'
+import { formatInsightNumber, insightCompletedAt, insightElapsed, insightPercentage, insightRange, insightReportRange, insightSpeed, InsightFailureNotice, InsightRing, InsightStatus, insightTaskFailed, insightTaskNumber, insightTaskTitle, InsightTaskDetails, InsightTaskModel, useInsightRunDuration } from './insight-task'
 import './insights.css'
 
 type CitationTarget = {
@@ -104,7 +105,7 @@ function TaskRow({ task, onOpen, onStop, onContinue }: {
   onContinue?: (taskId: string) => Promise<void>
 }) {
   const [busy, setBusy] = useState<'正在暂停' | '正在继续' | '正在重试'>()
-  const [error, setError] = useState<{ detail: string; attempt: number }>()
+  const [error, setError] = useState<{ detail: string; attempt: number; operation?: OperationFailure }>()
   const pending = useRef(false)
   const attempt = useRef(0)
   const status = insightTaskFailed(task) ? '生成失败'
@@ -121,7 +122,7 @@ function TaskRow({ task, onOpen, onStop, onContinue }: {
     const currentAttempt = ++attempt.current
     setBusy(status === '生成中' ? '正在暂停' : failed ? '正在重试' : '正在继续')
     try { await start(task.id) }
-    catch (cause) { setError({ detail: actionError(cause), attempt: currentAttempt }) }
+    catch (cause) { setError({ detail: actionError(cause), attempt: currentAttempt, operation: operationFailure(cause) }) }
     finally { pending.current = false; setBusy(undefined) }
   }
   return <li className="insight-task-row" data-insight-task={task.id} onClick={event => {
@@ -149,8 +150,7 @@ function TaskRow({ task, onOpen, onStop, onContinue }: {
     <div className="insight-task-row-details">
       <InsightTaskModel task={task} /><InsightTaskDetails usage={task.usage} range={insightRange(task)} />
     </div>
-    {(error || (failed && task.error)) && <ExceptionNotice title={`洞察 ${insightTaskNumber(task)} ${error ? '操作失败' : '生成失败'}`}
-      detail={error?.detail ?? task.error} noticeKey={error ? `insight-action:${task.id}:${error.attempt}` : insightTaskFailureKey(task)} className="insight-error" />}
+    {(error || (failed && task.error)) && <InsightFailureNotice task={task} actionFailure={error} className="insight-error" />}
   </li>
 }
 

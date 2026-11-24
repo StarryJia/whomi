@@ -4,6 +4,9 @@ import { lstat, mkdir, realpath, rename, unlink, writeFile } from 'node:fs/promi
 import { dirname, join, resolve } from 'node:path'
 import { BoundaryError, localId } from '../../src/shared/desktop-validation'
 import type { ErrorLogLocation } from '../../src/shared/settings-contract'
+import { isOperationId } from '../../src/shared/operation-diagnostics'
+import { insightFailureAction } from '../agent/insight-request-failure'
+import type { SafeFields } from './operation-fields'
 import type { InsightBudgetLimit } from './insight-checkpoint'
 
 export type AppError = {
@@ -11,14 +14,19 @@ export type AppError = {
   phase: string
   error: unknown
   taskId?: string
+  operationId?: string
+  requestFacts?: SafeFields
   analyzedMessages?: number
   budget?: InsightBudgetLimit
 }
 
 // 服务商返回的原始错误、请求和界面日志可能包含凭据或聊天正文。
 const knownCodes = new Set([
+  'MODEL_CHANGED', 'INVALID_MODEL', 'PROMPT_CHANGED', 'IDENTITY_CHANGED', 'PROCESSING_CHANGED',
+  'INSIGHT_SNAPSHOT_UNAVAILABLE', 'INVALID_TASK', 'INVALID_STATE', 'ANALYSIS_BUSY',
   'AGENT_UNAVAILABLE', 'CONTEXT_TOO_LARGE', 'DATA_PROCESS_GONE', 'DISK_SPACE', 'INSIGHT_BUDGET_EXHAUSTED',
   'INSIGHT_CONTEXT_LIMIT', 'INVALID_EVIDENCE', 'INVALID_INSIGHT_REPORT', 'INVALID_INSIGHT_SNAPSHOT',
+  'INSIGHT_NO_PROGRESS', 'INSIGHT_SAVE_FAILED', 'ANALYSIS_INCOMPLETE', 'ACCOUNT_UNAVAILABLE',
   'INVALID_INSIGHT_OUTPUT', 'INVALID_INSIGHT_CHECKPOINT', 'CHATGPT_LIMIT', 'CHATGPT_ACCESS', 'CHATGPT_RECONNECT',
   'CHATGPT_UNSUPPORTED', 'CHATGPT_INELIGIBLE', 'CHATGPT_UNAVAILABLE', 'CHATGPT_REQUEST', 'CHATGPT_INCOMPLETE',
   'CHATGPT_ACCOUNT_CHANGED', 'CHATGPT_BUSY', 'CHATGPT_CALLBACK', 'CHATGPT_CANCELLED', 'CHATGPT_DENIED', 'CHATGPT_IDENTITY',
@@ -34,7 +42,7 @@ const knownCodes = new Set([
 ])
 
 export function isDiagnosticCode(value: unknown): value is string {
-  return typeof value === 'string' && (value === 'OPERATION_FAILED' || knownCodes.has(value))
+  return typeof value === 'string' && (value === 'OPERATION_FAILED' || knownCodes.has(value) || insightFailureAction(value) !== undefined)
 }
 
 export function diagnosticErrorCode(error: unknown) {
@@ -151,12 +159,13 @@ export function createAppErrorLogs(installDirectory: string, userDataPath: strin
       } catch { missedRecords += 1 }
     },
     importDirectories: () => [...[directory, dataLogs, profileLogs, ...retainedDirectories].map(root => join(root, 'import-errors')), legacyImport],
-    async record({ area, phase, error, taskId, analyzedMessages, budget }: AppError) {
+    async record({ area, phase, error, taskId, operationId, requestFacts, analyzedMessages, budget }: AppError) {
       const code = diagnosticErrorCode(error)
       const id = localId(taskId) ? taskId : undefined
       const now = new Date()
       const filename = [now.getTime(), area, id, randomUUID()].filter(Boolean).join('-') + '.json'
-      const record = { recordedAt: now.toISOString(), version, area, phase, code, taskId: id, analyzedMessages, budget }
+      const record = { recordedAt: now.toISOString(), version, area, phase, code, taskId: id, analyzedMessages, budget,
+        operationId: isOperationId(operationId) ? operationId : undefined, requestFacts }
       return withWritableRoot(async root => {
         await writeLog(root, filename, record)
         return root

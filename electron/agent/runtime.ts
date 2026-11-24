@@ -6,6 +6,7 @@ import { dirname, join, resolve } from 'node:path'
 import { performance } from 'node:perf_hooks'
 import type { AgentRunInput, AgentRunResult, InsightRuntimeCallbacks } from './protocol'
 import { createInsightTool, observeInsightSession } from './insight-session'
+import { insightRequestError } from './insight-request-failure'
 import type { AiUsage } from '../../src/shared/ai-contract'
 import { modelContextLimit } from '../../src/shared/model-limits'
 import { defaultModelProtocol, isModelProtocol, modelProtocolBaseUrl } from '../../src/shared/model-protocol'
@@ -18,24 +19,6 @@ function failure(code: string, action: string) {
   return Object.assign(new Error(action), { code, action })
 }
 function abortError() { return new DOMException('回答已停止。', 'AbortError') }
-
-function explicitlyOverloaded(message: string) {
-  const detail = message.replace(/^(?:\S+ API error \(\d{3}\):\s*)?(?:[45]\d\d[:\s]+)?/i, '').trim()
-  const overloadCode = /^(?:overloaded_error|server_overloaded|server_busy|service_unavailable)$/i
-  const overloadText = /^(?:(?:the )?(?:server|service|model) (?:is )?(?:(?:currently |temporarily )?overloaded|(?:currently |temporarily )unavailable)|overloaded)(?:[.!:,\s]|$)|^service unavailable[.!]?$/i
-  if (detail.startsWith('{')) {
-    try {
-      const body = JSON.parse(detail)
-      const error = body?.error ?? body
-      if ([error?.code, error?.type].includes('invalid_request_error')) return false
-      return overloadCode.test(error?.code) || overloadCode.test(error?.type)
-        || (typeof error?.message === 'string' && overloadText.test(error.message))
-    } catch { return false }
-  }
-  const [code, ...reason] = detail.replace(/^error code\s+/i, '').split(':')
-  return overloadCode.test(code) || overloadText.test(detail)
-    || (/^(?:server_error|unknown)$/i.test(code) && overloadText.test(reason.join(':').trim()))
-}
 
 export class PiRuntime {
   constructor(readonly directory: string) {}
@@ -157,7 +140,7 @@ export class PiRuntime {
     let stopReason: string | undefined
     let contextExceeded = false
     let timedOut = false
-    let overloaded = false
+    let retryableEmptyResponse = false
     const started = performance.now()
     const startedAt = Date.now()
     const previousObserver = session.agent.onProviderStreamEvent
@@ -179,7 +162,7 @@ export class PiRuntime {
         stopReason = event.message.stopReason
         contextExceeded = stopReason === 'error' && isContextOverflow(event.message)
         timedOut = input.purpose === 'insight' && stopReason === 'error' && isPiTimeout(api, event.message.errorMessage)
-        overloaded = !!autonomous && isRetryableAssistantError(event.message) && explicitlyOverloaded(event.message.errorMessage ?? '')
+        retryableEmptyResponse = !!autonomous && isRetryableAssistantError(event.message)
           && event.message.content.length === 0 && event.message.usage.totalTokens === 0
       }
     })
@@ -198,10 +181,15 @@ export class PiRuntime {
       await session.prompt(input.prompt, { expandPromptTemplates: false })
       await observed?.flush()
       if (options.signal.aborted || stopReason === 'aborted') throw abortError()
+      const recoveryFailure = observed?.recoveryFailure()
+      if (recoveryFailure) throw Object.assign(insightRequestError(recoveryFailure), { retryable: false })
       if (contextExceeded) throw modelContextLimit()
       if (timedOut) throw modelTimeout()
-      if (overloaded) throw failure('INSIGHT_PROVIDER_OVERLOADED', '模型服务暂时繁忙，请稍后继续洞察。')
-      if (!final || stopReason === 'error' || stopReason === 'pending') throw failure('MODEL_REQUEST_FAILED', '请检查模型服务后重试。')
+      if (!final || stopReason === 'error' || stopReason === 'pending') {
+        const code = observed?.lastFailure()
+        if (observed) throw Object.assign(insightRequestError(code ?? 'MODEL_REQUEST_FAILED'), { retryable: retryableEmptyResponse })
+        throw failure('MODEL_REQUEST_FAILED', '请检查模型服务后重试。')
+      }
       const usage = usageSnapshot()
       const sessionFile = manager.getSessionFile()
       const leafId = manager.getLeafId()

@@ -65,7 +65,7 @@ test('点击第二段引文直接定位原句，只标记这条来源消息中�
 })
 test('records the actual missing highlight separately from a successful citation read', async () => {
   const saved = window.whomi, conversation = vi.fn()
-  window.whomi = { ...saved, operationDiagnostics: { conversation, importRefresh: vi.fn() } } as NonNullable<typeof saved>
+  window.whomi = { ...saved, operationDiagnostics: { conversation, importRefresh: vi.fn(), openInsightLog: vi.fn() } } as NonNullable<typeof saved>
   try {
     render(<InsightSourceDialog {...props(vi.fn(async () => source(['10'], ['99'])))} />)
     expect(await screen.findByText('原文10')).toBeVisible()

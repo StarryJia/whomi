@@ -1,9 +1,10 @@
 import { useEffect, useEffectEvent, useId, useMemo, useState } from 'react'
 import { Check, ChevronDown, CircleAlert, Pause } from 'lucide-react'
 import type { AnalysisTask, AnalysisUsage } from '../../shared/ai-contract'
+import type { OperationFailure } from '../../shared/operation-diagnostics'
 import { defaultInsightTitle } from '../../shared/conversation-insights'
 import { thinkingLevelLabel } from '../conversation-ai/model-selector'
-import { useUnresolvedExceptionNotices } from '../ui/exception-notices'
+import { ExceptionNotice, useUnresolvedExceptionNotices } from '../ui/exception-notices'
 
 export const formatInsightNumber = (value: number) => new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 1 }).format(value)
 
@@ -11,7 +12,9 @@ export function insightTaskFailed(task: AnalysisTask) {
   return !task.valid || task.state === 'failed' || task.state === 'interrupted'
 }
 
-export function insightTaskFailureKey(task: AnalysisTask) { return `insight-task:${task.id}` }
+export function insightTaskFailureKey(task: AnalysisTask) {
+  return `insight-task:${task.id}` + (task.failureOperationId ? ':' + task.failureOperationId : '')
+}
 
 export function useInsightTaskFailureNotices(tasks: readonly AnalysisTask[]) {
   const unresolved = useMemo(() => new Set(tasks.filter(insightTaskFailed).map(insightTaskFailureKey)), [tasks])
@@ -20,8 +23,44 @@ export function useInsightTaskFailureNotices(tasks: readonly AnalysisTask[]) {
     if (insightTaskFailed(snapshot)) return
     const previous = tasks.find(task => task.id === snapshot.id)
     // 恢复与下一次失败可能在同一次渲染前到达。
-    if (previous && insightTaskFailed(previous) && snapshot.eventSequence > previous.eventSequence) resolve?.(insightTaskFailureKey(snapshot))
+    if (previous && insightTaskFailed(previous) && snapshot.eventSequence > previous.eventSequence) resolve?.(insightTaskFailureKey(previous))
   })
+}
+
+function OpenInsightLog({ operationId }: { operationId: string }) {
+  const [opening, setOpening] = useState(false)
+  const [error, setError] = useState('')
+  const open = window.whomi?.operationDiagnostics?.openInsightLog
+  if (!open) return null
+  const openLog = async () => {
+    setOpening(true)
+    setError('')
+    try { await open(operationId) }
+    catch (cause) {
+      setError(cause && typeof cause === 'object' && 'action' in cause && typeof cause.action === 'string'
+        ? cause.action : '无法打开本次操作日志，请重试。')
+    } finally { setOpening(false) }
+  }
+  return <>
+    <button type="button" className="insight-open-log" disabled={opening} onClick={() => void openLog()}>打开本次操作日志</button>
+    {error && <span role="alert">{error}</span>}
+  </>
+}
+
+export function InsightFailureNotice({ task, actionFailure, className }: {
+  task: AnalysisTask; actionFailure?: { detail: string; operation?: OperationFailure; attempt?: number }; className?: string
+}) {
+  const error = actionFailure?.detail ?? task.error
+  const failureAtMs = actionFailure ? actionFailure.operation?.failureAtMs : task.failureAtMs
+  const failureOperationId = actionFailure ? actionFailure.operation?.operationId : task.failureOperationId
+  const noticeKey = actionFailure ? `insight-action:${task.id}:${failureOperationId ?? ''}:${failureAtMs ?? actionFailure.attempt}` : insightTaskFailureKey(task)
+  const detail = useMemo(() => <>
+    <span>{error}</span>
+    {failureAtMs != null && <span className="insight-failure-time">{new Date(failureAtMs).toLocaleString('zh-CN', { hour12: false })}</span>}
+    {failureOperationId && <OpenInsightLog key={failureOperationId} operationId={failureOperationId} />}
+  </>, [error, failureAtMs, failureOperationId])
+  return <ExceptionNotice title={`洞察 ${insightTaskNumber(task)} ${actionFailure ? '操作失败' : '生成失败'}`} detail={detail}
+    noticeKey={noticeKey} className={className} />
 }
 
 export function formatInsightDate(value: number, timezone?: string) {
