@@ -136,7 +136,8 @@ async function harness({ model = true, self = true, hold = true, reject = true, 
       if (${replyExamples}) {
         writer.exec("UPDATE messages SET kind='system',sender_kind='system',member_id=NULL,sender_name='',text='合成系统通知' WHERE id=100")
         writer.prepare('UPDATE messages SET sent_at_ms=? WHERE id=?').run(Date.UTC(2026, 9, 9, 1, 30), 1)
-        writer.prepare('UPDATE messages SET sent_at_ms=? WHERE id=?').run(Date.UTC(2026, 9, 10, 1, 30), 2)
+        writer.prepare('UPDATE messages SET sent_at_ms=?, text=text || ? WHERE id=2')
+          .run(Date.UTC(2026, 9, 10, 1, 30), '\\n补充说明。'.repeat(80))
         writer.exec("INSERT INTO message_keys VALUES(1,'synthetic-insights','early',100)")
         writer.exec("INSERT INTO message_replies(message_id,conversation_id,target_message_id,original_id,id_namespace,state) VALUES(2,1,100,'early','synthetic-insights','resolved')")
         writer.exec("UPDATE messages SET sent_at_ms=NULL,time_precision='unknown',time_raw='周三上午' WHERE id=4")
@@ -618,22 +619,37 @@ test('citation reply navigation returns to the reply and matches conversation ti
     await trigger.click()
     await expect(meta(dialog, '4')).toHaveText(times[2])
     await expect(row(dialog, '4').getByRole('blockquote')).toHaveText('未关联的摘录')
+    const viewport = dialog.getByRole('region', { name: '引用聊天记录' })
+    const evidenceBubble = row(dialog, '1').locator('.message-text')
     for (const [reply, target] of [['3', '1'], ['2', '100']]) {
-      if (target === '100') await expect(row(dialog, target)).toHaveCount(0)
-      await row(dialog, reply).getByRole('button', { name: /查看引用原消息/ }).click()
+      const replyCard = row(dialog, reply).getByRole('button', { name: /查看引用原消息/ })
+      if (target === '100') {
+        await expect(row(dialog, target)).toHaveCount(0)
+        expect((await row(dialog, reply).boundingBox()).height).toBeGreaterThan(2 * (await viewport.boundingBox()).height)
+      } else await expect(evidenceBubble).toHaveCSS('outline-width', '1px')
+      await replyCard.scrollIntoViewIfNeeded()
+      const cardOffset = async () => (await replyCard.boundingBox()).y - (await viewport.boundingBox()).y
+      const originalOffset = await cardOffset()
+      await replyCard.click()
       await expect(row(dialog, target)).toBeFocused()
       await expect(row(dialog, target)).toBeInViewport()
       await expect(row(dialog, target)).toHaveClass(/message-reference-target/)
+      if (target === '1') await expect(evidenceBubble).toHaveCSS('outline-width', '2px')
       await shot('citation-reply-target-' + target)
       if (target === '100') await expectSystemHighlight(dialog)
+      else await expect(evidenceBubble).toHaveCSS('outline-width', '1px')
       await dialog.getByRole('button', { name: '返回引用位置' }).click()
-      await expect(row(dialog, reply)).toBeFocused()
-      await expect(row(dialog, reply)).toBeInViewport()
+      await expect(replyCard).toBeFocused()
+      await expect(replyCard).toBeInViewport({ ratio: 1 })
+      expect(Math.abs(await cardOffset() - originalOffset)).toBeLessThanOrEqual(2)
       await expect(dialog.locator('.insight-source-footer')).toContainText('1 / 2')
     }
     await shot('citation-reply-return')
     await btn('关闭原文').click()
     await expect(trigger).toBeFocused()
+  } catch (error) {
+    await shot('citation-reply-failure').catch(() => {})
+    throw error
   } finally { await h.close() }
 })
 

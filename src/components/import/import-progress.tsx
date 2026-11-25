@@ -3,12 +3,11 @@ import { ChevronRight, X } from 'lucide-react'
 import type { ImportCandidateResult, ImportSnapshot } from '../../shared/import-contract'
 import { ReaderDialog } from '../ui/managed-row'
 import { ImportStateMark } from './import-artwork'
-import { distinguishImportRows } from './import-candidates'
+import { importCandidateChoices, importTitle, labelDuplicateRows, type ImportRowLabel } from './import-candidates'
 
 function displayTitle(title: string | undefined, result: ImportCandidateResult) {
   const matched = result.matchedConversationTitle
-  if (matched !== undefined) return `发现已有会话：${matched.trim() || '未命名会话'}`
-  return title || '未命名会话'
+  return matched === undefined ? importTitle(title) : `发现已有会话：${importTitle(matched)}`
 }
 
 function countText(result: ImportCandidateResult, provisional = false) {
@@ -54,23 +53,28 @@ function processingStatus(status: ImportCandidateResult['status']) {
 }
 
 function batchRows(snapshot: ImportSnapshot) {
-  const candidates = new Map(snapshot.candidates.map(candidate => [candidate.candidateId, candidate]))
-  const sources = new Map(snapshot.discovery?.entries.map(entry => [entry.entryId, entry.displayName]))
-  const grouped = new Map<string, ImportCandidateResult>()
+  const choices = importCandidateChoices(snapshot.candidates, snapshot.discovery?.entries)
+  const candidates = new Map(choices.map(choice => [choice.id, choice]))
+  const grouped = new Map<string, ImportRowLabel & { result: ImportCandidateResult }>()
   for (const result of snapshot.results) {
     // 同一会话的分段导出要等整批提交后才有可靠的目标编号。
     const key = snapshot.status === 'completed' && result.conversationId
       ? 'conversation:' + result.conversationId : 'candidate:' + result.candidateId
     const existing = grouped.get(key)
     if (existing) {
-      existing.inserted += result.inserted
-      existing.duplicates += result.duplicates
-    } else grouped.set(key, { ...result })
-  }
-  return distinguishImportRows([...grouped.values()].map(result => {
+      existing.result.inserted += result.inserted
+      existing.result.duplicates += result.duplicates
+      // 合并多段后，第一段的来源序号不能代表整行。
+      existing.detail = ''
+      continue
+    }
     const candidate = candidates.get(result.candidateId)
-    return { result, title: displayTitle(candidate?.title, result), source: candidate ? sources.get(candidate.entryId) ?? '' : '' }
-  }))
+    grouped.set(key, { result: { ...result }, title: displayTitle(candidate?.title, result),
+      source: candidate?.source ?? '', detail: candidate?.detail ?? '' })
+  }
+  const rows = [...grouped.values()]
+  labelDuplicateRows(rows)
+  return rows
 }
 
 function BatchProgress({ snapshot, onCancel, onOpen, onReset }: ProgressProps) {

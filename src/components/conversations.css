@@ -122,7 +122,7 @@ button[data-drop-over] { box-shadow: inset 0 -2px var(--focus); }
 .reader-return:hover { background: var(--hover); color: var(--text); }
 .reader-return:active { background: var(--pressed); }
 .reader-source-note { margin: 8px 0 0; color: var(--text-muted); font-size: 14px; line-height: 1.6; }
-.message-source .message-text { outline: 1px solid var(--focus); outline-offset: 3px; }
+.message-source:where(:not(.message-reference-target)) .message-text { outline: 1px solid var(--focus); outline-offset: 3px; }
 .message-source:focus-visible { outline-offset: 8px; border-radius: 4px; }
 .source-range-label { color: var(--focus); font-weight: 550; }
 

@@ -12,7 +12,8 @@ import './insight-source-dialog.css'
 
 type AvailableSource = Extract<InsightCitationWindow, { status: 'available' }>
 type PendingRead = { kind: 'fragment'; index: number } | { kind: 'context' } | { kind: 'reply'; id: string }
-type ReplyOrigin = { id: string; page: MessagePage }
+type MessageAnchor = { kind: 'target'; id: string } | { kind: 'reply' | 'context'; id: string; offset: number }
+type ReplyOrigin = { id: string; offset: number; page: MessagePage }
 export type InsightSourceDialogProps = {
   taskId: string; citationId: string; phrase: string; conversationTitle: string; fragmentCount: number
   initialFragmentIndex?: number; quote?: string; quoteMessageId?: string
@@ -47,7 +48,7 @@ export function InsightSourceDialog({ taskId, citationId, phrase, conversationTi
   const locating = useRef<ReturnType<typeof traceConversation> | null>(null)
   const source = useRef<AvailableSource>(undefined)
   const retry = useRef<() => void>(() => {})
-  const restore = useRef<{ id: string; offset?: number } | 'citation' | null>(null)
+  const restore = useRef<MessageAnchor | 'citation' | null>(null)
 
   const track = useCallback((request: PendingRead | null) => {
     active.current = request
@@ -114,28 +115,46 @@ export function InsightSourceDialog({ taskId, citationId, phrase, conversationTi
       locating.current = null
       return
     }
-    const message = [...viewport.querySelectorAll<HTMLElement>('[data-message-id]')].find(item => item.dataset.messageId === anchor.id)
+    const message = viewport.querySelector<HTMLElement>(`[data-message-id="${CSS.escape(anchor.id)}"]`)
     if (!message) return
-    if (anchor.offset === undefined) {
+    if (anchor.kind === 'target') {
       message.focus({ preventScroll: true })
       message.scrollIntoView({ block: 'center', behavior: 'instant' })
-      setAway(awayFromCitation(viewport))
-    } else viewport.scrollTop += message.getBoundingClientRect().top - viewport.getBoundingClientRect().top - anchor.offset
+    } else if (anchor.kind === 'context') {
+      viewport.scrollTop += message.getBoundingClientRect().top - viewport.getBoundingClientRect().top - anchor.offset
+      return
+    } else {
+      const button = message.querySelector<HTMLButtonElement>('button.message-quote')
+      if (!button) return
+      button.focus({ preventScroll: true })
+      const rect = button.getBoundingClientRect()
+      const offset = Math.max(0, Math.min(anchor.offset, viewport.clientHeight - rect.height))
+      viewport.scrollTop += rect.top - viewport.getBoundingClientRect().top - offset
+    }
+    setAway(awayFromCitation(viewport))
   }, [current])
 
-  function displayReply(previous: AvailableSource, page: MessagePage, targetId: string, origin?: ReplyOrigin) {
+  function displayReply(previous: AvailableSource, page: MessagePage, anchor: MessageAnchor, origin?: ReplyOrigin) {
     const next = { ...previous, page }
-    restore.current = { id: targetId }
+    restore.current = anchor
     source.current = next
-    setReplyOrigin(origin); setReplyTarget({ targetId }); setCurrent(next)
+    setReplyOrigin(origin); setReplyTarget({ targetId: anchor.id }); setCurrent(next)
   }
 
-  async function openReply(targetId: string, originId: string) {
+  function followReply(targetId: string, originId: string) {
+    const viewport = scroll.current, previous = source.current
+    const button = viewport?.querySelector<HTMLButtonElement>(`[data-message-id="${CSS.escape(originId)}"] button.message-quote`)
+    if (!previous || !viewport || !button) return
+    const offset = button.getBoundingClientRect().top - viewport.getBoundingClientRect().top
+    void openReply(targetId, { id: originId, offset, page: previous.page })
+  }
+
+  async function openReply(targetId: string, origin: ReplyOrigin) {
     const previous = source.current
     if (!previous || (active.current?.kind === 'reply' && active.current.id === targetId)) return
     const request: PendingRead = { kind: 'reply', id: targetId }
     track(request); setError('')
-    retry.current = () => { void openReply(targetId, originId) }
+    retry.current = () => { void openReply(targetId, origin) }
     try {
       let page = previous.page
       if (!page.items.some(message => message.id === targetId)) {
@@ -144,7 +163,7 @@ export function InsightSourceDialog({ taskId, citationId, phrase, conversationTi
         if (located.status !== 'available') { setError('未找到原消息，请重试。'); return }
         page = located.page
       }
-      displayReply(previous, page, targetId, { id: originId, page: previous.page })
+      displayReply(previous, page, { kind: 'target', id: targetId }, origin)
     } catch {
       if (active.current === request) setError('原消息读取失败，请重试。')
     } finally {
@@ -157,7 +176,7 @@ export function InsightSourceDialog({ taskId, citationId, phrase, conversationTi
     if (!previous || !replyOrigin) return
     track(null); setError('')
     const page = previous.page.items.some(message => message.id === replyOrigin.id) ? previous.page : replyOrigin.page
-    displayReply(previous, page, replyOrigin.id)
+    displayReply(previous, page, { kind: 'reply', id: replyOrigin.id, offset: replyOrigin.offset })
   }
 
   async function load(direction: 'before' | 'after') {
@@ -173,7 +192,7 @@ export function InsightSourceDialog({ taskId, citationId, phrase, conversationTi
       if (active.current !== request) return
       const top = viewport.getBoundingClientRect().top
       const visible = [...viewport.querySelectorAll<HTMLElement>('[data-message-id]')].find(item => item.getBoundingClientRect().bottom > top)
-      if (visible) restore.current = { id: visible.dataset.messageId!, offset: visible.getBoundingClientRect().top - top }
+      if (visible) restore.current = { kind: 'context', id: visible.dataset.messageId!, offset: visible.getBoundingClientRect().top - top }
       const items = direction === 'before' ? [...page.items, ...previous.page.items] : [...previous.page.items, ...page.items]
       const merged: MessagePage = { ...previous.page, items: [...new Map(items.map(item => [item.id, item])).values()],
         ...(direction === 'before' ? { beforeCursor: page.beforeCursor } : { afterCursor: page.afterCursor }) }
@@ -215,7 +234,7 @@ export function InsightSourceDialog({ taskId, citationId, phrase, conversationTi
         <div ref={scroll} className="insight-source-scroll" role="region" aria-label="引用聊天记录" tabIndex={0} aria-busy={!!pending} onScroll={onScroll}>
           {current && <ReadOnlyMessages messages={current.page.items}
             highlightIds={selectedMessageId ? current.highlightIds.filter(id => id === selectedMessageId) : current.highlightIds}
-            replyTargetId={replyTarget?.targetId} onOpenReply={openReply} replyBusy={pending?.kind === 'reply'}
+            replyTargetId={replyTarget?.targetId} onOpenReply={followReply} replyBusy={pending?.kind === 'reply'}
             quote={fragment === initialFragmentIndex ? quote : undefined} />}
         </div>
         {error && <div className="insight-source-error">

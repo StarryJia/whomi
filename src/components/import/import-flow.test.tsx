@@ -30,7 +30,7 @@ it('恢复多项结果时逐项显示实际匹配名称，缺少匹配记录的�
   const warning = { code: 'UNKNOWN_TYPE', candidateId: 'b', severity: 'warning' as const, action: '第 1 条消息保留为文本。' }
   emit(snapshot({
     status: 'completed',
-    candidates: [{ ...candidate('a'), title: '示例导出标题' }, { ...candidate('b'), title: '示例新会话' }, candidate('c')],
+    candidates: [{ ...candidate('a'), title: '示例导出标题' }, { ...candidate('b'), status: 'saved', title: '示例新会话' }, candidate('c')],
     results: [
       matched,
       saved('b', '8', { inserted: 2, duplicates: 1, issues: [warning] }),
@@ -103,12 +103,17 @@ it('在明细窗中等到批次完成后可以直接读结果，关闭返回同�
   expect(screen.getByRole('button', { name: '查看导入结果' })).toHaveFocus()
   expect(screen.getByText('1 个会话')).toBeVisible()
 })
-it('同名不同目标的结果用来源区分，并各自打开对应会话', async () => {
+it.each([
+  { titles: ['项目组', ' 项目组 '], matchedConversationTitle: undefined },
+  { titles: ['每周讨论', '出行计划'], matchedConversationTitle: '改名后的项目组' },
+])('用来源区分在结果中同名的目标，并各自打开对应会话：$titles', async ({ titles, matchedConversationTitle }) => {
   const { api, emit } = fakeImportApi(), open = vi.fn()
   const entries = ['十月', '十一月'].map(month => ({ entryId: month, displayName: month + '/result.json', formatId: 'telegram' }))
-  const candidates = entries.map(entry => ({ ...candidate(entry.entryId), entryId: entry.entryId, title: '项目组' }))
+  const candidates = entries.map((entry, index) => ({
+    ...candidate(entry.entryId), entryId: entry.entryId, title: titles[index],
+  }))
   emit(snapshot({ status: 'completed', discovery: { entries, unrecognized: [], issues: [] }, candidates,
-    results: [saved('十月', '7'), saved('十一月', '8')], inserted: 1000 }))
+    results: [saved('十月', '7', { matchedConversationTitle }), saved('十一月', '8', { matchedConversationTitle })], inserted: 1000 }))
   localStorage.setItem('whomi:import-job', 'job')
   render(<FileImport api={api} onOpenConversation={open} />)
   for (const [index, entry] of entries.entries()) {
@@ -140,6 +145,42 @@ it('会话标题相同时显示来源，同一来源的同名会话也可以区�
   await userEvent.click(november)
   await userEvent.click(screen.getByRole('button', { name: '导入所选会话' }))
   expect(api.startImport).toHaveBeenCalledWith({ kind: 'commit', plan: { jobId: 'job', candidateIds: ['c'], decisions: [] } })
+})
+it('仅选择同一来源的第二、第三个同名会话时，保存与完成明细沿用选择时的序号', async () => {
+  const { api, emit } = fakeImportApi(), open = vi.fn()
+  const batch = snapshot({
+    status: 'awaiting_commit',
+    discovery: { entries: [{ entryId: 'entry', displayName: '导出.json', formatId: 'telegram' }], unrecognized: [], issues: [] },
+    candidates: [
+      { ...candidate('blocked'), status: 'blocked', title: '项目组' },
+      ...['a', 'b', 'c'].map(id => ({ ...candidate(id), title: '项目组' })),
+    ],
+  })
+  const results = [saved('b', '8'), saved('c', '9')]
+  vi.mocked(api.startImport).mockImplementation(async () => {
+    emit({ ...batch, status: 'committing', results: results.map(result => ({
+      ...result, conversationId: null, status: 'staged', committedAt: null, inserted: 0,
+    })) })
+    return batch.jobId
+  })
+  emit(batch)
+  localStorage.setItem('whomi:import-job', batch.jobId)
+  render(<FileImport api={api} onOpenConversation={open} />)
+  await userEvent.click(await screen.findByRole('checkbox', { name: '项目组 导出.json · 2 / 3' }))
+  await userEvent.click(screen.getByRole('checkbox', { name: '项目组 导出.json · 3 / 3' }))
+  await userEvent.click(screen.getByRole('button', { name: '导入所选会话' }))
+  await userEvent.click(await screen.findByRole('button', { name: '查看导入状态' }))
+  const rows = () => within(screen.getByRole('dialog')).getAllByRole('listitem')
+  expect(rows().map(row => row.textContent)).toEqual(['项目组导出.json · 2 / 3待处理', '项目组导出.json · 3 / 3待处理'])
+  act(() => emit({ ...batch, status: 'completed', inserted: 1000,
+    results: [results[0], { ...results[1], matchedConversationTitle: '改名后的项目组' }] }))
+  const completed = rows()
+  expect(completed).toHaveLength(2)
+  expect(within(completed[0]).getByText('导出.json · 2 / 3')).toBeVisible()
+  expect(within(completed[1]).getByText('导出.json · 3 / 3')).toBeVisible()
+  expect(within(completed[1]).getByRole('heading', { name: '发现已有会话：改名后的项目组' })).toBeVisible()
+  await userEvent.click(within(completed[1]).getByRole('button', { name: '打开会话' }))
+  expect(open).toHaveBeenCalledWith('9')
 })
 it.each([
   { button: '选择文件', kind: 'file', displayName: '聊天.json' },

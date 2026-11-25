@@ -73,10 +73,14 @@ for (const longName of [false, true]) test(`insight report with a ${longName ? '
     await expect(reader.getByText(ending)).toBeInViewport({ ratio: 1 })
     await expect(reader.getByText(limitation)).toBeInViewport({ ratio: 1 })
     await expect(reader.getByText('阅读完毕', { exact: true })).toHaveCount(0)
-    const spaceBelowText = await reader.getByText(limitation).evaluate(p =>
-      p.closest('article').getBoundingClientRect().bottom - p.getBoundingClientRect().bottom)
-    expect(spaceBelowText).toBeLessThanOrEqual(1)
+    const extraSpaceBelowText = await reader.getByText(limitation).evaluate(paragraph => {
+      const scroller = paragraph.closest('.insights-home')
+      const viewportBottom = scroller.getBoundingClientRect().top + scroller.clientTop + scroller.clientHeight
+      const bottomPadding = parseFloat(getComputedStyle(scroller).paddingBottom)
+      return viewportBottom - bottomPadding - paragraph.getBoundingClientRect().bottom
+    })
     await page.screenshot({ path: info.outputPath('04-report-ending.png') })
+    expect(Math.abs(extraSpaceBelowText)).toBeLessThanOrEqual(1)
     await page.getByRole('button', { name: '返回', exact: true }).click()
     await expect(report).toBeFocused()
     await report.click({ button: 'right' })

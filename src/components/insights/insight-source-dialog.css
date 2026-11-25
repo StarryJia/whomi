@@ -21,7 +21,7 @@
 .insight-source-scroll .message-self .conversation-avatar { color: var(--focus); background: #ffe6d6; }
 .insight-message-date { display: flex; align-items: center; gap: 16px; margin: 8px 0; color: var(--text-muted); font-size: 13px; }
 .insight-message-date::before, .insight-message-date::after { content: ''; flex: 1; height: 1px; background: var(--line); }
-.insight-source-scroll .message-source .message-text { outline: 1px solid var(--focus); outline-offset: 2px; }
+.insight-source-scroll .message-source:where(:not(.message-reference-target)) .message-text { outline: 1px solid var(--focus); outline-offset: 2px; }
 .insight-source-scroll mark { background: color-mix(in srgb, var(--focus) 22%, var(--surface)); color: var(--text); }
 .insight-source-footer { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; flex-shrink: 0; gap: 8px 16px; padding: 16px 10px 0; color: var(--text-muted); font-size: 14px; }
 .insight-source-footer .insight-source-return { margin-right: auto; }

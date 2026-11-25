@@ -695,6 +695,42 @@ test('same-name conversations can be selected by export folder', async ({}, test
   } finally { await application?.close(); await cleanup(directory) }
 })
 
+test('selected same-name conversations keep their source numbers in the results', async ({}, info) => {
+  const directory = await mkdtemp(join(tmpdir(), 'whomi-runtime-'))
+  let application
+  try {
+    const source = join(directory, 'result.json')
+    const telegram = JSON.parse(await readFile('tests/fixtures/import/telegram-native/positive.json', 'utf8'))
+    const [chat] = telegram.chats.list
+    telegram.chats.list = ['项目组', ' 项目组 ', '项目组'].map((name, index) => ({
+      ...chat, name, id: 300 + index, messages: [{ ...chat.messages[0], text: '例会 ' + (index + 1) }],
+    }))
+    await writeFile(source, JSON.stringify(telegram))
+    await copyFile('tests/desktop/probe.cjs', join(directory, 'probe.cjs'))
+    application = await launchImportWindow(directory)
+    const page = await application.firstWindow()
+    await page.getByRole('button', { name: '导入会话', exact: true }).click()
+    await drop(page, source)
+    for (const number of [2, 3]) {
+      await page.getByRole('checkbox', { name: '项目组 result.json · ' + number + ' / 3', exact: true }).check()
+    }
+    await page.getByRole('button', { name: '导入所选会话' }).click()
+    await page.getByRole('button', { name: '查看导入结果' }).click()
+    const dialog = page.getByRole('dialog', { name: '导入结果' })
+    const rows = dialog.getByRole('listitem')
+    await expect(rows).toHaveCount(2)
+    await page.screenshot({ path: info.outputPath('same-name-import-results.png'), animations: 'disabled' })
+    for (const number of [2, 3]) {
+      const item = rows.filter({ hasText: 'result.json · ' + number + ' / 3' })
+      await expect(item.getByRole('heading')).toHaveText('项目组')
+      await expect(item.getByRole('button', { name: '打开会话' })).toBeVisible()
+    }
+    await rows.filter({ hasText: 'result.json · 3 / 3' }).getByRole('button', { name: '打开会话' }).click()
+    await dismissIdentity(page)
+    await expect(page.getByText('例会 3', { exact: true })).toBeVisible()
+  } finally { await application?.close(); await cleanup(directory) }
+})
+
 test('interrupted selection exposes the original log on restart before entering import', async ({}, testInfo) => {
   test.setTimeout(60000)
   const directory = await mkdtemp(join(tmpdir(), 'whomi-runtime-'))

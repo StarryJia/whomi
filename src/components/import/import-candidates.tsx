@@ -1,9 +1,14 @@
 import { useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { Candidate, DiscoveryEntry } from '../../shared/import-contract'
 
-export function distinguishImportRows<T extends { title: string; source: string }>(items: readonly T[]) {
-  const rows = items.map(item => ({ ...item, detail: '' }))
-  const byTitle = new Map<string, Array<typeof rows[number]>>()
+export function importTitle(title: string | undefined) {
+  return title?.trim() || '未命名会话'
+}
+
+export type ImportRowLabel = { title: string; source: string; detail: string }
+
+export function labelDuplicateRows(rows: ImportRowLabel[]) {
+  const byTitle = new Map<string, ImportRowLabel[]>()
   for (const row of rows) {
     const group = byTitle.get(row.title)
     if (group) group.push(row)
@@ -11,20 +16,30 @@ export function distinguishImportRows<T extends { title: string; source: string 
   }
   for (const group of byTitle.values()) {
     if (group.length === 1) continue
-    const bySource = new Map<string, Array<typeof rows[number]>>()
+    const bySource = new Map<string, ImportRowLabel[]>()
     for (const row of group) {
-      const sameSource = bySource.get(row.source)
+      const label = row.detail || row.source
+      const sameSource = bySource.get(label)
       if (sameSource) sameSource.push(row)
-      else bySource.set(row.source, [row])
+      else bySource.set(label, [row])
     }
-    for (const [source, sameSource] of bySource) {
+    for (const [label, sameSource] of bySource) {
       sameSource.forEach((row, index) => {
         const position = sameSource.length > 1 ? `${index + 1} / ${sameSource.length}` : ''
-        row.detail = [source, position].filter(Boolean).join(' · ')
+        row.detail = [label, position].filter(Boolean).join(' · ')
       })
     }
   }
-  return rows
+}
+
+export function importCandidateChoices(candidates: readonly Candidate[], entries?: readonly DiscoveryEntry[]) {
+  const sources = new Map(entries?.map(entry => [entry.entryId, entry.displayName]))
+  const choices = candidates.map(candidate => ({
+    id: candidate.candidateId, status: candidate.status, title: importTitle(candidate.title),
+    source: sources.get(candidate.entryId) ?? '', detail: '',
+  }))
+  labelDuplicateRows(choices.filter(choice => choice.status === 'staged'))
+  return choices
 }
 
 export function ConversationChoices({ candidates, entries, busy, onImport, onCancel }: {
@@ -35,12 +50,7 @@ export function ConversationChoices({ candidates, entries, busy, onImport, onCan
   onCancel: () => void
 }) {
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set())
-  const choices = useMemo(() => {
-    const sources = new Map(entries?.map(entry => [entry.entryId, entry.displayName]))
-    return distinguishImportRows(candidates.map(candidate => ({
-      id: candidate.candidateId, title: candidate.title.trim() || '未命名会话', source: sources.get(candidate.entryId) ?? '',
-    })))
-  }, [candidates, entries])
+  const choices = useMemo(() => importCandidateChoices(candidates, entries), [candidates, entries])
   const titleId = useId()
   const heading = useRef<HTMLHeadingElement>(null)
   useLayoutEffect(() => { heading.current?.focus({ preventScroll: true }) }, [])

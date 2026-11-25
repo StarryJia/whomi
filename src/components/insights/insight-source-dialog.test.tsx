@@ -70,10 +70,37 @@ test.each(['12', '90'])('点回复定位原消息 %s，返回同一条回复并�
     expect(row('10')).toBeNull()
   } else expect(p.client.locateSource).not.toHaveBeenCalled()
   fireEvent.click(screen.getByRole('button', { name: '返回引用位置' }))
-  expect(row('11')).toHaveFocus()
+  expect(screen.getByRole('button', { name: /查看引用原消息/ })).toHaveFocus()
   expect(row('10')).toHaveAttribute('data-citation', 'true')
   expect(screen.getByText('1 / 2')).toBeVisible()
   expect(screen.queryByRole('button', { name: '返回引用位置' })).toBeNull()
+})
+test('跨页读取重试后，返回长回复底部卡片最初所在的位置', async () => {
+  const data = replySource('90')
+  data.page.items[1].text = '长回复正文\n'.repeat(100)
+  const p = props(vi.fn(async () => data))
+  p.client.locateSource.mockRejectedValueOnce(new Error()).mockResolvedValueOnce(source(['90']))
+  render(<InsightSourceDialog {...p} />)
+  const button = await screen.findByRole('button', { name: /查看引用原消息/ })
+  const viewport = screen.getByRole('region', { name: '引用聊天记录' })
+  Object.defineProperty(viewport, 'clientHeight', { value: 300 })
+  const geometry = HTMLElement.prototype.getBoundingClientRect
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+    if (this === viewport) return new DOMRect(0, 50, 400, 300)
+    if (this.matches('button.message-quote')) return new DOMRect(0, 1350 - viewport.scrollTop, 200, 44)
+    return geometry.call(this)
+  })
+  viewport.scrollTop = 1100
+  fireEvent.click(button)
+  await screen.findByRole('alert')
+  viewport.scrollTop = 1200
+  fireEvent.click(screen.getByRole('button', { name: '重试' }))
+  await screen.findByText('原文90')
+  viewport.scrollTop = 0
+  fireEvent.click(screen.getByRole('button', { name: '返回引用位置' }))
+  const restored = screen.getByRole('button', { name: /查看引用原消息/ })
+  expect(restored.getBoundingClientRect().top - viewport.getBoundingClientRect().top).toBe(200)
+  expect(restored).toHaveFocus()
 })
 test('回复定位提示自动消退，保留报告证据和返回入口', async () => {
   render(<InsightSourceDialog {...props(vi.fn(async () => replySource('12')))} />)
