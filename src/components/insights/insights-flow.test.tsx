@@ -30,7 +30,8 @@ const baseAdapter: ConversationAiAdapter = { models: [{ id: 'm', label: '本机�
 it('从任务行任意内容打开指定任务，详情和任务控制按钮单独操作', async () => {
   const user = userEvent.setup()
   const onTask = vi.fn()
-  const onStop = vi.fn(async () => {})
+  let finishPause!: () => void
+  const onStop = vi.fn(() => new Promise<void>(resolve => { finishPause = resolve }))
   const onContinue = vi.fn(async () => {})
   const { report: _report, ...base } = completed
   const running: AnalysisTask = { ...base, state: 'running', analyzedMessages: 6, elapsedMs: 2500, modelId: '示例模型' }
@@ -53,6 +54,9 @@ it('从任务行任意内容打开指定任务，详情和任务控制按钮单�
   expect(row.getByRole('button', { name: '暂停' })).toHaveFocus()
   await user.keyboard(' ')
   expect(onStop).toHaveBeenCalledExactlyOnceWith('24')
+  expect(row.getByRole('status')).toHaveTextContent('正在暂停')
+  expect(row.getByRole('button', { name: '暂停' })).toBeDisabled()
+  await act(async () => finishPause())
   await user.click(row.getByRole('button', { name: '详情' }))
   expect(row.getByRole('group', { name: '分析用量' })).toBeVisible()
   await user.click(within(pausedRow).getByRole('button', { name: '继续洞察' }))
@@ -82,6 +86,16 @@ it('任务请求等待时运行时间递增，失败后保留同口径的覆盖�
   } finally {
     vi.useRealTimers()
   }
+})
+
+it('有正文的报告在末段之后按保存顺序展示整份报告的限制', () => {
+  const limitations = ['这份材料只涵盖十月。', '无法判断其余月份的安排。']
+  render(<InsightArticle report={{ ...report, limitations }} />)
+  const ending = screen.getByText('你和 ta 一起核对了时间。')
+  const notes = screen.getByRole('complementary', { name: '分析依据限制' })
+  expect(ending.compareDocumentPosition(notes)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+  expect(within(notes).getAllByRole('paragraph').map(p => p.textContent)).toEqual(limitations)
+  expect(screen.queryByText('阅读完毕')).toBeNull()
 })
 
 it('旧报告只有全局限制时显示正文空状态', () => {

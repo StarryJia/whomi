@@ -30,7 +30,7 @@ it('恢复多项结果时逐项显示实际匹配名称，缺少匹配记录的�
   const warning = { code: 'UNKNOWN_TYPE', candidateId: 'b', severity: 'warning' as const, action: '第 1 条消息保留为文本。' }
   emit(snapshot({
     status: 'completed',
-    candidates: [{ ...candidate('a'), title: '示例导出标题' }, { ...candidate('b'), title: '示例新会话' }, candidate('c')],
+    candidates: [{ ...candidate('a'), title: '示例导出标题' }, { ...candidate('b'), status: 'saved', title: '示例新会话' }, candidate('c')],
     results: [
       matched,
       saved('b', '8', { inserted: 2, duplicates: 1, issues: [warning] }),
@@ -42,13 +42,18 @@ it('恢复多项结果时逐项显示实际匹配名称，缺少匹配记录的�
   localStorage.setItem('whomi:import-job', 'job')
   render(<FileImport api={api} onOpenConversation={onOpen} />)
 
-  expect(await screen.findByRole('heading', { name: '发现已有会话：示例联系人' })).toBeVisible()
+  const trigger = await screen.findByRole('button', { name: '查看导入结果' })
+  expect(screen.getByText('新增 3 条 · 跳过重复 101 条')).toBeVisible()
+  expect(screen.queryByRole('heading', { name: '发现已有会话：示例联系人' })).not.toBeInTheDocument()
+  await userEvent.click(trigger)
+  expect(screen.getByRole('dialog', { name: '导入结果' })).toBeVisible()
+  expect(screen.getByRole('heading', { name: '发现已有会话：示例联系人' })).toBeVisible()
   expect(screen.queryByRole('heading', { name: '示例导出标题' })).not.toBeInTheDocument()
   expect(screen.getByRole('heading', { name: '示例新会话' })).toBeVisible()
   expect(screen.getByRole('heading', { name: '发现已有会话：未命名会话' })).toBeVisible()
-  expect(screen.getByText('没有新增消息，跳过 100 条重复消息')).toBeVisible()
-  expect(screen.getByText('新增 2 条消息，跳过 1 条重复消息')).toBeVisible()
-  expect(screen.getByText('新增 1 条消息，跳过 0 条重复消息')).toBeVisible()
+  expect(screen.getByText('新增 0 条 · 跳过重复 100 条')).toBeVisible()
+  expect(screen.getByText('新增 2 条 · 跳过重复 1 条')).toBeVisible()
+  expect(screen.getByText('新增 1 条 · 跳过重复 0 条')).toBeVisible()
   expect(screen.queryByText(warning.action)).not.toBeInTheDocument()
   await userEvent.click(screen.getAllByRole('button', { name: '打开会话' })[0])
   expect(onOpen).toHaveBeenCalledWith('7')
@@ -77,6 +82,49 @@ it('单个导出中的两段会话可以分别勾选，隐藏未识别文件', a
   expect(api.startImport).toHaveBeenNthCalledWith(1, { kind: 'stage', jobId: 'job', entryIds: ['entry'] })
   expect(api.startImport).toHaveBeenNthCalledWith(2, { kind: 'commit', plan: { jobId: 'job', candidateIds: ['family'], decisions: [] } })
 })
+it('在明细窗中等到批次完成后可以直接读结果，关闭返回同批次的结果入口', async () => {
+  const { api, emit } = fakeImportApi()
+  const candidates = ['a', 'b'].map(candidate)
+  const results = [saved('a', '7', { inserted: 120, duplicates: 4 }), saved('b', '7', { inserted: 80, duplicates: 3 })]
+  emit(snapshot({ status: 'committing', candidates,
+    results: results.map(result => ({ ...result, status: 'staged', committedAt: null, conversationId: null, inserted: 0 })) }))
+  localStorage.setItem('whomi:import-job', 'job')
+  render(<FileImport api={api} />)
+  await userEvent.click(await screen.findByRole('button', { name: '查看导入状态' }))
+  const status = screen.getByRole('dialog', { name: '会话状态' })
+  expect(within(status).getByText('2 个导入项')).toBeVisible()
+  expect(within(status).getAllByRole('listitem')).toHaveLength(2)
+  act(() => emit(snapshot({ status: 'completed', candidates, results, inserted: 200, duplicates: 7 })))
+  expect(screen.getByRole('dialog', { name: '导入结果' })).toBe(status)
+  expect(within(status).getAllByRole('listitem')).toHaveLength(1)
+  expect(within(status).getByText('新增 200 条 · 跳过重复 7 条')).toBeVisible()
+  expect(within(status).getByText('1 个会话')).toBeVisible()
+  await userEvent.click(within(status).getByRole('button', { name: '关闭' }))
+  expect(screen.getByRole('button', { name: '查看导入结果' })).toHaveFocus()
+  expect(screen.getByText('1 个会话')).toBeVisible()
+})
+it.each([
+  { titles: ['项目组', ' 项目组 '], matchedConversationTitle: undefined },
+  { titles: ['每周讨论', '出行计划'], matchedConversationTitle: '改名后的项目组' },
+])('用来源区分在结果中同名的目标，并各自打开对应会话：$titles', async ({ titles, matchedConversationTitle }) => {
+  const { api, emit } = fakeImportApi(), open = vi.fn()
+  const entries = ['十月', '十一月'].map(month => ({ entryId: month, displayName: month + '/result.json', formatId: 'telegram' }))
+  const candidates = entries.map((entry, index) => ({
+    ...candidate(entry.entryId), entryId: entry.entryId, title: titles[index],
+  }))
+  emit(snapshot({ status: 'completed', discovery: { entries, unrecognized: [], issues: [] }, candidates,
+    results: [saved('十月', '7', { matchedConversationTitle }), saved('十一月', '8', { matchedConversationTitle })], inserted: 1000 }))
+  localStorage.setItem('whomi:import-job', 'job')
+  render(<FileImport api={api} onOpenConversation={open} />)
+  for (const [index, entry] of entries.entries()) {
+    await userEvent.click(await screen.findByRole('button', { name: '查看导入结果' }))
+    const rows = within(screen.getByRole('dialog')).getAllByRole('listitem')
+    expect(rows).toHaveLength(2)
+    expect(within(rows[index]).getByText(entry.displayName)).toBeVisible()
+    await userEvent.click(within(rows[index]).getByRole('button', { name: '打开会话' }))
+    expect(open).toHaveBeenLastCalledWith(index === 0 ? '7' : '8')
+  }
+})
 it('会话标题相同时显示来源，同一来源的同名会话也可以区分', async () => {
   const { api, emit } = fakeImportApi()
   emit(snapshot({ status: 'awaiting_commit', discovery: { entries: [
@@ -97,6 +145,42 @@ it('会话标题相同时显示来源，同一来源的同名会话也可以区�
   await userEvent.click(november)
   await userEvent.click(screen.getByRole('button', { name: '导入所选会话' }))
   expect(api.startImport).toHaveBeenCalledWith({ kind: 'commit', plan: { jobId: 'job', candidateIds: ['c'], decisions: [] } })
+})
+it('仅选择同一来源的第二、第三个同名会话时，保存与完成明细沿用选择时的序号', async () => {
+  const { api, emit } = fakeImportApi(), open = vi.fn()
+  const batch = snapshot({
+    status: 'awaiting_commit',
+    discovery: { entries: [{ entryId: 'entry', displayName: '导出.json', formatId: 'telegram' }], unrecognized: [], issues: [] },
+    candidates: [
+      { ...candidate('blocked'), status: 'blocked', title: '项目组' },
+      ...['a', 'b', 'c'].map(id => ({ ...candidate(id), title: '项目组' })),
+    ],
+  })
+  const results = [saved('b', '8'), saved('c', '9')]
+  vi.mocked(api.startImport).mockImplementation(async () => {
+    emit({ ...batch, status: 'committing', results: results.map(result => ({
+      ...result, conversationId: null, status: 'staged', committedAt: null, inserted: 0,
+    })) })
+    return batch.jobId
+  })
+  emit(batch)
+  localStorage.setItem('whomi:import-job', batch.jobId)
+  render(<FileImport api={api} onOpenConversation={open} />)
+  await userEvent.click(await screen.findByRole('checkbox', { name: '项目组 导出.json · 2 / 3' }))
+  await userEvent.click(screen.getByRole('checkbox', { name: '项目组 导出.json · 3 / 3' }))
+  await userEvent.click(screen.getByRole('button', { name: '导入所选会话' }))
+  await userEvent.click(await screen.findByRole('button', { name: '查看导入状态' }))
+  const rows = () => within(screen.getByRole('dialog')).getAllByRole('listitem')
+  expect(rows().map(row => row.textContent)).toEqual(['项目组导出.json · 2 / 3待处理', '项目组导出.json · 3 / 3待处理'])
+  act(() => emit({ ...batch, status: 'completed', inserted: 1000,
+    results: [results[0], { ...results[1], matchedConversationTitle: '改名后的项目组' }] }))
+  const completed = rows()
+  expect(completed).toHaveLength(2)
+  expect(within(completed[0]).getByText('导出.json · 2 / 3')).toBeVisible()
+  expect(within(completed[1]).getByText('导出.json · 3 / 3')).toBeVisible()
+  expect(within(completed[1]).getByRole('heading', { name: '发现已有会话：改名后的项目组' })).toBeVisible()
+  await userEvent.click(within(completed[1]).getByRole('button', { name: '打开会话' }))
+  expect(open).toHaveBeenCalledWith('9')
 })
 it.each([
   { button: '选择文件', kind: 'file', displayName: '聊天.json' },
@@ -134,25 +218,28 @@ it('保存失败结束进度，只保留查看日志和取消导入', async () =
   await userEvent.click(workspace.getByRole('button', { name: '取消导入' }))
   expect(await screen.findByRole('button', { name: '选择文件' })).toBeVisible()
 })
-it('多会话保存时折叠已处理项目，整批取消后返回起点并刷新会话列表', async () => {
+it('批量保存时只在明细窗显示所选会话的状态，关闭后可取消该批次', async () => {
   const { api, emit } = fakeImportApi(), onSaved = vi.fn(), onOpen = vi.fn(), onCancelled = vi.fn()
   vi.mocked(api.startImport).mockResolvedValue('job')
   vi.mocked(api.cancelImport).mockImplementation(async () => { emit(snapshot({ status: 'cancelled' })) })
   render(<FileImport api={api} onSaved={onSaved} onOpenConversation={onOpen} onCancelled={onCancelled} />)
   await userEvent.click(screen.getByRole('button', { name: '选择文件' }))
-  const partial = snapshot({ status: 'committing', candidates: [candidate('a'), candidate('b')], results: [
+  const partial = snapshot({ status: 'committing', candidates: ['a', 'b', 'c', '未选'].map(candidate), results: [
     saved('a', '7', { status: 'processed', committedAt: null, inserted: 320 }),
     saved('b', '8', { status: 'committing', committedAt: null, inserted: 0 }),
+    saved('c', '9', { status: 'staged', committedAt: null, inserted: 0 }),
   ] })
   act(() => emit(partial)); act(() => emit({ ...partial }))
-  const count = screen.getByText('已处理 320 条消息')
-  expect(count).not.toBeVisible()
-  await userEvent.click(screen.getByText('会话 a'))
-  expect(count).toBeVisible()
+  expect(screen.queryByText('会话 a')).not.toBeInTheDocument()
+  const trigger = screen.getByRole('button', { name: '查看导入状态' })
+  await userEvent.click(trigger)
+  const dialog = within(screen.getByRole('dialog', { name: '会话状态' }))
+  expect(dialog.getAllByRole('listitem').map(row => row.textContent)).toEqual(['会话 a已处理', '会话 b处理中', '会话 c待处理'])
   expect(screen.queryByRole('button', { name: '打开会话' })).not.toBeInTheDocument()
+  await userEvent.click(dialog.getByRole('button', { name: '关闭' }))
+  expect(trigger).toHaveFocus()
   await userEvent.click(screen.getByRole('button', { name: '取消导入' }))
   expect(await screen.findByRole('button', { name: '选择文件' })).toHaveFocus()
-  expect(count).not.toBeInTheDocument()
   expect(onSaved).not.toHaveBeenCalled()
   expect(onCancelled).toHaveBeenCalledTimes(1)
 })

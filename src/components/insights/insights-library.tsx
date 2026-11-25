@@ -142,7 +142,7 @@ function TaskRow({ task, onOpen, onStop, onContinue }: {
         </div>
       </div>
       <div className="insight-task-row-actions">
-        {start && <button className={status === '生成中' ? 'analysis-secondary' : 'analysis-primary'} type="button" disabled={!!busy}
+        {start && <button className={status === '生成中' ? 'analysis-secondary insight-pause-button' : 'analysis-primary'} type="button" disabled={!!busy}
           onClick={() => void run()}>{status === '生成中' ? '暂停' : failed ? '重试' : '继续洞察'}</button>}
         {failed && <button type="button" className="analysis-secondary" onClick={onOpen}>返回</button>}
       </div>
