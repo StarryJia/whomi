@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 
 const ending = '合成报告末段：两人确认了新的见面地点。'
+const limitation = '这份示例只记录了这次见面前的安排。'
 
 for (const longName of [false, true]) test(`insight report with a ${longName ? 'long' : 'short'} conversation name resizes, scrolls, and returns focus`, async ({}, info) => {
   test.setTimeout(60_000)
@@ -12,7 +13,7 @@ for (const longName of [false, true]) test(`insight report with a ${longName ? '
   const reports = [{
     format: 'conversation-insights-v1',
     aboutYou: Array.from({ length: 12 }, () => ({ content: [{ text: '两人先核对安排，讨论了往返方案和需要提前准备的材料。'.repeat(8) }] })),
-    relationship: [{ content: [{ text: ending }] }], citations: [], limitations: [],
+    relationship: [{ content: [{ text: ending }] }], citations: [], limitations: [limitation],
   }, {
     format: 'conversation-insights-v1',
     aboutYou: [{ content: [{ text: '示例正文。' }] }], relationship: [], citations: [], limitations: [],
@@ -68,8 +69,18 @@ for (const longName of [false, true]) test(`insight report with a ${longName ? '
     expect(await measure('02-wider-report')).toBeGreaterThanOrEqual(initial)
     await resize(narrow)
     expect(await measure('03-narrow-report')).toBeCloseTo(initial, 0)
-    await reader.getByText(ending).scrollIntoViewIfNeeded()
-    await expect(reader.getByText(ending)).toBeInViewport()
+    await page.locator('.insights-home').evaluate(element => element.scrollTop = element.scrollHeight)
+    await expect(reader.getByText(ending)).toBeInViewport({ ratio: 1 })
+    await expect(reader.getByText(limitation)).toBeInViewport({ ratio: 1 })
+    await expect(reader.getByText('阅读完毕', { exact: true })).toHaveCount(0)
+    const extraSpaceBelowText = await reader.getByText(limitation).evaluate(paragraph => {
+      const scroller = paragraph.closest('.insights-home')
+      const viewportBottom = scroller.getBoundingClientRect().top + scroller.clientTop + scroller.clientHeight
+      const bottomPadding = parseFloat(getComputedStyle(scroller).paddingBottom)
+      return viewportBottom - bottomPadding - paragraph.getBoundingClientRect().bottom
+    })
+    await page.screenshot({ path: info.outputPath('04-report-ending.png') })
+    expect(Math.abs(extraSpaceBelowText)).toBeLessThanOrEqual(1)
     await page.getByRole('button', { name: '返回', exact: true }).click()
     await expect(report).toBeFocused()
     await report.click({ button: 'right' })

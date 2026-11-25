@@ -99,15 +99,17 @@ test('reader retains verbatim content while omitting type and attachment diagnos
   expect(document.querySelectorAll('.message-text')[1].textContent).toBe('  好听诶  ')
 })
 
-test('insight source shows a resolved reply from the loaded messages without adding a jump action', async () => {
+test('insight reply uses the loaded original when the excerpt lacks its own sender and text', async () => {
   const rows = await messages()
   rows[1] = { ...rows[1], reply: { ...rows[1].reply!, senderName: null, text: null } }
-  render(<ReadOnlyMessages messages={rows} highlightIds={['2']} />)
+  const open = vi.fn()
+  render(<ReadOnlyMessages messages={rows} highlightIds={['2']} onOpenReply={open} />)
 
-  const quote = screen.getByRole('blockquote')
+  const quote = screen.getByRole('button', { name: /查看引用原消息/ })
   expect(quote).toHaveTextContent('示例甲')
   expect(quote.querySelector('span')?.textContent).toBe('原消息\n保留换行')
-  expect(screen.queryByRole('button')).not.toBeInTheDocument()
+  await userEvent.setup().click(quote)
+  expect(open).toHaveBeenCalledWith('1', '2')
   expect(screen.getAllByText('时间未知')).toHaveLength(1)
 })
 

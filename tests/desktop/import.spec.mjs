@@ -554,6 +554,116 @@ async function captureWindow(application, path) {
   await writeFile(path, Buffer.from(png, 'base64'))
 }
 
+test('issue 50 batch import keeps actions and dialog headers in place for 2 and 100 conversations', async ({}, testInfo) => {
+  test.setTimeout(120000)
+  const directory = await mkdtemp(join(tmpdir(), 'whomi-runtime-'))
+  let application
+  try {
+    // Hold the write queue while the real, short-lived saving page is inspected.
+    await writeFile(join(directory, 'probe.cjs'), `module.exports = (_writer, _reader, { service }) => {
+      let resume
+      return method => {
+        if (method === 'probe.hold') {
+          const gate = new Promise(resolve => { resume = resolve })
+          void service.write(() => gate)
+        } else if (method === 'probe.resume') resume()
+        else throw new Error('Unknown import probe')
+      }
+    }`)
+    application = await launchImportWindow(directory)
+    const page = await application.firstWindow()
+    const probe = method => application.evaluate((_, name) => globalThis.__whomiRuntimeProbe.request(name, null), method)
+    const button = name => page.getByRole('button', { name, exact: true })
+    const bounds = await application.evaluate(({ BrowserWindow }) => {
+      const win = BrowserWindow.getAllWindows()[0]
+      return [win.getSize(), win.getMinimumSize()]
+    })
+    const geometry = new Map()
+    await button('导入会话').click()
+    for (const count of [2, 100]) {
+      const folder = join(directory, 'batch-' + count)
+      await mkdir(folder)
+      for (let index = 0; index <= count; index++) {
+        const name = '示例批次' + count + '-' + String(index).padStart(3, '0')
+        await writeFile(join(folder, name + '.json'), JSON.stringify(documentFor([index + 1], name)))
+      }
+      await drop(page, folder)
+      const choices = page.getByRole('checkbox')
+      const selectionStart = Date.now()
+      try {
+        await expect(page.getByRole('heading', { name: '选择要导入的会话' })).toBeVisible({ timeout: 45000 })
+        await expect(choices).toHaveCount(count + 1)
+      } catch (error) {
+        const state = await page.evaluate(async () => {
+          const jobId = localStorage.getItem('whomi:import-job')
+          return { page: document.body.innerText, job: jobId && await window.whomi.getImport(jobId) }
+        })
+        await testInfo.attach('selection-' + count, { body: JSON.stringify(state), contentType: 'application/json' })
+        await page.screenshot({ path: testInfo.outputPath('selection-failure-' + count + '.png') })
+        throw error
+      }
+      console.info(`batchImport selectedCandidates=${count + 1} waitForSelectionMs=${Date.now() - selectionStart}`)
+      await choices.evaluateAll((inputs, count) => inputs.slice(0, count).forEach(input => input.click()), count)
+      await probe('probe.hold')
+      try {
+        await button('导入所选会话').click()
+        for (const stage of ['saving', 'completed']) {
+          if (stage === 'completed') await probe('probe.resume')
+          const saving = stage === 'saving'
+          const trigger = button(saving ? '查看导入状态' : '查看导入结果')
+          await expect(trigger).toBeVisible()
+          await expect(button(saving ? '取消导入' : '继续导入')).toBeVisible()
+          if (!saving) await expect(page.getByText(`新增 ${count} 条 · 跳过重复 0 条`, { exact: true })).toBeVisible()
+          for (const size of bounds) {
+            await application.evaluate(({ BrowserWindow }, size) => BrowserWindow.getAllWindows()[0].setSize(...size), size)
+            await expect.poll(() => application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].getSize())).toEqual(size)
+            const actions = trigger.locator('..')
+            await expect(actions).toBeInViewport({ ratio: 1 })
+            const box = await actions.boundingBox()
+            const label = stage + '-' + size.join('x')
+            if (count === 2) geometry.set(label, box)
+            else for (const key of ['x', 'y', 'width', 'height']) expect(Math.abs(box[key] - geometry.get(label)[key])).toBeLessThanOrEqual(2)
+            if (count === 100) await page.screenshot({ path: testInfo.outputPath(label + '-home.png'), animations: 'disabled' })
+            await trigger.click()
+            const dialog = page.getByRole('dialog', { name: saving ? '会话状态' : '导入结果' })
+            const list = dialog.getByRole('list', { name: '会话明细' })
+            const rows = list.getByRole('listitem')
+            await expect(rows).toHaveCount(count)
+            const heading = dialog.getByRole('heading', { name: saving ? '会话状态' : '导入结果', exact: true })
+            const close = dialog.getByRole('button', { name: '关闭' })
+            const header = await heading.boundingBox()
+            const closeBox = await close.boundingBox()
+            await list.evaluate(node => { node.scrollTop = node.scrollHeight })
+            const last = rows.last()
+            await expect(last).toBeInViewport({ ratio: 1 })
+            await expect(heading).toBeInViewport({ ratio: 1 })
+            await expect(close).toBeInViewport({ ratio: 1 })
+            expect(await heading.boundingBox()).toEqual(header)
+            expect(await close.boundingBox()).toEqual(closeBox)
+            if (count === 100) {
+              expect(await list.evaluate(node => node.scrollTop)).toBeGreaterThan(0)
+              await page.screenshot({ path: testInfo.outputPath(label + '-details.png'), animations: 'disabled' })
+            }
+            if (saving) await expect(last).toContainText('待处理')
+            else await expect(last).toContainText('新增 1 条 · 跳过重复 0 条')
+            await close.click()
+            await expect(trigger).toBeFocused()
+          }
+        }
+      } finally { await probe('probe.resume') }
+      await button('查看导入结果').click()
+      const last = page.getByRole('dialog', { name: '导入结果' }).getByRole('listitem').last()
+      const title = await last.getByRole('heading').innerText()
+      await last.getByRole('button', { name: '打开会话' }).click()
+      await dismissIdentity(page)
+      await expect(page.getByRole('heading', { name: title, exact: true })).toBeVisible()
+      await button('返回导入结果').click()
+      await button('继续导入').click()
+      await expect(button('选择文件')).toBeVisible()
+    }
+  } finally { await application?.close(); await cleanup(directory) }
+})
+
 test('same-name conversations can be selected by export folder', async ({}, testInfo) => {
   const directory = await mkdtemp(join(tmpdir(), 'whomi-runtime-'))
   let application
@@ -582,6 +692,42 @@ test('same-name conversations can be selected by export folder', async ({}, test
         (await window.whomi.readMessages({ conversationId: id, direction: 'after' })).items.map(message => message.text)))
     })
     expect(messages).toEqual([['十一月的例会']])
+  } finally { await application?.close(); await cleanup(directory) }
+})
+
+test('selected same-name conversations keep their source numbers in the results', async ({}, info) => {
+  const directory = await mkdtemp(join(tmpdir(), 'whomi-runtime-'))
+  let application
+  try {
+    const source = join(directory, 'result.json')
+    const telegram = JSON.parse(await readFile('tests/fixtures/import/telegram-native/positive.json', 'utf8'))
+    const [chat] = telegram.chats.list
+    telegram.chats.list = ['项目组', ' 项目组 ', '项目组'].map((name, index) => ({
+      ...chat, name, id: 300 + index, messages: [{ ...chat.messages[0], text: '例会 ' + (index + 1) }],
+    }))
+    await writeFile(source, JSON.stringify(telegram))
+    await copyFile('tests/desktop/probe.cjs', join(directory, 'probe.cjs'))
+    application = await launchImportWindow(directory)
+    const page = await application.firstWindow()
+    await page.getByRole('button', { name: '导入会话', exact: true }).click()
+    await drop(page, source)
+    for (const number of [2, 3]) {
+      await page.getByRole('checkbox', { name: '项目组 result.json · ' + number + ' / 3', exact: true }).check()
+    }
+    await page.getByRole('button', { name: '导入所选会话' }).click()
+    await page.getByRole('button', { name: '查看导入结果' }).click()
+    const dialog = page.getByRole('dialog', { name: '导入结果' })
+    const rows = dialog.getByRole('listitem')
+    await expect(rows).toHaveCount(2)
+    await page.screenshot({ path: info.outputPath('same-name-import-results.png'), animations: 'disabled' })
+    for (const number of [2, 3]) {
+      const item = rows.filter({ hasText: 'result.json · ' + number + ' / 3' })
+      await expect(item.getByRole('heading')).toHaveText('项目组')
+      await expect(item.getByRole('button', { name: '打开会话' })).toBeVisible()
+    }
+    await rows.filter({ hasText: 'result.json · 3 / 3' }).getByRole('button', { name: '打开会话' }).click()
+    await dismissIdentity(page)
+    await expect(page.getByText('例会 3', { exact: true })).toBeVisible()
   } finally { await application?.close(); await cleanup(directory) }
 })
 

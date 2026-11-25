@@ -8,8 +8,8 @@
 .insight-source-heading > div { min-width: 0; overflow-wrap: anywhere; }
 .insight-source-heading h2 { margin: 0 0 8px; font-size: 23px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .insight-source-heading p { margin: 0; max-height: 12dvh; overflow-y: auto; color: var(--text-muted); }
-.insight-source-card button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid var(--line); border-radius: 20px; padding: 6px 18px; background: var(--surface); color: var(--focus); cursor: pointer; }
-.insight-source-card button:disabled { color: var(--text-muted); background: var(--hover); cursor: default; opacity: .6; }
+.insight-source-card button:where(:not(.message-quote)) { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid var(--line); border-radius: 20px; padding: 6px 18px; background: var(--surface); color: var(--focus); cursor: pointer; }
+.insight-source-card button:where(:not(.message-quote)):disabled { color: var(--text-muted); background: var(--hover); cursor: default; opacity: .6; }
 .insight-source-card button svg { width: 18px; height: 18px; }
 .insight-source-card .insight-source-close { flex-shrink: 0; padding: 4px; color: var(--text); border: 0; border-radius: 6px; }
 .insight-source-top { display: flex; align-items: center; justify-content: flex-end; gap: 12px; padding: 14px 18px 8px; }
@@ -21,9 +21,9 @@
 .insight-source-scroll .message-self .conversation-avatar { color: var(--focus); background: #ffe6d6; }
 .insight-message-date { display: flex; align-items: center; gap: 16px; margin: 8px 0; color: var(--text-muted); font-size: 13px; }
 .insight-message-date::before, .insight-message-date::after { content: ''; flex: 1; height: 1px; background: var(--line); }
-.insight-source-scroll .message-source .message-text { outline: 1px solid var(--focus); outline-offset: 2px; }
+.insight-source-scroll .message-source:where(:not(.message-reference-target)) .message-text { outline: 1px solid var(--focus); outline-offset: 2px; }
 .insight-source-scroll mark { background: color-mix(in srgb, var(--focus) 22%, var(--surface)); color: var(--text); }
-.insight-source-footer { display: flex; justify-content: flex-end; align-items: center; flex-shrink: 0; gap: 22px; padding: 16px 10px 0; color: var(--text-muted); font-size: 14px; }
+.insight-source-footer { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; flex-shrink: 0; gap: 8px 16px; padding: 16px 10px 0; color: var(--text-muted); font-size: 14px; }
 .insight-source-footer .insight-source-return { margin-right: auto; }
 .insight-source-error { display: flex; flex-shrink: 0; justify-content: flex-end; padding: 4px 10px; }
 .insight-source-card .insight-source-error button { padding: 4px 12px; }

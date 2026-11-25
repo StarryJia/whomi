@@ -165,7 +165,14 @@ test('an unsupported source reaches a failed scan without a conversation selecti
 test('only the selected conversations are imported and receive confirmed results',async()=> {
   const {service,id}=await setup([{key:'a',ids:['first']},{key:'b',ids:['second']}])
   const second=(await service.getImport(id)).candidates[1]
-  await service.startImport({kind:'commit',plan:{jobId:id,candidateIds:[second.candidateId],decisions:[]}});await service.idle()
+  const gate = Promise.withResolvers<void>()
+  void service.write(() => gate.promise)
+  try {
+    await service.startImport({kind:'commit',plan:{jobId:id,candidateIds:[second.candidateId],decisions:[]}})
+    expect(await service.getImport(id)).toMatchObject({
+      status:'committing',results:[{candidateId:second.candidateId,status:'staged'}],progress:{processed:0,total:1},
+    })
+  } finally { gate.resolve(); await service.idle() }
   expect(await service.getImport(id)).toMatchObject({status:'completed',inserted:1,results:[{candidateId:second.candidateId,status:'saved'}]})
   expect(store.reader.prepare('SELECT text FROM messages').all()).toEqual([{text:'second'}])
 })
