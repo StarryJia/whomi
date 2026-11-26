@@ -11,10 +11,13 @@
 </p>
 
 <p align="center">
-  我们在交谈中表达想法，也会流露出自己尚未察觉的感受，选几句聊天原文，与AI一起进行讨论。<br>
-  Whomi 陪你重读这些对话，看看自己在意什么，又习惯怎样回应别人。
+  Whomi 以观察者视角陪你重读聊天，从具体经历中梳理行为与人格线索。<br>
+  你可以从报告引用回到原话，结合当时的情境核对模型给出的解释。
 </p>
-- 
+
+Whomi 以[自动人格识别（Automatic Personality Recognition，APR）](https://eprints.gla.ac.uk/100498/)和可解释人格识别为研究方向，参考[人格证据链（Chain-of-Personality-Evidence，CoPE）](https://aclanthology.org/2024.emnlp-main.1115/)框架中「具体情境 → 当场表现 → 长期特质」的分析思路。
+
+正在整理将 [Personalysis](https://github.com/StarryJia/personalysis-skill) 用于会话洞察与 AI 分析的[接入方案](docs/designs/personalysis-integration-v1.md)，运行接入尚未实现。
 
 ## 支持的会话平台
 

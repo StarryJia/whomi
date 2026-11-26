@@ -1,0 +1,10 @@
+{
+  "chatlab": { "version": "0.0.2" },
+  "meta": {"name":"评阅材料 B","platform":"discord","type":"direct","groupId":"whomi-issue-49-case-b","ownerId":"a"},
+  "members": [{"platformId":"a","accountName":"甲"},{"platformId":"b","accountName":"乙"}],
+  "messages": [
+    {"sender":"a","accountName":"甲","type":0,"timestamp":1577836800,"platformMessageId":"1","content":"出個題目，讓我謅去。謅了來替我攺正。"},
+    {"sender":"b","accountName":"乙","type":0,"timestamp":1577836801,"platformMessageId":"2","content":"你就做一首来。"},
+    {"sender":"b","accountName":"乙","type":0,"timestamp":1577836802,"platformMessageId":"3","content":"意思却有，只是措詞不雅。"}
+  ]
+}
