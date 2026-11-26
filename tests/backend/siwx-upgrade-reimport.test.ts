@@ -104,6 +104,8 @@ test('版本 13 已归类的图片撤回通知带有旧附件，重叠导入保�
     SELECT id,'image','missing' FROM messages WHERE kind='system';
     ALTER TABLE ai_analysis_tasks DROP COLUMN failure_operation_id;
     ALTER TABLE ai_analysis_tasks DROP COLUMN failure_at_ms;
+    ALTER TABLE ai_analysis_tasks DROP COLUMN methodology_snapshot;
+    ALTER TABLE ai_turns DROP COLUMN methodology_snapshot;
     PRAGMA user_version=13;`)
   store.close()
   store = openStore(temporary.path)

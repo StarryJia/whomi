@@ -1,0 +1,10 @@
+{
+  "id": "personalysis",
+  "version": "0.2.0",
+  "sourceRepo": "https://github.com/StarryJia/personalysis-skill",
+  "sourceCommit": "db0da388d78cfa12e75147c5a55798f6fe926e22",
+  "sourceBlobSha": "a3ed5068a817b94819efed6678b167877e5d9494",
+  "sourceSha256": "64f1b981d6a09d8f9a3442818f9aa1441f36ddce898c6fe166207ab3d3627ab3",
+  "bodySha256": "0144ef7227b24f8225b479defdc716e79f7fc72ab8babb9e9c0c37d891557bf7",
+  "licenseSha256": "f13c7b1dffaf2e151e3ee52ec20727782076b49f8644062421fbc00b6b284454"
+}

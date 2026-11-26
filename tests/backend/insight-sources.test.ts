@@ -404,6 +404,7 @@ test.each([10, 12, 13])('版本 %i 升级时按真实引用识别微信撤回，
     ALTER TABLE ai_model_versions DROP COLUMN change_source;
     ALTER TABLE ai_analysis_tasks DROP COLUMN processing_snapshot;`)
   store.writer.exec('ALTER TABLE ai_analysis_tasks DROP COLUMN failure_operation_id; ALTER TABLE ai_analysis_tasks DROP COLUMN failure_at_ms')
+  store.writer.exec('ALTER TABLE ai_analysis_tasks DROP COLUMN methodology_snapshot; ALTER TABLE ai_turns DROP COLUMN methodology_snapshot')
   store.writer.pragma(`user_version=${version}`)
   migrateStore(store)
   expect(store.reader.prepare('SELECT id FROM visible_memberships WHERE conversation_id=1 ORDER BY id').all()).toEqual([{ id: 1n }, { id: 2n }])

@@ -5,6 +5,7 @@ import type { ProcessingSettings } from '../../src/shared/settings-contract'
 import { insightWorkload, type InsightCapacity, type InsightProtection } from './pi-insight-capacity'
 import { completeReadingInstruction, type InsightRuntimeCallbacks } from '../agent/protocol'
 import type { InsightPrompts } from '../data/ai/insight-prompts'
+import { assembleMethodologyPrompt, type MethodologySnapshot } from '../data/ai/methodology'
 import type { RuntimeInput, RuntimeResult } from './ai-service'
 import type { AiOperation } from './ai-operation-diagnostics'
 import { addInsightCoverage, createInsightReader, insightCursor } from './insight-reader'
@@ -40,6 +41,7 @@ type Options = {
   model: AiModel
   thinkingLevel: RuntimeInput['thinkingLevel']
   prompts: InsightPrompts
+  methodology?: MethodologySnapshot
   processing: ProcessingSettings
   checkpoint: PiInsightCheckpoint | null
   signal: AbortSignal
@@ -234,7 +236,9 @@ export async function generatePiInsight(options: Options): Promise<InsightReport
     },
   }
   await options.save(state)
-  const goal = systemPrompt(options.prompts)
+  const goal = options.methodology
+    ? assembleMethodologyPrompt(options.methodology, [options.prompts.reading, options.prompts.checking, options.prompts.writing].join('\n'))
+    : systemPrompt(options.prompts)
   function remaining() {
     const submitted = new Set(state.coverage.coveredMessageIds)
     const firstUnread = snapshot.sources.find(ref => !submitted.has(ref.messageId))
@@ -297,7 +301,8 @@ export async function generatePiInsight(options: Options): Promise<InsightReport
       if (!(error instanceof BoundaryError) || correctedStages.has(stage) || state.report) throw error
       correctedStages.add(stage)
       correction = stage === 'reading' ? '尚有未读原文，请用 resumeCursor 继续取文后完成报告。'
-        : '请修正后重新提交完整报告。' + error.message + '请保留两节正文和可定位的引用。' + personalityInstruction
+        : '请修正后重新提交完整报告。' + error.message + '请保留两节正文和可定位的引用。' +
+          (options.methodology ? '按第一层固定任务要求补齐四维分析。' : personalityInstruction)
     }
   }
 }

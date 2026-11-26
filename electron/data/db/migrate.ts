@@ -68,6 +68,8 @@ export function migrateStore(store: Pick<Store, 'writer'>): void {
       }
       if (version < 15n) db.exec(`ALTER TABLE ai_analysis_tasks ADD COLUMN failure_operation_id TEXT;
         ALTER TABLE ai_analysis_tasks ADD COLUMN failure_at_ms INTEGER CHECK(failure_at_ms >= 0);`)
+      if (version < 16n) db.exec(`ALTER TABLE ai_analysis_tasks ADD COLUMN methodology_snapshot TEXT CHECK(methodology_snapshot IS NULL OR json_valid(methodology_snapshot));
+        ALTER TABLE ai_turns ADD COLUMN methodology_snapshot TEXT CHECK(methodology_snapshot IS NULL OR json_valid(methodology_snapshot));`)
       if ((db.pragma('foreign_key_check') as unknown[]).length) throw new Error('资料库迁移失败，请从备份恢复后重试。')
       db.pragma(`user_version = ${schemaVersion}`)
     }).immediate()

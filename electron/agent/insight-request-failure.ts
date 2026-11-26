@@ -3,6 +3,8 @@ import { BoundaryError } from '../../src/shared/desktop-validation'
 import { isPiTimeout } from './model-timeout'
 
 const resumeActions: Readonly<Record<string, string>> = {
+  METHODOLOGY_RESOURCE_INVALID: '分析方法资源校验失败，请重新安装应用后重试。',
+  METHODOLOGY_SNAPSHOT_INVALID: '当前任务的方法快照已损坏，请从会话重新发起洞察。',
   MODEL_CHANGED: '模型配置已更新，请从会话重新开始洞察。',
   INVALID_MODEL: '原任务的模型不可用，请从会话选择可用的模型重新开始洞察。',
   PROMPT_CHANGED: '洞察指令已更新，请从会话重新开始洞察。',

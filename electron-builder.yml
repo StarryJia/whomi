@@ -7,6 +7,10 @@ files:
   - out/**
   - package.json
 extraResources:
+  - from: electron/vendor/personalysis/LICENSE
+    to: licenses/personalysis/LICENSE
+  - from: electron/vendor/personalysis/UPSTREAM.md
+    to: licenses/personalysis/UPSTREAM.md
   - from: src/components/ui/shadcn.LICENSE
     to: licenses/shadcn/LICENSE
   - from: src/components/ui/lucide.LICENSE

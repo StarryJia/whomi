@@ -10,6 +10,8 @@ import type { InsightRuntimeEvent } from '../../electron/agent/protocol'
 import type { AiModel } from '../../src/shared/ai-contract'
 import type { InsightReadPage } from '../../src/shared/insight-reader'
 import { defaultProcessing } from '../../src/shared/settings-contract'
+import { assembleMethodologyPrompt, createMethodologySnapshot } from '../../electron/data/ai/methodology'
+import { defaultInsightPrompts } from '../../electron/data/ai/insight-prompts'
 
 type InputItem = { type?: string; id?: string; call_id?: string; output?: unknown; encrypted_content?: string }
 type Request = { input?: InputItem[]; store?: boolean; previous_response_id?: string; messages?: unknown[]; max_output_tokens?: number }
@@ -66,6 +68,29 @@ function sample(text: string) {
     input: { key: 'insight:1', model, purpose: 'insight' as const, insightSession: { processing: defaultProcessing },
       systemPrompt: '仅依据聊天原文回答。', prompt: '开始阅读。' } }
 }
+
+it('长洞察压缩前后完整保留一次 Personalysis 与冻结宿主指令', async () => {
+  const { input, options, events } = sample('合成原文：这次提出邀请，尚未看到后续。'.repeat(1800))
+  const snapshot = createMethodologySnapshot('insight')
+  input.model = { ...model, contextWindow: 32000, maxTokens: 2000 }
+  input.systemPrompt = assembleMethodologyPrompt(snapshot, [defaultInsightPrompts.reading, defaultInsightPrompts.checking, defaultInsightPrompts.writing].join('\n'))
+  answer = (_path, body, response) => {
+    if (JSON.stringify(body.input?.[0]).includes('context summarization assistant')) responses(response, [textItem('示例摘要：保留邀请和未知回应。')])
+    else if (requests.length === 1) responses(response, [{ type: 'function_call', id: 'fc_read', call_id: 'call_read', name: 'read_messages', arguments: '{}' }], 29000)
+    else responses(response, [textItem('示例成稿')])
+  }
+  const result = await new PiRuntime(directory).run(input, options)
+  expect(result.text).toBe('示例成稿')
+  expect(events.filter(event => event.type === 'request').map(event => event.kind)).toEqual(['inference', 'compaction', 'inference'])
+  expect(requests).toHaveLength(3)
+  for (const request of requests) {
+    const serialized = JSON.stringify(request)
+    expect(serialized.split(JSON.stringify(snapshot.methodology.body).slice(1, -1))).toHaveLength(2)
+    expect(serialized).toContain(JSON.stringify(snapshot.hostAdapter.instructions).slice(1, -1))
+    expect(request.max_output_tokens).toBeGreaterThan(0)
+    expect(request.max_output_tokens).toBeLessThanOrEqual(2000)
+  }
+}, 30000)
 
 it('同一洞察的每次模型请求使用当轮服务地址与凭据', async () => {
   const { input, options, read } = sample('合成原文。'.repeat(1800))

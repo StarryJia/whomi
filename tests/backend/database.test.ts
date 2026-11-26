@@ -105,6 +105,8 @@ test('upgrades schema nine to save new message kinds while preserving existing m
         ALTER TABLE ai_analysis_tasks DROP COLUMN processing_snapshot;
         ALTER TABLE ai_analysis_tasks DROP COLUMN failure_operation_id;
         ALTER TABLE ai_analysis_tasks DROP COLUMN failure_at_ms;
+        ALTER TABLE ai_analysis_tasks DROP COLUMN methodology_snapshot;
+        ALTER TABLE ai_turns DROP COLUMN methodology_snapshot;
         INSERT INTO conversations(id,title,kind,created_at_ms) VALUES (1,'Synthetic conversation','direct',0);
         INSERT INTO source_conversations(id,conversation_id,platform,namespace) VALUES (1,1,'weixin','wechat');
         INSERT INTO memberships(id,conversation_id,source_conversation_id,source_key,display_name) VALUES (1,1,1,'alice','Alice');
