@@ -17,7 +17,7 @@
 
 Whomi 以[自动人格识别（Automatic Personality Recognition，APR）](https://eprints.gla.ac.uk/100498/)和可解释人格识别为研究方向，参考[人格证据链（Chain-of-Personality-Evidence，CoPE）](https://aclanthology.org/2024.emnlp-main.1115/)框架中「具体情境 → 当场表现 → 长期特质」的分析思路。
 
-正在整理将 [Personalysis](https://github.com/StarryJia/personalysis-skill) 用于会话洞察与 AI 分析的[接入方案](docs/designs/personalysis-integration-v1.md)，运行接入尚未实现。
+开发分支已将固定版本 [Personalysis](https://github.com/StarryJia/personalysis-skill)（`0.2.0`，提交 `db0da38`）作为内置分析方法接入会话洞察与 AI 对话，详见[接入与验收记录](docs/designs/personalysis-integration-v1.md)（尚未随 `0.1.11` 安装包发布）。
 
 ## 支持的会话平台
 
@@ -116,4 +116,4 @@ PR（Pull Request，合并请求）用于提交待审阅的修改。新增功能
 
 [AGPL-3.0](LICENSE) · [StarryJia/whomi](https://github.com/StarryJia/whomi)
 
-感谢 [ChatLab](https://github.com/ChatLab/ChatLab) 和 [Cherry Studio](https://github.com/CherryHQ/cherry-studio) 的开发者与贡献者分享他们的工作。Whomi 的聊天文件解析、模型设置和回复排版复用了其中的部分实现，来源与许可分别保存在 [ChatLab 解析模块](electron/vendor/chatlab-parser/UPSTREAM.md)、[Cherry 对话模块](src/vendor/cherry-chat/UPSTREAM.md)、[Markdown 排版模块](src/vendor/cherry-markdown/UPSTREAM.md)和[服务商目录](src/vendor/cherry-providers/UPSTREAM.md)中。
+感谢 [ChatLab](https://github.com/ChatLab/ChatLab)、[Cherry Studio](https://github.com/CherryHQ/cherry-studio) 和 [Personalysis](https://github.com/StarryJia/personalysis-skill) 的开发者与贡献者分享他们的工作。Whomi 的聊天文件解析、模型设置、回复排版与内置对话分析方法复用了其中的部分实现，来源与许可分别保存在 [ChatLab 解析模块](electron/vendor/chatlab-parser/UPSTREAM.md)、[Cherry 对话模块](src/vendor/cherry-chat/UPSTREAM.md)、[Markdown 排版模块](src/vendor/cherry-markdown/UPSTREAM.md)、[服务商目录](src/vendor/cherry-providers/UPSTREAM.md)和[Personalysis 分析方法模块](electron/vendor/personalysis/UPSTREAM.md)中。

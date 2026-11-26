@@ -74,7 +74,7 @@ Whomi 是本地优先的对话观察与自我理解工具。2026-11-25，维护�
 
 当前会话洞察能够生成报告并回查引用，观察质量和人格测量效果仍待独立验证。PersonalityEvd、CaSiNo 暂为数据候选，证据与人格迭代推理、开放式文本人格评分两篇论文分别提供方法与测量参照，具体用法见[四篇论文使用方案](docs/research/issue-49-paper-application.md)。研究中的大五人格结果不能直接换成当前报告中的迈尔斯–布里格斯性格类型指标（MBTI）答案。
 
-2026-11-26，已整合既有研究与成稿要求，正式方法来源使用 [StarryJia/personalysis-skill](https://github.com/StarryJia/personalysis-skill)，固定提交 78aac78。计划作为会话洞察与当前 AI 对话侧窗共用的内置方法，暂不新增 Skills 界面入口，心事屋后续再接；运行接入尚未实现。成稿中的四维观察问题、原话贴近解释和同一经历只叙述一次继续保留，详见[当前接入方案](docs/designs/personalysis-integration-v1.md)与[16 个文件整合记录](docs/research/issue-49-personalysis-integration-review.md)。例如用户补充拒绝后焦虑，可在本轮对话修正理解，不表示已自动改写保存的洞察报告。
+2026-11-26，正式分析方法来源固定为 [StarryJia/personalysis-skill](https://github.com/StarryJia/personalysis-skill) `0.2.0`（提交 `db0da38`），已在 `codex/issue-49-evaluation-design` 分支接入会话洞察与当前 AI 对话侧窗（含带引用和无引用提问），暂不新增 Skills 界面入口，心事屋后续再接；当前尚未合入 `main` 或发布安装包。成稿中的四维观察问题、原话贴近解释和同一经历只叙述一次继续保留，应急提醒仅使用通用提示而不写死地区热线号码，详见[接入与验收记录](docs/designs/personalysis-integration-v1.md)与[整合及 0.2.0 对照记录](docs/research/issue-49-personalysis-integration-review.md)。例如用户补充拒绝后焦虑，可在本轮对话修正理解，不会自动改写已保存的洞察报告。
 
 人格视图提供熟悉入口，后续规划中的 Spark 在有依据时自然浮现，问一问让用户澄清人工智能（AI）的疑问，AI 对话在相关画像背景下继续交流。这些规划的实际实现状态按本文件各功能记录分别核对。
 
