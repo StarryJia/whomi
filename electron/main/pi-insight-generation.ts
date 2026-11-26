@@ -303,6 +303,12 @@ export async function generatePiInsight(options: Options): Promise<InsightReport
       correction = stage === 'reading' ? '尚有未读原文，请用 resumeCursor 继续取文后完成报告。'
         : '请修正后重新提交完整报告。' + error.message + '请保留两节正文和可定位的引用。' +
           (options.methodology ? '按第一层固定任务要求补齐四维分析。' : personalityInstruction)
+      if (options.methodology && stage === 'writing' && error.code === 'INVALID_EVIDENCE') {
+        correction += '每个 excerpts.messageId 必须出现在同一项 judgment 的 supportingIds 或 counterexampleIds 中；' +
+          'supportingIds 非空时必须至少包含一条 isSelf 为 true 的本人消息，supportingIds 与 counterexampleIds 不得重叠；' +
+          '每条 excerpts.text 必须是对应消息中的逐字连续原话，同一 messageId 不得重复相同的 excerpts.text。' +
+          'direction 为 null 且两个编号列表都为空时，excerpts 必须为 []；如需保留具体观察的摘录，将相关本人消息编号放入 supportingIds。'
+      }
     }
   }
 }

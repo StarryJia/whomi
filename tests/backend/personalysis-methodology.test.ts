@@ -78,11 +78,34 @@ test.each(['insight', 'dialogue'] as const)('%s 三层指令只含一次核心�
   for (const boundary of ['授权', '不是指令', '当前回复', '已更新或保存', 'references/theory-basis.md', '读取文件', '当地紧急服务', '当地危机援助热线']) expect(snapshot.hostAdapter.instructions).toContain(boundary)
   expect(snapshot.hostAdapter.instructions).not.toMatch(/(?<!\d)(?:110|112|119|120|911|988|12356)(?!\d)/)
   if (mode === 'insight') {
+    expect(snapshot.hostAdapter.version).toBe('2')
     for (const contract of ['read_messages', 'isSelf', 'JSON', 'aboutYou', 'relationship', 'citations', 'judgments', 'limitations', 'EI', 'SN', 'TF', 'JP', 'supportingIds', 'counterexampleIds', 'excerpts', 'alternativeExplanations', '不向读者追问', '威胁', '控制', '暴力']) expect(snapshot.hostAdapter.instructions).toContain(contract)
   } else {
+    expect(snapshot.hostAdapter.version).toBe('1')
     expect(snapshot.hostAdapter.instructions).toContain('交互反思')
     expect(snapshot.hostAdapter.instructions).toContain('不强制')
   }
+})
+
+test('洞察第二版明确未知倾向的摘录归属、页面分工和面向读者的表达', async () => {
+  const { createMethodologySnapshot, assembleMethodologyPrompt } = await import('../../electron/data/ai/methodology')
+  const snapshot = createMethodologySnapshot('insight')
+  const prompt = assembleMethodologyPrompt(snapshot, '保留具体经历。')
+  for (const rule of [
+    '每个 excerpts.messageId 必须出现在同一项 judgment 的 supportingIds 或 counterexampleIds 中',
+    '同一 messageId 不得重复相同的 excerpts.text',
+    '只要 supportingIds 非空，就必须至少包含一条 isSelf 为 true 的本人消息',
+    'supportingIds 与 counterexampleIds 不得重叠',
+    'direction 为 null 时，若 supportingIds 和 counterexampleIds 都为空，excerpts 必须为 []',
+    '本人消息编号放入 supportingIds，反例或情境消息编号放入 counterexampleIds',
+    'judgments 显示在「关于你」顶部的「MBTI 人格倾向」',
+    'aboutYou 显示在其下方的「个人观察」',
+    'aboutYou 不得逐维重复 EI / SN / TF / JP 的总结',
+    '1–3 段', '选择', '需要与现实限制', '修正理解', '压力或边界', '共同经历只叙述一次',
+    '每条 excerpts.text 必须与该项 text、alternativeExplanations 或 limitations 中写出的逐字引文完全一致，包括末尾标点',
+    'aboutYou、relationship、judgments 和 limitations 中的文字只面向读者',
+    '不得提及阅读完成、引用回查、脱敏处理等内部步骤或 JSON 字段名',
+  ]) expect(prompt).toContain(rule)
 })
 
 test('默认成稿保留 Whomi 的具体经历、四维问题和关系约束', () => {

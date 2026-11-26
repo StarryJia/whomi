@@ -64,6 +64,44 @@ function simulateUpgrade() {
   })
 }
 
+test('未知倾向的孤立摘录触发明确的证据纠错提醒，单次修正后保存报告', async () => {
+  const { ai, service, runtime, requests, errors } = await setup()
+  runtime.run = async (input, { insight }) => {
+    requests.push(input)
+    if (!insight) throw new Error('Expected insight runtime')
+    const requestId = requests.length === 1 ? 'draft' : 'repair'
+    await insight.record({ type: 'requestStart', requestId, kind: 'inference' })
+    const page = await insight.read({}, 4000)
+    await insight.record({ type: 'request', requestId, kind: 'inference', success: true, spans: page.spans, usage: {}, checkpoint: requestId })
+    return { text: JSON.stringify({
+      aboutYou: [{ content: [{ text: '你提出「' }, { text: '周末一起散步', citationId: 'walk' }, { text: '」，这次选择主动发出邀请。' }] }],
+      relationship: [{ content: [{ text: '尚未看到 ta 的回应，不能确定邀请之后的互动。' }] }],
+      citations: [{ id: 'walk', fragments: [{ messageIds: ['1'] }] }],
+      judgments: sampleJudgments({ EI: { direction: null, text: '你说「周末一起散步」，尚不足以判断相处后的精力变化。',
+        supportingIds: requests.length === 1 ? [] : ['1'], counterexampleIds: [], excerpts: [{ messageId: '1', text: '周末一起散步' }] } }),
+      limitations: [],
+    }), checkpoint: requestId, usage: {} }
+  }
+  const preparation = await ai.prepareAnalysis({ conversationId: '1', modelId: 'm' })
+  const task = await service.confirmAnalysis({ token: preparation.token, requestId: 'null-direction-repair' })
+  await service.idle()
+  expect(errors).toEqual([])
+  expect(ai.getAnalysis(task.id).state).toBe('completed')
+  expect(requests).toHaveLength(2)
+  expect(requests[1].checkpoint).toBe('draft')
+  expect(requests[1].systemPrompt).toBe(requests[0].systemPrompt)
+  for (const rule of [
+    '每个 excerpts.messageId 必须出现在同一项 judgment 的 supportingIds 或 counterexampleIds 中',
+    'supportingIds 非空时必须至少包含一条 isSelf 为 true 的本人消息',
+    'supportingIds 与 counterexampleIds 不得重叠',
+    '每条 excerpts.text 必须是对应消息中的逐字连续原话',
+  ]) expect(requests[1].prompt).toContain(rule)
+  expect(ai.getReport(task.id).judgments?.find(item => item.dimension === 'EI')).toMatchObject({
+    direction: null, supportingSources: [{ messageId: '1', excerpts: ['周末一起散步'] }], counterexampleSources: [],
+  })
+  expect(await ai.readInsightCitation({ taskId: task.id, citationId: 'walk', fragmentIndex: 0 })).toMatchObject({ status: 'available', highlightIds: ['1'] })
+})
+
 test('暂停洞察及失败回答升级后保持原快照，下一项任务采用新方法与宿主指令', async () => {
   const { ai, task, turn, raw, service, requests, store } = await setup()
   const first = await task('old-analysis'), answer = await turn('old-turn')
