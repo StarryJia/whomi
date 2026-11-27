@@ -38,6 +38,10 @@ export type ModelInput = Omit<AiModel, 'version' | 'hasCredential'>
 export type UsageRecord = { ownerKind: 'analysis' | 'turn'; ownerId: string; requestId: string; usage: AiUsage }
 type AnalysisRow = { methodology_snapshot: string | null; failure_operation_id: string | null; failure_at_ms: bigint | null; title: string | null; elapsed_ms: bigint; prompt_snapshot: string | null; thinking_level: ThinkingLevel | null; id: bigint; conversation_id: bigint; model_id: string; model_version: bigint; created_at_ms: bigint | null; completed_at_ms: bigint | null; pinned: bigint; prompt_version: string; self_fingerprint: string; snapshot_max_id: bigint; state: AiState; total_messages: bigint; skipped_messages: bigint; event_sequence: bigint; error: string | null; checkpoint: string | null }
 type InsightSnapshotRow = { scope: string; timezone: string; source_start_time_ms: bigint | null; source_end_time_ms: bigint | null; source_text_bytes: bigint | null; created_at_ms: bigint; sources: string }
+const analysisViewColumns = ['id', 'conversation_id', 'self_fingerprint', 'model_id', 'model_version', 'thinking_level', 'title',
+  'created_at_ms', 'completed_at_ms', 'elapsed_ms', 'pinned', 'state', 'total_messages', 'skipped_messages', 'event_sequence',
+  'failure_operation_id', 'failure_at_ms', 'error'] as const
+type AnalysisViewRow = Pick<AnalysisRow, typeof analysisViewColumns[number]>
 type ReportRow = { data: string; content_revision: string | null }
 function readInsightReport(data: string, conversationId: bigint): InsightReport {
   const report = parse<InsightReport>(data)
@@ -72,6 +76,11 @@ function readInsightReport(data: string, conversationId: bigint): InsightReport 
 }
 type TurnRow = { methodology_snapshot: string | null; system_prompt: string | null; thinking_level: ThinkingLevel | null; id: bigint; thread_id: bigint; request_id: string; prompt: string; reference_ids: string; model_id: string; model_version: bigint; skill: string | null; self_fingerprint: string; text: string; state: AiState; attempt: bigint; event_sequence: bigint; error: string | null; checkpoint: string | null }
 type ThreadRow = { pinned: bigint; id: bigint; conversation_id: bigint; title: string; created_at_ms: bigint; updated_at_ms: bigint }
+const turnViewColumns = ['id', 'thread_id', 'request_id', 'prompt', 'reference_ids', 'model_id', 'model_version', 'thinking_level',
+  'skill', 'text', 'state', 'attempt', 'event_sequence', 'error'] as const
+type TurnViewRow = Pick<TurnRow, typeof turnViewColumns[number]>
+type TurnHistoryRow = Pick<TurnRow, 'id' | 'prompt' | 'text' | 'reference_ids'>
+type TurnCheckpointRow = Pick<TurnRow, 'model_id' | 'model_version' | 'skill' | 'system_prompt' | 'methodology_snapshot' | 'checkpoint'>
 function threadView(row: ThreadRow): AiThreadSummary { return { pinned: !!row.pinned, id: String(row.id), conversationId: String(row.conversation_id), title: row.title, createdAtMs: Number(row.created_at_ms), updatedAtMs: Number(row.updated_at_ms) } }
 const activeStates = new Set<AiState>(['queued', 'running'])
 const states = new Set<AiState>([...activeStates, 'completed', 'stopped', 'failed', 'interrupted'])
@@ -92,7 +101,7 @@ function checkpointMethodology(raw: string | null): string | null | undefined {
     throw error
   }
 }
-function turnPrompt(row: TurnRow): string {
+function turnPrompt(row: Pick<TurnRow, 'system_prompt' | 'methodology_snapshot'>): string {
   return row.system_prompt ?? (row.methodology_snapshot === null ? legacyPrompts : defaultPrompts).dialogue
 }
 function insightElapsedAt(row: AnalysisRow, now: number, sampledAtMs?: number) {
@@ -266,7 +275,7 @@ export function createAiRepository(store: Store, write: WriterQueue) {
       WHERE m.conversation_id=? AND NOT (${confirmedSelfSql}) LIMIT 2`).all(conversationId) as { name: string }[]
     return candidates.length === 1 ? candidates[0].name.trim() || undefined : undefined
   }
-  function taskView(row: AnalysisRow): AnalysisTask {
+  function taskView(row: AnalysisViewRow): AnalysisTask {
     const coverage = reader.prepare('SELECT count(*) AS n FROM ai_analysis_coverage WHERE task_id=?').get(row.id) as { n: bigint }
     const report = reader.prepare('SELECT data,content_revision FROM ai_reports WHERE task_id=?').get(row.id) as ReportRow | undefined
     const current = identity(String(row.conversation_id))
@@ -298,7 +307,7 @@ export function createAiRepository(store: Store, write: WriterQueue) {
       ...(row.error ? { error: row.error } : {}), ...(report ? { report: readInsightReport(report.data, row.conversation_id) } : {}),
     }
   }
-  function turnView(row: TurnRow): AiTurn {
+  function turnView(row: TurnViewRow): AiTurn {
     const skill = row.skill ? parse<RegisteredSkill>(row.skill) : null
     const snapshot = reader.prepare('SELECT data FROM ai_model_versions WHERE model_id=? AND version=?').get(row.model_id, row.model_version) as { data: string } | undefined
     let modelIdentity: AiTurn['modelIdentity']
@@ -419,7 +428,12 @@ export function createAiRepository(store: Store, write: WriterQueue) {
       return repository.getAnalysis(taskId)
     },
     getAnalysis(taskId: string): AnalysisTask { return taskView(analysisRow(taskId)) },
-    listAnalyses(conversationId?: string): AnalysisTask[] { if (conversationId !== undefined) conversation(conversationId); return (reader.prepare(`SELECT * FROM ai_analysis_tasks${conversationId === undefined ? '' : ' WHERE conversation_id=?'} ORDER BY pinned DESC,list_rank,id DESC`).all(...(conversationId === undefined ? [] : [id(conversationId)])) as AnalysisRow[]).map(taskView) },
+    listAnalyses(conversationId?: string): AnalysisTask[] {
+      if (conversationId !== undefined) conversation(conversationId)
+      const rows = reader.prepare(`SELECT ${analysisViewColumns.join(',')} FROM ai_analysis_tasks${conversationId === undefined ? '' : ' WHERE conversation_id=?'} ORDER BY pinned DESC,list_rank,id DESC`)
+        .all(...(conversationId === undefined ? [] : [id(conversationId)])) as AnalysisViewRow[]
+      return rows.map(taskView)
+    },
     async arrangeAnalysis(change: ListArrangement): Promise<void> {
       await write(() => db.transaction(() => {
         const row = analysisRow(change.id)
@@ -625,7 +639,8 @@ export function createAiRepository(store: Store, write: WriterQueue) {
     getThread(threadId: string): AiThread {
       const row = reader.prepare('SELECT * FROM ai_threads WHERE id=?').get(id(threadId)) as ThreadRow | undefined
       if (!row) fail('INVALID_THREAD', '请重新打开对话。')
-      return { ...threadView(row), turns: (reader.prepare('SELECT * FROM ai_turns WHERE thread_id=? ORDER BY id').all(row.id) as TurnRow[]).map(turnView) }
+      const turns = reader.prepare(`SELECT ${turnViewColumns.join(',')} FROM ai_turns WHERE thread_id=? ORDER BY id`).all(row.id) as TurnViewRow[]
+      return { ...threadView(row), turns: turns.map(turnView) }
     },
     async createTurn(input: NewTurn): Promise<AiTurn> {
       fields(input, ['threadId', 'requestId', 'prompt', 'referenceIds', 'modelId', 'skillId', 'thinkingLevel']); if (input.thinkingLevel !== undefined && !isThinkingLevel(input.thinkingLevel)) fail('INVALID_ARGUMENT')
@@ -660,18 +675,22 @@ export function createAiRepository(store: Store, write: WriterQueue) {
       const row = turnRow(turnId), conversationId = threadConversation(String(row.thread_id)), self = identity(conversationId)
       if (row.self_fingerprint !== self.fingerprint) fail('IDENTITY_CHANGED', '本人身份已更新，请重新提问。')
       const methodology = row.methodology_snapshot === null ? undefined : parseMethodologySnapshot(row.methodology_snapshot, 'dialogue')
-      const previous = reader.prepare("SELECT * FROM ai_turns WHERE thread_id=? AND id<? AND state='completed' AND self_fingerprint=? ORDER BY id").all(row.thread_id, row.id, self.fingerprint) as TurnRow[]
+      const previous = reader.prepare(`SELECT id,prompt,text,reference_ids FROM ai_turns
+        WHERE thread_id=? AND id<? AND state='completed' AND self_fingerprint=? ORDER BY id`).all(row.thread_id, row.id, self.fingerprint) as TurnHistoryRow[]
       const history: TurnContext['history'] = []
       for (const turn of previous) {
         const material = sources(conversationId, parse<string[]>(turn.reference_ids))
         history.push({ role: 'user', text: turn.prompt, ...(material.references.length ? material : {}) }, { role: 'assistant', text: turn.text })
       }
-      const latest = previous.at(-1), skill = row.skill ? parse<RegisteredSkill>(row.skill) : null
-      const previousMethodology = latest ? checkpointMethodology(latest.methodology_snapshot) : undefined
-      const sameCheckpointContext = previousMethodology !== undefined && previousMethodology === (methodology?.fingerprint ?? null) && latest?.model_id === row.model_id && latest?.model_version === row.model_version && latest?.skill === row.skill && turnPrompt(latest) === turnPrompt(row)
+      const latestId = previous.at(-1)?.id
+      const latest = latestId === undefined ? undefined : reader.prepare(`SELECT model_id,model_version,skill,system_prompt,methodology_snapshot,checkpoint
+        FROM ai_turns WHERE id=?`).get(latestId) as TurnCheckpointRow | undefined
+      const checkpoint = latest && latest.model_id === row.model_id && latest.model_version === row.model_version && latest.skill === row.skill &&
+        turnPrompt(latest) === turnPrompt(row) && checkpointMethodology(latest.methodology_snapshot) === (methodology?.fingerprint ?? null) ? latest.checkpoint : null
       const profile = repository.listAnalyses(conversationId).find(task => task.state === 'completed' && task.valid && task.report)?.report ?? null
       if (profile) prepareTurnProfile(reader, id(conversationId), profile, processing)
-      return { ...(methodology ? { methodology } : {}), systemPrompt: turnPrompt(row), turn: turnView(row), threadId: String(row.thread_id), conversationId, model: modelSecret(row.model_id, Number(row.model_version)).model, selfFingerprint: self.fingerprint, ...sources(conversationId, parse<string[]>(row.reference_ids)), history, profile, skill, checkpoint: sameCheckpointContext ? latest!.checkpoint : null }
+      const skill = row.skill ? parse<RegisteredSkill>(row.skill) : null
+      return { ...(methodology ? { methodology } : {}), systemPrompt: turnPrompt(row), turn: turnView(row), threadId: String(row.thread_id), conversationId, model: modelSecret(row.model_id, Number(row.model_version)).model, selfFingerprint: self.fingerprint, ...sources(conversationId, parse<string[]>(row.reference_ids)), history, profile, skill, checkpoint }
     },
     async saveTurn(turnId: string, patch: TurnPatch): Promise<AiTurn> {
       patchState(patch, true)

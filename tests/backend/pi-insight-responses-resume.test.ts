@@ -45,7 +45,7 @@ afterEach(async () => {
   await rm(directory, { recursive: true, force: true })
 })
 
-function responses(response: ServerResponse, items: object[], inputTokens = 25, outputTokens = 12, status: 'completed' | 'incomplete' = 'completed') {
+function responses(response: ServerResponse, items: object[], inputTokens: number | null = 25, outputTokens = 12, status: 'completed' | 'incomplete' = 'completed') {
   response.writeHead(200, { 'content-type': 'text/event-stream' })
   const emit = (event: object) => response.write('data: ' + JSON.stringify(event) + '\n\n')
   for (const [output_index, item] of items.entries()) {
@@ -54,7 +54,7 @@ function responses(response: ServerResponse, items: object[], inputTokens = 25, 
   }
   emit({ type: 'response.' + status, response: { id: 'resp_local', status, output: items,
     ...(status === 'incomplete' ? { incomplete_details: { reason: 'max_output_tokens' } } : {}),
-    usage: { input_tokens: inputTokens, output_tokens: outputTokens } } })
+    ...(inputTokens !== null && { usage: { input_tokens: inputTokens, output_tokens: outputTokens } }) } })
   response.end()
 }
 const textItem = (text: string) => ({ type: 'message', role: 'assistant', id: 'msg_local', content: [{ type: 'output_text', text }] })
@@ -68,6 +68,27 @@ function sample(text: string) {
     input: { key: 'insight:1', model, purpose: 'insight' as const, insightSession: { processing: defaultProcessing },
       systemPrompt: '仅依据聊天原文回答。', prompt: '开始阅读。' } }
 }
+
+it.each([3300, null])('八千共享窗口用冻结方法读取首条消息，用量回执 %s', async inputTokens => {
+  const { input, options, read } = sample('示例：周末一起散步。')
+  const editable = [defaultInsightPrompts.reading, defaultInsightPrompts.checking, defaultInsightPrompts.writing].join('\n')
+  const systemPrompt = assembleMethodologyPrompt(createMethodologySnapshot('insight'), editable)
+  const task = { ...input, systemPrompt, model: { ...model, contextWindow: 8192, maxInputTokens: 8192, maxTokens: 1024 },
+    insightSession: { ...input.insightSession, fixedPromptLength: systemPrompt.length - editable.length } }
+  let readBudget = 0
+  answer = (_path, _body, response) => responses(response, requests.length === 1
+    ? [{ type: 'function_call', id: 'fc_read', call_id: 'call_read', name: 'read_messages', arguments: '{}' }]
+    : [textItem('已读完')], inputTokens)
+  const result = await new PiRuntime(directory).run(task, { ...options, insight: { ...options.insight,
+    read: async (_request, available) => { readBudget = available; return read() } } })
+  expect(result.text).toBe('已读完')
+  expect(readBudget).toBeGreaterThan(256)
+  expect(requests).toHaveLength(2)
+  for (const request of requests) {
+    expect(request.max_output_tokens).toBeGreaterThanOrEqual(16)
+    expect(request.max_output_tokens).toBeLessThanOrEqual(1024)
+  }
+}, 30000)
 
 it('长洞察压缩前后完整保留一次 Personalysis 与冻结宿主指令', async () => {
   const { input, options, events } = sample('合成原文：这次提出邀请，尚未看到后续。'.repeat(1800))
@@ -83,6 +104,7 @@ it('长洞察压缩前后完整保留一次 Personalysis 与冻结宿主指令',
   expect(result.text).toBe('示例成稿')
   expect(events.filter(event => event.type === 'request').map(event => event.kind)).toEqual(['inference', 'compaction', 'inference'])
   expect(requests).toHaveLength(3)
+  expect(JSON.stringify(requests[1])).toContain('报告结构用于最终交稿，本次只生成阅读笔记')
   for (const request of requests) {
     const serialized = JSON.stringify(request)
     expect(serialized.split(JSON.stringify(snapshot.methodology.body).slice(1, -1))).toHaveLength(2)

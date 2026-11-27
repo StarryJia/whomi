@@ -131,7 +131,7 @@ export class PiRuntime {
     }
     const observed = autonomous && options.insight && reader
       ? observeInsightSession(session, manager, options.insight, autonomous.processing, input.systemPrompt, options.signal, reader,
-        { maxTokens: outputLimit, maxInputTokens: limits.maxInputTokens }, api)
+        { maxTokens: outputLimit, maxInputTokens: limits.maxInputTokens }, api, autonomous.fixedPromptLength)
       : undefined
     let text = ''
     let firstTokenMs: number | undefined

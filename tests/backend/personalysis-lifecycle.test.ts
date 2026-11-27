@@ -15,7 +15,7 @@ afterEach(async () => {
   for (const close of cleanup.splice(0).reverse()) await close()
 })
 
-async function setup() {
+async function setup(contextWindow = 8000) {
   const temp = temporaryStore(), store = openStore(temp.path)
   cleanup.push(() => { store.close(); temp.cleanup() })
   const write = async <T,>(operation: () => T | Promise<T>) => operation()
@@ -25,7 +25,7 @@ async function setup() {
     INSERT INTO self_confirmations(conversation_id,member_id,status,source) VALUES(1,1,'confirmed','user');
     INSERT INTO messages(id,conversation_id,member_id,sender_kind,sender_name,kind,text,ordinal) VALUES(1,1,1,'member','本人','text','周末一起散步',0)`)
   const ai = createAiRepository(store, write), settings = createSettingsRepository(store, write)
-  await ai.saveModel({ id: 'm', label: '测试', model: 'm', baseUrl: 'http://127.0.0.1:9999/v1', contextWindow: 8000, maxTokens: 1000, enabled: true })
+  await ai.saveModel({ id: 'm', label: '测试', model: 'm', baseUrl: 'http://127.0.0.1:9999/v1', contextWindow, maxTokens: 1000, enabled: true })
   await settings.initialize()
   const thread = await ai.createThread('1')
   const task = async (requestId: string) => {
@@ -275,6 +275,62 @@ test('八千窗口裁剪历史但保留完整系统指令；固定内容过大�
   expect(requests[0].key).toBe(key)
   await settings.savePrompt('dialogue', '文'.repeat(3000))
   await service.sendTurn({ threadId: thread.id, requestId: 'too-large', referenceIds: [], prompt: '问题', modelId: 'm' })
+  await service.idle()
+  expect(ai.getThread(thread.id).turns[2]).toMatchObject({ state: 'failed', error: expect.stringContaining('超出模型容量') })
+  expect(requests).toHaveLength(1)
+})
+
+test('八千窗口在已有中文报告时保留两节观察、四维与限制，并能继续无引用提问', async () => {
+  const { ai, service, thread, requests, store } = await setup()
+  const preparation = await ai.prepareAnalysis({ conversationId: '1', modelId: 'm' })
+  const task = await service.confirmAnalysis({ token: preparation.token, requestId: 'bookshop' })
+  await service.idle()
+  const report = ai.getReport(task.id)
+  const observation = '你愿意参加书店活动，也为自己的休息提出了晚些出门的安排。'
+  const response = '对方同意晚一些见面，你们保留了各自的安排。'
+  report.aboutYou[0].content.push({ text: observation.repeat(17) })
+  report.relationship[0].content.push({ text: response.repeat(13) })
+  report.limitations = ['这次活动结束后的感受没有记录。']
+  store.writer.prepare('UPDATE ai_reports SET data=? WHERE task_id=?').run(JSON.stringify(report), task.id)
+  await service.sendTurn({ threadId: thread.id, requestId: 'discuss', referenceIds: [], prompt: '我答应之后其实挺焦虑的。', modelId: 'm' })
+  await service.idle()
+  expect(ai.getThread(thread.id).turns[0].state).toBe('completed')
+  const current = requests.at(-1)!
+  expect(current.systemPrompt).toContain(observation)
+  expect(current.systemPrompt).toContain(response)
+  expect(current.systemPrompt).toContain(report.limitations[0])
+  for (const judgment of report.judgments!) expect(current.systemPrompt).toContain(judgment.text)
+  expect(current.outputTokenLimit).toBe(1000)
+
+  report.judgments![0].text += observation.repeat(80)
+  store.writer.prepare('UPDATE ai_reports SET data=? WHERE task_id=?').run(JSON.stringify(report), task.id)
+  await service.sendTurn({ threadId: thread.id, requestId: 'large-judgments', referenceIds: [], prompt: '还有呢？', modelId: 'm' })
+  await service.idle()
+  const partial = requests.at(-1)!.systemPrompt
+  expect(partial).toContain('"partial":true')
+  expect(partial).toContain(observation)
+  expect(partial).toContain(response)
+  expect(partial).toContain(report.limitations[0])
+  expect(partial).not.toContain(report.judgments![0].text)
+
+  report.aboutYou[0].content.push({ text: observation.repeat(300) })
+  store.writer.prepare('UPDATE ai_reports SET data=? WHERE task_id=?').run(JSON.stringify(report), task.id)
+  await service.sendTurn({ threadId: thread.id, requestId: 'large-report', referenceIds: [], prompt: '聊聊今天。', modelId: 'm' })
+  await service.idle()
+  expect(ai.getThread(thread.id).turns[2].state).toBe('completed')
+  expect(requests.at(-1)!.systemPrompt).toContain('<prior_insight_observations>\nnull\n</prior_insight_observations>')
+  expect(ai.getReport(task.id).aboutYou[0].content.at(-1)?.text).toBe(observation.repeat(300))
+})
+
+test('一万六千窗口裁剪密集数字历史，当前提问超限时不会发送', async () => {
+  const { ai, service, thread, requests } = await setup(16000)
+  const digits = '1 2 3 4 '.repeat(2000)
+  const first = await ai.createTurn({ threadId: thread.id, requestId: 'digits', referenceIds: [], prompt: digits, modelId: 'm' })
+  await ai.saveTurn(first.id, { state: 'completed', text: '收到', checkpoint: 'numeric-history' })
+  await service.sendTurn({ threadId: thread.id, requestId: 'short', referenceIds: [], prompt: '继续', modelId: 'm' })
+  await service.idle()
+  expect(requests[0]).toMatchObject({ history: [], checkpoint: null, outputTokenLimit: 1000 })
+  await service.sendTurn({ threadId: thread.id, requestId: 'large-input', referenceIds: [], prompt: digits, modelId: 'm' })
   await service.idle()
   expect(ai.getThread(thread.id).turns[2]).toMatchObject({ state: 'failed', error: expect.stringContaining('超出模型容量') })
   expect(requests).toHaveLength(1)

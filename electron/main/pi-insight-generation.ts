@@ -236,9 +236,12 @@ export async function generatePiInsight(options: Options): Promise<InsightReport
     },
   }
   await options.save(state)
+  const editable = [options.prompts.reading, options.prompts.checking, options.prompts.writing].join('\n')
   const goal = options.methodology
-    ? assembleMethodologyPrompt(options.methodology, [options.prompts.reading, options.prompts.checking, options.prompts.writing].join('\n'))
+    ? assembleMethodologyPrompt(options.methodology, editable)
     : systemPrompt(options.prompts)
+  const insightSession = { processing: state.processing,
+    ...(options.methodology && { fixedPromptLength: goal.length - editable.length }) }
   function remaining() {
     const submitted = new Set(state.coverage.coveredMessageIds)
     const firstUnread = snapshot.sources.find(ref => !submitted.has(ref.messageId))
@@ -258,7 +261,7 @@ export async function generatePiInsight(options: Options): Promise<InsightReport
     let result: RuntimeResult
     try {
       result = await options.run({ key: 'insight:' + snapshot.taskId, model, thinkingLevel: options.thinkingLevel, purpose: 'insight',
-        insightSession: { processing: state.processing }, checkpoint: state.checkpoint, systemPrompt: goal,
+        insightSession, checkpoint: state.checkpoint, systemPrompt: goal,
         prompt: covered() === refs.size ? completeReadingInstruction(refs.size) + '\n' + prompt : prompt }, callbacks)
     } catch (error) {
       signal.throwIfAborted()

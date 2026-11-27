@@ -73,6 +73,34 @@ async function task(repository: Awaited<ReturnType<typeof setup>>['repository'],
 }
 function changeSelf(store: Store) { store.writer.exec("UPDATE self_confirmations SET status='revoked'; INSERT INTO self_confirmations(conversation_id,member_id,status,source) VALUES(1,2,'confirmed','user')") }
 
+test('打开对话时不取方法快照，继续提问只取当前回答和最近已完成回答的快照', async () => {
+  const { repository, store } = await setup()
+  const thread = await repository.openThread('1')
+  const ask = (prompt: string) => repository.createTurn({ threadId: thread.id, requestId: prompt, prompt, referenceIds: ['1'], modelId: 'example' })
+  const first = await ask('第一次')
+  await repository.saveTurn(first.id, { state: 'completed', text: '回答一', checkpoint: 'first' })
+  const latest = await ask('第二次')
+  await repository.saveTurn(latest.id, { state: 'completed', text: '回答二', checkpoint: 'latest' })
+  const failed = await ask('第三次')
+  await repository.saveTurn(failed.id, { state: 'failed' })
+  const current = await ask('第四次')
+
+  // 临时视图记录 SQLite 实际读取的快照，不依赖查询的 SQL 写法或耗时。
+  const reads: string[] = []
+  store.reader.function('read_snapshot', (id, snapshot) => { reads.push(String(id)); return snapshot })
+  const columns = store.reader.prepare('PRAGMA main.table_info(ai_turns)').all() as { name: string }[]
+  const selection = columns.map(({ name }) => name === 'methodology_snapshot' ? 'read_snapshot(id, methodology_snapshot) AS methodology_snapshot' : name)
+  store.reader.exec(`CREATE TEMP VIEW ai_turns AS SELECT ${selection.join(',')} FROM main.ai_turns`)
+
+  expect(repository.getThread(thread.id).turns.map(turn => turn.id)).toEqual([first.id, latest.id, failed.id, current.id])
+  expect(reads).toEqual([])
+  const context = repository.turnContext(current.id)
+  expect(context.history.map(message => message.text)).toEqual(['第一次', '回答一', '第二次', '回答二'])
+  expect(context.history[0].references?.[0].id).toBe('1')
+  expect(context.checkpoint).toBe('latest')
+  expect(reads.sort()).toEqual([current.id, latest.id].sort())
+})
+
 test('关系来源仅采用已确认本人以外的唯一单聊成员', async () => {
   const { repository, store } = await setup()
   store.writer.exec(`UPDATE conversations SET title='我和装修进度' WHERE id=1;

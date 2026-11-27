@@ -156,6 +156,28 @@ it('旧报告同一维度的相反观察都可阅读，不合成单一倾向', (
   expect(article.getByRole('region', { name: 'MBTI 人格倾向' })).toHaveTextContent('????')
 })
 
+it('有安全首段时先显示求助建议和原文入口；同样的旧报告保持原顺序', async () => {
+  const onOpenCitation = vi.fn()
+  const quote = '我现在有点害怕'
+  const saved: InsightReport = { ...report, safetyLead: true,
+    aboutYou: [{ content: [{ text: '你说「' }, { text: quote, citationId: 'citation-1', quoteFragmentIndex: 0, quoteMessageId: '10' },
+      { text: '」。若有即时危险，请联系当地紧急服务。' }] }],
+    judgments: [{ dimension: 'EI', direction: null, text: '现有情况无法判断。',
+      supportingSources: [], counterexampleSources: [], alternativeExplanations: [], limitations: [] }] }
+  const { rerender } = render(<InsightArticle report={saved} conversationId="1" onOpenCitation={onOpenCitation} />)
+  const guidance = screen.getByText(/若有即时危险/)
+  const prediction = screen.getByRole('region', { name: 'MBTI 人格倾向' })
+  expect(guidance.compareDocumentPosition(prediction)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+  expect(screen.queryByRole('heading', { name: '个人观察' })).toBeNull()
+  const link = screen.getByRole('button', { name: quote })
+  await userEvent.click(link)
+  expect(onOpenCitation).toHaveBeenCalledWith(report.citations[0], link, 0, quote, '10')
+
+  rerender(<InsightArticle report={{ ...saved, safetyLead: undefined }} conversationId="1" />)
+  expect(prediction.compareDocumentPosition(screen.getByText(/若有即时危险/))).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+  expect(screen.getByRole('heading', { name: '个人观察' })).toBeVisible()
+})
+
 it('分析中长短摘录重叠时保留各自的引语位置，无法摘出短句的有效来源仍可打开', async () => {
   const onOpenCitation = vi.fn()
   const text = '一起约是话题。你先说「周三一起约」，对方又说「一起约」。'

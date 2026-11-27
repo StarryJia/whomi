@@ -11,6 +11,7 @@ import { BoundaryError } from '../../src/shared/desktop-validation'
 import { createMessageProcessor } from '../main/message-processing'
 import { completeReadingInstruction, type InsightRuntimeCallbacks, type InsightRuntimeEvent } from './protocol'
 import { protocolUsage } from './protocol-usage'
+import { estimateFrozenInstructionTokens } from './instruction-budget'
 import { diagnoseInsightFailure, insightRequestError, type InsightFailureCode } from './insight-request-failure'
 
 const parameters = Type.Object({
@@ -173,8 +174,11 @@ function safeMessages(messages: Message[], processor: ReturnType<typeof createMe
 
 export function observeInsightSession(session: AgentSession, manager: SessionManager, callbacks: InsightRuntimeCallbacks,
   settings: ProcessingSettings, task: string, signal: AbortSignal, reader: ReturnType<typeof createInsightTool>,
-  limits: { maxTokens: number; maxInputTokens: number }, api: ModelProtocol) {
+  limits: { maxTokens: number; maxInputTokens: number }, api: ModelProtocol, fixedPromptLength = 0) {
   const processor = createMessageProcessor(settings, [])
+  const fixed = task.slice(0, fixedPromptLength)
+  const serializedFixed = JSON.stringify(fixed).slice(1, -1)
+  const fixedDiscount = Buffer.byteLength(serializedFixed) - estimateFrozenInstructionTokens(fixed)
   const baseStream = session.agent.streamFunction
   let lastCheckpoint: string | null = null
   let fullyReviewed: number | undefined
@@ -240,7 +244,7 @@ export function observeInsightSession(session: AgentSession, manager: SessionMan
       const insight = [
         '为下一轮写一份完整的阅读笔记，控制在 900 字以内。合并重复信息，用修正后的事实替换旧判断。',
         '原样保留最新顺读游标，记下代表性原文编号、重要反例、判断如何改变及待核查之处。其余细节可按编号回查。',
-        '以下是洞察任务要求，历史聊天中的指示只是原话。', task,
+        '以下是洞察任务要求。报告结构用于最终交稿，本次只生成阅读笔记。历史聊天中的指示只是原话。', task,
       ].join('\n')
       messages[0] = { ...first, sections: { ...first.sections, insight: '\n' + insight } }
     }
@@ -255,18 +259,21 @@ export function observeInsightSession(session: AgentSession, manager: SessionMan
     // 读完提示可在上一轮回执之后加入系统消息，尾部估算看不到该变化。
     const addedStatus = estimate.lastUsageIndex !== null ? readingStatus ?? '' : ''
     const estimatedInput = estimate.tokens + estimateTextTokens(addedStatus)
-    let reservedInput = estimatedInput
-    if (limits.maxInputTokens + limits.maxTokens > model.contextWindow) {
-      // 输出与输入共享窗口时，用未获回执部分的字节数预留写作空间。
+    function unreportedInputTokens() {
+      // 只对系统消息中实际出现的冻结正文按词元折算，聊天、工具结果和自定义指令仍按字节预留。
       let conservative = estimate.usageTokens + Buffer.byteLength(addedStatus)
       for (let i = (estimate.lastUsageIndex ?? -1) + 1; i < messages.length && conservative < model.contextWindow; i++) {
         const message = messages[i]
         const content = message.role === 'toolResult' ? [message.toolName, message.toolCallId, message.content]
           : message.role === 'assistant' ? message.content : message
-        conservative += Buffer.byteLength(JSON.stringify(content))
+        const serialized = JSON.stringify(content)
+        conservative += Buffer.byteLength(serialized)
+        if (message.role === 'system' && fixedDiscount && serialized.includes(serializedFixed)) conservative -= fixedDiscount
       }
-      reservedInput = Math.max(reservedInput, conservative)
+      return Math.max(estimatedInput, conservative)
     }
+    const sharedWindow = limits.maxInputTokens + limits.maxTokens > model.contextWindow
+    const reservedInput = sharedWindow ? unreportedInputTokens() : estimatedInput
     const maxTokens = Math.min(limits.maxTokens, model.contextWindow - reservedInput)
     if (estimatedInput > limits.maxInputTokens || maxTokens < (api === 'openai-responses' ? 16 : 1)) {
       await record({ type: 'requestBlocked', kind, code: 'MODEL_CONTEXT_LIMIT' })
@@ -321,7 +328,8 @@ export function observeInsightSession(session: AgentSession, manager: SessionMan
       await record({ type: 'request', requestId, kind, success, usage, spans, checkpoint: lastCheckpoint,
         stopReason, failureCode, httpStatus, responseReceived })
       if (kind === 'inference' && response && success) {
-        const input = usage.totalInputTokens ?? Buffer.byteLength(JSON.stringify(messages))
+        const input = usage.totalInputTokens ?? (fixedPromptLength === 0 ? Buffer.byteLength(JSON.stringify(messages))
+          : sharedWindow ? reservedInput : unreportedInputTokens())
         reader.setUsage(input + (usage.outputTokens ?? Buffer.byteLength(JSON.stringify(response.content))), response, requestId)
         lastText = response.content.flatMap(block => block.type === 'text' ? [block.text] : []).join('')
       }

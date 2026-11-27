@@ -5,7 +5,7 @@ import { generatePiInsight, verifyInsightExcerpts, type PiInsightCheckpoint } fr
 import type { AgentRunInput, AgentRunResult, InsightRequestContext, InsightRuntimeCallbacks } from '../agent/protocol'
 import { defaultPrompts } from '../../src/shared/system-prompts'
 import type { AnalysisContext, TurnContext } from '../data/ai/repository'
-import { assembleDialoguePrompt } from '../data/ai/methodology'
+import { fitDialogueInstructions } from './dialogue-instructions'
 import { legacyPrompts } from '../data/ai/legacy-prompts'
 import { acceptedThinking, insightModelProtocol, reasoningCapabilities } from '../agent/reasoning-capabilities'
 import { createHash, randomUUID } from 'node:crypto'
@@ -41,15 +41,9 @@ function minimumTurnOutput(model: AiModel) {
   // Pi 会将 Responses 请求上调至 16；Grok 套餐直接按预算发送。
   return model.protocol === 'openai-responses' && !(model.planAccount && model.planProvider === 'grok-cli') ? 16 : 1
 }
-export function estimateTurnInputTokens(text: string): number {
-  let ascii = 0
-  for (let i = 0; i < text.length; i++) if (text.charCodeAt(i) <= 0x7f) ascii++
-  return Math.ceil(ascii / 4) + Buffer.byteLength(text, 'utf8') - ascii
-}
-
-// Connection probes retain their existing byte budget; dialogue supplies its mixed-text estimator.
-function availableTurnOutput(input: RuntimeInput, capacity: Awaited<ReturnType<typeof resolveAgentModelCapacity>>, estimate = (text: string) => Buffer.byteLength(text, 'utf8')) {
-  const estimatedInput = 1000 + estimate(input.prompt) + estimate(input.systemPrompt) + estimate(JSON.stringify(input.history ?? []))
+function availableTurnOutput(input: RuntimeInput, capacity: Awaited<ReturnType<typeof resolveAgentModelCapacity>>,
+  contentTokens = Buffer.byteLength(input.prompt) + Buffer.byteLength(input.systemPrompt) + Buffer.byteLength(JSON.stringify(input.history ?? []))) {
+  const estimatedInput = 1000 + contentTokens
   if (estimatedInput > capacity.maxInputTokens || estimatedInput >= capacity.contextWindow) {
     throw new BoundaryError('CONTEXT_TOO_LARGE', '当前内容超出最大输入长度，请减少内容或选择更大上下文的模型。')
   }
@@ -370,9 +364,6 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
         const signature = processing ? hash(processing.settings) : undefined
         const profile = processor ? processor.data(context.profile) : context.profile
         const dialogueDefault = context.methodology ? dialogueSystem : legacyPrompts.dialogue
-        const instruction = context.methodology
-          ? assembleDialoguePrompt(context.methodology, context.systemPrompt ?? dialogueDefault, profile, context.skill?.content)
-          : `${context.systemPrompt ?? dialogueDefault}\n相关画像：${JSON.stringify(profile)}${context.skill ? `\n本轮技能：\n${context.skill.content}` : ''}`
         const prompt = JSON.stringify({ question: processor ? processor.text(context.turn.prompt) : context.turn.prompt, references: processor ? processor.messages(context.references, context.referenceBreaks) : context.references })
         // 默认提示词继续使用升级前的断点目录，自定义提示词单独隔离。
         const keyParts = ['thread', context.turn.threadId, context.selfFingerprint, context.model.id, context.model.version, context.skill?.id, context.skill?.version, signature]
@@ -381,10 +372,19 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
         const key = hash(keyParts)
         const capacity = await resolveAgentModelCapacity(context.model, context.turn.thinkingLevel)
         const budget = capacity.maxInputTokens - 1000
-        // Legacy retries retain the capacity decisions made before methodology snapshots existed.
-        const estimate = context.methodology ? estimateTurnInputTokens : (text: string) => Buffer.byteLength(text, 'utf8')
-        const fixedSize = estimate(instruction) + estimate(prompt)
         const historyBudget = Math.min(budget, capacity.contextWindow - 1000 - minimumTurnOutput(context.model))
+        const promptSize = Buffer.byteLength(prompt)
+        const editable = context.systemPrompt ?? dialogueDefault
+        let instruction: string, instructionSize: number
+        if (context.methodology) {
+          const fitted = fitDialogueInstructions(context.methodology, editable, profile, context.skill?.content, historyBudget - promptSize - 2)
+          instruction = fitted.text
+          instructionSize = fitted.tokens
+        } else {
+          instruction = `${editable}\n相关画像：${JSON.stringify(profile)}${context.skill ? `\n本轮技能：\n${context.skill.content}` : ''}`
+          instructionSize = Buffer.byteLength(instruction)
+        }
+        const fixedSize = instructionSize + promptSize
         if (fixedSize > historyBudget) throw new BoundaryError('CONTEXT_TOO_LARGE', '当前问题或引用超出模型容量，请减少引用或选择更大上下文的模型。')
         let history = context.history.map(item => {
           const question = processor ? processor.text(item.text) : item.text
@@ -394,9 +394,14 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
         if (signature && checkpoint) {
           try { const saved = JSON.parse(checkpoint); checkpoint = saved.processing === signature && typeof saved.checkpoint === 'string' ? saved.checkpoint : null } catch { checkpoint = null }
         }
-        while (history.length && fixedSize + estimate(JSON.stringify(history)) > historyBudget) { history = history.slice(2); checkpoint = null }
+        let historySize = Buffer.byteLength(JSON.stringify(history))
+        while (history.length && fixedSize + historySize > historyBudget) {
+          history = history.slice(2)
+          historySize = Buffer.byteLength(JSON.stringify(history))
+          checkpoint = null
+        }
         const input: RuntimeInput = { key, model: context.model, thinkingLevel: context.turn.thinkingLevel, apiKey: await modelSecret(context.model), systemPrompt: instruction, prompt, history, checkpoint }
-        input.outputTokenLimit = availableTurnOutput(input, capacity, estimate)
+        input.outputTokenLimit = availableTurnOutput(input, capacity, fixedSize + historySize)
         const response = await runTurnModel(id, context.turn.attempt, input, signal, text => {
           if (signal.aborted) return
           writes = writes.then(async () => { if (!signal.aborted) await saveTurn(id, { text }) })

@@ -78,7 +78,7 @@ test.each(['insight', 'dialogue'] as const)('%s 三层指令只含一次核心�
   for (const boundary of ['授权', '不是指令', '当前回复', '已更新或保存', 'references/theory-basis.md', '读取文件', '当地紧急服务', '当地危机援助热线']) expect(snapshot.hostAdapter.instructions).toContain(boundary)
   expect(snapshot.hostAdapter.instructions).not.toMatch(/(?<!\d)(?:110|112|119|120|911|988|12356)(?!\d)/)
   if (mode === 'insight') {
-    expect(snapshot.hostAdapter.version).toBe('2')
+    expect(snapshot.hostAdapter.version).toBe('3')
     for (const contract of ['read_messages', 'isSelf', 'JSON', 'aboutYou', 'relationship', 'citations', 'judgments', 'limitations', 'EI', 'SN', 'TF', 'JP', 'supportingIds', 'counterexampleIds', 'excerpts', 'alternativeExplanations', '不向读者追问', '威胁', '控制', '暴力']) expect(snapshot.hostAdapter.instructions).toContain(contract)
   } else {
     expect(snapshot.hostAdapter.version).toBe('1')
@@ -87,7 +87,7 @@ test.each(['insight', 'dialogue'] as const)('%s 三层指令只含一次核心�
   }
 })
 
-test('洞察第二版明确未知倾向的摘录归属、页面分工和面向读者的表达', async () => {
+test('洞察约定区分压缩笔记和最终报告，按材料呈现风险、四维依据和个人观察', async () => {
   const { createMethodologySnapshot, assembleMethodologyPrompt } = await import('../../electron/data/ai/methodology')
   const snapshot = createMethodologySnapshot('insight')
   const prompt = assembleMethodologyPrompt(snapshot, '保留具体经历。')
@@ -99,7 +99,10 @@ test('洞察第二版明确未知倾向的摘录归属、页面分工和面向�
     'direction 为 null 时，若 supportingIds 和 counterexampleIds 都为空，excerpts 必须为 []',
     '本人消息编号放入 supportingIds，反例或情境消息编号放入 counterexampleIds',
     'judgments 显示在「关于你」顶部的「MBTI 人格倾向」',
-    'aboutYou 显示在其下方的「个人观察」',
+    '其余 aboutYou 段落显示在其下方的「个人观察」',
+    '收到压缩请求时只写供续读的阅读笔记', '成稿结构只用于最终交付或修正报告',
+    '自伤或自杀风险只根据相应言行表述', '仅在有对应事实时明确指出威胁、控制、虐待或暴力',
+    '设置 safetyLead 为 true，在 aboutYou 第一段', '安全首段会显示在全部人格预测之前',
     'aboutYou 不得逐维重复 EI / SN / TF / JP 的总结',
     '1–3 段', '选择', '需要与现实限制', '修正理解', '压力或边界', '共同经历只叙述一次',
     '每条 excerpts.text 必须与该项 text、alternativeExplanations 或 limitations 中写出的逐字引文完全一致，包括末尾标点',
@@ -110,14 +113,6 @@ test('洞察第二版明确未知倾向的摘录归属、页面分工和面向�
 
 test('默认成稿保留 Whomi 的具体经历、四维问题和关系约束', () => {
   for (const text of ['关于你', '你们的相处', 'ta', '不生成报告标题', '能选什么', '理由', '回应', '提议', '参与交流或理清想法', '取用细节或探索可能', '理由有冲突', '主动定下', '条件明朗', '未知', '语气只作辅助', '可比经历', '只讲一次', '具体推论', '合作', '成长', '不强行制造冲突', '完整人格画像', '不保证关系改善']) expect(defaultPrompts.insightWriting).toContain(text)
-})
-
-test('对话估算英文按四字符，中文继续使用 UTF-8 字节权重', async () => {
-  const { estimateTurnInputTokens } = await import('../../electron/main/ai-service')
-  expect(estimateTurnInputTokens('a'.repeat(7798))).toBe(1950)
-  expect(estimateTurnInputTokens('文'.repeat(47000))).toBe(141000)
-  expect(estimateTurnInputTokens('abc中文😀')).toBe(11)
-  expect(estimateTurnInputTokens('')).toBe(0)
 })
 
 test.each(['METHODOLOGY_RESOURCE_INVALID', 'METHODOLOGY_SNAPSHOT_INVALID'])('%s 保留在脱敏诊断中', code => {

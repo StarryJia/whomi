@@ -10,10 +10,22 @@ const observations = dimensionKeys.map(dimension => ({
   dimension, direction: dimension === 'JP' ? 'J' : null, text: dimension === 'JP' ? '你提议提前安排时间。' : '这段聊天只讨论了日程。',
   supportingIds: dimension === 'JP' ? ['1'] : [], counterexampleIds: [], alternativeExplanations: [], limitations: [],
 }))
-function parse(judgments?: unknown) {
-  const response = { text: JSON.stringify({ ...draft, judgments }), usage: {}, checkpoint: 'done' }
+function parse(judgments?: unknown, fields = {}) {
+  const response = { text: JSON.stringify({ ...draft, judgments, ...fields }), usage: {}, checkpoint: 'done' }
   return parseReport(response, '8', revisions, new Set(revisions.keys()), new Set(['1']), null)
 }
+
+test('安全首段标记随报告通过接口；无标记的报告保留原结构', () => {
+  const marked = parse(observations, { safetyLead: true })
+  expect(marked.safetyLead).toBe(true)
+  expect(marked.aboutYou[0]).toEqual(section[0])
+  expect(() => validateAiResult('getReport', marked)).not.toThrow()
+  expect(parse(observations)).not.toHaveProperty('safetyLead')
+  expect(parse(observations, { safetyLead: false })).not.toHaveProperty('safetyLead')
+  expect(() => parse(observations, { safetyLead: 'true' })).toThrow()
+  expect(() => validateAiResult('getReport', { ...marked, aboutYou: [] })).toThrow()
+  expect(() => validateAiResult('getReport', { ...marked, aboutYou: [{ content: [] }] })).toThrow()
+})
 
 test('Pi 新报告须评估四维，未知可没有支持原文，已判断的维度必须有本人依据', () => {
   const report = parse(observations)

@@ -9,6 +9,18 @@ export const syntheticInsightMessages = [
 ]
 
 export const syntheticInsightScope = { kind: 'dates', startDate: '2026-10-09', endDate: '2026-10-10', timezone: 'Asia/Shanghai' }
+export const safetyMessages = ['我有伤害自己的念头，现在有点害怕。', '我可以陪你联系附近能提供帮助的人。', '你身边有人吗？']
+
+export function safetyReport() {
+  return {
+    safetyLead: true,
+    aboutYou: [{ content: [{ text: '你说「' }, { text: '我有伤害自己的念头', citationId: 'risk' },
+      { text: '」。若有即时危险，请联系当地紧急服务，也可以请身边信任的人陪你。' }] }],
+    relationship: [{ content: [{ text: 'ta 表示愿意陪你寻求帮助。' }] }],
+    citations: [{ id: 'risk', fragments: [{ messageIds: ['1'] }] }],
+    judgments: sampleJudgments(), limitations: ['目前还不知道你是否已有人陪伴。'],
+  }
+}
 
 export function seedSyntheticInsight(writer) {
   writer.exec(`
