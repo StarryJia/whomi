@@ -193,7 +193,7 @@ async function harness({ model = true, self = true, hold = true, reject = true, 
   } catch (error) { await close(); throw error }
 }
 
-test('安全提醒先于人格预测，在宽窗和窄窗均可查看求助建议与原话', async () => {
+test('风险事实先于人格预测，在宽窗和窄窗均可阅读并打开原话', async () => {
   test.setTimeout(60_000)
   const title = '合成会话 · 寻求帮助'
   const h = await harness({ safetyExample: true, conversationTitle: title, hold: false, reject: false })
@@ -208,15 +208,15 @@ test('安全提醒先于人格预测，在宽窗和窄窗均可查看求助建�
       .toMatchObject({ state: 'completed', report: { safetyLead: true } })
     await btn('对话洞察').click()
     await btn(`${title} · 会话洞察 #${task.id}`).click()
-    const guidance = page.getByRole('article').getByText(/若有即时危险/)
+    const risk = page.getByRole('article').getByText(/明确表达了当时的自伤想法/)
     const prediction = page.getByRole('region', { name: 'MBTI 人格倾向' })
     const quote = btn('我有伤害自己的念头')
     for (const [width, height] of [[1280, 800], [960, 640]]) {
       await app.evaluate(({ BrowserWindow }, [w, h]) => BrowserWindow.getAllWindows()[0].setContentSize(w, h), [width, height])
       await expect.poll(() => page.evaluate(() => [innerWidth, innerHeight])).toEqual([width, height])
-      await expect(guidance).toBeInViewport({ ratio: 1 })
+      await expect(risk).toBeInViewport({ ratio: 1 })
       await expect(quote).toHaveCount(1)
-      const first = await guidance.boundingBox(), next = await prediction.boundingBox()
+      const first = await risk.boundingBox(), next = await prediction.boundingBox()
       expect(first.y + first.height).toBeLessThanOrEqual(next.y + 1)
       await shot('safety-lead-' + width)
     }

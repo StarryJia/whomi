@@ -193,9 +193,5 @@ export function InsightArticle({ report, conversationId, allowSourceExcerpts = t
         {paragraphs(personalObservations)}</section> : paragraphs(personalObservations)}
     </section>
     <section className="insight-chapter"><h2>你们的相处</h2>{paragraphs(report.relationship)}</section>
-    {!!report.limitations?.length && <aside className="insight-report-limitations" aria-label="分析依据限制">
-      <strong>分析依据限制</strong>
-      {report.limitations.map((text, index) => <p key={index}>{text}</p>)}
-    </aside>}
   </article>
 }

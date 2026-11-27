@@ -36,12 +36,12 @@ export type InsightJudgment = {
 
 export type InsightReport = {
   format: 'conversation-insights-v1'
-  /** The first aboutYou paragraph contains the safety guidance to show before the prediction. */
+  /** Recorded risk signals in the first aboutYou paragraph take priority over the prediction. */
   safetyLead?: boolean
   aboutYou: InsightParagraph[]
   relationship: InsightParagraph[]
   citations: InsightCitation[]
-  limitations: string[]
+  limitations?: string[]
   judgments?: InsightJudgment[]
 }
 

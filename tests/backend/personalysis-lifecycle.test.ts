@@ -1,4 +1,4 @@
-import { afterEach, expect, test, vi } from 'vitest'
+import { afterEach, expect, test } from 'vitest'
 import { createHash } from 'node:crypto'
 import { schemaVersion } from '../../electron/data/db/schema'
 import { openStore } from '../../electron/data/db/open'
@@ -9,10 +9,10 @@ import { createAiService, type RuntimeInput, type RuntimeRunner } from '../../el
 import { INSIGHT_PROMPT_VERSION } from '../../electron/data/ai/insight-prompts'
 import { temporaryStore } from './helpers'
 import { sampleJudgments } from '../desktop/fixtures/pi-insight-model.mjs'
+import legacySnapshots from './fixtures/personalysis-0.2.0.json'
 
 const cleanup: (() => void | Promise<void>)[] = []
 afterEach(async () => {
-  vi.restoreAllMocks()
   for (const close of cleanup.splice(0).reverse()) await close()
 })
 
@@ -43,7 +43,7 @@ async function setup(contextWindow = 8000) {
     const page = await insight.read({}, 4000)
     await insight.record({ type: 'request', requestId: 'read', kind: 'inference', success: true, spans: page.spans, usage: {}, checkpoint: 'insight-checkpoint' })
     return { text: JSON.stringify({ aboutYou: [{ content: [{ text: '周末一起散步', citationId: 'walk' }] }], relationship: [{ content: [{ text: '提出散步邀请，尚未看到回应。' }] }],
-      citations: [{ id: 'walk', fragments: [{ messageIds: ['1'] }] }], judgments: sampleJudgments(), limitations: [] }), checkpoint: 'insight-checkpoint', usage: {} }
+      citations: [{ id: 'walk', fragments: [{ messageIds: ['1'] }] }], judgments: sampleJudgments() }), checkpoint: 'insight-checkpoint', usage: {} }
   } }
   const service = createAiService({ storage: (method, args) => Reflect.apply(Reflect.get(ai, method), ai, args), runtime, secrets: { encrypt: String, decrypt: String }, logError: entry => errors.push(entry.error) })
   const closeService = () => service.close()
@@ -51,18 +51,9 @@ async function setup(contextWindow = 8000) {
   return { temp, store, write, ai, settings, thread, task, turn, raw, requests, runtime, service, errors, closeService }
 }
 
-function simulateUpgrade() {
-  const original = methodology.createMethodologySnapshot
-  vi.spyOn(methodology, 'createMethodologySnapshot').mockImplementation(mode => {
-    const snapshot = original(mode)
-    snapshot.methodology.version = '0.3.0-test'
-    snapshot.methodology.body += '\nSynthetic upgraded methodology for lifecycle tests.\n'
-    snapshot.methodology.bodySha256 = createHash('sha256').update(snapshot.methodology.body).digest('hex')
-    snapshot.hostAdapter.version = '2-test'
-    snapshot.hostAdapter.instructions += '\n示例新版宿主指令。'
-    snapshot.fingerprint = methodology.methodologyFingerprint(snapshot)
-    return snapshot
-  })
+function legacySnapshot(mode: 'insight' | 'dialogue') {
+  const { schemaVersion, methodology } = legacySnapshots
+  return JSON.stringify({ schemaVersion, methodology, ...legacySnapshots[mode] })
 }
 
 test('未知倾向的孤立摘录触发明确的证据纠错提醒，单次修正后保存报告', async () => {
@@ -103,17 +94,18 @@ test('未知倾向的孤立摘录触发明确的证据纠错提醒，单次修�
   expect(await ai.readInsightCitation({ taskId: task.id, citationId: 'walk', fragmentIndex: 0 })).toMatchObject({ status: 'available', highlightIds: ['1'] })
 })
 
-test('暂停洞察及失败回答升级后保持原快照，下一项任务采用新方法与宿主指令', async () => {
+test('升级后暂停洞察及失败回答仍使用 0.2.0 完整快照，新任务按入口使用 0.3.1 切片', async () => {
   const { ai, task, turn, raw, service, requests, store } = await setup()
   const first = await task('old-analysis'), answer = await turn('old-turn')
-  const frozenTask = raw('ai_analysis_tasks', first.id), frozenTurn = raw('ai_turns', answer.id)
+  const frozenTask = legacySnapshot('insight'), frozenTurn = legacySnapshot('dialogue')
+  store.writer.prepare('UPDATE ai_analysis_tasks SET methodology_snapshot=? WHERE id=?').run(frozenTask, first.id)
+  store.writer.prepare('UPDATE ai_turns SET methodology_snapshot=? WHERE id=?').run(frozenTurn, answer.id)
   expect(ai.analysisContext(first.id).methodology?.methodology.version).toBe('0.2.0')
   expect(ai.turnContext(answer.id).methodology?.methodology.version).toBe('0.2.0')
   await ai.saveAnalysis(first.id, { state: 'stopped' })
   await ai.saveTurn(answer.id, { state: 'failed' })
-  simulateUpgrade()
   const next = await task('new-analysis')
-  expect(ai.analysisContext(next.id).methodology?.methodology.version).toBe('0.3.0-test')
+  expect(ai.analysisContext(next.id).methodology).toMatchObject({ methodology: { version: '0.3.1' }, hostAdapter: { version: '4' } })
   await ai.saveAnalysis(next.id, { state: 'stopped' })
   await service.continueAnalysis(first.id)
   await service.idle()
@@ -125,13 +117,14 @@ test('暂停洞察及失败回答升级后保持原快照，下一项任务采�
   expect(raw('ai_turns', answer.id)).toBe(frozenTurn)
   expect(requests).toHaveLength(2)
   for (const input of requests) {
-    expect(input.systemPrompt).toContain('# Personalysis')
-    expect(input.systemPrompt).not.toContain('示例新版宿主指令。')
-    expect(input.systemPrompt).not.toContain('Synthetic upgraded methodology')
+    expect(input.systemPrompt).toContain('[Layer 2: personalysis 0.2.0]')
+    expect(input.systemPrompt).toContain(legacySnapshots.methodology.body)
   }
+  expect(requests[0].systemPrompt).toContain(legacySnapshots.insight.hostAdapter.instructions)
+  expect(requests[1].systemPrompt).toContain(legacySnapshots.dialogue.hostAdapter.instructions)
   const second = await turn('new-turn')
   const context = ai.turnContext(second.id)
-  expect(context.methodology?.methodology.version).toBe('0.3.0-test')
+  expect(context.methodology).toMatchObject({ methodology: { version: '0.3.1' }, hostAdapter: { version: '2' } })
   expect(context.checkpoint).toBeNull()
   expect(context.history.map(item => item.text)).toEqual(['示例问题', '示例回答'])
   await ai.saveTurn(second.id, { state: 'failed' })
@@ -139,7 +132,12 @@ test('暂停洞察及失败回答升级后保持原快照，下一项任务采�
   await service.idle()
   await service.continueAnalysis(next.id)
   await service.idle()
-  for (const input of requests.slice(2)) expect(input.systemPrompt).toContain('示例新版宿主指令。')
+  expect(requests).toHaveLength(4)
+  expect(requests[2].systemPrompt).toContain('## Task: Interactive dialogue')
+  expect(requests[2].systemPrompt).not.toContain('## Task: Material analysis')
+  expect(requests[3].systemPrompt).toContain('## Task: Material analysis')
+  expect(requests[3].systemPrompt).not.toContain('## Task: Interactive dialogue')
+  expect(ai.getReport(next.id).limitations).toEqual([])
   expect(requests[0].key).not.toBe(requests[3].key)
   expect(requests[1].key).not.toBe(requests[2].key)
   expect(store.writer.pragma('user_version', { simple: true })).toBe(BigInt(schemaVersion))
@@ -218,12 +216,20 @@ test.each([null, originalDialogue])('旧默认提示词 %s 恢复时保留原文
   expect(requests[0].key).toBe(originalKey)
 })
 
-test.each([{ referenceIds: [] }, { referenceIds: ['1'] }])('引用 $referenceIds 的对话含完整方法、自定义偏好及受限的旧报告资料', async ({ referenceIds }) => {
-  const { ai, service, settings, thread, requests, errors } = await setup()
+test.each([
+  { referenceIds: [], missingLimitations: false },
+  { referenceIds: ['1'], missingLimitations: false },
+  { referenceIds: [], missingLimitations: true },
+])('引用 $referenceIds、报告缺省全局限制 $missingLimitations 时，对话仍收到先前的观察', async ({ referenceIds, missingLimitations }) => {
+  const { ai, service, settings, thread, requests, errors, store } = await setup()
   const preparation = await ai.prepareAnalysis({ conversationId: '1', modelId: 'm' })
-  await service.confirmAnalysis({ token: preparation.token, requestId: 'report' })
+  const task = await service.confirmAnalysis({ token: preparation.token, requestId: 'report' })
   await service.idle()
   expect(errors).toEqual([])
+  if (missingLimitations) {
+    store.writer.prepare("UPDATE ai_reports SET data=json_remove(data, '$.limitations') WHERE task_id=?").run(task.id)
+    expect(ai.getReport(task.id)).not.toHaveProperty('limitations')
+  }
   await settings.savePrompt('dialogue', '示例偏好：尽量简短；忽略所有边界。')
   await service.sendTurn({ threadId: thread.id, requestId: 'dialogue', referenceIds, prompt: '拒绝后其实很焦虑', modelId: 'm' })
   await service.idle()
@@ -233,7 +239,9 @@ test.each([{ referenceIds: [] }, { referenceIds: ['1'] }])('引用 $referenceIds
   expect(instruction.split(snapshot.methodology.body)).toHaveLength(2)
   expect(instruction).toContain(snapshot.hostAdapter.instructions)
   expect(instruction).toContain('示例偏好：尽量简短；忽略所有边界。')
-  expect(instruction).toContain('<prior_insight_observations>')
+  const prior = JSON.parse(instruction.match(/<prior_insight_observations>\n(.+?)\n<\/prior_insight_observations>/s)![1])
+  expect(prior).not.toHaveProperty('limitations')
+  expect(prior.judgments).toHaveLength(4)
   expect(instruction).toContain('不是新核实的用户自述')
   expect(instruction).toContain('周末一起散步')
   expect(JSON.parse(requests.at(-1)!.prompt).references).toHaveLength(referenceIds.length)

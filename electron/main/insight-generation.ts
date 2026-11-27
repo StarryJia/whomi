@@ -385,7 +385,7 @@ export function parseReport(
       new Set(judgments.map(item => item.dimension)).size !== dimensionKeys.length)) {
     throw new BoundaryError('INVALID_INSIGHT_OUTPUT', '请补齐精力来源、理解信息、做决定和安排方式四项分析。')
   }
-  const limitations = explanations(body.limitations)
+  const limitations = body.limitations === undefined ? [] : explanations(body.limitations)
   if (checks?.some(check => check.state === 'inconclusive')) limitations.push('部分观察缺少新增依据，仍无法确认。')
   return { format: INSIGHT_PROMPT_VERSION, ...(body.safetyLead && { safetyLead: true }), aboutYou, relationship, citations, limitations, judgments }
 }

@@ -15,10 +15,10 @@ export function safetyReport() {
   return {
     safetyLead: true,
     aboutYou: [{ content: [{ text: '你说「' }, { text: '我有伤害自己的念头', citationId: 'risk' },
-      { text: '」。若有即时危险，请联系当地紧急服务，也可以请身边信任的人陪你。' }] }],
+      { text: '」，明确表达了当时的自伤想法，也说自己感到害怕。' }] }],
     relationship: [{ content: [{ text: 'ta 表示愿意陪你寻求帮助。' }] }],
     citations: [{ id: 'risk', fragments: [{ messageIds: ['1'] }] }],
-    judgments: sampleJudgments(), limitations: ['目前还不知道你是否已有人陪伴。'],
+    judgments: sampleJudgments(),
   }
 }
 
@@ -71,7 +71,6 @@ export function suggestionReport() {
       { id: 'suggestion-shift', fragments: [{ messageIds: ['1'] }, { messageIds: ['3'] }] },
       { id: 'asked-later', fragments: [{ messageIds: ['3'] }] },
     ],
-    limitations: ['你可以先问 ta 想听建议，还是想接着说。'],
     judgments: sampleJudgments({ TF: {
       direction: null, text: '不同阶段对建议的需要不同。',
       supportingIds: ['1'], counterexampleIds: ['3'], alternativeExplanations: ['有时 ta 只想先说完。'], limitations: ['仅限该次聊天。'],

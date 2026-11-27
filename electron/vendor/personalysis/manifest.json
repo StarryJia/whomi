@@ -1,10 +1,12 @@
 {
   "id": "personalysis",
-  "version": "0.2.0",
+  "version": "0.3.1",
   "sourceRepo": "https://github.com/StarryJia/personalysis-skill",
-  "sourceCommit": "db0da388d78cfa12e75147c5a55798f6fe926e22",
-  "sourceBlobSha": "a3ed5068a817b94819efed6678b167877e5d9494",
-  "sourceSha256": "64f1b981d6a09d8f9a3442818f9aa1441f36ddce898c6fe166207ab3d3627ab3",
-  "bodySha256": "0144ef7227b24f8225b479defdc716e79f7fc72ab8babb9e9c0c37d891557bf7",
+  "sourceCommit": "f52abd7b49aecab92dba4ab4cb985c2a11ab5d5e",
+  "sourceBlobSha": "20ae427ca0c280945918a0e9bf40a25aadf19602",
+  "sourceSha256": "4fbec1ceb6eaf5c30ca7e3e283ca41517dcf7d52d60770cc8bbfc4f3e37a2d11",
+  "bodySha256": "69a9871404372c408c1d975b79e3e8ff5112026a0a45a046ac5a2b6107cc06fa",
+  "materialAnalysisSha256": "d8b6a555eea788a2ec0ebc2f737fffd03833fe2d3fcb348ba3fb95ff9fef9bd4",
+  "interactiveDialogueSha256": "3ea201431221acc679416d2de9b014c3b83c46a90f9358cd5f418a988c9986b7",
   "licenseSha256": "f13c7b1dffaf2e151e3ee52ec20727782076b49f8644062421fbc00b6b284454"
 }

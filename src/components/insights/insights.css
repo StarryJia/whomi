@@ -114,8 +114,6 @@ button.insight-report-row:active { background: var(--pressed); }
 .insight-dimension h4 { margin: 0 0 7px; font-size: clamp(18px, 1.6vw, 21px); line-height: 1.5; }
 .insight-observation + .insight-observation { margin-top: 10px; }
 .insight-observation p.insight-observation-context { margin-top: 5px; color: var(--text-muted); font-size: .94em; }
-.insight-report-limitations { margin-top: 1.5em; max-width: 44em; color: var(--text-muted); font-size: .94em; }
-.insight-report-limitations p { margin-top: .4em; }
 .insight-citation {
   color: var(--focus); text-decoration: underline; text-underline-offset: .2em; cursor: pointer;
 }

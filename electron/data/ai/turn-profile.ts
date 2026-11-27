@@ -52,5 +52,5 @@ export function prepareTurnProfile(db: Store['reader'], conversationId: bigint, 
     item.alternativeExplanations = item.alternativeExplanations.map(protect)
     item.limitations = item.limitations.map(protect)
   }
-  report.limitations = report.limitations.map(protect)
+  if (report.limitations) report.limitations = report.limitations.map(protect)
 }

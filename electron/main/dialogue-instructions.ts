@@ -7,7 +7,7 @@ function readerObservations(report: InsightReport) {
   return {
     aboutYou: paragraphs(report.aboutYou),
     relationship: paragraphs(report.relationship),
-    limitations: report.limitations,
+    ...(report.limitations?.length && { limitations: report.limitations }),
     ...(report.safetyLead && { safetyLead: true }),
   }
 }
@@ -22,7 +22,7 @@ export function fitDialogueInstructions(snapshot: MethodologySnapshot, editable:
     const tokens = Buffer.byteLength(text) - frozenDiscount - Math.floor(chineseCharacters * 1.5)
     return { text, tokens }
   }
-  const full = withReport(profile)
+  const full = withReport(profile && !profile.limitations?.length ? { ...profile, limitations: undefined } : profile)
   if (!profile || full.tokens <= budget) return full
   // 阅读页定位引文用的修订标识无需参与对话，仍一并保留报告的解释和局限。
   const sections = readerObservations(profile)

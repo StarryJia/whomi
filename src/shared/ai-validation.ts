@@ -47,7 +47,7 @@ const judgments = array(value => {
   const judgment = value as InsightJudgment
   return judgment.direction === null || judgment.supportingSources.length > 0
 }, 200)
-const insightReportFields = object({ format: value => value === 'conversation-insights-v1', safetyLead: optional(bool), aboutYou: paragraphs, relationship: paragraphs, citations: array(citation, 2000), limitations: notes, judgments: optional(judgments) })
+const insightReportFields = object({ format: value => value === 'conversation-insights-v1', safetyLead: optional(bool), aboutYou: paragraphs, relationship: paragraphs, citations: array(citation, 2000), limitations: optional(notes), judgments: optional(judgments) })
 const insightReport: Check = value => {
   if (!insightReportFields(value)) return false
   const { safetyLead, aboutYou } = value as InsightReport

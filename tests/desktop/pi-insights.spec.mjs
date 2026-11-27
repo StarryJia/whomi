@@ -165,7 +165,7 @@ for (const { count, overloadOnPage } of [{ count: 8 }, { count: 4600 }, { count:
         /E.*偏向外向/, /S.*偏向实感/, /T\s*\/\s*F.*暂难判断/, /J\s*\/\s*P.*暂难判断/,
       ])
       await expect(page.getByRole('button', { name: /打开完整会话|回到开头/ })).toHaveCount(0)
-      await expect(article.getByRole('complementary', { name: '分析依据限制' }).getByText(report.limitations[0], { exact: true })).toBeVisible()
+      await expect(article.getByRole('complementary', { name: '分析依据限制' })).toHaveCount(0)
       const placement = await prediction.evaluate(element => {
         const article = element.closest('article').getBoundingClientRect()
         const range = document.createRange()

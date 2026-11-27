@@ -88,14 +88,14 @@ it('任务请求等待时运行时间递增，失败后保留同口径的覆盖�
   }
 })
 
-it('有正文的报告在末段之后按保存顺序展示整份报告的限制', () => {
-  const limitations = ['这份材料只涵盖十月。', '无法判断其余月份的安排。']
-  render(<InsightArticle report={{ ...report, limitations }} />)
-  const ending = screen.getByText('你和 ta 一起核对了时间。')
-  const notes = screen.getByRole('complementary', { name: '分析依据限制' })
-  expect(ending.compareDocumentPosition(notes)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
-  expect(within(notes).getAllByRole('paragraph').map(p => p.textContent)).toEqual(limitations)
-  expect(screen.queryByText('阅读完毕')).toBeNull()
+it('旧报告的全局限制不显示，各维度的适用范围仍可在对应观察中阅读', () => {
+  const judgment: InsightJudgment = { dimension: 'JP', direction: null, text: '你和 ta 商量改期。',
+    supportingSources: [], counterexampleSources: [], alternativeExplanations: [], limitations: ['仅凭这次改期无法判断你平时是否喜欢提前安排。'] }
+  render(<InsightArticle report={{ ...report, limitations: ['这份材料只涵盖十月。'], judgments: [judgment] }} />)
+  expect(screen.queryByRole('complementary', { name: '分析依据限制' })).toBeNull()
+  expect(screen.queryByText('这份材料只涵盖十月。')).toBeNull()
+  const dimension = screen.getByRole('heading', { level: 4, name: 'J / P · 暂难判断' }).parentElement!
+  expect(within(dimension).getByText(judgment.limitations[0])).toBeVisible()
 })
 
 it('旧报告只有全局限制时显示正文空状态', () => {
@@ -156,25 +156,25 @@ it('旧报告同一维度的相反观察都可阅读，不合成单一倾向', (
   expect(article.getByRole('region', { name: 'MBTI 人格倾向' })).toHaveTextContent('????')
 })
 
-it('有安全首段时先显示求助建议和原文入口；同样的旧报告保持原顺序', async () => {
+it('标记的风险事实与原文入口先于人格预测，未标记的首段保留在个人观察中', async () => {
   const onOpenCitation = vi.fn()
-  const quote = '我现在有点害怕'
+  const quote = '我有伤害自己的念头'
   const saved: InsightReport = { ...report, safetyLead: true,
     aboutYou: [{ content: [{ text: '你说「' }, { text: quote, citationId: 'citation-1', quoteFragmentIndex: 0, quoteMessageId: '10' },
-      { text: '」。若有即时危险，请联系当地紧急服务。' }] }],
+      { text: '」，明确表达了当时的自伤想法。' }] }],
     judgments: [{ dimension: 'EI', direction: null, text: '现有情况无法判断。',
       supportingSources: [], counterexampleSources: [], alternativeExplanations: [], limitations: [] }] }
   const { rerender } = render(<InsightArticle report={saved} conversationId="1" onOpenCitation={onOpenCitation} />)
-  const guidance = screen.getByText(/若有即时危险/)
+  const risk = screen.getByText(/明确表达了当时的自伤想法/)
   const prediction = screen.getByRole('region', { name: 'MBTI 人格倾向' })
-  expect(guidance.compareDocumentPosition(prediction)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+  expect(risk.compareDocumentPosition(prediction)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
   expect(screen.queryByRole('heading', { name: '个人观察' })).toBeNull()
   const link = screen.getByRole('button', { name: quote })
   await userEvent.click(link)
   expect(onOpenCitation).toHaveBeenCalledWith(report.citations[0], link, 0, quote, '10')
 
   rerender(<InsightArticle report={{ ...saved, safetyLead: undefined }} conversationId="1" />)
-  expect(prediction.compareDocumentPosition(screen.getByText(/若有即时危险/))).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+  expect(prediction.compareDocumentPosition(screen.getByText(/明确表达了当时的自伤想法/))).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
   expect(screen.getByRole('heading', { name: '个人观察' })).toBeVisible()
 })
 
