@@ -11,7 +11,7 @@ import type { AiModel } from '../../src/shared/ai-contract'
 import type { InsightReadPage } from '../../src/shared/insight-reader'
 import { defaultProcessing } from '../../src/shared/settings-contract'
 import { assembleMethodologyPrompt, createMethodologySnapshot } from '../../electron/data/ai/methodology'
-import { defaultInsightPrompts } from '../../electron/data/ai/insight-prompts'
+import { defaultPrompts } from '../../src/shared/system-prompts'
 
 type InputItem = { type?: string; id?: string; call_id?: string; output?: unknown; encrypted_content?: string }
 type Request = { input?: InputItem[]; store?: boolean; previous_response_id?: string; messages?: unknown[]; max_output_tokens?: number }
@@ -71,7 +71,7 @@ function sample(text: string) {
 
 it.each([3300, null])('八千共享窗口用冻结方法读取首条消息，用量回执 %s', async inputTokens => {
   const { input, options, read } = sample('示例：周末一起散步。')
-  const editable = [defaultInsightPrompts.reading, defaultInsightPrompts.checking, defaultInsightPrompts.writing].join('\n')
+  const editable = defaultPrompts.insight
   const systemPrompt = assembleMethodologyPrompt(createMethodologySnapshot('insight'), editable)
   const task = { ...input, systemPrompt, model: { ...model, contextWindow: 8192, maxInputTokens: 8192, maxTokens: 1024 },
     insightSession: { ...input.insightSession, fixedPromptLength: systemPrompt.length - editable.length } }
@@ -94,7 +94,7 @@ it('长洞察压缩前后完整保留一次 Personalysis 与冻结宿主指令',
   const { input, options, events } = sample('合成原文：这次提出邀请，尚未看到后续。'.repeat(1800))
   const snapshot = createMethodologySnapshot('insight')
   input.model = { ...model, contextWindow: 32000, maxTokens: 2000 }
-  input.systemPrompt = assembleMethodologyPrompt(snapshot, [defaultInsightPrompts.reading, defaultInsightPrompts.checking, defaultInsightPrompts.writing].join('\n'))
+  input.systemPrompt = assembleMethodologyPrompt(snapshot, defaultPrompts.insight)
   answer = (_path, body, response) => {
     if (JSON.stringify(body.input?.[0]).includes('context summarization assistant')) responses(response, [textItem('示例摘要：保留邀请和未知回应。')])
     else if (requests.length === 1) responses(response, [{ type: 'function_call', id: 'fc_read', call_id: 'call_read', name: 'read_messages', arguments: '{}' }], 29000)

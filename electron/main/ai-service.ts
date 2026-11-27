@@ -16,7 +16,7 @@ import { createMessageProcessor, type ProcessingMember } from './message-process
 import { defaultProcessing, type ProcessingSettings } from '../../src/shared/settings-contract'
 import type { InsightJudgmentSource, InsightSourceMessage } from '../../src/shared/conversation-insights'
 import { generateInsight } from './insight-generation'
-import { INSIGHT_PROMPT_VERSION, type InsightPrompts } from '../data/ai/insight-prompts'
+import { defaultInsightPrompts, legacyStagePrompts } from '../data/ai/insight-prompts'
 import { InsightBudgetError, type InsightCheckpoint } from './insight-checkpoint'
 import { defaultInsightRunLimits } from './insight-policy'
 import { diagnosticErrorCode, type AppError } from './app-error-logs'
@@ -251,8 +251,9 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
       const processor = resumeProcessor ?? await analysisProcessor(id, initial.task.conversationId,
         checkpoint?.version === 'pi-insight-v1' ? checkpoint.processing : initial.processing)
       if (signal.aborted) return
-      const values = initial.systemPrompts ?? (initial.methodology ? defaultPrompts : legacyPrompts)
-      const prompts: InsightPrompts = { version: INSIGHT_PROMPT_VERSION, reading: values.insightReading, checking: values.insightChecking, writing: values.insightWriting }
+      const values = initial.systemPrompts ?? defaultPrompts
+      const prompts = 'insight' in values ? defaultInsightPrompts : legacyStagePrompts(values)
+      const editablePrompt = 'insight' in values ? values.insight : [prompts.reading, prompts.checking, prompts.writing].join('\n')
       const legacy = checkpoint && checkpoint.version !== 'pi-insight-v1' ? checkpoint : null
       if (legacy && !['reading', 'checking', 'writing'].includes(legacy.stage)) {
         throw new BoundaryError('INVALID_INSIGHT_CHECKPOINT', '洞察进度无法恢复，请重新生成。')
@@ -281,7 +282,8 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
       }
       const report = !legacy ? await withInsightClock(elapsedSample.elapsedMs, signal, saveElapsed, (sample, persist) => generatePiInsight({
         snapshot: initial.snapshot, model: initial.model, modelSessionKey: initial.modelSessionKey, conversationId: initial.task.conversationId, thinkingLevel: initial.task.thinkingLevel,
-        prompts, methodology: initial.methodology, processing: processor.settings, checkpoint: checkpoint?.version === 'pi-insight-v1' ? checkpoint : null, signal, operation, read,
+        ...(initial.methodology ? { methodology: initial.methodology, editablePrompt } : { prompts }),
+        processing: processor.settings, checkpoint: checkpoint?.version === 'pi-insight-v1' ? checkpoint : null, signal, operation, read,
         onDiagnostic: ({ phase: current, ...facts }) => {
           phase = current
           requestFacts = safeFields(facts)

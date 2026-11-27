@@ -26,7 +26,8 @@ import { prepareTurnProfile } from './turn-profile'
 import { captureInsightSources, populateReportExcerpts, previewInsightScope, readCurrentInsightSources, readInsightCitationIds, readInsightSources, type StoredInsightSnapshot, type StoredInsightSourceRef } from './insight-sources'
 
 export type AiSourceMessage = { id: string; senderName: string; text: string; isSelf: boolean; kind: string; sentAtMs: number | null; memberId: string | null }
-export type AnalysisContext = { modelSessionKey?: string; methodology?: MethodologySnapshot; processing?: ProcessingSettings; systemPrompts?: PromptValues; task: AnalysisTask; model: AiModel; checkpoint: string | null; snapshot: InsightSnapshot }
+type FrozenPromptValues = PromptValues | typeof legacyPrompts
+export type AnalysisContext = { modelSessionKey?: string; methodology?: MethodologySnapshot; processing?: ProcessingSettings; systemPrompts?: FrozenPromptValues; task: AnalysisTask; model: AiModel; checkpoint: string | null; snapshot: InsightSnapshot }
 export type RegisteredSkill = AiSkill & { content: string; enabled?: boolean }
 type TurnReferences = { references: AiSourceMessage[]; referenceBreaks?: string[] }
 export type TurnContext = TurnReferences & { methodology?: MethodologySnapshot; systemPrompt?: string; turn: AiTurn; threadId: string; conversationId: string; model: AiModel; selfFingerprint: string; history: ({ role: 'user' | 'assistant'; text: string } & Partial<TurnReferences>)[]; profile: InsightReport | null; skill: RegisteredSkill | null; checkpoint: string | null }
@@ -521,7 +522,7 @@ export function createAiRepository(store: Store, write: WriterQueue) {
       return {
         ...(row.methodology_snapshot === null ? {} : { methodology: parseMethodologySnapshot(row.methodology_snapshot, 'insight') }),
         processing: row.processing_snapshot ? parse<ProcessingSettings>(row.processing_snapshot) : undefined,
-        systemPrompts: row.prompt_snapshot ? parse<PromptValues>(row.prompt_snapshot) : undefined,
+        systemPrompts: row.prompt_snapshot ? parse<FrozenPromptValues>(row.prompt_snapshot) : undefined,
         task: taskView(row), model, checkpoint: row.checkpoint,
         ...(row.model_history !== '[]' ? { modelSessionKey: JSON.stringify([model.id, model.version, row.thinking_level]) } : {}),
         snapshot: { ...snapshot, sources: sources.map(({ messageId, revision }) => ({ messageId, revision })) },

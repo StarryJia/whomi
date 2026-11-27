@@ -78,9 +78,10 @@ export function parseMethodologySnapshot(raw: string, expectedMode?: Mode): Meth
 }
 
 export function assembleMethodologyPrompt(snapshot: MethodologySnapshot, editablePrompt: string): string {
-  return ['[Layer 1: Whomi host contract]', snapshot.hostAdapter.instructions,
-    `[Layer 2: ${snapshot.methodology.id} ${snapshot.methodology.version}]`, snapshot.methodology.body,
-    '[Layer 3: Whomi editable preferences]', editablePrompt].join('\n\n')
+  const layers = ['[Layer 1: Whomi host contract]', snapshot.hostAdapter.instructions,
+    `[Layer 2: ${snapshot.methodology.id} ${snapshot.methodology.version}]`, snapshot.methodology.body]
+  if (editablePrompt.trim()) layers.push('[Layer 3: Whomi editable preferences]', editablePrompt)
+  return layers.join('\n\n')
 }
 
 export function assembleDialoguePrompt(snapshot: MethodologySnapshot, editablePrompt: string, profile: unknown, skill?: string): string {

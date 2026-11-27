@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { defaultPrompts, validatePrompt, type PromptId, type PromptValues } from '../../../src/shared/system-prompts'
-import { readPromptValues } from '../ai/system-prompts'
+import { readPromptValues, type StoredPromptOverrides } from '../ai/system-prompts'
+import { legacyInsightPromptIds } from '../ai/legacy-prompts'
 import type { Store } from '../db/open'
 import type { WriterQueue } from '../import/runner'
 import { saveAiModelVersion } from '../ai/repository'
@@ -182,7 +183,10 @@ export function createSettingsRepository(store: Store, write: WriterQueue) {
     async savePrompt(id: PromptId, text: string): Promise<PromptValues> {
       validatePrompt(id, text)
       return write(() => {
-        const overrides = setting<Partial<PromptValues>>('systemPrompts', {})
+        const overrides = setting<StoredPromptOverrides>('systemPrompts', {})
+        if (id === 'insight') {
+          for (const legacyId of legacyInsightPromptIds) delete overrides[legacyId]
+        }
         if (text === defaultPrompts[id]) delete overrides[id]
         else overrides[id] = text
         saveSetting('systemPrompts', overrides)

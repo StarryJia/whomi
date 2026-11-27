@@ -10,7 +10,7 @@ import { createOperationDiagnostics } from '../../electron/main/operation-diagno
 import { BoundaryError } from '../../src/shared/desktop-validation'
 import type { AnalysisTask } from '../../src/shared/ai-contract'
 import { defaultProcessing } from '../../src/shared/settings-contract'
-import { defaultPrompts } from '../../src/shared/system-prompts'
+import { legacyPrompts } from '../../electron/data/ai/legacy-prompts'
 import { createAppErrorLogs, type AppError } from '../../electron/main/app-error-logs'
 
 function fixture(run?: RuntimeRunner['run'], logError?: (entry: AppError) => void,
@@ -28,7 +28,7 @@ function fixture(run?: RuntimeRunner['run'], logError?: (entry: AppError) => voi
     if (method === 'resumeAnalysis') { task.state = 'queued'; return { ...task } }
     if (method === 'recover') { if (task.state === 'running') task.state = 'interrupted'; return }
     if (method === 'modelSecret') return { model, encryptedKey: 'encrypted' }
-    if (method === 'analysisContext') return { task, model, snapshot, checkpoint, systemPrompts: { ...defaultPrompts, insightReading: '自定义阅读' } }
+    if (method === 'analysisContext') return { task, model, snapshot, checkpoint, systemPrompts: { ...legacyPrompts, insightReading: '自定义阅读' } }
     if (method === 'readInsightSources') { expect(args[0]).toEqual({ taskId: '1', messageIds: [message.id] }); return [message] }
     if (method === 'saveAnalysis') {
       if (args[1].state === 'stopped') beforeStopWrite?.()

@@ -161,8 +161,18 @@ test('报告约定只在四维判断中保留限制，并把逐字引文关联�
   ]) expect(host).toContain(rule)
 })
 
-test('默认成稿保留 Whomi 的具体经历、四维问题和关系约束', () => {
-  for (const text of ['关于你', '你们的相处', 'ta', '不生成报告标题', '能选什么', '理由', '回应', '提议', '参与交流或理清想法', '取用细节或探索可能', '理由有冲突', '主动定下', '条件明朗', '未知', '语气只作辅助', '可比经历', '只讲一次', '具体推论', '合作', '成长', '不强行制造冲突', '完整人格画像', '不保证关系改善']) expect(defaultPrompts.insightWriting).toContain(text)
+test('默认洞察偏好仅描述篇幅、语气和关注重点', () => {
+  expect(defaultPrompts.insight).toBe('篇幅精炼、语气平实克制，围绕具体事件与前后变化展开，避免泛泛概括。')
+})
+
+test('空字符串和纯空白的洞察偏好都省略第三层', async () => {
+  const { createMethodologySnapshot, assembleMethodologyPrompt } = await import('../../electron/data/ai/methodology')
+  const snapshot = createMethodologySnapshot('insight')
+  for (const preference of ['', ' \n\t ']) {
+    const prompt = assembleMethodologyPrompt(snapshot, preference)
+    expect(prompt).not.toContain('[Layer 3: Whomi editable preferences]')
+    expect(prompt.endsWith(snapshot.methodology.body)).toBe(true)
+  }
 })
 
 test.each(['METHODOLOGY_RESOURCE_INVALID', 'METHODOLOGY_SNAPSHOT_INVALID'])('%s 保留在脱敏诊断中', code => {

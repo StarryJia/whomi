@@ -42,8 +42,6 @@ type Options = {
   conversationId: string
   model: AiModel
   thinkingLevel: RuntimeInput['thinkingLevel']
-  prompts: InsightPrompts
-  methodology?: MethodologySnapshot
   processing: ProcessingSettings
   checkpoint: PiInsightCheckpoint | null
   signal: AbortSignal
@@ -52,7 +50,7 @@ type Options = {
   read(ids: readonly string[], excerpts?: readonly InsightJudgmentSource[]): Promise<InsightSourceMessage[]>
   save(state: PiInsightCheckpoint, receipt?: Receipt): Promise<void>
   run(input: RuntimeInput, callbacks: InsightRuntimeCallbacks): Promise<RuntimeResult>
-}
+} & ({ methodology: MethodologySnapshot; editablePrompt: string } | { methodology?: undefined; prompts: InsightPrompts })
 
 export function verifyInsightExcerpts(sources: readonly InsightSourceMessage[], excerpts: readonly InsightJudgmentSource[]) {
   const texts = new Map(sources.map(source => [source.id, source.text]))
@@ -250,7 +248,7 @@ export async function generatePiInsight(options: Options): Promise<InsightReport
     },
   }
   await options.save(state)
-  const editable = [options.prompts.reading, options.prompts.checking, options.prompts.writing].join('\n')
+  const editable = options.methodology && options.editablePrompt.trim() ? options.editablePrompt : ''
   const goal = options.methodology
     ? assembleMethodologyPrompt(options.methodology, editable)
     : systemPrompt(options.prompts)
