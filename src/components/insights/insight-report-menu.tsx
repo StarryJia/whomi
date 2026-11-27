@@ -67,7 +67,6 @@ export function InsightRenameForm({ title, onCancel, onSave, onBusy }: {
 function ReportRowMetadata({ task }: { task: AnalysisTask }) {
   return <>
     <span className="insight-row-range"><span>对话范围 {insightReportRange(task)}</span><span>生成于 {insightCompletedAt(task.completedAtMs)}</span></span>
-    <span className="insight-row-model"><span>模型</span><span>{task.modelIdentity?.label || task.modelId || '—'}</span></span>
     <span className="insight-row-number">{insightTaskNumber(task)}</span>
   </>
 }

@@ -9,6 +9,7 @@ export type AiModel = { thinkingLevels?: ThinkingLevel[]; planProvider?: Subscri
 export type SaveAiModel = Omit<AiModel, 'version' | 'hasCredential' | 'planAccount' | 'planProvider'> & { apiKey?: string }
 export type AiSkill = { id: string; label: string; version: string }
 export type AiState = 'queued' | 'running' | 'completed' | 'stopped' | 'failed' | 'interrupted'
+export type ResumeAnalysisModel = { modelId: string; thinkingLevel?: ThinkingLevel }
 export type PrepareAnalysisInput = InsightScopeInput & { modelId: string; thinkingLevel?: ThinkingLevel }
 export type AnalysisPreparation = { thinkingLevel?: ThinkingLevel; token: string; conversationId: string; title: string; selfName: string; scope?: InsightScope; timezone?: string; totalMessages: number; analyzableMessages: number; snapshotMaxId: string; expiresAt: number; model: AiModel }
 export type AnalysisTask = { thinkingLevel?: ThinkingLevel; id: string; conversationId: string; conversationTitle?: string; counterpartName?: string; title?: string; scope?: InsightScope; timezone?: string; insightContentRevision?: string; insightSelfFingerprint?: string; elapsedMs?: number; elapsedSampledAtMs?: number; modelId: string; modelIdentity?: AiModelIdentity; createdAtMs?: number | null; completedAtMs?: number | null; sourceStartTimeMs?: number | null; sourceEndTimeMs?: number | null; pinned?: boolean; state: AiState; analyzedMessages: number; totalMessages: number; skippedMessages: number; usage: AnalysisUsage; error?: string; failureOperationId?: string; failureAtMs?: number; report?: InsightReport; valid: boolean; eventSequence: number }
@@ -32,7 +33,7 @@ export type AiMethods = {
   renameAnalysis(input: { taskId: string; title: string }): Promise<AnalysisTask>
   deleteAnalysis(taskId: string): Promise<void>
   stopAnalysis(taskId: string): Promise<AnalysisTask>
-  continueAnalysis(taskId: string): Promise<AnalysisTask>
+  continueAnalysis(taskId: string, replacement?: ResumeAnalysisModel): Promise<AnalysisTask>
   getReport(taskId: string): Promise<InsightReport>
   readInsightCitation(input: InsightCitationInput): Promise<InsightCitationWindow>
   openThread(conversationId: string): Promise<AiThread>

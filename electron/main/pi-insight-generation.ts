@@ -18,6 +18,7 @@ const personalityInstruction = '在 judgments 中逐项分析用户本人在这�
 
 type Coverage = ReturnType<typeof addInsightCoverage>
 export type PiInsightCheckpoint = {
+  modelSessionKey?: string
   version: 'pi-insight-v1'
   taskId: string
   checkpoint: string | null
@@ -36,6 +37,7 @@ export type PiInsightCheckpoint = {
 type Receipt = { requestId: string; usage: AiUsage }
 type Diagnostic = { phase: string } & Record<string, unknown>
 type Options = {
+  modelSessionKey?: string
   snapshot: InsightSnapshot
   conversationId: string
   model: AiModel
@@ -84,6 +86,16 @@ export async function generatePiInsight(options: Options): Promise<InsightReport
     throw new BoundaryError('INVALID_INSIGHT_CHECKPOINT', '请从会话重新发起洞察。')
   }
   if (state.report) return state.report
+  if (options.modelSessionKey && state.modelSessionKey !== options.modelSessionKey) {
+    const workload = await insightWorkload(options.model, snapshot, false, options.thinkingLevel)
+    workload.protection.requests += state.requests
+    workload.protection.input += state.input
+    workload.protection.output += state.output
+    state.workload = workload
+    state.modelSessionKey = options.modelSessionKey
+    state.stalled = 0
+    delete state.capacityMisses
+  }
   state.workload ??= await insightWorkload(options.model, snapshot, state.requests > 0, options.thinkingLevel)
   const { capacity, protection: limits } = state.workload
   if (!capacity || !limits || ![capacity.contextWindow, capacity.maxTokens, capacity.maxInputTokens, limits.requests, limits.input, limits.output]
@@ -101,6 +113,7 @@ export async function generatePiInsight(options: Options): Promise<InsightReport
   const ordinals = new Map(snapshot.sources.map((ref, i) => [ref.messageId, i + 1]))
   const calls = new Set<string>()
   const requestNumbers = new Map<string, number>()
+  const correctedStages = new Set<'reading' | 'writing'>()
   const covered = () => state.coverage.coveredMessageIds.length
   const readPhase = () => covered() === refs.size ? 'checking' : 'reading'
   let diagnostic: Diagnostic = { phase: readPhase() }
@@ -218,6 +231,7 @@ export async function generatePiInsight(options: Options): Promise<InsightReport
         const next = reviewing ? addInsightCoverage(previous, event.spans.filter(span => span.review)) : state.coverage
         newRange = previous.coveredMessageIds.length !== next.coveredMessageIds.length || JSON.stringify(previous.partial) !== JSON.stringify(next.partial)
         state.stalled = newRange ? 0 : state.stalled + 1
+        if (newRange && !reviewing) correctedStages.delete('reading')
         if (reviewing) state.reviewCoverage = next
         else if (covered() === refs.size) state.reviewCoverage = { coveredMessageIds: [], partial: {} }
       }
@@ -240,7 +254,7 @@ export async function generatePiInsight(options: Options): Promise<InsightReport
   const goal = options.methodology
     ? assembleMethodologyPrompt(options.methodology, editable)
     : systemPrompt(options.prompts)
-  const insightSession = { processing: state.processing,
+  const insightSession = { processing: state.processing, modelSessionKey: state.modelSessionKey,
     ...(options.methodology && { fixedPromptLength: goal.length - editable.length }) }
   function remaining() {
     const submitted = new Set(state.coverage.coveredMessageIds)
@@ -251,7 +265,6 @@ export async function generatePiInsight(options: Options): Promise<InsightReport
       ...(firstUnread ? { resumeCursor: insightCursor(snapshot.taskId, ordinals.get(firstUnread.messageId)! - 1, offset, refs.size) } : {}) }
   }
   let correction = ''
-  const correctedStages = new Set<'reading' | 'writing'>()
   let retries = 0
   for (;;) {
     lastSuccessfulInferenceNumber = undefined

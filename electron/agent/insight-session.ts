@@ -255,7 +255,11 @@ export function observeInsightSession(session: AgentSession, manager: SessionMan
       messages[0] = { ...first, sections: { ...first.sections, readingStatus } }
     }
     const { estimateContextTokens, estimateTextTokens } = await import('@earendil-works/pi-ai/utils/estimate')
-    const estimate = estimateContextTokens(messages)
+    // 其他模型的用量不能作为当前模型的输入计数。
+    const estimate = estimateContextTokens(messages.map(message => message.role === 'assistant' &&
+      (message.provider !== model.provider || message.api !== model.api || message.model !== model.id)
+      ? { ...message, usage: { ...message.usage, input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0 } }
+      : message))
     // 读完提示可在上一轮回执之后加入系统消息，尾部估算看不到该变化。
     const addedStatus = estimate.lastUsageIndex !== null ? readingStatus ?? '' : ''
     const estimatedInput = estimate.tokens + estimateTextTokens(addedStatus)

@@ -5,8 +5,8 @@ import { isPiTimeout } from './model-timeout'
 const resumeActions: Readonly<Record<string, string>> = {
   METHODOLOGY_RESOURCE_INVALID: '分析方法资源校验失败，请重新安装应用后重试。',
   METHODOLOGY_SNAPSHOT_INVALID: '当前任务的方法快照已损坏，请从会话重新发起洞察。',
-  MODEL_CHANGED: '模型配置已更新，请从会话重新开始洞察。',
-  INVALID_MODEL: '原任务的模型不可用，请从会话选择可用的模型重新开始洞察。',
+  MODEL_CHANGED: '模型配置已更新，请更换模型后继续洞察。',
+  INVALID_MODEL: '原任务的模型不可用，请更换模型后继续洞察。',
   PROMPT_CHANGED: '洞察指令已更新，请从会话重新开始洞察。',
   IDENTITY_CHANGED: '本人身份已更新，请确认本人后重新开始洞察。',
   PROCESSING_CHANGED: '消息处理设置已更新，请从会话重新开始洞察。',
@@ -29,6 +29,9 @@ const actions = {
   INSIGHT_CONNECTION_FAILED: '未连到模型服务。请在网络恢复后重试。如需修改服务地址，请保存后从会话重新开始洞察。',
   INSIGHT_PROVIDER_OVERLOADED: '模型服务暂时繁忙，请稍后继续洞察。',
   INSIGHT_SERVICE_UNAVAILABLE: '模型服务暂不可用，请在服务恢复后重试。',
+  INSIGHT_QUOTA_EXCEEDED: '已达到模型服务的额度或消费上限。请检查余额和额度设置，调整后重试或更换服务商。',
+  INSIGHT_RATE_LIMITED: '模型服务限制了请求频率。请稍后重试，或减少同时生成的洞察。',
+  INSIGHT_REQUEST_LIMITED: '模型服务限制了请求，具体原因未确认。请检查服务商的额度和请求频率限制后重试，或更换服务商。',
   INSIGHT_SUMMARY_FAILED: '阅读摘要未保存，原因未知。请查看本次操作记录后重试。',
   MODEL_OUTPUT_LIMIT: '达到模型的输出上限。请从会话重新开始洞察，缩小范围或选择输出容量更大的模型。',
   MODEL_TIMEOUT: '模型请求超时，请稍后继续。',
@@ -46,7 +49,7 @@ function providerDetail(message: string) {
     try {
       const body = JSON.parse(detail)
       const error = body?.error ?? body
-      return { codes: [error?.code, error?.type, error?.status].filter((v): v is string => typeof v === 'string'),
+      return { codes: [error?.code, error?.type, error?.status, error?.details?.error_code].filter((v): v is string => typeof v === 'string'),
         text: typeof error?.message === 'string' ? error.message : '', param: typeof error?.param === 'string' ? error.param : '',
         invalidGoogleApiKey: Array.isArray(error?.details) && error.details.some((item: unknown) =>
           item !== null && typeof item === 'object' && '@type' in item && item['@type'] === 'type.googleapis.com/google.rpc.ErrorInfo'
@@ -54,7 +57,7 @@ function providerDetail(message: string) {
         structured: typeof error?.message === 'string' && body?.error != null }
     } catch { /* 服务可能只返回非结构化说明。 */ }
   }
-  const prefix = /^(?:error code\s+)?(server_error|unknown|server_overloaded|overloaded_error|server_busy|service_unavailable)\s*:\s*/i.exec(detail)
+  const prefix = /^(?:error code\s+)?(server_error|unknown|server_overloaded|overloaded_error|server_busy|service_unavailable|insufficient_quota|usage_limit_reached|billing_hard_limit_reached|credit_balance_exhausted|organization_spend_limit_exceeded|project_spend_limit_exceeded|organization_usage_limit_exceeded|enforced_spend_limit_reached|rate_limit_exceeded|rate_limit_error|slow_down|resource_exhausted)\s*:\s*/i.exec(detail)
   return { codes: prefix ? [prefix[1].toLowerCase()] : [], text: prefix ? detail.slice(prefix[0].length) : detail, param: '', structured: false }
 }
 
@@ -64,6 +67,12 @@ function classify(api: ModelProtocol, message: string, detail: ReturnType<typeof
     || (api === 'google-generative-ai' && detail.invalidGoogleApiKey)) return 'INSIGHT_AUTH_FAILED'
   if (status === 408 || status === 504 || isPiTimeout(api, message)) return 'MODEL_TIMEOUT'
   if (responseReceived === false) return 'INSIGHT_CONNECTION_FAILED'
+  // 流式请求可能先返回 200，再以错误事件说明余额耗尽。
+  if (codes.some(value => /^(?:insufficient_quota|usage_limit_reached|billing_hard_limit_reached|credit_balance_exhausted|organization_spend_limit_exceeded|project_spend_limit_exceeded|organization_usage_limit_exceeded|enforced_spend_limit_reached)$/i.test(value))
+    || /^(?:you have no credits remaining\b|your credit balance is too low\b|you (?:have hit|have reached|have exceeded|exceeded) your (?:chatgpt )?(?:usage limit|current quota)\b)/i.test(text)) return 'INSIGHT_QUOTA_EXCEEDED'
+  if (codes.some(value => /^(?:rate_limit_exceeded|slow_down)$/i.test(value))) return 'INSIGHT_RATE_LIMITED'
+  // 429、通用限流类型和 RESOURCE_EXHAUSTED 也可能表示消费或每日额度上限。
+  if (status === 429 || codes.some(value => /^(?:rate_limit_error|resource_exhausted)$/i.test(value))) return 'INSIGHT_REQUEST_LIMITED'
   if (status === 400 || status === 422 || codes.includes('INVALID_ARGUMENT')) {
     if (/\b(?:tools?|function[ _-]?call(?:ing|s)?)\b/i.test(text) && /\b(?:reasoning(?:[ _-]effort)?|thinking)\b/i.test(text)
       && /\b(?:not supported|unsupported|incompatible|cannot|only supported|require[sd]?|not compatible|not allowed)\b/i.test(text)) return 'INSIGHT_TOOL_REASONING_CONFLICT'
@@ -71,7 +80,7 @@ function classify(api: ModelProtocol, message: string, detail: ReturnType<typeof
     if (codes.includes('unsupported_parameter') || /\b(?:unsupported[_ ](?:parameter|value|tool)|invalid[_ ]parameter|unrecognized request argument)\b/i.test(text)) return 'INSIGHT_REQUEST_INCOMPATIBLE'
     return 'MODEL_REQUEST_FAILED'
   }
-  if (codes.some(value => value === 'invalid_request_error' || value === 'insufficient_quota')) return 'MODEL_REQUEST_FAILED'
+  if (codes.includes('invalid_request_error')) return 'MODEL_REQUEST_FAILED'
   if (codes.some(value => /^(?:overloaded_error|server_overloaded|server_busy)$/i.test(value))
     || /^(?:(?:the )?(?:server|service|model) (?:is )?(?:currently |temporarily )?)?overloaded(?:[.!:,\s]|$)/i.test(text)) return 'INSIGHT_PROVIDER_OVERLOADED'
   if (status === 503 || codes.includes('service_unavailable') || codes.includes('UNAVAILABLE')

@@ -280,7 +280,7 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
         }
       }
       const report = !legacy ? await withInsightClock(elapsedSample.elapsedMs, signal, saveElapsed, (sample, persist) => generatePiInsight({
-        snapshot: initial.snapshot, model: initial.model, conversationId: initial.task.conversationId, thinkingLevel: initial.task.thinkingLevel,
+        snapshot: initial.snapshot, model: initial.model, modelSessionKey: initial.modelSessionKey, conversationId: initial.task.conversationId, thinkingLevel: initial.task.thinkingLevel,
         prompts, methodology: initial.methodology, processing: processor.settings, checkpoint: checkpoint?.version === 'pi-insight-v1' ? checkpoint : null, signal, operation, read,
         onDiagnostic: ({ phase: current, ...facts }) => {
           phase = current
@@ -525,7 +525,7 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
       if (task.scope) await running?.task.catch(() => {})
       return saveAnalysis(id, { state: 'stopped' }, elapsedSample?.sampledAtMs)
     }),
-    continueAnalysis: id => control(async () => {
+    continueAnalysis: (id, replacement) => control(async () => {
       const current = await storage<AnalysisTask>('getAnalysis', id).catch(error => {
         throw resumePreparationFailure(id, error, aiOperation(options.diagnostics, 'insight', 'generate'))
       })
@@ -539,10 +539,20 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
       const operation = aiOperation(options.diagnostics, 'insight', 'generate', recoveredId)
       operation.bind(id, current.createdAtMs)
       try {
+        let selected: (typeof replacement & { version: number }) | undefined
+        if (replacement) {
+          const { model } = await storage<{ model: AiModel }>('modelSecret', replacement.modelId)
+          if (!model.enabled) throw new BoundaryError('INVALID_MODEL', '请选择已启用的模型。')
+          const thinkingLevel = await acceptedThinking({ ...model, protocol: insightModelProtocol(model) }, replacement.thinkingLevel)
+          if (replacement.thinkingLevel && thinkingLevel !== replacement.thinkingLevel) throw new BoundaryError('INVALID_MODEL', '请选择模型支持的思考强度。')
+          await resolveAgentModelCapacity({ ...model, protocol: insightModelProtocol(model) }, thinkingLevel)
+          await modelSecret(model)
+          selected = { modelId: model.id, version: model.version, thinkingLevel }
+        }
         const context = await storage<AnalysisContext>('analysisContext', id)
         const saved = context.checkpoint ? JSON.parse(context.checkpoint) : null
         const processor = await analysisProcessor(id, current.conversationId, saved?.version === 'pi-insight-v1' ? saved.processing : context.processing)
-        const task = await storage<AnalysisTask>('resumeAnalysis', id)
+        const task = await storage<AnalysisTask>('resumeAnalysis', id, ...(selected ? [selected] : []))
         operation.event('recovered', { messageCount: task.totalMessages, readCount: task.analyzedMessages })
         if (!launch(key, task.conversationId, signal => executeAnalysis(id, signal, operation, processor), task.modelId)) operation.end('interrupted')
         return task

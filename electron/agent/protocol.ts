@@ -26,7 +26,7 @@ export type InsightHostCall =
 
 export type AgentRunInput = { thinkingLevel?: ThinkingLevel;
   purpose?: 'insight'
-  insightSession?: { processing: ProcessingSettings; headers?: Record<string, string>; fixedPromptLength?: number }
+  insightSession?: { modelSessionKey?: string; processing: ProcessingSettings; headers?: Record<string, string>; fixedPromptLength?: number }
   key: string
   checkpoint?: string | null
   model: AiModel

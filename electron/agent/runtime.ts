@@ -52,7 +52,9 @@ export class PiRuntime {
       } catch { throw failure('INVALID_CHECKPOINT', '请重新打开对话后重试。') }
     } else manager = SessionManager.create(cwd, sessionDir)
 
-    const provider = `whomi-${key}`
+    // 切换服务商后隔离模型身份，避免重放同名模型的签名推理。
+    const modelKey = input.insightSession?.modelSessionKey
+    const provider = `whomi-${key}${modelKey ? '-' + createHash('sha256').update(modelKey).digest('hex').slice(0, 16) : ''}`
     const modelRuntime = await ModelRuntime.create({
       credentials: { read: async () => undefined, list: async () => [], modify: async (_provider, change) => change(undefined), delete: async () => {} },
       modelsPath: null, refreshOnCreate: false, allowModelNetwork: false,

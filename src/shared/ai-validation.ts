@@ -73,7 +73,7 @@ const input: Record<keyof AiMethods, Check[]> = {
   previewInsightScope: [object({ conversationId: localId, scope: optional(isInsightScope) })],
   prepareAnalysis: [object({ conversationId: localId, modelId: key, thinkingLevel: optional(thinking), scope: optional(isInsightScope) })], confirmAnalysis: [object({ token: key, requestId: key })],
   discardAnalysisPreparation: [key],
-  getAnalysis: [localId], listAnalyses: [optional(localId)], arrangeAnalysis: [listArrangement], renameAnalysis: [object({ taskId: localId, title: value => insightTitle(value) !== null })], deleteAnalysis: [localId], stopAnalysis: [localId], continueAnalysis: [localId], getReport: [localId],
+  getAnalysis: [localId], listAnalyses: [optional(localId)], arrangeAnalysis: [listArrangement], renameAnalysis: [object({ taskId: localId, title: value => insightTitle(value) !== null })], deleteAnalysis: [localId], stopAnalysis: [localId], continueAnalysis: [localId, optional(object({ modelId: key, thinkingLevel: optional(thinking) }))], getReport: [localId],
   readInsightCitation: [object({ taskId: localId, citationId: isInsightCitationId, fragmentIndex: count, messageId: optional(localId) })],
   openThread: [localId], listThreads: [localId], createThread: [localId], getThread: [localId], arrangeThread: [localId, listArrangement], deleteThread: [localId, localId], sendTurn: [object({ threadId: localId, requestId: key, prompt: text(100000, true), referenceIds: ids, modelId: key, thinkingLevel: optional(thinking), skillId: optional(key) })], retryTurn: [localId], stopTurn: [localId],
 }
@@ -87,6 +87,7 @@ const output: Record<keyof AiMethods, Check> = {
 export function validateAiCall(method: unknown, args: unknown): asserts method is keyof AiMethods {
   if (typeof method !== 'string' || !Object.hasOwn(input, method)) throw new BoundaryError('INVALID_METHOD')
   if (method === 'listAnalyses' && Array.isArray(args) && args.length === 0) return
+  if (method === 'continueAnalysis' && Array.isArray(args) && args.length === 1 && localId(args[0])) return
   const checks = input[method as keyof AiMethods]
   if (!Array.isArray(args) || args.length !== checks.length || !checks.every((check, index) => check(args[index]))) throw new BoundaryError('INVALID_ARGUMENT')
   if (method === 'saveModel') {

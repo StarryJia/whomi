@@ -1,5 +1,6 @@
 import { afterEach, expect, test, vi } from 'vitest'
 import { createHash } from 'node:crypto'
+import { schemaVersion } from '../../electron/data/db/schema'
 import { openStore } from '../../electron/data/db/open'
 import { createAiRepository } from '../../electron/data/ai/repository'
 import { createSettingsRepository } from '../../electron/data/settings/repository'
@@ -141,7 +142,7 @@ test('暂停洞察及失败回答升级后保持原快照，下一项任务采�
   for (const input of requests.slice(2)) expect(input.systemPrompt).toContain('示例新版宿主指令。')
   expect(requests[0].key).not.toBe(requests[3].key)
   expect(requests[1].key).not.toBe(requests[2].key)
-  expect(store.writer.pragma('user_version', { simple: true })).toBe(16n)
+  expect(store.writer.pragma('user_version', { simple: true })).toBe(BigInt(schemaVersion))
 })
 
 test('相同方法的序列化字段顺序不影响断点；空快照与新方法隔离并保留历史', async () => {
@@ -346,7 +347,7 @@ test('十五版资料库迁移保留旧报告引文和无方法的未完成任�
   const unfinished = await task('unfinished'), answer = await turn('unfinished-turn')
   await ai.saveAnalysis(unfinished.id, { state: 'stopped' })
   await ai.saveTurn(answer.id, { state: 'failed' })
-  store.writer.exec('ALTER TABLE ai_analysis_tasks DROP COLUMN methodology_snapshot; ALTER TABLE ai_turns DROP COLUMN methodology_snapshot; PRAGMA user_version=15;')
+  store.writer.exec('ALTER TABLE ai_analysis_tasks DROP COLUMN methodology_snapshot; ALTER TABLE ai_turns DROP COLUMN methodology_snapshot; ALTER TABLE ai_request_usage DROP COLUMN model_id; ALTER TABLE ai_request_usage DROP COLUMN model_version; ALTER TABLE ai_analysis_tasks DROP COLUMN model_history; PRAGMA user_version=15;')
   expect((store.writer.prepare('PRAGMA table_info(ai_turns)').all() as { name: string }[]).some(column => column.name === 'methodology_snapshot')).toBe(false)
   await closeService()
   cleanup.splice(cleanup.indexOf(closeService), 1)
@@ -354,7 +355,7 @@ test('十五版资料库迁移保留旧报告引文和无方法的未完成任�
   const reopened = openStore(temp.path)
   cleanup.push(() => reopened.close())
   const restored = createAiRepository(reopened, write)
-  expect(reopened.writer.pragma('user_version', { simple: true })).toBe(16n)
+  expect(reopened.writer.pragma('user_version', { simple: true })).toBe(BigInt(schemaVersion))
   expect(INSIGHT_PROMPT_VERSION).toBe('conversation-insights-v1')
   expect(restored.getReport(completed.id)).toEqual(report)
   expect(await restored.readInsightCitation({ taskId: completed.id, citationId: 'walk', fragmentIndex: 0 })).toMatchObject({ status: 'available', highlightIds: ['1'] })
@@ -373,4 +374,27 @@ test('十五版资料库迁移保留旧报告引文和无方法的未完成任�
   expect(requests[1].systemPrompt).toBe(`原有自定义提示词\n相关画像：${JSON.stringify(restored.turnContext(answer.id).profile)}`)
   expect(requests[1].key).toBe(createHash('sha256').update(JSON.stringify(['thread', answer.threadId, restored.turnContext(answer.id).selfFingerprint, 'm', 1, undefined, undefined, undefined, '原有自定义提示词'])).digest('hex'))
   for (const [table, id] of [['ai_analysis_tasks', unfinished.id], ['ai_turns', answer.id]]) expect(reopened.writer.prepare(`SELECT methodology_snapshot AS value FROM ${table} WHERE id=?`).get(id)).toEqual({ value: null })
+})
+
+
+test('原服务模型停用后可改用新服务接续，选择校验失败保留原任务', async () => {
+  const { ai, service, settings, task, requests } = await setup(16000)
+  const original = await task('switch-service-lifecycle')
+  const checkpoint = JSON.stringify({ version: 'pi-insight-v1', taskId: original.id, checkpoint: 'saved-leaf',
+    coverage: { coveredMessageIds: ['1'], partial: {} }, processing: settings.get().processing,
+    requests: 3, stalled: 0, input: 300, output: 30 })
+  await ai.saveInsightCheckpoint(original.id, checkpoint, ['1'], 1000)
+  await ai.saveAnalysis(original.id, { state: 'failed', error: '额度耗尽' })
+  await settings.removeModel('m')
+  const before = ai.getAnalysis(original.id)
+  await expect(service.continueAnalysis(original.id, { modelId: 'missing' })).rejects.toMatchObject({ code: 'INVALID_MODEL' })
+  expect(ai.getAnalysis(original.id)).toEqual(before)
+  expect(ai.analysisContext(original.id).checkpoint).toBe(checkpoint)
+  const provider = await settings.saveProvider({ name: '替换服务', baseUrl: 'http://localhost:9001/v1', enabled: true })
+  const model = await settings.saveModel({ providerId: provider.id, label: '替换模型', model: 'replacement', contextWindow: 8000, maxTokens: 1000, enabled: true })
+  await service.continueAnalysis(original.id, { modelId: model.id })
+  await service.idle()
+  expect(requests[0]).toMatchObject({ model: { id: model.id }, checkpoint: 'saved-leaf' })
+  expect(ai.getAnalysis(original.id)).toMatchObject({ state: 'completed', id: original.id, analyzedMessages: 1, modelId: model.id })
+  expect(ai.getReport(original.id).citations).toHaveLength(1)
 })

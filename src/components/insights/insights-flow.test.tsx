@@ -646,3 +646,69 @@ it('列表原位改名保存期间阻止取消和打开另一份报告，回执�
   await act(async () => finish({ ...completed, title: '合作', eventSequence: 4 }))
   expect(screen.getByRole('button', { name: /小林.*合作.*#24/ })).toBeVisible()
 })
+
+
+it('失败洞察换服务商保留任务编号，取消不提交，切换失败后可继续选择', async () => {
+  const user = userEvent.setup()
+  const paused: AnalysisTask = { ...completed, id: '38', report: undefined, state: 'failed', analyzedMessages: 6 }
+  const onContinue = vi.fn().mockRejectedValueOnce({ action: '请检查模型权限后重试。' }).mockResolvedValue(undefined)
+  const models = [{ id: 'm', label: '原模型', providerName: '原服务商' },
+    { id: 'replacement', label: '新模型', providerName: '新服务商', insightThinkingLevels: ['low', 'high'] as const }]
+  render(<InsightsLibrary tasks={[paused]} models={models} conversations={[]} loading={false} error="" retry={() => {}}
+    onSelect={() => {}} onReturn={() => {}} onTask={() => {}} onConversations={() => {}} onRenameBusy={() => {}} onContinue={onContinue} />)
+  await user.click(screen.getByRole('button', { name: '更换模型并继续' }))
+  await user.click(screen.getByRole('combobox', { name: '接续模型' }))
+  await user.click(screen.getByRole('option', { name: /新模型/ }))
+  expect(screen.getByText('新服务商')).toBeVisible()
+  await user.click(screen.getByRole('button', { name: '取消' }))
+  expect(onContinue).not.toHaveBeenCalled()
+  expect(screen.getByText(/6 \/ 12 条/)).toBeVisible()
+  await user.click(screen.getByRole('button', { name: '更换模型并继续' }))
+  await user.click(screen.getByRole('combobox', { name: '接续模型' }))
+  await user.click(screen.getByRole('option', { name: /新模型/ }))
+  await user.click(screen.getByRole('button', { name: '思考强度：默认' }))
+  await user.click(screen.getByRole('option', { name: '高' }))
+  await user.click(screen.getByRole('button', { name: '确认并继续' }))
+  expect(onContinue).toHaveBeenLastCalledWith('38', { modelId: 'replacement', thinkingLevel: 'high' })
+  expect(screen.getByRole('combobox', { name: '接续模型' })).toHaveTextContent('新模型')
+  expect(screen.getByText(/6 \/ 12 条/)).toBeVisible()
+  await user.click(screen.getByRole('button', { name: '确认并继续' }))
+  expect(onContinue).toHaveBeenCalledTimes(2)
+})
+
+it('已完成报告列表与阅读页不再显示生成模型', () => {
+  const task = { ...completed, modelId: 'private-model', modelIdentity: { ...completed.modelIdentity!, label: '生成模型名称' } }
+  const props = { tasks: [task], conversations: [], loading: false, error: '', retry: () => {}, onSelect: () => {},
+    onReturn: () => {}, onTask: () => {}, onConversations: () => {}, onRenameBusy: () => {} }
+  const view = render(<InsightsLibrary {...props} />)
+  expect(screen.queryByText('生成模型名称')).toBeNull()
+  expect(screen.queryByText('模型')).toBeNull()
+  view.rerender(<InsightsLibrary {...props} selectedId={task.id} />)
+  expect(screen.queryByText('生成模型名称')).toBeNull()
+  expect(screen.queryByText('模型')).toBeNull()
+})
+
+
+it('会话浮窗可在原模型失效后换模型接续，取消不更改默认模型', async () => {
+  const user = userEvent.setup()
+  const paused: AnalysisTask = { ...completed, state: 'stopped', analyzedMessages: 6, report: undefined }
+  const resume = vi.fn().mockRejectedValueOnce({ code: 'MODEL_CHANGED', action: '请更换模型后继续。' })
+    .mockResolvedValue({ taskId: paused.id, task: { ...paused, modelId: 'replacement', state: 'running' } })
+  const selectModel = vi.fn()
+  const adapter: ConversationAiAdapter = { ...baseAdapter, models: [...baseAdapter.models, { id: 'replacement', label: '接续模型', providerName: '另一服务商' }],
+    continueAnalysis: resume, selectModel, watchAnalysis: async (_id, publish) => publish(paused) }
+  render(<ConversationWorkspace conversationId="1" title="小林" references={[]} onClearReferences={() => {}} onJumpReference={() => {}}
+    adapter={adapter} openAnalysisOnEntry initialAnalysisTaskId={paused.id}>{({ analysisControl }) => analysisControl}</ConversationWorkspace>)
+  await user.click(await screen.findByRole('button', { name: '继续洞察' }))
+  await user.click(screen.getByRole('button', { name: '更换模型并继续' }))
+  await user.click(screen.getByRole('button', { name: '取消' }))
+  expect(selectModel).not.toHaveBeenCalled()
+  await user.click(screen.getByRole('button', { name: '更换模型并继续' }))
+  await user.click(screen.getByRole('combobox', { name: '接续模型' }))
+  await user.click(screen.getByRole('option', { name: '接续模型' }))
+  await user.click(screen.getByRole('button', { name: '确认并继续' }))
+  expect(resume).toHaveBeenLastCalledWith(paused.id, expect.any(AbortSignal), expect.any(Function), { modelId: 'replacement' })
+  expect(screen.getByText('已提交分析 6 / 12 条')).toBeVisible()
+  expect(selectModel).not.toHaveBeenCalled()
+  expect(adapter.analyze).not.toHaveBeenCalled()
+})

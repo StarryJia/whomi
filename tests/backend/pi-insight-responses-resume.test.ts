@@ -525,3 +525,65 @@ it.each(signatureCases)('压缩后按脱敏设置重放工具与推理配对：$
   }
   expect(events.filter(event => event.type === 'request').at(-1)?.spans).toEqual([span])
 }, 30000)
+
+
+it.each(['openai-responses', 'anthropic-messages'] as const)('额度失败后更换服务商使用 %s 接续同一原文断点，移除旧签名', async protocol => {
+  const { input, options, events, read, span } = sample('示例原文：周五两点见。')
+  input.model = { ...model, contextWindow: 16000 }
+  answer = (_path, _body, response) => {
+    if (requests.length === 1) responses(response, [
+      { type: 'reasoning', id: 'rs_old', summary: [{ type: 'summary_text', text: '需要回查。' }], encrypted_content: 'old-provider-ciphertext' },
+      { type: 'function_call', id: 'fc_old', call_id: 'call_old', name: 'read_messages', arguments: '{}' },
+    ])
+    else {
+      response.writeHead(429, { 'content-type': 'application/json' })
+      response.end(JSON.stringify({ error: { code: 'insufficient_quota', message: 'Quota exceeded' } }))
+    }
+  }
+  await expect(new PiRuntime(directory).run(input, options)).rejects.toMatchObject({ code: 'INSIGHT_QUOTA_EXCEEDED' })
+  const checkpoint = events.filter(event => event.type === 'checkpoint').at(-1)!.checkpoint
+  const requestCount = requests.length
+  answer = (path, _body, response) => {
+    if (protocol === 'openai-responses') { responses(response, [textItem('已接续')]); return }
+    expect(new URL(path, 'http://localhost').pathname).toBe('/v1/messages')
+    const stream = [
+      { type: 'message_start', message: { id: 'msg_new', type: 'message', role: 'assistant', model: model.model, content: [], usage: { input_tokens: 100, output_tokens: 0 } } },
+      { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '已接续' } },
+      { type: 'content_block_stop', index: 0 },
+      { type: 'message_delta', delta: { stop_reason: 'end_turn' }, usage: { output_tokens: 10 } }, { type: 'message_stop' },
+    ]
+    response.writeHead(200, { 'content-type': 'text/event-stream' })
+    response.end(stream.map(event => 'event: ' + event.type + '\ndata: ' + JSON.stringify(event) + '\n\n').join(''))
+  }
+  const resumed = await new PiRuntime(directory).run({ ...input, checkpoint, model: { ...model, id: 'other-provider', protocol },
+    insightSession: { ...input.insightSession, modelSessionKey: JSON.stringify(['other-provider', 1]) }, prompt: '继续剩余分析。' }, options)
+  expect(resumed.text).toBe('已接续')
+  expect(JSON.parse(resumed.checkpoint).sessionFile).toBe(JSON.parse(checkpoint).sessionFile)
+  const wire = JSON.stringify(requests.slice(requestCount))
+  expect(wire).toContain('示例原文：周五两点见。')
+  expect(wire).not.toContain('old-provider-ciphertext')
+  expect(read).toHaveBeenCalledOnce()
+  expect(events.filter(event => event.type === 'request').at(-1)?.spans).toEqual([span])
+}, 30000)
+
+
+it('替换模型窗口不足以压缩已有历史时明确报错，原断点可继续恢复', async () => {
+  const { input, options, events, read } = sample('合成原文，约好周五见。'.repeat(600))
+  const large = { ...input, model: { ...model, contextWindow: 64000, maxTokens: 1000 } }
+  answer = (_path, _body, response) => responses(response, requests.length === 1
+    ? [{ type: 'function_call', id: 'fc_long', call_id: 'call_long', name: 'read_messages', arguments: '{}' }]
+    : [textItem('已保存阅读笔记。')])
+  const first = await new PiRuntime(directory).run(large, options)
+  const priorEvents = events.length
+  const requestCount = requests.length
+  await expect(new PiRuntime(directory).run({ ...input, checkpoint: first.checkpoint,
+    model: { ...model, id: 'tiny', contextWindow: 2048, maxInputTokens: 1200, maxTokens: 800 },
+    insightSession: { ...input.insightSession, modelSessionKey: 'tiny' } }, options)).rejects.toMatchObject({ code: 'MODEL_CONTEXT_LIMIT' })
+  expect(events.slice(priorEvents)).toContainEqual({ type: 'requestBlocked', kind: expect.stringMatching(/inference|compaction/), code: 'MODEL_CONTEXT_LIMIT' })
+  expect(requests.length).toBe(requestCount)
+  const resumed = await new PiRuntime(directory).run({ ...large, checkpoint: first.checkpoint, prompt: '继续成稿。' }, options)
+  expect(resumed.text).toBe('已保存阅读笔记。')
+  expect(JSON.parse(resumed.checkpoint).sessionFile).toBe(JSON.parse(first.checkpoint).sessionFile)
+  expect(read).toHaveBeenCalledOnce()
+  expect(JSON.stringify(requests.at(-1))).toContain('合成原文，约好周五见。')
+}, 30000)

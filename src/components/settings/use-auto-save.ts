@@ -26,5 +26,9 @@ export function useAutoSave<T>(persist: (input: T) => Promise<void>) {
   }, [])
   const save = useCallback((input: T) => { queued.current = input; return process() }, [process])
   const retry = useCallback(() => { if (failed.current !== null) return save(failed.current); return Promise.resolve(true) }, [save])
-  return { pending, error, save, retry, flush: () => running.current ?? Promise.resolve(!failed.current) }
+  function clearFailure() {
+    failed.current = null
+    setError('')
+  }
+  return { pending, error, save, retry, clearFailure, flush: () => running.current ?? Promise.resolve(!failed.current) }
 }

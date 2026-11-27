@@ -3,7 +3,7 @@ import { BoundaryError, validateError } from '../shared/desktop-validation'
 import { validateAiCall, validateAiEvent, validateAiResult } from '../shared/ai-validation'
 
 export function createAiClient(transport: { invoke(method: keyof AiMethods, args: unknown[]): Promise<unknown>; onEvent(listener: (event: unknown) => void): () => void }): AiApi {
-  const pendingAnalysisControls = new Map<string, { method: keyof AiMethods; request: Promise<unknown> }>()
+  const pendingAnalysisControls = new Map<string, { method: keyof AiMethods; signature: string; request: Promise<unknown> }>()
 
   async function invoke(method: keyof AiMethods, args: unknown[]) {
     const response = await transport.invoke(method, args) as { ok: boolean; value?: unknown; error?: unknown }
@@ -22,11 +22,15 @@ export function createAiClient(transport: { invoke(method: keyof AiMethods, args
     if (method !== 'stopAnalysis' && method !== 'continueAnalysis') return invoke(method, args)
     const taskId = args[0] as string
     const pending = pendingAnalysisControls.get(taskId)
-    if (pending?.method === method) return pending.request
+    const signature = JSON.stringify(args)
+    if (pending?.method === method) {
+      if (pending.signature !== signature) throw new BoundaryError('ANALYSIS_BUSY', '请等待当前操作完成后重试。')
+      return pending.request
+    }
     const request = invoke(method, args).finally(() => {
       if (pendingAnalysisControls.get(taskId)?.request === request) pendingAnalysisControls.delete(taskId)
     })
-    pendingAnalysisControls.set(taskId, { method, request })
+    pendingAnalysisControls.set(taskId, { method, signature, request })
     return request
   }
   const names = ['listModels', 'saveModel', 'testModel', 'listSkills', 'previewInsightScope', 'prepareAnalysis', 'discardAnalysisPreparation', 'confirmAnalysis', 'getAnalysis', 'listAnalyses', 'arrangeAnalysis', 'renameAnalysis', 'deleteAnalysis', 'stopAnalysis', 'continueAnalysis', 'getReport', 'readInsightCitation', 'openThread', 'listThreads', 'createThread', 'getThread', 'arrangeThread', 'deleteThread', 'sendTurn', 'retryTurn', 'stopTurn'] as const

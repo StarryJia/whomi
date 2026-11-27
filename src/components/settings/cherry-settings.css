@@ -84,7 +84,7 @@
 .cherry-panel .cherry-sync-checkbox { width:16px; height:16px; flex:0 0 16px; margin:8px; accent-color:var(--focus); cursor:pointer; }
 .cherry-panel .cherry-sync-checkbox:disabled { cursor:default; }
 .cherry-sync-row .ms-model-description strong,.cherry-sync-row .ms-model-description>span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.cherry-catalog-capacity { color:var(--text-muted); font-size:12px; font-variant-numeric:tabular-nums; }
+.cherry-catalog-capacity { flex-shrink:0; color:var(--text-muted); font-size:12px; font-variant-numeric:tabular-nums; }
 @keyframes cherry-panel-enter { from { transform:translateX(100%); } to { transform:translateX(0); } }
 @media(max-width:720px) { .cherry-settings .ms-detail { padding:16px; } .cherry-settings .ms-model-row { flex-wrap:nowrap; } .cherry-settings .settings-model-actions { flex-wrap:nowrap; } .cherry-health { max-width:56px; overflow:hidden; text-overflow:ellipsis; } }
 @media(prefers-reduced-motion:reduce) { .cherry-panel { animation:none; } }

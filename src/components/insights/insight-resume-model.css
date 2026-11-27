@@ -1,0 +1,6 @@
+.insight-resume-model { margin-top: 12px; min-width: 0; }
+.insight-resume-options { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
+.insight-resume-options > .cherry-model-trigger { max-width: 100%; }
+.insight-resume-provider { color: var(--text-muted); font-size: 13px; overflow-wrap: anywhere; }
+.insight-resume-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+.insight-resume-model .analysis-notice { margin: 8px 0 0; color: var(--text-muted); font-size: 13px; }
