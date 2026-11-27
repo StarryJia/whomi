@@ -1,5 +1,10 @@
 # 004 · 对话洞察
 
+- 2026-11-28，在 `codex/issue-49-evaluation-design` 分支（基于 `d9703e0`）完成会话洞察四项重构，依次提交 `577bd85`、`f3c338a`、`537689d`、`7c87552`，待维护者复核桌面回归与真实长会话效果后合并拉取请求。
+  - **核心改动**：升级内置 Personalysis 至 `0.3.1`（`f52abd7`）并按入口分节校验注入；取消报告末尾全局「分析依据限制」并约束风险信号仅作客观识别、不作揣测且不提供建议或热线（保留 `safetyLead` 置顶与四维单项限制）；将设置页三项洞察提示词合并为默认留空的单项「洞察偏好」并兼容迁移旧配置；将阅读工具返回改为按日分组的紧凑行式剧本，标定 `UTF-8 字节 / 2.5` 估算、修复 `messages[0]` 提示词前缀缓存失效与成稿后无效压缩；为多段长聊天新增时间感知分段（每段上限 24,000 词元）、SQLite 数据库第 18 版表 `ai_insight_evidence_cards` 同事务持久化、跨模型续跑、统一综合按编号回查、成稿前 1 次早期时段覆盖复核，以及可关闭的 `ai-runtime/insight-traces/` 私有侧车调试轨迹与防崩溃清理。详见[Personalysis 接入与 0.3.1 升级记录](../../designs/personalysis-integration-v1.md#2026-11-28-会话洞察全面升级personalysis-031-与长会话分段证据卡)与[系统提示词](../../designs/whomi-system-prompts.md)。
+  - **独立验证结果**：`npm run typecheck` 通过；`npm run test:backend` 70 个文件 1,066 项通过（含 8 条与 4,600 条合成聊天的真实 Pi 运行器端到端测试、第 17 → 18 版迁移、分段、时间覆盖与清理恢复测试）；`npm test -- --maxWorkers=2` 64 个文件 704 项通过；`npm run desktop:build` 通过。桌面 Playwright 界面用例（[pi-insights.spec.mjs](../../../tests/desktop/pi-insights.spec.mjs)、[insight-ui.spec.mjs](../../../tests/desktop/insight-ui.spec.mjs)、[system-prompts.spec.mjs](../../../tests/desktop/system-prompts.spec.mjs)）已更新；当前受限执行环境无法申请正常 Windows 用户桌面测试授权，本轮未运行 Electron 窗口界面用例，亦未运行付费真实模型对照。
+  - **下一步**：由维护者在正常 Windows 用户环境复跑桌面界面用例、按需用真实长会话核对分段证据卡与调试轨迹效果，确认后推送并合并拉取请求。
+
 - 2026-11-27，按维护者要求修复合并请求 #54 的七项审查问题，待验收。小窗口可开始洞察、讨论书店报告，并在继续短提问时丢弃超限旧轮次。洞察宿主适配第 3 版区分自伤风险与外部威胁、压缩笔记与最终成稿。标记了安全首段的新报告会先显示求助建议，原文仍可回查。历史列表只读取所需字段。具体预算与兼容行为见[合并审查修复](../../designs/personalysis-integration-v1.md#2026-11-27-合并审查修复)。下一步由维护者核对桌面截图和本地修复，决定是否更新远端合并请求。
   - 本轮类型检查、桌面构建、后端 961 项和前端 695 项通过。正常 Windows 用户环境下六项桌面回归首次全部通过，覆盖 4,600 条聊天暂停恢复、模型过载重试、提示词取消与重启，以及安全首段在 1280 × 800 和 960 × 640 的展示与原文回查。[桌面验收用例](../../../tests/desktop/insight-ui.spec.mjs)与[小窗口运行器回归](../../../tests/backend/pi-insight-responses-resume.test.ts)使用本地模拟服务。书店数字来自历史合成报告离线重放，本轮未重新调用付费模型。
 

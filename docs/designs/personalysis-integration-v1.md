@@ -1,8 +1,8 @@
 # Personalysis 接入 Whomi · 范围、实施与验收记录第 1 版
 
-更新：2026-11-26。关联：[004 对话洞察](../planning/ideas/004-conversation-insights.md) · [原 16 个文件逐项整合与 0.2.0 规则对照](../research/issue-49-personalysis-integration-review.md)。
+更新：2026-11-28。关联：[004 对话洞察](../planning/ideas/004-conversation-insights.md) · [原 16 个文件逐项整合与 0.2.0 规则对照](../research/issue-49-personalysis-integration-review.md)。
 
-**状态：已在 `codex/issue-49-evaluation-design` 分支完成 `Personalysis 0.2.0`（`db0da38`）运行接入、离线全量回归、`desktop:pack` 产物校验与真实模型对照，待维护者验收合入。** 本次落地将 Personalysis 作为内置分析方法，统一用于会话洞察与当前「AI 对话」侧窗；不新增 Skills 界面入口，心事屋后续单独安排；应急提醒仅保留通用提示、不写死地区救援热线号码。本方案取代 [PersonLens 历史方案](personlens-integration-v1.md)，旧方案不再作为另一条实施路线。
+**状态：已在 `codex/issue-49-evaluation-design` 分支升级至 `Personalysis 0.3.1`（`f52abd7`），并完成分节校验注入、移除报告末尾全局「分析依据限制」、风险信号客观识别无建议规则、单项可选「洞察偏好」、紧凑行式剧本阅读格式与缓存压缩修正，以及长会话分段证据卡流水线、程序化时段覆盖校验与私有侧车调试轨迹文件；离线全量类型检查、后端测试、前端测试与桌面构建全部通过，真实 Electron 窗口回归与实模验收待维护者执行后合入。** 本次落地将 Personalysis 作为内置分析方法，统一用于会话洞察与当前「AI 对话」侧窗；不新增 Skills 界面入口，心事屋后续单独安排。本方案取代 [PersonLens 历史方案](personlens-integration-v1.md)，旧方案不再作为另一条实施路线。
 
 ## 1. 正式来源与当前事实
 
@@ -92,6 +92,28 @@ Whomi 开发位于 `D:\CodexData\worktrees\issue-49-evaluation-design\whomi` 的
 - **洞察与追问容量。** 固定的方法正文和宿主指令按每三个 UTF-8 字节约一个词元估算。8,192 词元的共享窗口可发送首次洞察请求，即使模型服务省略用量回执也能取到原文。侧窗保留当前问题、引用和可编辑指令的字节预算，先去掉报告的引用定位元数据，再按需只保留叙述和限制，最后才省略报告。用原书店报告与原追问离线重放，固定输入预算为 6,000，估算用量由 7,735 降至 5,886，两节叙述、四维解释及其限制均得到保留。超限的旧对话按轮次裁剪，并清除对应断点。
 - **风险报告与压缩笔记。** 第 3 版洞察宿主适配要求模型按材料说明具体风险。示例材料仅提到自伤念头时，应回应这项风险；材料出现控制或暴力行为时，再指出对应行为。新报告用可选的 `safetyLead` 标记已有安全首段，阅读页将它和原文引用放到人格预测之前。无标记的已存报告沿用原顺序。最终提交和修稿使用报告结构，压缩阶段只写续读笔记。
 - **历史读取。** 打开旧对话时按展示所需字段查询。继续提问时只读取当前回答与最近一条同身份已完成回答的方法快照，核对是否可沿用断点。数据库仍保存每轮独立冻结的指令。回归测试在查询时统计实际读取次数，同时检查历史顺序、引用和断点。
+
+### 2026-11-28 会话洞察全面升级（Personalysis 0.3.1 与长会话分段证据卡）
+
+针对真实长聊天报告暴露的揣测性安全建议、末尾全局「分析依据限制」冗余、提示词过重与上下文压缩丢失早期内容四类问题，在 `codex/issue-49-evaluation-design` 分支基于 `d9703e0` 依次落地 4 个提交（`577bd85`、`f3c338a`、`537689d`、`7c87552`）：
+
+1. **升级 Personalysis `0.3.1` 分节校验与客观风险规则（`577bd85`）。**
+   - 固定上游提交 `f52abd7b49aecab92dba4ab4cb985c2a11ab5d5e`（`SKILL.md` Git 文件对象标识 `20ae427ca0c280945918a0e9bf40a25aadf19602`，LF SHA-256 `4fbec1ceb6eaf5c30ca7e3e283ca41517dcf7d52d60770cc8bbfc4f3e37a2d11`；去除前置元数据正文 SHA-256 `69a9871404372c408c1d975b79e3e8ff5112026a0a45a046ac5a2b6107cc06fa`）。
+   - 加载器（`electron/vendor/personalysis/index.ts`）校验完整原件、正文、末尾两个二级任务标题与两个独立任务切片的 SHA-256：会话洞察仅注入 `Core + Task: Material analysis`（SHA-256 `d8b6a555eea788a2ec0ebc2f737fffd03833fe2d3fcb348ba3fb95ff9fef9bd4`），AI 对话仅注入 `Core + Task: Interactive dialogue`（SHA-256 `3ea201431221acc679416d2de9b014c3b83c46a90f9358cd5f418a988c9986b7`）；已保存的 `0.2.0` 旧快照仍按原冻结内容续跑。
+   - 精简第一层 `common` 规则，升级洞察宿主契约至第 4 版、对话契约至第 2 版：洞察报告遇客观风险信号仍以 `safetyLead: true` 置顶于 MBTI（迈尔斯–布里格斯性格类型指标）预测之前，但严格限于对客观已记录消息的事实识别与分析，禁止揣测现状及输出任何安全步骤、危机热线、紧急服务或行动建议；移除报告级全局 `limitations` 生成与阅读页末尾 `<aside aria-label="分析依据限制">`，保留各维度 `judgment.limitations` 及旧库报告读取兼容。
+2. **合并三项洞察提示词为单项可选「洞察偏好」（`f3c338a`）。**
+   - 设置页「系统提示词」缩减为「AI 对话」「洞察偏好」两项（`src/shared/system-prompts.ts`）；「洞察偏好」默认空字符串且允许保存为空，为空时三层组装直接省略第三层。
+   - 兼容迁移（`electron/data/ai/legacy-prompts.ts`、`system-prompts.ts`、`settings/repository.ts`）识别并过滤接入前和 `0.2.0` 两代旧默认值，仅合并用户自定义部分并截断至 20,000 字符上限；已暂停的旧三键快照任务继续按原快照续跑。
+3. **紧凑行式剧本阅读格式、词元标定与缓存／压缩修正（`537689d`）。**
+   - 新增 `electron/main/insight-transcript.ts`，`read_messages` 改返回按日期分组的纯文本行式剧本（发言人图例、`## YYYY-MM-DD`、真实消息编号、每行保留发言人、同分钟省略时分、稀疏 `>replyId` 与 `[片段 start-end/length]`、防冲突 `<<< ... >>>` 多行消息块），大幅降低格式冗余。
+   - 将行式剧本词元估算标定为 `UTF-8 字节数 / 2.5`，避免每页按 1 字节 = 1 词元过保守拆分；阅读完成指令改为追加尾部用户提示，保持 `messages[0]` 逐字节不变以保住提示词前缀缓存；在已读完全文且助手正常交稿（`stop` 且无工具调用/溢出）时跳过 `agent_end` 的无效阈值压缩。
+4. **长会话时间感知分段证据卡流水线、时段覆盖校验与私有调试轨迹（`7c87552`）。**
+   - 新增 `electron/main/insight-segmentation.ts`：复测单段上限 24,000 词元，在 60%–100% 窗口内优先按本地换日或至少 6 小时间隔切分；短聊天（1 段内）继续走轻量 `generatePiInsight`，多段长聊天走 `generateSegmentedInsight`（断点版本 `segmented-insight-v1`）。
+   - SQLite 数据库升至第 18 版（`ai_insight_evidence_cards`），在同一事务中原子保存阶段证据卡、断点、消息覆盖和用量回执；删除任务或会话时同步清除。每段以无压缩独立请求提取结构化阶段证据卡（`events`、`selfSignals`、`riskSignals`、`revisions`、`openThreads`），传入此前全部旧卡并严格校验消息归属、本人发言与逐字摘录（校验失败自动纠错 1 次），支持暂停、重启及更换更小窗口模型时拆分剩余时段续跑。
+   - 统一综合阶段向 Pi 会话提供按时间排序的全部阶段证据卡，并保留 `read_messages({ messageId, before, after })` 按需回查原话能力；两条路径在成稿前均运行 `analyzeInsightTimeCoverage`，若早期有证据而引用全部集中在后期，最多触发 1 次自动时段复核，复核后只要格式与证据合法即予保存。
+   - 新增私有侧车调试轨迹写入器（`electron/main/insight-trace.ts`），默认在 `<dataDirectory>/ai-runtime/insight-traces/task-<id>.json` 原子落盘（严格隔离于可分享的 `logs/` 目录，可通过 `writeInsightTrace: false` 关闭，写入异常不中断洞察），并接入 `createInsightSessionCleanup` 随任务和会话删除及崩溃恢复清理。
+
+- **离线验证结果（`7c87552`）**：`npm run typecheck` 通过；`npm run test:backend` 70 个文件 1,066 项全部通过（含 8 条短聊与 4,600 条长聊真实 Pi 运行器与模拟模型端到端测试、数据库第 17 → 18 版迁移、分段、时间覆盖与防崩溃清理测试）；`npm test -- --maxWorkers=2` 64 个文件 704 项全部通过；`npm run desktop:build` 通过。桌面 Playwright 界面用例（`pi-insights.spec.mjs`、`insight-ui.spec.mjs`、`system-prompts.spec.mjs`）已同步更新并通过静态检查；因当前执行环境无法申请正常 Windows 用户桌面测试授权，尚未在本会话直接启动 Electron 窗口运行桌面界面用例，亦未运行付费真实模型实测。
 
 ## 5. 实际验收结果与边界
 
