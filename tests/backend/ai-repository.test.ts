@@ -494,7 +494,7 @@ test('升级旧资料库为已有请求补齐原模型归属，断点和用量�
   await repository.saveInsightCheckpoint(analysis.id, 'saved-v16-checkpoint', ['1'], 1234)
   await repository.recordUsage({ ownerKind: 'analysis', ownerId: analysis.id, requestId: 'original', usage: { totalInputTokens: 100, outputTokens: 10 } })
   await repository.saveAnalysis(analysis.id, { state: 'failed' })
-  store.writer.exec('ALTER TABLE ai_request_usage DROP COLUMN model_id; ALTER TABLE ai_request_usage DROP COLUMN model_version; ALTER TABLE ai_analysis_tasks DROP COLUMN model_history; PRAGMA user_version=16;')
+  store.writer.exec('DROP TABLE ai_insight_evidence_cards; ALTER TABLE ai_request_usage DROP COLUMN model_id; ALTER TABLE ai_request_usage DROP COLUMN model_version; ALTER TABLE ai_analysis_tasks DROP COLUMN model_history; PRAGMA user_version=16;')
   store.close()
   const reopened = openStore(path); cleanup.push(() => reopened.close())
   const restored = createAiRepository(reopened, async operation => operation())

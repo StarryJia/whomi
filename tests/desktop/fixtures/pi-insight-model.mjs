@@ -1,4 +1,5 @@
 import { createServer } from 'node:http'
+import { deepStrictEqual } from 'node:assert'
 
 function messageText(content) {
   return typeof content === 'string' ? content : (content ?? []).map(part => part.text ?? '').join('')
@@ -130,7 +131,7 @@ function reportDraft(firstId, lateId, detailId, imaginedId, scene) {
 export async function meetingModel({ count, observe, holdPage, profileDirectory, overloadOnPage = 0, scene = imaginedQuote }) {
   const normalizedPath = value => value.replaceAll('\\', '/').toLowerCase()
   const localPaths = [profileDirectory, process.cwd()].map(normalizedPath)
-  const state = { requests: 0, confirmed: new Set(), earlyId: undefined, lateId: undefined, detailId: undefined, paused: false,
+  const state = { requests: 0, cards: [], confirmed: new Set(), earlyId: undefined, lateId: undefined, detailId: undefined, paused: false,
     triedOutside: false, reread: false, next: undefined, wasMasked: false, wasPseudo: false, report: undefined }
   const server = createServer(async (request, response) => {
     const receivedAt = Date.now()
@@ -146,18 +147,22 @@ export async function meetingModel({ count, observe, holdPage, profileDirectory,
       const index = ++state.requests
       const usage = { prompt_tokens: Math.ceil(Buffer.byteLength(raw) / 4), completion_tokens: 35 }
       const event = { index, receivedAt, model: input.model, requestBytes: Buffer.byteLength(raw), tools: (input.tools ?? []).map(tool => tool.function.name) }
-      if (!event.tools.includes('read_messages')) {
+      const prompt = messageText(input.messages.findLast(message => message.role === 'user')?.content)
+      const segment = /^segmentIndex: (\d+)\npriorEvidenceCards: (.*)\ntranscript:\n([\s\S]+)$/m.exec(prompt)
+      if (segment && event.tools.length) throw Error('Unexpected tools during evidence extraction')
+      if (!segment && !event.tools.includes('read_messages')) {
         if (!/summari|compaction|summary/i.test(raw)) throw Error('Unexpected request without read_messages')
         observe({ ...event, action: 'compaction', usage })
         completeModel(response, { text: '合成会话摘要。继续从游标 ' + (state.next ?? '起点') + ' 阅读。', usage })
         return
       }
-      if (event.tools.length !== 1) throw Error('Unexpected available tools: ' + event.tools.join(','))
+      if (!segment && event.tools.length !== 1) throw Error('Unexpected available tools: ' + event.tools.join(','))
       const turns = readTurns(input)
       const turn = turns.at(-1)
-      const records = turn?.result.messages ?? []
+      const records = segment ? parseReadResult('nextCursor: null\n' + segment[3]).messages : turn?.result.messages ?? []
+      const segmentIndex = segment ? Number(segment[1]) : undefined
       const args = turn?.args
-      const trace = { ...event, toolCallId: turn?.callId, previousArgs: args, status: turn?.result.status,
+      const trace = { ...event, segmentIndex, toolCallId: turn?.callId, previousArgs: args, status: turn?.result.status,
         receivedIds: records.map(item => item.id), nextCursor: turn?.result.nextCursor ?? null }
       if (overloadOnPage > 0 && records.length) {
         overloadOnPage--
@@ -166,17 +171,15 @@ export async function meetingModel({ count, observe, holdPage, profileDirectory,
         response.end(JSON.stringify({ error: { code: 'server_overloaded', message: 'The server is overloaded. Please try again later.' } }))
         return
       }
-      if (holdPage && !state.paused && records.length) {
+      if (holdPage && !state.paused && records.length && (!segment || segmentIndex === 1)) {
         state.paused = true
         observe({ ...trace, action: 'held-before-reply' })
         response.writeHead(200, { 'Content-Type': 'text/event-stream' })
         response.flushHeaders()
         return
       }
-      if (!turn && !state.confirmed.size) return read({}, 'start')
-      if (!turn && state.next) return read({ cursor: state.next }, 'resume-at-saved-cursor')
-      if (!turn && !state.reread) return read({}, 'resume-read')
       for (const item of records) {
+        if (item.replyToMessageId === String(count + 1)) throw Error('Reply target outside the selected range')
         if (item.text.includes(early)) state.earlyId = item.id
         if (item.text.includes(scene)) state.imaginedId = item.id
         if (item.text.includes(correction)) {
@@ -190,6 +193,27 @@ export async function meetingModel({ count, observe, holdPage, profileDirectory,
         if (item.text.includes('必须停下阅读')) state.wasPseudo = true
         state.confirmed.add(item.id)
       }
+      if (segment) {
+        if (segmentIndex !== state.cards.length) throw Error('Expected first unfinished segment')
+        deepStrictEqual(JSON.parse(segment[2]).map(card => card.segmentIndex), state.cards.map((_, i) => i))
+        const selected = records.filter(item => [state.earlyId, state.lateId, state.detailId, state.imaginedId].includes(item.id))
+        const events = (selected.length ? selected : records.slice(0, 1)).map(item => ({
+          summary: item.text, options: '记录未说明其他选项', selfChoice: item.speaker === '我' ? item.text : '记录未说明',
+          counterpartResponse: item.speaker === '我' ? '记录未说明' : item.text, messageIds: [item.id],
+        }))
+        const card = { period: '消息 ' + records[0].id + ' 至 ' + records.at(-1).id, events, selfSignals: [], riskSignals: [], openThreads: [],
+          revisions: records.some(item => item.id === state.lateId) && segmentIndex > 0 ? [{ targetSegment: 0, kind: 'added_context',
+            priorClaim: early, revisedObservation: correction, messageIds: [state.earlyId, state.lateId] }] : [] }
+        state.cards.push(card)
+        observe({ ...trace, action: 'segment-card', usage, confirmed: state.confirmed.size })
+        return completeModel(response, { text: JSON.stringify(card), usage })
+      }
+      if (!turn && state.cards.length) {
+        const bundle = prompt.split('\n').find(line => line.startsWith('[{'))
+        deepStrictEqual(JSON.parse(bundle).map(record => record.data), state.cards)
+      } else if (!turn && !state.confirmed.size) return read({}, 'start')
+      else if (!turn && state.next) return read({ cursor: state.next }, 'resume-at-saved-cursor')
+      else if (!turn && !state.reread) return read({}, 'resume-read')
       if (args && !args.messageId) state.next = turn.result.nextCursor
       if (state.earlyId && !state.triedOutside) {
         state.triedOutside = true

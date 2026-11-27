@@ -23,6 +23,7 @@ import { BoundaryError, localId } from '../../../src/shared/desktop-validation'
 import type { AiModel, AiSkill, AiState, AiThread, AiThreadSummary, AiTurn, AiUsage, AnalysisPreparation, AnalysisTask, AnalysisUsage, PrepareAnalysisInput, ResumeAnalysisModel } from '../../../src/shared/ai-contract'
 import { threadTitle } from './thread-title'
 import { prepareTurnProfile } from './turn-profile'
+import type { InsightEvidenceCardRecord } from './insight-evidence-card'
 import { captureInsightSources, populateReportExcerpts, previewInsightScope, readCurrentInsightSources, readInsightCitationIds, readInsightSources, type StoredInsightSnapshot, type StoredInsightSourceRef } from './insight-sources'
 
 export type AiSourceMessage = { id: string; senderName: string; text: string; isSelf: boolean; kind: string; sentAtMs: number | null; memberId: string | null }
@@ -551,7 +552,18 @@ export function createAiRepository(store: Store, write: WriterQueue) {
       })
       return repository.getAnalysis(taskId)
     },
-    async saveInsightCheckpoint(taskId: string, checkpoint: string, completedMessageIds: readonly string[], elapsedMs?: number, receipt?: Pick<UsageRecord, 'requestId' | 'usage'>): Promise<AnalysisTask> {
+    listInsightEvidenceCards(taskId: string): InsightEvidenceCardRecord[] {
+      const rows = reader.prepare(`SELECT segment_index, start_message_id, end_message_id, start_time_ms, end_time_ms, data
+        FROM ai_insight_evidence_cards WHERE task_id=? ORDER BY segment_index ASC`).all(id(taskId)) as {
+        segment_index: bigint; start_message_id: bigint; end_message_id: bigint; start_time_ms: bigint | null; end_time_ms: bigint | null; data: string
+      }[]
+      return rows.map(row => ({
+        segmentIndex: Number(row.segment_index), startMessageId: String(row.start_message_id), endMessageId: String(row.end_message_id),
+        startTimeMs: optionalNumber(row.start_time_ms), endTimeMs: optionalNumber(row.end_time_ms), data: parse(row.data),
+      }))
+    },
+    async saveInsightCheckpoint(taskId: string, checkpoint: string, completedMessageIds: readonly string[], elapsedMs?: number,
+      receipt?: Pick<UsageRecord, 'requestId' | 'usage'>, card?: InsightEvidenceCardRecord): Promise<AnalysisTask> {
       if (!text(checkpoint, 16 * 1024 * 1024) || !Array.isArray(completedMessageIds) || completedMessageIds.some(messageId => !localId(messageId)) ||
         (elapsedMs !== undefined && (!Number.isSafeInteger(elapsedMs) || elapsedMs < 0))) fail('INVALID_INSIGHT_CHECKPOINT', '请继续分析。')
       const coverage = new Set(completedMessageIds)
@@ -567,6 +579,20 @@ export function createAiRepository(store: Store, write: WriterQueue) {
         }
         const added = completedMessageIds.filter(messageId => !previous.has(messageId))
         if (added.length) checkedInsightSources(row, snapshot, added)
+        if (card && added.length) {
+          const count = db.prepare('SELECT count(*) FROM ai_insight_evidence_cards WHERE task_id=?').pluck().get(row.id)
+          const range = snapshot.sources.slice(previous.size, coverage.size)
+          if (card.segmentIndex !== Number(count) || range[0]?.messageId !== card.startMessageId ||
+              range.at(-1)?.messageId !== card.endMessageId || range.some(ref => previous.has(ref.messageId) || !coverage.has(ref.messageId))) {
+            fail('INVALID_INSIGHT_CHECKPOINT', '请继续分析。')
+          }
+          db.prepare(`INSERT INTO ai_insight_evidence_cards
+            (task_id,segment_index,start_message_id,end_message_id,start_time_ms,end_time_ms,data,created_at_ms)
+            VALUES (?,?,?,?,?,?,?,?)`).run(row.id, card.segmentIndex, id(card.startMessageId), id(card.endMessageId),
+            card.startTimeMs, card.endTimeMs, JSON.stringify(card.data), Date.now())
+        } else if (card && !isDeepStrictEqual(repository.listInsightEvidenceCards(taskId)[card.segmentIndex], card)) {
+          fail('INVALID_INSIGHT_CHECKPOINT', '请继续分析。')
+        }
         const elapsed = elapsedMs ?? row.elapsed_ms
         if (receipt) insertUsage({ ownerKind: 'analysis', ownerId: taskId, requestId: receipt.requestId, usage: receipt.usage })
         if (!receipt && !added.length && checkpoint === row.checkpoint && BigInt(elapsed) === row.elapsed_ms) return

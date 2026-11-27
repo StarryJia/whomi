@@ -99,7 +99,8 @@ function decodeRow(line: string): Row {
       const field = key === '阶段' ? 'phase' : fields.get(key)
       if (!field) continue
       const decoded = unknownLabels[field] === value ? 'unknown' : values.get(value) ?? value
-      data[field] = field === 'ordinals' ? value.split(',').map(Number) : /^\d+$/.test(value) ? Number(value)
+      data[field] = ['ordinals', 'buckets', 'segmentCitationCounts', 'uncoveredEarlierSegments'].includes(field)
+        ? (value ? value.split(',').map(Number) : []) : /^\d+$/.test(value) ? Number(value)
         : value === '是' ? true : value === '否' ? false : decoded
     }
   }

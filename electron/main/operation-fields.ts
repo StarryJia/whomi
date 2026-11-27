@@ -14,6 +14,7 @@ export const stageLabels: Readonly<Record<string, string>> = {
   requestUnknown: '尚未确认返回', retry: '重试', shrink: '缩小批次', saving: '保存中', saved: '已保存',
   recovered: '已恢复', budget: '触发预算限制', stalled: '触发阅读停滞保护', summary: '压缩摘要保存结果',
   requestBlocked: '请求未发出', targetRecovered: '已取到此前容量不足的目标',
+  segment: '提取阶段证据', initialTimeCoverage: '初稿引用时段', finalTimeCoverage: '成稿引用时段',
 }
 
 export const fieldLabels: Readonly<Record<string, string>> = {
@@ -35,6 +36,8 @@ export const fieldLabels: Readonly<Record<string, string>> = {
   invalidRecords: '异常记录', inserted: '新增消息数', duplicates: '重复消息数', processed: '已处理', total: '总数',
   ordinals: '记录序号', result: '结果', attempt: '尝试次数', batch: '当前批次', totalBatches: '总批次',
   messageCount: '输入消息数', readCount: '累计已读', inputTokens: '输入用量', outputTokens: '输出用量',
+  buckets: '五个时段的引用数', segmentCitationCounts: '各段引用数', totalCitations: '引用消息总数',
+  uncoveredEarlierSegments: '缺少引用的前期分段序号', needsCorrection: '引用集中于后期', correctionTriggered: '已触发时段复核',
   cacheReadTokens: '缓存读取用量', cacheWriteTokens: '缓存写入用量', durationMs: '耗时毫秒',
   firstTokenMs: '首段等待毫秒', limit: '限额', customService: '自定义服务', provider: '服务商', budget: '预算项',
   phase: '任务阶段', merged: '合并进度次数', fromCount: '起始计数', fromAt: '起始时间',
@@ -51,7 +54,7 @@ const enumValues: Record<string, readonly string[]> = {
   phase: ['prepare','resumePreparation','reading','checking','writing','compaction','saving','generate','source','scan','parse','save','confirm','statistics','cancel'],
   category: ['prompt','processing','debug','model','provider','account'],
 }
-const booleans = new Set(['hasMore','found','newRange','summarySaved','responseReceived','customService','estimatedContext','estimatedOutput','catalogContext','catalogOutput'])
+const booleans = new Set(['hasMore','found','newRange','summarySaved','responseReceived','customService','estimatedContext','estimatedOutput','catalogContext','catalogOutput','needsCorrection','correctionTriggered'])
 const extraCodes = new Set([
   'OPERATION_FAILED', 'WORKER_EXIT', 'SETTINGS_SAVE_FAILED', 'CONVERSATION_READ_FAILED', 'CONVERSATION_WRITE_FAILED',
   'UNKNOWN_SENDER', 'UNKNOWN_TIME', 'UNKNOWN_TYPE', 'UPSTREAM_SKIPPED_RECORDS', 'OWNER_CONFLICT',
@@ -74,6 +77,8 @@ export function safeFields(input?: Record<string, unknown>): SafeFields {
       if (typeof value === 'string' && value.length <= 100 && /^\d+(?:\.\d+){3}$/.test(value)) fields[key] = value
     } else if (key === 'ordinals' && Array.isArray(value)) {
       fields[key] = value.filter(n => Number.isSafeInteger(n) && n >= 0).slice(0, 3)
+    } else if (['buckets', 'segmentCitationCounts', 'uncoveredEarlierSegments'].includes(key) && Array.isArray(value)) {
+      fields[key] = value.filter(n => Number.isSafeInteger(n) && n >= 0)
     } else if (Object.hasOwn(enumValues, key)) {
       if (typeof value === 'string' && enumValues[key].includes(value)) fields[key] = value
     } else if (booleans.has(key)) {

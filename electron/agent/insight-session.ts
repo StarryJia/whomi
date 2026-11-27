@@ -122,7 +122,7 @@ function canReplayReasoning(signature: string, clean: (text: string) => string) 
   return [...item.summary, ...(item.content ?? [])].every(({ text }) => clean(text) === text)
 }
 
-function safeMessages(messages: Message[], processor: ReturnType<typeof createMessageProcessor>): Message[] {
+function safeMessages(messages: Message[], processor: ReturnType<typeof createMessageProcessor>, protectedUserPrompt: boolean): Message[] {
   const detachedCalls = new Map<string, string>()
   const detachedClaudeCalls = new Set<string>()
   return messages.map((message): Message | null => {
@@ -154,7 +154,8 @@ function safeMessages(messages: Message[], processor: ReturnType<typeof createMe
       })
       return { ...message, content }
     }
-    if (message.role === 'user') return { ...message, content: typeof message.content === 'string'
+    // 分段原文和证据卡已逐字段处理，整串脱敏会改写看似电话号码的消息编号。
+    if (message.role === 'user' && !protectedUserPrompt) return { ...message, content: typeof message.content === 'string'
       ? processor.text(message.content)
       : message.content.map(block => block.type === 'text' ? { ...block, text: processor.text(block.text) } : block) }
     if (message.role === 'toolResult') {
@@ -198,8 +199,8 @@ function appendReadingInstruction(messages: Message[], instruction: string) {
 }
 
 export function observeInsightSession(session: AgentSession, manager: SessionManager, callbacks: InsightRuntimeCallbacks,
-  settings: ProcessingSettings, task: string, signal: AbortSignal, reader: ReturnType<typeof createInsightTool>,
-  limits: { maxTokens: number; maxInputTokens: number }, api: ModelProtocol, fixedPromptLength = 0) {
+  settings: ProcessingSettings, task: string, signal: AbortSignal, reader: ReturnType<typeof createInsightTool> | undefined,
+  limits: { maxTokens: number; maxInputTokens: number }, api: ModelProtocol, fixedPromptLength = 0, protectedUserPrompt = false) {
   const processor = createMessageProcessor(settings, [])
   const fixed = task.slice(0, fixedPromptLength)
   const serializedFixed = JSON.stringify(fixed).slice(1, -1)
@@ -263,7 +264,7 @@ export function observeInsightSession(session: AgentSession, manager: SessionMan
     await checkpoint()
     const kind = options?.sessionId === manager.getSessionId() ? 'inference' : 'compaction'
     const original = kind === 'inference' ? includePending(context.messages, manager) : context.messages
-    const messages = safeMessages(original, processor)
+    const messages = safeMessages(original, processor, protectedUserPrompt)
     let systemStatus = ''
     if (kind === 'compaction' && messages[0]?.role === 'system') {
       const first = messages[0]
@@ -300,7 +301,7 @@ export function observeInsightSession(session: AgentSession, manager: SessionMan
         const content = message.role === 'toolResult' ? [message.toolName, message.toolCallId, message.content]
           : message.role === 'assistant' ? message.content : message
         const serialized = JSON.stringify(content)
-        conservative += Buffer.byteLength(serialized)
+        conservative += protectedUserPrompt && message.role === 'user' ? estimateTranscriptTokens(serialized) : Buffer.byteLength(serialized)
         if (message.role === 'system' && fixedDiscount && serialized.includes(serializedFixed)) conservative -= fixedDiscount
       }
       return Math.max(estimatedInput, conservative)
@@ -362,7 +363,7 @@ export function observeInsightSession(session: AgentSession, manager: SessionMan
         stopReason, failureCode, httpStatus, responseReceived })
       if (kind === 'inference' && response && success) {
         const input = usage.totalInputTokens ?? (sharedWindow ? reservedInput : unreportedInputTokens())
-        reader.setUsage(input + (usage.outputTokens ?? Buffer.byteLength(JSON.stringify(response.content))), response, requestId)
+        reader?.setUsage(input + (usage.outputTokens ?? Buffer.byteLength(JSON.stringify(response.content))), response, requestId)
         lastText = response.content.flatMap(block => block.type === 'text' ? [block.text] : []).join('')
       }
     }

@@ -98,7 +98,7 @@ test('upgrades schema nine to save new message kinds while preserving existing m
     const old = new Database(temp.path)
     try {
       // The messages table was unchanged from schema one through schema nine.
-      old.exec(`PRAGMA foreign_keys=OFF; DROP VIEW visible_memberships; DROP TABLE legacy_insight_source_classification;
+      old.exec(`PRAGMA foreign_keys=OFF; DROP TABLE ai_insight_evidence_cards; DROP VIEW visible_memberships; DROP TABLE legacy_insight_source_classification;
         DROP TABLE messages; ${legacyMessageSchema} PRAGMA foreign_keys=ON; PRAGMA user_version=9;
         ALTER TABLE ai_insight_snapshots DROP COLUMN source_text_bytes;
         ALTER TABLE ai_model_versions DROP COLUMN change_source;

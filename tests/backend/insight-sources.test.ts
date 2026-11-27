@@ -277,6 +277,57 @@ test('报告拒绝未完整覆盖、跨会话或版本不符的来源', async ()
   }
 })
 
+test('版本 17 的断点和覆盖迁移后可读取，新分段与回执一起保存并随任务及会话删除', async () => {
+  const { repository, temp, store } = await setup()
+  const preparation = await repository.prepareAnalysis({ conversationId: '1', modelId: 'example', scope: october })
+  const oldTask = await repository.confirmAnalysis({ token: preparation.token, requestId: 'v17' })
+  await repository.saveInsightCheckpoint(oldTask.id, 'pi-checkpoint', ['1'], 300)
+  await repository.saveAnalysis(oldTask.id, { state: 'stopped' })
+  store.writer.exec('DROP TABLE ai_insight_evidence_cards; PRAGMA user_version=17')
+  store.close()
+
+  const upgrade = vi.fn()
+  const upgraded = openStore(temp.path, upgrade)
+  cleanup.push(() => upgraded.close())
+  expect(upgrade).toHaveBeenCalledWith(17, 18)
+  const ai = createAiRepository(upgraded, async operation => operation())
+  expect(ai.analysisContext(oldTask.id)).toMatchObject({ checkpoint: 'pi-checkpoint', task: { analyzedMessages: 1, elapsedMs: 300 } })
+  expect(ai.listInsightEvidenceCards(oldTask.id)).toEqual([])
+
+  const card = { segmentIndex: 0, startMessageId: '1', endMessageId: '1', startTimeMs: start, endTimeMs: start,
+    data: { period: '10 月初', events: [], selfSignals: [], revisions: [], riskSignals: [], openThreads: [] } }
+  const nextCard = { ...card, segmentIndex: 1, startMessageId: '4', endMessageId: '4', startTimeMs: end, endTimeMs: end }
+  const receipt = { requestId: 'segment-0', usage: { inputTokens: 15, outputTokens: 3 } }
+  const prep = await ai.prepareAnalysis({ conversationId: '1', modelId: 'example', scope: october })
+  const task = await ai.confirmAnalysis({ token: prep.token, requestId: 'after-upgrade' })
+  await expect(ai.saveInsightCheckpoint(task.id, 'bad', ['1'], 100, { ...receipt, usage: { inputTokens: -1 } }, card))
+    .rejects.toHaveProperty('code', 'INVALID_USAGE')
+  expect(ai.listInsightEvidenceCards(task.id)).toEqual([])
+  expect(ai.analysisContext(task.id)).toMatchObject({ checkpoint: null, task: { analyzedMessages: 0, usage: {} } })
+  await ai.saveInsightCheckpoint(task.id, 'first', ['1'], 100, receipt, card)
+  await ai.saveInsightCheckpoint(task.id, 'first', ['1'], 100, receipt, card)
+  await ai.saveInsightCheckpoint(task.id, 'second', ['1', '4'], 200, undefined, nextCard)
+  await ai.saveAnalysis(task.id, { state: 'stopped' })
+  upgraded.close()
+
+  const reopened = openStore(temp.path)
+  cleanup.push(() => reopened.close())
+  const restored = createAiRepository(reopened, async operation => operation())
+  expect(reopened.reader.pragma('user_version', { simple: true })).toBe(18n)
+  expect(restored.listInsightEvidenceCards(task.id)).toEqual([card, nextCard])
+  expect(restored.analysisContext(task.id)).toMatchObject({ checkpoint: 'second', task: { analyzedMessages: 2, usage: receipt.usage } })
+
+  const otherPrep = await restored.prepareAnalysis({ conversationId: '1', modelId: 'example', scope: october })
+  const other = await restored.confirmAnalysis({ token: otherPrep.token, requestId: 'purge-conversation' })
+  await restored.saveInsightCheckpoint(other.id, 'first', ['1'], 100, receipt, card)
+  reopened.writer.pragma('foreign_keys=OFF')
+  await restored.deleteAnalysis(task.id)
+  expect(restored.listInsightEvidenceCards(task.id)).toEqual([])
+  expect(restored.listInsightEvidenceCards(other.id)).toEqual([card])
+  purgeConversation(reopened, '1')
+  expect(restored.listInsightEvidenceCards(other.id)).toEqual([])
+})
+
 test('一条已保存的引用异常时，报告列表、正文和其余引用仍可读取', async () => {
   const { repository, store } = await setup()
   const ids: string[] = []
@@ -405,6 +456,7 @@ test.each([10, 12, 13])('版本 %i 升级时按真实引用识别微信撤回，
     ALTER TABLE ai_analysis_tasks DROP COLUMN processing_snapshot;`)
   store.writer.exec('ALTER TABLE ai_analysis_tasks DROP COLUMN failure_operation_id; ALTER TABLE ai_analysis_tasks DROP COLUMN failure_at_ms')
   store.writer.exec('ALTER TABLE ai_analysis_tasks DROP COLUMN methodology_snapshot; ALTER TABLE ai_request_usage DROP COLUMN model_id; ALTER TABLE ai_request_usage DROP COLUMN model_version; ALTER TABLE ai_analysis_tasks DROP COLUMN model_history; ALTER TABLE ai_turns DROP COLUMN methodology_snapshot')
+  store.writer.exec('DROP TABLE ai_insight_evidence_cards')
   store.writer.pragma(`user_version=${version}`)
   migrateStore(store)
   expect(store.reader.prepare('SELECT id FROM visible_memberships WHERE conversation_id=1 ORDER BY id').all()).toEqual([{ id: 1n }, { id: 2n }])

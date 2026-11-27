@@ -137,7 +137,7 @@ else {
             return agentHost!.run({ ...input, insightSession: { ...input.insightSession, headers } }, options)
           }
           return accountRunners[provider].run(input, options)
-        } }, secrets, diagnostics: operations, deleteInsightSessions: insightSessions.remove,
+        } }, secrets, diagnostics: operations, deleteInsightSessions: insightSessions.remove, dataDirectory: directory, writeInsightTrace: true,
         insightAccountAccess: async (model, accountId, signal) => {
           const provider = model.planProvider ?? 'openai-codex'
           return provider === 'openai-codex'

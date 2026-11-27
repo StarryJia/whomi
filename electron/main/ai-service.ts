@@ -1,7 +1,11 @@
 import { withInsightClock } from './insight-clock'
 import { insightFailureAction, insightResumeFailureAction } from '../agent/insight-request-failure'
 import { safeFields } from './operation-fields'
-import { generatePiInsight, verifyInsightExcerpts, type PiInsightCheckpoint } from './pi-insight-generation'
+import { generatePiInsight, verifyInsightExcerpts, type InsightReceipt, type PiInsightCheckpoint } from './pi-insight-generation'
+import { generateSegmentedInsight, methodologySegmentBudget, type SegmentedInsightCheckpoint } from './segmented-insight-generation'
+import { planInsightSegments } from './insight-segmentation'
+import type { InsightEvidenceCardRecord } from '../data/ai/insight-evidence-card'
+import { createInsightTraceWriter } from './insight-trace'
 import type { AgentRunInput, AgentRunResult, InsightRequestContext, InsightRuntimeCallbacks } from '../agent/protocol'
 import { defaultPrompts } from '../../src/shared/system-prompts'
 import type { AnalysisContext, TurnContext } from '../data/ai/repository'
@@ -27,6 +31,8 @@ export type RuntimeResult = AgentRunResult
 export type RuntimeRunner = { run(input: RuntimeInput, options: { signal: AbortSignal; onText: (text: string) => void; insight?: InsightRuntimeCallbacks }): Promise<RuntimeResult> }
 export type AiServiceOptions = { storage(method: string, args: unknown[]): Promise<unknown>; runtime: RuntimeRunner; secrets: { encrypt(value: string): string; decrypt(value: string): string }; changed?: (event: AiEvent) => void;
   logError?: (entry: AppError) => void;
+  dataDirectory?: string;
+  writeInsightTrace?: boolean;
   deleteInsightSessions?: (taskIds: readonly string[], removeRecords: () => Promise<void>) => Promise<void>;
   diagnostics?: AiDiagnostics;
   insightAccountAccess?: (model: AiModel, accountId: string, signal: AbortSignal) => Promise<NonNullable<InsightRequestContext['access']>>;
@@ -55,6 +61,8 @@ function availableTurnOutput(input: RuntimeInput, capacity: Awaited<ReturnType<t
 
 
 export function createAiService(options: AiServiceOptions): AiMethods & { deleteConversation(id: string, remove: () => Promise<void>): Promise<void>; hasModelWork(ids: string[]): boolean; isBusy(): boolean; stopModelTasks(ids: string[]): Promise<void>; idle(): Promise<void>; close(): Promise<void>; subscribe(listener: (event: AiEvent) => void): () => void } {
+  const trace = options.dataDirectory && options.writeInsightTrace !== false
+    ? createInsightTraceWriter(options.dataDirectory, error => options.logError?.({ area: 'insight', phase: 'trace', error })) : undefined
   type Work = { key: string; conversationId: string; modelId?: string; abort: AbortController; task: Promise<void> }
   const active = new Map<string, Work>()
   const work = new Set<Work>()
@@ -247,14 +255,17 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
     try {
       const initial = await storage<AnalysisContext>('analysisContext', id)
       analyzedMessages = initial.task.analyzedMessages
-      const checkpoint: InsightCheckpoint | PiInsightCheckpoint | null = initial.checkpoint ? JSON.parse(initial.checkpoint) : null
+      const checkpoint: InsightCheckpoint | PiInsightCheckpoint | SegmentedInsightCheckpoint | null = initial.checkpoint ? JSON.parse(initial.checkpoint) : null
+      if (checkpoint && ![1, 'pi-insight-v1', 'segmented-insight-v1'].includes(checkpoint.version)) {
+        throw new BoundaryError('INVALID_INSIGHT_CHECKPOINT', '洞察进度无法恢复，请重新生成。')
+      }
       const processor = resumeProcessor ?? await analysisProcessor(id, initial.task.conversationId,
-        checkpoint?.version === 'pi-insight-v1' ? checkpoint.processing : initial.processing)
+        checkpoint && checkpoint.version !== 1 ? checkpoint.processing : initial.processing)
       if (signal.aborted) return
       const values = initial.systemPrompts ?? defaultPrompts
       const prompts = 'insight' in values ? defaultInsightPrompts : legacyStagePrompts(values)
       const editablePrompt = 'insight' in values ? values.insight : [prompts.reading, prompts.checking, prompts.writing].join('\n')
-      const legacy = checkpoint && checkpoint.version !== 'pi-insight-v1' ? checkpoint : null
+      const legacy = checkpoint?.version === 1 ? checkpoint : null
       if (legacy && !['reading', 'checking', 'writing'].includes(legacy.stage)) {
         throw new BoundaryError('INVALID_INSIGHT_CHECKPOINT', '洞察进度无法恢复，请重新生成。')
       }
@@ -264,12 +275,15 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
       const elapsedSample = { elapsedMs: running.elapsedMs ?? 0, sampledAtMs: Date.now() }
       elapsedSamples.set(id, elapsedSample)
       publish({ kind: 'analysis', snapshot: running })
+      const scopedIds = new Set(initial.snapshot.sources.map(source => source.messageId))
       const read = async (messageIds: readonly string[], excerpts?: readonly InsightJudgmentSource[]) => {
         const sources = await storage<InsightSourceMessage[]>('readInsightSources', { taskId: id, messageIds })
         if (excerpts?.length) verifyInsightExcerpts(sources, excerpts)
         return sources.map(({ memberId, ...source }) => {
           const protectedSource = processor.prepare([{ ...source, memberId, kind: 'text' }])[0]
-          return { ...source, text: protectedSource?.text ?? '', senderName: protectedSource?.senderName ?? '' }
+          const reply = source.replyToMessageId
+          return { ...source, text: protectedSource?.text ?? '', senderName: protectedSource?.senderName ?? '',
+            replyToMessageId: reply !== null && scopedIds.has(reply) ? reply : null }
         })
       }
       async function saveElapsed(elapsedMs: number, sampledAtMs: number) {
@@ -280,24 +294,44 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
           publish({ kind: 'analysis', snapshot })
         }
       }
-      const report = !legacy ? await withInsightClock(elapsedSample.elapsedMs, signal, saveElapsed, (sample, persist) => generatePiInsight({
-        snapshot: initial.snapshot, model: initial.model, modelSessionKey: initial.modelSessionKey, conversationId: initial.task.conversationId, thinkingLevel: initial.task.thinkingLevel,
-        ...(initial.methodology ? { methodology: initial.methodology, editablePrompt } : { prompts }),
-        processing: processor.settings, checkpoint: checkpoint?.version === 'pi-insight-v1' ? checkpoint : null, signal, operation, read,
-        onDiagnostic: ({ phase: current, ...facts }) => {
-          phase = current
-          requestFacts = safeFields(facts)
-        },
-        save: (state, receipt) => persist(async () => {
+      const report = !legacy ? await withInsightClock(elapsedSample.elapsedMs, signal, saveElapsed, async (sample, persist) => {
+        const save = (state: PiInsightCheckpoint | SegmentedInsightCheckpoint, receipt?: InsightReceipt, card?: InsightEvidenceCardRecord) => persist(async () => {
           const { elapsedMs, sampledAtMs } = sample()
-          const task = await storage<AnalysisTask>('saveInsightCheckpoint', id, JSON.stringify(state), state.coverage.coveredMessageIds, elapsedMs, ...(receipt ? [receipt] : []))
+          const task = await storage<AnalysisTask>('saveInsightCheckpoint', id, JSON.stringify(state), state.coverage.coveredMessageIds, elapsedMs, receipt, card)
           elapsedSample.elapsedMs = elapsedMs
           elapsedSample.sampledAtMs = sampledAtMs
           analyzedMessages = task.analyzedMessages
           publish({ kind: 'analysis', snapshot: task })
-        }),
-        run: (input, insight) => runInsightSession(input, insight, signal),
-      })) : await generateInsight({ snapshot: initial.snapshot, conversationId: initial.task.conversationId, model: initial.model,
+        })
+        const common = { snapshot: initial.snapshot, model: initial.model, modelSessionKey: initial.modelSessionKey,
+          conversationId: initial.task.conversationId, thinkingLevel: initial.task.thinkingLevel,
+          processing: processor.settings, signal, operation, read, save, trace,
+          onDiagnostic: ({ phase: current, ...facts }: { phase: string } & Record<string, unknown>) => {
+            phase = current
+            requestFacts = safeFields(facts)
+          },
+          run: (input: RuntimeInput, insight: InsightRuntimeCallbacks) => runInsightSession(input, insight, signal),
+        }
+        let segments = checkpoint?.version === 'segmented-insight-v1' ? checkpoint.segments : undefined
+        if (initial.methodology && !checkpoint) {
+          const limits = await resolveAgentModelCapacity({ ...initial.model, protocol: insightModelProtocol(initial.model) }, common.thinkingLevel)
+          const sources: InsightSourceMessage[] = []
+          const refs = initial.snapshot.sources
+          for (let i = 0; i < refs.length; i += 1024) {
+            signal.throwIfAborted()
+            sources.push(...await read(refs.slice(i, i + 1024).map(ref => ref.messageId)))
+          }
+          segments = planInsightSegments(sources, initial.snapshot.timezone, methodologySegmentBudget(limits.maxInputTokens, initial.methodology, editablePrompt))
+        }
+        if (checkpoint?.version === 'segmented-insight-v1' || (segments && segments.length > 1)) {
+          if (!initial.methodology || !segments) throw new BoundaryError('INVALID_INSIGHT_CHECKPOINT', '洞察进度无法恢复，请重新生成。')
+          return generateSegmentedInsight({ ...common, methodology: initial.methodology, editablePrompt, segments,
+            checkpoint: checkpoint?.version === 'segmented-insight-v1' ? checkpoint : null,
+            listCards: () => storage<InsightEvidenceCardRecord[]>('listInsightEvidenceCards', id) })
+        }
+        return generatePiInsight({ ...common, ...(initial.methodology ? { methodology: initial.methodology, editablePrompt } : { prompts }),
+          checkpoint: checkpoint?.version === 'pi-insight-v1' ? checkpoint : null, segments })
+      }) : await generateInsight({ snapshot: initial.snapshot, conversationId: initial.task.conversationId, model: initial.model,
         prompts, limits: defaultInsightRunLimits, checkpoint: legacy, elapsedMs: running.elapsedMs, thinkingLevel: initial.task.thinkingLevel }, {
         signal, onText: () => {},
         prepareNotes: processor?.data,
@@ -553,7 +587,8 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
         }
         const context = await storage<AnalysisContext>('analysisContext', id)
         const saved = context.checkpoint ? JSON.parse(context.checkpoint) : null
-        const processor = await analysisProcessor(id, current.conversationId, saved?.version === 'pi-insight-v1' ? saved.processing : context.processing)
+        const processor = await analysisProcessor(id, current.conversationId,
+          saved?.version === 'pi-insight-v1' || saved?.version === 'segmented-insight-v1' ? saved.processing : context.processing)
         const task = await storage<AnalysisTask>('resumeAnalysis', id, ...(selected ? [selected] : []))
         operation.event('recovered', { messageCount: task.totalMessages, readCount: task.analyzedMessages })
         if (!launch(key, task.conversationId, signal => executeAnalysis(id, signal, operation, processor), task.modelId)) operation.end('interrupted')

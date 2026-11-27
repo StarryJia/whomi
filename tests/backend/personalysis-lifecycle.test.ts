@@ -355,7 +355,7 @@ test('十五版资料库迁移保留旧报告引文和无方法的未完成任�
   const unfinished = await task('unfinished'), answer = await turn('unfinished-turn')
   await ai.saveAnalysis(unfinished.id, { state: 'stopped' })
   await ai.saveTurn(answer.id, { state: 'failed' })
-  store.writer.exec('ALTER TABLE ai_analysis_tasks DROP COLUMN methodology_snapshot; ALTER TABLE ai_turns DROP COLUMN methodology_snapshot; ALTER TABLE ai_request_usage DROP COLUMN model_id; ALTER TABLE ai_request_usage DROP COLUMN model_version; ALTER TABLE ai_analysis_tasks DROP COLUMN model_history; PRAGMA user_version=15;')
+  store.writer.exec('DROP TABLE ai_insight_evidence_cards; ALTER TABLE ai_analysis_tasks DROP COLUMN methodology_snapshot; ALTER TABLE ai_turns DROP COLUMN methodology_snapshot; ALTER TABLE ai_request_usage DROP COLUMN model_id; ALTER TABLE ai_request_usage DROP COLUMN model_version; ALTER TABLE ai_analysis_tasks DROP COLUMN model_history; PRAGMA user_version=15;')
   expect((store.writer.prepare('PRAGMA table_info(ai_turns)').all() as { name: string }[]).some(column => column.name === 'methodology_snapshot')).toBe(false)
   await closeService()
   cleanup.splice(cleanup.indexOf(closeService), 1)
