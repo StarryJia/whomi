@@ -152,6 +152,12 @@ export class PiRuntime {
     }
     const unsubscribe = session.subscribe(event => {
       if (reader && event.type === 'compaction_end') settingsManager.applyOverrides({ compaction })
+      if (event.type === 'agent_end' && observed?.isFullyReviewed()) {
+        const last = event.messages.at(-1)
+        // Pi 在 agent_end 后检查阈值。成稿后无需给下一轮腾空间，窗口溢出仍交给 Pi 恢复。
+        if (last?.role === 'assistant' && last.stopReason === 'stop' && !last.content.some(block => block.type === 'toolCall')
+          && !isContextOverflow(last, limits.contextWindow)) settingsManager.applyOverrides({ compaction: { enabled: false } })
+      }
       if (event.type === 'message_update' && event.assistantMessageEvent.type === 'text_delta') {
         if (options.signal.aborted) return
         const delta = event.assistantMessageEvent.delta

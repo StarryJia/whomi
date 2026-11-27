@@ -62,7 +62,7 @@ test('长消息完整条数不变但分片持续送阅时，仍可多次补读�
   const report = await generatePiInsight({ ...options, snapshot: { ...snapshot, sources: snapshot.sources.slice(0, 1) },
     read: async () => [longSource], save: async state => { saved = structuredClone(state) }, run: async (input, io) => {
       expect(++turns).toBeLessThan(20)
-      const page = await io.read({ cursor: cursorFrom(input.prompt) }, 320)
+      const page = await io.read({ cursor: cursorFrom(input.prompt) }, 105)
       expect(page.page.status).toBe('ok')
       await infer(io, 'fragment-' + turns, page.spans)
       progress.push(saved!.coverage.coveredMessageIds.length)

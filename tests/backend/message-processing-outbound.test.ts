@@ -222,7 +222,7 @@ describe('processed messages in actual model requests', () => {
     expect(sent.map((message: { text: string }) => message.text)).toEqual([
       '[授权令牌]', '[接口密钥]', '小林约U5明天见。密码：[密码]，明早见', '[银行卡号] 123', '示例标题\nhttps://example.invalid', '[银行卡号] [银行卡号]',
     ])
-    expect(revisit.result.messages).toEqual([sent[2]])
+    expect(revisit.result.messages).toEqual([{ ...sent[2], speaker: 'ta' }])
     expect(requests[2].messages.filter(message => message.role === 'assistant')).toContainEqual(
       expect.objectContaining({ content: '小林留下联系方式 [邮箱]，password="[密码]"' }),
     )

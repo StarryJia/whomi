@@ -1,5 +1,6 @@
 import type { InsightSnapshot, InsightSourceMessage } from '../../src/shared/conversation-insights'
-import type { InsightCoverage, InsightReadMessage, InsightReadRequest, InsightReadResult, InsightReadSpan } from '../../src/shared/insight-reader'
+import type { InsightCoverage, InsightReadMessage, InsightReadPage, InsightReadRequest, InsightReadResult, InsightReadSpan } from '../../src/shared/insight-reader'
+import { estimateTranscriptTokens, formatInsightReadPage, formatInsightTranscript } from './insight-transcript'
 
 const errors = {
   out_of_scope: '请使用本次范围内的消息编号。',
@@ -20,6 +21,15 @@ function nonnegative(value: unknown): value is number {
 function safeBoundary(text: string, offset: number) {
   return offset > 0 && offset < text.length && /[\ud800-\udbff]/.test(text[offset - 1]) && /[\udc00-\udfff]/.test(text[offset])
     ? offset - 1 : offset
+}
+
+function largestFit(low: number, high: number, fits: (size: number) => boolean) {
+  while (low < high) {
+    const mid = Math.ceil((low + high) / 2)
+    if (fits(mid)) low = mid
+    else high = mid - 1
+  }
+  return low
 }
 
 export function addInsightCoverage(previous: InsightCoverage, spans: readonly InsightReadSpan[]): InsightCoverage {
@@ -92,55 +102,67 @@ export function createInsightReader(snapshot: InsightSnapshot, readProtectedSour
     if (typeof position === 'string') return errorResult(position)
     if (!Number.isFinite(availableTokens) || availableTokens <= 0) return errorResult('insufficient_capacity')
     const { limit } = position
-    let { index, offset } = position
     const messages: InsightReadMessage[] = []
-    const spans: InsightReadSpan[] = []
-    let contentBytes = 0
-    const finish = (): InsightReadResult => ({ page: { status: 'ok', messages, nextCursor: cursor(index, offset, limit) }, spans })
-    const fits = (messageBytes: number, next: string | null) => {
-      // 与现有容量估算一致，用完整工具回包的 UTF-8 字节数保守计量。
-      const envelope = JSON.stringify({ status: 'ok', messages: [], nextCursor: next })
-      return Buffer.byteLength(envelope) + contentBytes + Number(messages.length > 0) + messageBytes <= availableTokens
-    }
-    while (index < limit) {
+    let index = position.index
+    let minimumTokens = 0
+    collect: while (index < limit) {
       const batch = await load(index, Math.min(index + 128, limit))
-      if (!batch.length) return messages.length ? finish() : errorResult('source_changed')
+      if (!batch.length) break
       for (const source of batch) {
         const ref = snapshot.sources[index]
-        if (ref.messageId !== source.id || ref.revision !== source.revision) return messages.length ? finish() : errorResult('source_changed')
+        if (ref.messageId !== source.id || ref.revision !== source.revision) break collect
+        const offset = index === position.index ? position.offset : 0
         const length = source.text.length
         if (offset > 0 && (offset >= length || safeBoundary(source.text, offset) !== offset)) return errorResult('invalid_request')
-        const messagePart = (end: number): InsightReadMessage => ({
+        const text = source.text.slice(offset)
+        messages.push({
           id: source.id, senderName: source.senderName, isSelf: source.isSelf, sentAtMs: source.sentAtMs,
-          replyToMessageId: source.replyToMessageId && positions.has(source.replyToMessageId) ? source.replyToMessageId : null,
-          text: source.text.slice(offset, end),
-          ...(offset === 0 && end === length ? {} : { fragment: { start: offset, end, length } }),
+          replyToMessageId: source.replyToMessageId !== null && positions.has(source.replyToMessageId) ? source.replyToMessageId : null,
+          text, ...(offset ? { fragment: { start: offset, end: length, length } } : {}),
         })
-        let end = length
-        let message = messagePart(end)
-        const bytes = Buffer.byteLength(JSON.stringify(message))
-        if (!fits(bytes, cursor(index + 1, 0, limit))) {
-          if (messages.length) return finish()
-          // 只拆分单独一页仍放不下的原话，偏移针对脱敏后的正文。
-          let low = offset, high = length - 1
-          while (low < high) {
-            const mid = Math.ceil((low + high) / 2)
-            const boundary = safeBoundary(source.text, mid)
-            if (fits(Buffer.byteLength(JSON.stringify(messagePart(boundary))), cursor(index, boundary, limit))) low = mid
-            else high = mid - 1
-          }
-          end = safeBoundary(source.text, low)
-          if (end <= offset) return errorResult('insufficient_capacity')
-          message = messagePart(end)
-        }
-        spans.push({ messageId: source.id, start: offset, end, length })
-        contentBytes += Number(messages.length > 0) + bytes
-        messages.push(message)
-        if (end < length) { offset = end; return finish() }
         index++
-        offset = 0
+        // 编号和原话已超过容量时，无须再加载后续原文来确定分页位置。
+        minimumTokens += estimateTranscriptTokens(source.id + ' ' + text)
+        if (minimumTokens > availableTokens) break collect
       }
     }
-    return finish()
+    if (!messages.length && index < limit) return errorResult('source_changed')
+
+    function page(parts: InsightReadMessage[], nextCursor: string | null): InsightReadPage {
+      return { status: 'ok', transcript: formatInsightTranscript(parts, snapshot.timezone), nextCursor }
+    }
+    const fits = (candidate: InsightReadPage) => estimateTranscriptTokens(formatInsightReadPage(candidate)) <= availableTokens
+    const prefix = (count: number) => page(messages.slice(0, count), cursor(position.index + count, 0, limit))
+    const finish = (page: InsightReadPage, parts: InsightReadMessage[]): InsightReadResult => ({
+      page, spans: parts.map(({ id, text, fragment }) => ({
+        messageId: id, ...(fragment ?? { start: 0, end: text.length, length: text.length }),
+      })),
+    })
+    const full = prefix(messages.length)
+    if (fits(full)) return finish(full, messages)
+    if (!messages.length) return errorResult('insufficient_capacity')
+
+    // 群聊中 ta 可能变成更短的 A，分别在更换标记前后查找最大页。
+    const firstPeer = messages.find(message => !message.isSelf)?.senderName
+    const groupStart = messages.findIndex(message => !message.isSelf && message.senderName !== firstPeer) + 1
+    let low = 0
+    let high = messages.length - 1
+    if (groupStart && groupStart <= high) {
+      if (fits(prefix(groupStart))) low = groupStart
+      else high = groupStart - 1
+    }
+    const count = largestFit(low, high, size => fits(prefix(size)))
+    if (count) return finish(prefix(count), messages.slice(0, count))
+
+    const first = messages[0]
+    const start = position.offset
+    const length = start + first.text.length
+    const fragment = (size: number) => ({
+      ...first, text: first.text.slice(0, size), fragment: { start, end: start + size, length },
+    })
+    const fragmentPage = (size: number) => page([fragment(size)], cursor(position.index, start + size, limit))
+    const end = largestFit(0, first.text.length - 1, size => fits(fragmentPage(safeBoundary(first.text, size))))
+    const size = safeBoundary(first.text, end)
+    return size ? finish(fragmentPage(size), [fragment(size)]) : errorResult('insufficient_capacity')
   }
 }

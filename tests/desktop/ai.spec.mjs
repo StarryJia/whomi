@@ -71,6 +71,8 @@ test('real Pi process persists analysis reports and dialogue through the isolate
     expect(requests).toHaveLength(0)
     const task = await page.evaluate(token => window.whomi.ai.confirmAnalysis({ token, requestId: 'analysis-one' }), preparation.token)
     await expect.poll(() => page.evaluate(id => window.whomi.ai.getAnalysis(id), task.id), { timeout: 30000 }).toMatchObject({ state: 'completed', analyzedMessages: 1, usage: { inputTokens: 40, outputTokens: 20 } })
+    expect(readTurns(requests[1].input)).toMatchObject([{ result: { status: 'ok', nextCursor: null,
+      messages: [{ id: '1', speaker: '我', time: null, text: '明晚九点我听你讲' }] } }])
     expect(await page.evaluate(id => window.whomi.ai.getReport(id), task.id)).toMatchObject({ format: 'conversation-insights-v1', relationship: [{ content: [{ text: '你们商量了见面的时间。' }] }] })
     const thread = await page.evaluate(() => window.whomi.ai.openThread('1'))
     await page.getByRole('button', { name: '选择消息', exact: true }).click()

@@ -60,7 +60,7 @@ test('普通操作日志能从容量不足的回查追到重试取得的目标�
 test('续页取得此前容量不足的多个定位目标，每个目标只关联一次', async () => {
   const { operation, contents } = await openLog()
   const [base] = await options.read()
-  const sources = ['11', '12', '13'].map(id => ({ ...base, id }))
+  const sources = ['11', '12', '13'].map(id => ({ ...base, id, text: base.text.repeat(20) }))
   await generatePiInsight({ ...options, operation, snapshot: { ...snapshot, sources: sources.map(({ id, revision }) => ({ messageId: id, revision })) },
     read: async ids => sources.filter(source => ids.includes(source.id)), save: async () => {}, run: async (_, io) => {
       async function infer(requestId: string, spans: InsightReadSpan[] = []) {
@@ -322,7 +322,7 @@ test('超长原文恢复从已确认的连续前缀之后取文', async () => {
   await expect(generatePiInsight({ ...options, checkpoint, save: async () => {}, run: async (input, io) => {
     const { resumeCursor } = JSON.parse(input.prompt.slice(input.prompt.indexOf('{')))
     const result = await io.read({ cursor: resumeCursor }, 2000)
-    expect(result.page).toMatchObject({ status: 'ok', messages: [{ text: '一起约。', fragment: { start: 2 } }] })
+    expect(result.page).toMatchObject({ status: 'ok', transcript: expect.stringContaining('11 00:00 我 [片段 2-6/6]: 一起约。') })
     throw new Error('模拟服务离线')
   } })).rejects.toThrow('模拟服务离线')
 })

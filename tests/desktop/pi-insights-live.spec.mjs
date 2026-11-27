@@ -4,7 +4,7 @@ import { appendFile, copyFile, mkdir, mkdtemp, readFile, readdir, rm, writeFile 
 import { tmpdir } from 'node:os'
 import { basename, dirname, join, resolve } from 'node:path'
 import { setTimeout as wait } from 'node:timers/promises'
-import { meetingChat } from './fixtures/pi-insight-model.mjs'
+import { meetingChat, parseReadResult } from './fixtures/pi-insight-model.mjs'
 
 const selected = process.env.WHOMI_REAL_INSIGHT_COUNT
 test.skip(!['8', '12', '4600'].includes(selected), '通过 verify-pi-insights.mjs --live 选择合成样本。')
@@ -89,7 +89,7 @@ async function snapshotEvidence(directory, target, taskId) {
       if (message.role === 'toolResult' && message.toolName === 'read_messages') {
         const text = message.content.filter(b => b.type === 'text').map(b => b.text).join('')
         let page
-        try { page = JSON.parse(text) } catch { page = { status: 'unparsed' } }
+        try { page = text.startsWith('{') ? JSON.parse(text) : parseReadResult(text) } catch { page = { status: 'unparsed' } }
         const messages = page.messages ?? []
         turns.push({ kind: 'read', at: entry.timestamp, callId: message.toolCallId, status: page.status,
           nextCursor: page.nextCursor, ids: messages.map(m => m.id), fragments: messages.filter(m => m.fragment).map(m => [m.id, m.fragment]),

@@ -376,7 +376,8 @@ describe('Pi runtime over a controlled OpenAI compatible service', () => {
     const span = { messageId: 'm3', start: 0, end: 3, length: 3 }
     const controller = new AbortController()
     const runInput = { ...input(model), purpose: 'insight' as const, insightSession: { processing: defaultProcessing } }
-    const read = vi.fn(async () => ({ page: { status: 'ok' as const, nextCursor: null, messages: [{ id: 'm3', text: '周五见', sentAtMs: 0, senderName: '本人', isSelf: true, replyToMessageId: null }] }, spans: [span] }))
+    const read = vi.fn(async () => ({ page: { status: 'ok' as const, nextCursor: null,
+      transcript: '发言人：我=本人(本人)\n## 1970-01-01\nm3 00:00 我: 周五见' }, spans: [span] }))
     const normalAnswer = answer
     answer = response => {
       if (requests.length === 1) {
@@ -441,7 +442,8 @@ describe('Pi runtime over a controlled OpenAI compatible service', () => {
     const privateFolder = 'synthetic-personal-insight-folder'
     const result = await new PiRuntime(join(directory, privateFolder)).run({ ...input({ ...model, contextWindow: 8000 }), insightSession: { processing: defaultProcessing } }, {
       ...options(), insight: {
-        read: async () => ({ page: { status: 'ok', messages: [{ id: 'm1', isSelf: true, senderName: '本人', text: longMessage, replyToMessageId: null, sentAtMs: 0 }], nextCursor: null }, spans: [span] }),
+        read: async () => ({ page: { status: 'ok', nextCursor: null,
+          transcript: '发言人：我=本人(本人)\n## 1970-01-01\nm1 00:00 我: ' + longMessage }, spans: [span] }),
         record: async event => { events.push(event) },
       },
     })

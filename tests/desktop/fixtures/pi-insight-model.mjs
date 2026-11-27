@@ -19,6 +19,39 @@ export function completeModel(response, { text, read, note, usage = { prompt_tok
 }
 let completionId = 0
 
+export function parseReadResult(raw) {
+  const lines = raw.split('\n')
+  if (lines[0].startsWith('status: ')) {
+    return { status: lines[0].slice(8), message: lines[1], nextCursor: null, messages: [], raw }
+  }
+  const cursor = /^nextCursor: (\S+)$/.exec(lines[0])
+  if (!cursor) throw Error('Missing read_messages cursor')
+  const messages = []
+  let time = null
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i]
+    if (!line) break // 成稿提示与工具资料之间隔一行。
+    if (i === 1 && line.startsWith('发言人：')) continue
+    if (line.startsWith('## ')) { time = null; continue }
+    const fields = /^(\S+) (?:(\d{2}:\d{2}) )?([^\s:]+)(?: >(\S+))?(?: \[片段 (\d+)-(\d+)\/(\d+)\])?:(?: (.*))?$/s.exec(line)
+    if (!fields) throw Error('Invalid read_messages record')
+    const [, id, minute, speaker, replyToMessageId, start, end, length, singleLine] = fields
+    let text = singleLine
+    if (text === undefined) {
+      const fence = lines[++i]
+      if (!/^<{3,}$/.test(fence)) throw Error('Missing transcript fence')
+      const close = lines.indexOf('>'.repeat(fence.length), i + 1)
+      if (close < 0) throw Error('Unclosed transcript fence')
+      text = lines.slice(i + 1, close).join('\n')
+      i = close
+    }
+    time = minute ?? time
+    messages.push({ id, speaker, time, replyToMessageId: replyToMessageId ?? null, text,
+      ...(start !== undefined && { fragment: { start: Number(start), end: Number(end), length: Number(length) } }) })
+  }
+  return { status: 'ok', nextCursor: cursor[1] === 'null' ? null : cursor[1], messages, raw }
+}
+
 export function readTurns(input) {
   const calls = new Map()
   const turns = []
@@ -26,7 +59,7 @@ export function readTurns(input) {
     for (const call of message.tool_calls ?? []) calls.set(call.id, JSON.parse(call.function.arguments || '{}'))
     if (message.role === 'tool') {
       const content = messageText(message.content)
-      const result = JSON.parse(content)
+      const result = parseReadResult(content)
       turns.push({ args: calls.get(message.tool_call_id), result, callId: message.tool_call_id })
     }
   }

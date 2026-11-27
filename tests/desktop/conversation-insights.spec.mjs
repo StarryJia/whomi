@@ -207,8 +207,8 @@ test('空库导入后保留一份报告与另一项暂停任务，重启回查�
     expect(stopped).toMatchObject({ state: 'stopped', analyzedMessages: 12 })
     const allInput = requests[secondStart + 1].prompt.messages
     expect(allInput.map(message => message.text)).toEqual(messages.slice(0, 12).map(message => message.content))
-    expect(allInput[3]).toMatchObject({ isSelf: true, replyToMessageId: '3' })
-    expect(allInput[5]).toMatchObject({ isSelf: false, replyToMessageId: '5' })
+    expect(allInput[3]).toMatchObject({ speaker: '我', replyToMessageId: '3' })
+    expect(allInput[5]).toMatchObject({ speaker: 'ta', replyToMessageId: '5' })
 
     await restart()
     expect(await page.evaluate(id => window.whomi.ai.getAnalysis(id), second.id)).toMatchObject({
