@@ -60,7 +60,7 @@ test('普通操作日志能从容量不足的回查追到重试取得的目标�
 test('续页取得此前容量不足的多个定位目标，每个目标只关联一次', async () => {
   const { operation, contents } = await openLog()
   const [base] = await options.read()
-  const sources = ['11', '12', '13'].map(id => ({ ...base, id }))
+  const sources = ['11', '12', '13'].map(id => ({ ...base, id, text: base.text.repeat(20) }))
   await generatePiInsight({ ...options, operation, snapshot: { ...snapshot, sources: sources.map(({ id, revision }) => ({ messageId: id, revision })) },
     read: async ids => sources.filter(source => ids.includes(source.id)), save: async () => {}, run: async (_, io) => {
       async function infer(requestId: string, spans: InsightReadSpan[] = []) {
@@ -322,7 +322,7 @@ test('超长原文恢复从已确认的连续前缀之后取文', async () => {
   await expect(generatePiInsight({ ...options, checkpoint, save: async () => {}, run: async (input, io) => {
     const { resumeCursor } = JSON.parse(input.prompt.slice(input.prompt.indexOf('{')))
     const result = await io.read({ cursor: resumeCursor }, 2000)
-    expect(result.page).toMatchObject({ status: 'ok', messages: [{ text: '一起约。', fragment: { start: 2 } }] })
+    expect(result.page).toMatchObject({ status: 'ok', transcript: expect.stringContaining('11 00:00 我 [片段 2-6/6]: 一起约。') })
     throw new Error('模拟服务离线')
   } })).rejects.toThrow('模拟服务离线')
 })
@@ -346,4 +346,27 @@ test('依据与反例逐条匹配送阅原话，交叉引用的摘录须重新�
   expect(report.judgments?.at(-1)).toMatchObject({
     supportingSources: [{ messageId: '11', excerpts: ['周三一起约', '一起约'] }], counterexampleSources: [{ messageId: '12', excerpts: ['到了再决定'] }],
   })
+})
+
+
+test('更换到小窗口模型重新计算容量并保留累计用量、阅读覆盖和原会话断点', async () => {
+  const oldWorkload = await insightWorkload(options.model, snapshot, false)
+  const checkpoint: PiInsightCheckpoint = { version: 'pi-insight-v1', taskId: snapshot.taskId, checkpoint: 'old-session-leaf',
+    processing: defaultProcessing, coverage: { coveredMessageIds: ['11'], partial: {} }, requests: 7, input: 50000, output: 8000, stalled: 3, workload: oldWorkload }
+  let saved: PiInsightCheckpoint | undefined
+  const replacement = { ...options.model, id: 'new-provider', contextWindow: 8000, maxInputTokens: 6000, maxTokens: 1000 }
+  const report = await generatePiInsight({ ...options, model: replacement, modelSessionKey: 'new-provider-1', checkpoint,
+    save: async state => { saved = structuredClone(state) }, run: async (input, io) => {
+      expect(input.checkpoint).toBe('old-session-leaf')
+      expect(input.model).toMatchObject({ id: 'new-provider', contextWindow: 8000, maxInputTokens: 6000, maxTokens: 1000 })
+      expect(input.insightSession?.modelSessionKey).toBe('new-provider-1')
+      expect(input.prompt).toContain('完整送阅')
+      await io.record({ type: 'requestStart', requestId: 'new-request', kind: 'inference' })
+      await io.record({ type: 'request', requestId: 'new-request', kind: 'inference', success: true, spans: [], usage: { totalInputTokens: 100, outputTokens: 10 }, checkpoint: 'new-leaf' })
+      return { text: JSON.stringify(draft), checkpoint: 'new-leaf', usage: {} }
+    } })
+  expect(report.citations).toHaveLength(1)
+  expect(saved).toMatchObject({ requests: 8, coverage: { coveredMessageIds: ['11'] }, modelSessionKey: 'new-provider-1' })
+  expect(saved!.workload!.protection.input).toBeGreaterThan(50000)
+  expect(saved!.input).toBeGreaterThanOrEqual(50100)
 })

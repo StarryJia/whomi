@@ -318,3 +318,25 @@ test('local subscription usage follows the original account/model version and ne
   expect(settings.accountUsage(provider,'account-a')).toEqual({requests:0,inputTokens:null,outputTokens:null,partial:false})
 
 })
+
+
+test('洞察换到另一套餐账号后，各账号用量按实际请求保留', async () => {
+  const { settings, ai, store } = await setup()
+  store.writer.exec(`INSERT INTO conversations(id,title,kind,created_at_ms) VALUES(1,'合成会话','direct',0);
+    INSERT INTO source_conversations(id,conversation_id,platform,namespace) VALUES(1,1,'test','test');
+    INSERT INTO memberships(id,conversation_id,source_conversation_id,source_key,display_name) VALUES(1,1,1,'me','本人');
+    INSERT INTO self_confirmations(conversation_id,member_id,status,source) VALUES(1,1,'confirmed','user');
+    INSERT INTO messages(id,conversation_id,member_id,sender_kind,sender_name,kind,text,ordinal) VALUES(1,1,1,'member','本人','text','合成原文',0)`)
+  await settings.setAccountConnection('openai-codex', 'account-one', true)
+  const model = await settings.saveModel({ ...modelInput, providerId: 'cherry:openai-codex' })
+  const prep = await ai.prepareAnalysis({ conversationId: '1', modelId: model.id })
+  const task = await ai.confirmAnalysis({ token: prep.token, requestId: 'switch-usage' })
+  await ai.recordUsage({ ownerKind: 'analysis', ownerId: task.id, requestId: 'old', usage: { totalInputTokens: 100, outputTokens: 10 } })
+  await ai.saveAnalysis(task.id, { state: 'failed' })
+  await settings.setAccountConnection('openai-codex', 'account-two', true)
+  const replacement = ai.modelSecret(model.id).model
+  await ai.resumeAnalysis(task.id, { modelId: model.id, version: replacement.version })
+  await ai.recordUsage({ ownerKind: 'analysis', ownerId: task.id, requestId: 'new', usage: { totalInputTokens: 50, outputTokens: 5 } })
+  expect(settings.accountUsage('openai-codex', 'account-one')).toEqual({ requests: 1, inputTokens: 100, outputTokens: 10, partial: false })
+  expect(settings.accountUsage('openai-codex', 'account-two')).toEqual({ requests: 1, inputTokens: 50, outputTokens: 5, partial: false })
+})

@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile, readFile } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import { tmpdir } from 'node:os'
 import { basename, dirname, join, resolve } from 'node:path'
-import { mockReadAction, suggestionReport, syntheticInsightConversation, syntheticInsightScope } from './fixtures/insight-model.mjs'
+import { mockReadAction, safetyReport, suggestionReport, syntheticInsightConversation, syntheticInsightScope } from './fixtures/insight-model.mjs'
 import { completeModel } from './fixtures/pi-insight-model.mjs'
 
 const designStates = {
@@ -62,7 +62,7 @@ async function failNext(app, method, fragmentIndex, channel = 'whomi:ai-call', h
   }, { method, fragmentIndex, channel, hold })
 }
 
-async function harness({ model = true, self = true, hold = true, reject = true, longReport = false, extraConversations = 0, distinctOverviewJudgments = false, replyExamples = false, conversationTitle = syntheticInsightConversation } = {}) {
+async function harness({ model = true, self = true, hold = true, reject = true, longReport = false, extraConversations = 0, distinctOverviewJudgments = false, replyExamples = false, safetyExample = false, conversationTitle = syntheticInsightConversation } = {}) {
   const evidence = test.info().outputPath('screenshots')
   const directory = resolve(await mkdtemp(join(tmpdir(), 'whomi-runtime-insight-ui-')))
   const requests = [], errors = [], fixtureErrors = []
@@ -85,7 +85,7 @@ async function harness({ model = true, self = true, hold = true, reject = true, 
           response.end(JSON.stringify({ error: { message: 'Synthetic UI retry fixture', type: 'server_error' } })); return
         }
         if (prompt.read) return completeModel(response, { read: prompt.read })
-        const result = suggestionReport()
+        const result = safetyExample ? safetyReport() : suggestionReport()
         if (replyExamples) {
           result.aboutYou[0].content[0].text = '先给你三个办法'
           result.relationship[0].content[0].text = '想先说完'
@@ -117,9 +117,13 @@ async function harness({ model = true, self = true, hold = true, reject = true, 
   await writeFile(join(directory, 'pi-insight-model.mjs'), await readFile(new URL('./fixtures/pi-insight-model.mjs', import.meta.url), 'utf8'))
   await writeFile(join(directory, 'probe.cjs'), `module.exports = writer => async method => {
     if (method !== 'probe.seedInsight') throw Error('Unsupported synthetic UI probe')
-    const { seedSyntheticInsight } = await import('./insight-model.mjs')
+    const { seedSyntheticInsight, safetyMessages } = await import('./insight-model.mjs')
     return writer.transaction(() => {
       seedSyntheticInsight(writer)
+      if (${safetyExample}) {
+        const update = writer.prepare('UPDATE messages SET text=? WHERE id=?')
+        safetyMessages.forEach((text, i) => update.run(text, i + 1))
+      }
       writer.prepare('UPDATE conversations SET title=? WHERE id=1').run(${JSON.stringify(conversationTitle)})
       if (${distinctOverviewJudgments}) writer.prepare('UPDATE messages SET text=? WHERE id=4').run('我提前定好了周五见面的时间。')
       if (${extraConversations} > 0) {
@@ -188,6 +192,44 @@ async function harness({ model = true, self = true, hold = true, reject = true, 
   return { ...window, requests, errors, fixtureErrors, evidence, restart, close }
   } catch (error) { await close(); throw error }
 }
+
+test('风险事实先于人格预测，在宽窗和窄窗均可阅读并打开原话', async () => {
+  test.setTimeout(60_000)
+  const title = '合成会话 · 寻求帮助'
+  const h = await harness({ safetyExample: true, conversationTitle: title, hold: false, reject: false })
+  const { app, page, btn, shot } = h
+  try {
+    const task = await page.evaluate(async scope => {
+      const [model] = await window.whomi.ai.listModels()
+      const prepared = await window.whomi.ai.prepareAnalysis({ conversationId: '1', modelId: model.id, scope })
+      return window.whomi.ai.confirmAnalysis({ token: prepared.token, requestId: 'safety-first-report' })
+    }, syntheticInsightScope)
+    await expect.poll(() => page.evaluate(id => window.whomi.ai.getAnalysis(id), task.id), { timeout: 30_000 })
+      .toMatchObject({ state: 'completed', report: { safetyLead: true } })
+    await btn('对话洞察').click()
+    await btn(`${title} · 会话洞察 #${task.id}`).click()
+    const risk = page.getByRole('article').getByText(/明确表达了当时的自伤想法/)
+    const prediction = page.getByRole('region', { name: 'MBTI 人格倾向' })
+    const quote = btn('我有伤害自己的念头')
+    for (const [width, height] of [[1280, 800], [960, 640]]) {
+      await app.evaluate(({ BrowserWindow }, [w, h]) => BrowserWindow.getAllWindows()[0].setContentSize(w, h), [width, height])
+      await expect.poll(() => page.evaluate(() => [innerWidth, innerHeight])).toEqual([width, height])
+      await expect(risk).toBeInViewport({ ratio: 1 })
+      await expect(quote).toHaveCount(1)
+      const first = await risk.boundingBox(), next = await prediction.boundingBox()
+      expect(first.y + first.height).toBeLessThanOrEqual(next.y + 1)
+      await shot('safety-lead-' + width)
+    }
+    await quote.click()
+    await expect(page.getByRole('region', { name: '引用聊天记录' }).locator('[data-citation=true] mark')).toHaveText('我有伤害自己的念头')
+    await shot('safety-lead-source')
+    await btn('关闭原文').click()
+    await expect(quote).toBeFocused()
+  } catch (error) {
+    await shot('safety-lead-failure').catch(() => {})
+    throw error
+  } finally { await h.close() }
+})
 
 test('task row opens its progress from mouse and keyboard while actions stay on the list', async ({}, info) => {
   test.setTimeout(90_000)

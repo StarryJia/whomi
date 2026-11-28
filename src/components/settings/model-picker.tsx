@@ -73,7 +73,7 @@ export function ModelPicker({ api, provider, models, onSynced, onClose, onAdded,
       </div>}
       {!loading && groups.map(group => <div key={group} className="cherry-model-group"><h4>{group}</h4>{filtered.filter(model => groupOf(model) === group).map(model => {
         const added = localIds.has(model.id), label = model.label || model.id
-        const identity = <><div className="ms-model-description"><strong title={label}>{label}</strong>{label !== model.id && <span title={model.id}>{model.id}</span>}</div>{!catalogIds.has(model.id) && <span className="ms-hint">已失效</span>}{model.contextWindow && <span className="cherry-catalog-capacity">{model.contextWindow.toLocaleString()}</span>}</>
+        const identity = <><div className="ms-model-description"><strong title={label}>{label}</strong>{label !== model.id && <span title={model.id}>{model.id}</span>}</div>{!catalogIds.has(model.id) && <span className="ms-hint">已失效</span>}{model.contextWindow && <span className="cherry-catalog-capacity">上下文 {model.contextWindow.toLocaleString()} token</span>}</>
         return added
           ? <div key={model.id} className="cherry-sync-row" data-added>{identity}<button className="ms-icon" disabled={busy} aria-label={`移除${label}`} onClick={() => void apply([model], true)}><Minus size={15} /></button></div>
           : <label key={model.id} className="cherry-sync-row cherry-sync-choice" data-selected={selectedIds.has(model.id)}>{identity}<input type="checkbox" className="cherry-sync-checkbox" aria-label={`选择${label}`} disabled={busy} checked={selectedIds.has(model.id)} onChange={event => select([model], event.target.checked)} /></label>

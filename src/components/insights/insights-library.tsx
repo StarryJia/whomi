@@ -1,6 +1,6 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { ArrowLeft, ChevronDown, FileText, LoaderCircle, Pencil } from 'lucide-react'
-import type { AiApi, AnalysisTask } from '../../shared/ai-contract'
+import type { AiApi, AnalysisTask, ResumeAnalysisModel } from '../../shared/ai-contract'
 import { operationFailure, type OperationFailure } from '../../shared/operation-diagnostics'
 import type { InsightCitation, InsightReport } from '../../shared/conversation-insights'
 import type { ListArrangement } from '../../shared/desktop-api'
@@ -9,6 +9,8 @@ import { ExceptionNotice, ExceptionNoticeScope } from '../ui/exception-notices'
 import { InsightArticle } from './insight-article'
 import { InsightRenameForm, InsightReportRow, type RenameReport } from './insight-report-menu'
 import { formatInsightNumber, insightCompletedAt, insightElapsed, insightPercentage, insightRange, insightReportRange, insightSpeed, InsightFailureNotice, InsightRing, InsightStatus, insightTaskFailed, insightTaskNumber, insightTaskTitle, InsightTaskDetails, InsightTaskModel, useInsightRunDuration } from './insight-task'
+import { InsightResumeModel } from './insight-resume-model'
+import type { ModelOption } from '../conversation-ai/model-selector'
 import './insights.css'
 
 type CitationTarget = {
@@ -78,7 +80,6 @@ function ReportPage({ task, report, onBack, rename, onRenameBusy, renderSource, 
         <dl className="insight-reader-meta">
           <div><dt>对话范围</dt><dd>{insightReportRange(task)}</dd></div>
           <div><dt>生成时间</dt><dd>{insightCompletedAt(task.completedAtMs)}</dd></div>
-          <div><dt>模型</dt><dd>{task.modelIdentity?.label || task.modelId || '—'}</dd></div>
           <div><dt>报告编号</dt><dd>{insightTaskNumber(task)}</dd></div>
         </dl>
       </header>
@@ -98,12 +99,16 @@ function ReportPage({ task, report, onBack, rename, onRenameBusy, renderSource, 
   </section>
 }
 
-function TaskRow({ task, onOpen, onStop, onContinue }: {
+function TaskRow({ task, models, onOpen, onStop, onContinue }: {
   task: AnalysisTask
+  models: readonly ModelOption[]
   onOpen: () => void
   onStop?: (taskId: string) => Promise<void>
-  onContinue?: (taskId: string) => Promise<void>
+  onContinue?: (taskId: string, replacement?: ResumeAnalysisModel) => Promise<void>
 }) {
+  const [replacing, setReplacing] = useState(false)
+  const replaceTrigger = useRef<HTMLButtonElement>(null)
+  function cancelReplacement() { setReplacing(false); requestAnimationFrame(() => replaceTrigger.current?.focus()) }
   const [busy, setBusy] = useState<'正在暂停' | '正在继续' | '正在重试'>()
   const [error, setError] = useState<{ detail: string; attempt: number; operation?: OperationFailure }>()
   const pending = useRef(false)
@@ -111,23 +116,28 @@ function TaskRow({ task, onOpen, onStop, onContinue }: {
   const status = insightTaskFailed(task) ? '生成失败'
     : task.state === 'stopped' ? '已暂停' : '生成中'
   const failed = status === '生成失败'
+  useEffect(() => { setReplacing(false) }, [task.state])
   const elapsed = useInsightRunDuration(task)
   const count = '已提交分析 ' + formatInsightNumber(task.analyzedMessages) + ' / ' + formatInsightNumber(task.totalMessages) + ' 条'
   const number = insightTaskNumber(task)
   const start = status === '生成中' ? onStop : task.valid ? onContinue : undefined
-  async function run() {
+  async function run(replacement?: ResumeAnalysisModel) {
     if (!start || pending.current) return
     pending.current = true
     setError(undefined)
     const currentAttempt = ++attempt.current
     setBusy(status === '生成中' ? '正在暂停' : failed ? '正在重试' : '正在继续')
-    try { await start(task.id) }
+    try {
+      if (replacement && onContinue) await onContinue(task.id, replacement)
+      else await start(task.id)
+      setReplacing(false)
+    }
     catch (cause) { setError({ detail: actionError(cause), attempt: currentAttempt, operation: operationFailure(cause) }) }
     finally { pending.current = false; setBusy(undefined) }
   }
   return <li className="insight-task-row" data-insight-task={task.id} onClick={event => {
     const target = event.target
-    if (target instanceof Element && event.currentTarget.contains(target) && !target.closest('button, a')) onOpen()
+    if (target instanceof Element && event.currentTarget.contains(target) && !target.closest('button, a, form')) onOpen()
   }}>
     <div className="insight-task-row-main">
       <button className="insight-task-link" type="button" data-list-id={task.id} onClick={onOpen} aria-label={`${insightTaskTitle(task)} ${number}`}>
@@ -141,15 +151,19 @@ function TaskRow({ task, onOpen, onStop, onContinue }: {
           <small>{failed && count + ' · '}已运行 {insightElapsed(elapsed)} · {insightSpeed(task.analyzedMessages, elapsed)}</small>
         </div>
       </div>
-      <div className="insight-task-row-actions">
+      {!replacing && <div className="insight-task-row-actions">
         {start && <button className={status === '生成中' ? 'analysis-secondary insight-pause-button' : 'analysis-primary'} type="button" disabled={!!busy}
           onClick={() => void run()}>{status === '生成中' ? '暂停' : failed ? '重试' : '继续洞察'}</button>}
+        {status !== '生成中' && task.valid && onContinue && <button ref={replaceTrigger} type="button" className="analysis-secondary" disabled={!!busy}
+          onClick={() => setReplacing(true)}>更换模型并继续</button>}
         {failed && <button type="button" className="analysis-secondary" onClick={onOpen}>返回</button>}
-      </div>
+      </div>}
     </div>
     <div className="insight-task-row-details">
       <InsightTaskModel task={task} /><InsightTaskDetails usage={task.usage} range={insightRange(task)} />
     </div>
+    {replacing && status !== '生成中' && <InsightResumeModel task={task} models={models} busy={!!busy}
+      onCancel={cancelReplacement} onContinue={replacement => void run(replacement)} />}
     {(error || (failed && task.error)) && <InsightFailureNotice task={task} actionFailure={error} className="insight-error" />}
   </li>
 }
@@ -160,7 +174,8 @@ function visibleTaskRows(list: HTMLElement | null) {
 }
 
 export function InsightsLibrary({ tasks, conversations, selectedId, onSelect, onReturn, onTask, onConversations, loading, error, retry, arrange, rename,
-  remove, onStop, onContinue, onRenameBusy, renderSource, getReport }: {
+  remove, onStop, onContinue, onRenameBusy, renderSource, getReport, models = [] }: {
+  models?: readonly ModelOption[]
   tasks: readonly AnalysisTask[]
   conversations: readonly { id: string; title: string; pinned?: boolean }[]
   selectedId?: string
@@ -175,7 +190,7 @@ export function InsightsLibrary({ tasks, conversations, selectedId, onSelect, on
   rename?: RenameReport
   remove?: (id: string) => Promise<void>
   onStop?: (id: string) => Promise<void>
-  onContinue?: (id: string) => Promise<void>
+  onContinue?: (id: string, replacement?: ResumeAnalysisModel) => Promise<void>
   onRenameBusy: (busy: boolean) => void
   renderSource?: RenderInsightSource
   getReport?: AiApi['getReport']
@@ -316,7 +331,7 @@ export function InsightsLibrary({ tasks, conversations, selectedId, onSelect, on
               ? <InsightReportRow key={task.id} task={task} conversationTitle={group.title} onOpen={() => locate(task)}
                 onRename={rename} onRenameBusy={busy => { setSavingTitle(busy); onRenameBusy(busy) }}
                 disabled={savingTitle} arrange={arrange} remove={remove && (() => removeTask(task))} />
-              : <TaskRow key={task.id} task={task} onOpen={() => { if (!savingTitle) onTask(task.conversationId, task.id) }} onContinue={onContinue} onStop={onStop} />)}</ul></ExceptionNoticeScope>
+              : <TaskRow key={task.id} task={task} models={models} onOpen={() => { if (!savingTitle) onTask(task.conversationId, task.id) }} onContinue={onContinue} onStop={onStop} />)}</ul></ExceptionNoticeScope>
           </section>
         })}
       </>}

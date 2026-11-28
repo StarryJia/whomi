@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { AnalysisTask } from '../../shared/ai-contract'
+import type { AnalysisTask, ResumeAnalysisModel } from '../../shared/ai-contract'
 import { operationFailure, type OperationFailure } from '../../shared/operation-diagnostics'
 import type { AnalysisProgress, AnalysisResult, ConversationAiAdapter } from './types'
 
@@ -38,6 +38,7 @@ export function useAnalysisTask(adapter: ConversationAiAdapter | undefined, conv
   }
   const [confirming, setConfirming] = useState(!initialTaskId)
   const [blocked, setBlocked] = useState(false)
+  const [modelUnavailable, setModelUnavailable] = useState(false)
   const [stopping, setStopping] = useState(false)
   const [creationFailure, setCreationFailure] = useState<CreationFailure>()
   const [resuming, setResuming] = useState<'continue' | 'retry'>()
@@ -45,6 +46,9 @@ export function useAnalysisTask(adapter: ConversationAiAdapter | undefined, conv
   const generation = useRef(0)
   const task = progress?.task
   const resumable = !!(task?.valid && adapter?.continueAnalysis && !blocked &&
+    (phase === 'stopped' || phase === 'failed' || phase === 'interrupted'))
+
+  const replaceable = !!(task?.valid && adapter?.continueAnalysis && (!blocked || modelUnavailable) &&
     (phase === 'stopped' || phase === 'failed' || phase === 'interrupted'))
 
   function receive(snapshot: AnalysisTask) {
@@ -60,7 +64,7 @@ export function useAnalysisTask(adapter: ConversationAiAdapter | undefined, conv
     const observer = new AbortController()
     const version = ++generation.current
     setPhase('idle'); setProgress(undefined); setResult(undefined)
-    setError(''); setConfirming(!preferredTask.current); setBlocked(false); setStopping(false); setResuming(undefined); setCreationFailure(undefined)
+    setError(''); setConfirming(!preferredTask.current); setBlocked(false); setModelUnavailable(false); setStopping(false); setResuming(undefined); setCreationFailure(undefined)
     if (!fromMemory || preferredTask.current) void adapter?.watchAnalysis?.(conversationId, snapshot => {
       if (version === generation.current) receive(snapshot)
     }, observer.signal, preferredTask.current).catch(cause => {
@@ -76,8 +80,8 @@ export function useAnalysisTask(adapter: ConversationAiAdapter | undefined, conv
     }
   }, [adapter, conversationId, identityRevision, fromMemory])
 
-  async function run(request?: Request) {
-    if (!adapter || stopping || operation.current || (!request && !resumable)) return
+  async function run(request?: Request, replacement?: ResumeAnalysisModel) {
+    if (!adapter || stopping || operation.current || (!request && !(replacement ? replaceable : resumable))) return
     const controller = new AbortController()
     operation.current = controller
     const version = ++generation.current
@@ -95,11 +99,13 @@ export function useAnalysisTask(adapter: ConversationAiAdapter | undefined, conv
     try {
       const outcome = request
         ? await adapter.analyze(request, { signal: controller.signal, onProgress: update })
-        : await adapter.continueAnalysis!(task!.id, controller.signal, update)
+        : await (replacement ? adapter.continueAnalysis!(task!.id, controller.signal, update, replacement)
+          : adapter.continueAnalysis!(task!.id, controller.signal, update))
       if (version !== generation.current) return
       if (outcome?.task) receive(outcome.task)
       else if (outcome?.taskId) { setResult(outcome); setPhase('done') }
       else { setPhase('failed'); setError('报告尚未保存，请重试。') }
+      return !!(outcome?.task || outcome?.taskId)
     } catch (cause) {
       if (version !== generation.current) return
       if (request && !accepted) {
@@ -107,9 +113,13 @@ export function useAnalysisTask(adapter: ConversationAiAdapter | undefined, conv
         setProgress(undefined)
       } else {
         setError(cause)
-        if (cannotResume(cause)) setBlocked(true)
+        if (cannotResume(cause)) {
+          setBlocked(true)
+          setModelUnavailable(!!cause && typeof cause === 'object' && 'code' in cause && ['MODEL_CHANGED', 'INVALID_MODEL'].includes(String(cause.code)))
+        }
       }
       if (request || accepted) setPhase('failed')
+      return false
     } finally {
       if (operation.current === controller) operation.current = undefined
       if (version === generation.current) setResuming(undefined)
@@ -153,6 +163,6 @@ export function useAnalysisTask(adapter: ConversationAiAdapter | undefined, conv
     setBlocked(previous.blocked)
   }
 
-  return { phase, progress, result, error, errorOperation, setError, confirming, setConfirming, resumable, stopping, resuming,
+  return { phase, progress, result, error, errorOperation, setError, confirming, setConfirming, resumable, replaceable, stopping, resuming,
     creationFailure, restorePrevious, run, stop }
 }

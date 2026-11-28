@@ -38,6 +38,16 @@ beforeEach(() => {
   HTMLDialogElement.prototype.close = function () { this.removeAttribute('open') }
 })
 
+async function rejectProtocolChange() {
+  const page = setup(true, true)
+  vi.mocked(page.api.saveProvider).mockRejectedValueOnce({ code: 'MODEL_BUSY', action: '请先停止使用此模型的任务后重试。' })
+  const protocol = await screen.findByRole('combobox', { name: '连接协议' })
+  await page.user.click(protocol)
+  await page.user.click(await screen.findByRole('option', { name: 'OpenAI Responses' }))
+  await screen.findByRole('button', { name: '停止任务并重试' })
+  return { ...page, protocol }
+}
+
 describe('正式设置', () => {
   it('全新配置只显示批准的预置，搜索中转名称仍可手动添加服务商', async () => {
     const { user } = setup(false)
@@ -116,6 +126,61 @@ describe('正式设置', () => {
     await screen.findByRole('switch', { name: '数据清洗' })
     expect(api.saveProvider).toHaveBeenCalledWith(expect.objectContaining({ apiKey: 'synthetic-replacement' }))
     expect(screen.queryByRole('dialog', { name: '保存修改？' })).not.toBeInTheDocument()
+  })
+
+  it('协议保存失败后选回原协议，可直接返回且不停止任务', async () => {
+    const { api, user, protocol, onClose } = await rejectProtocolChange()
+    await user.click(protocol)
+    await user.click(await screen.findByRole('option', { name: 'OpenAI Chat Completions' }))
+    expect(screen.queryByRole('button', { name: '停止任务并重试' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '返回' }))
+    await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
+    expect(api.saveProvider).toHaveBeenCalledTimes(1)
+    expect(api.stopModelTasks).not.toHaveBeenCalled()
+  })
+
+  it('协议保存失败后可放弃修改并切换设置页，原协议仍可使用', async () => {
+    const { api, user } = await rejectProtocolChange()
+    await user.click(screen.getByRole('button', { name: '消息处理' }))
+    const dialog = await screen.findByRole('dialog', { name: '保存修改？' })
+    await user.click(within(dialog).getByRole('button', { name: '放弃修改' }))
+    await screen.findByRole('switch', { name: '数据清洗' })
+    await user.click(screen.getByRole('button', { name: '模型服务' }))
+    expect(await screen.findByRole('combobox', { name: '连接协议' })).toHaveTextContent('OpenAI Chat Completions')
+    expect(api.saveProvider).toHaveBeenCalledTimes(1)
+    expect(api.stopModelTasks).not.toHaveBeenCalled()
+  })
+
+  it('协议保存失败后继续编辑保留选择，主动重试成功才离开', async () => {
+    const { api, user, protocol, onClose } = await rejectProtocolChange()
+    const back = screen.getByRole('button', { name: '返回' })
+    await user.click(back)
+    const dialog = await screen.findByRole('dialog', { name: '保存修改？' })
+    await user.click(within(dialog).getByRole('button', { name: '继续编辑' }))
+    expect(protocol).toHaveTextContent('OpenAI Responses')
+    expect(onClose).not.toHaveBeenCalled()
+    expect(api.saveProvider).toHaveBeenCalledTimes(1)
+    await user.click(back)
+    await user.click(within(await screen.findByRole('dialog', { name: '保存修改？' })).getByRole('button', { name: '保存并离开' }))
+    await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
+    expect(api.saveProvider).toHaveBeenCalledTimes(2)
+    expect(api.saveProvider).toHaveBeenLastCalledWith(expect.objectContaining({ protocol: 'openai-responses' }))
+    expect(api.stopModelTasks).not.toHaveBeenCalled()
+  })
+
+  it('同步模型同时标注上下文容量与 token 单位，未知容量不补零', async () => {
+    const { api, user } = setup()
+    vi.mocked(api.syncModels).mockResolvedValue([
+      { id: 'large', label: '大容量模型', contextWindow: 500000 },
+      { id: 'unknown', label: '未知容量模型' },
+    ])
+    await user.click(await screen.findByRole('button', { name: '同步模型' }))
+    const catalog = await screen.findByRole('dialog', { name: '本地服务 模型' })
+    const capacity = await within(catalog).findByText('上下文 500,000 token')
+    expect(capacity.closest('label')).toHaveTextContent('大容量模型')
+    expect(within(catalog).getByRole('checkbox', { name: '选择未知容量模型' }).closest('label')).not.toHaveTextContent('token')
+    await user.click(within(catalog).getByRole('button', { name: '取消' }))
+    expect(api.saveModel).not.toHaveBeenCalled()
   })
 
   it('清除密钥立即保存，失败后可重试原操作', async () => {

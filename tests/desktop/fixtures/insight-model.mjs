@@ -9,6 +9,18 @@ export const syntheticInsightMessages = [
 ]
 
 export const syntheticInsightScope = { kind: 'dates', startDate: '2026-10-09', endDate: '2026-10-10', timezone: 'Asia/Shanghai' }
+export const safetyMessages = ['我有伤害自己的念头，现在有点害怕。', '我可以陪你联系附近能提供帮助的人。', '你身边有人吗？']
+
+export function safetyReport() {
+  return {
+    safetyLead: true,
+    aboutYou: [{ content: [{ text: '你说「' }, { text: '我有伤害自己的念头', citationId: 'risk' },
+      { text: '」，明确表达了当时的自伤想法，也说自己感到害怕。' }] }],
+    relationship: [{ content: [{ text: 'ta 表示愿意陪你寻求帮助。' }] }],
+    citations: [{ id: 'risk', fragments: [{ messageIds: ['1'] }] }],
+    judgments: sampleJudgments(),
+  }
+}
 
 export function seedSyntheticInsight(writer) {
   writer.exec(`
@@ -59,7 +71,6 @@ export function suggestionReport() {
       { id: 'suggestion-shift', fragments: [{ messageIds: ['1'] }, { messageIds: ['3'] }] },
       { id: 'asked-later', fragments: [{ messageIds: ['3'] }] },
     ],
-    limitations: ['你可以先问 ta 想听建议，还是想接着说。'],
     judgments: sampleJudgments({ TF: {
       direction: null, text: '不同阶段对建议的需要不同。',
       supportingIds: ['1'], counterexampleIds: ['3'], alternativeExplanations: ['有时 ta 只想先说完。'], limitations: ['仅限该次聊天。'],

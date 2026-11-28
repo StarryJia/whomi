@@ -68,6 +68,24 @@ export function migrateStore(store: Pick<Store, 'writer'>): void {
       }
       if (version < 15n) db.exec(`ALTER TABLE ai_analysis_tasks ADD COLUMN failure_operation_id TEXT;
         ALTER TABLE ai_analysis_tasks ADD COLUMN failure_at_ms INTEGER CHECK(failure_at_ms >= 0);`)
+      if (version < 16n) db.exec(`ALTER TABLE ai_analysis_tasks ADD COLUMN methodology_snapshot TEXT CHECK(methodology_snapshot IS NULL OR json_valid(methodology_snapshot));
+        ALTER TABLE ai_turns ADD COLUMN methodology_snapshot TEXT CHECK(methodology_snapshot IS NULL OR json_valid(methodology_snapshot));`)
+      if (version < 17n) db.exec(`ALTER TABLE ai_request_usage ADD COLUMN model_id TEXT;
+        ALTER TABLE ai_request_usage ADD COLUMN model_version INTEGER;
+        ALTER TABLE ai_analysis_tasks ADD COLUMN model_history TEXT NOT NULL DEFAULT '[]' CHECK(json_valid(model_history) AND json_type(model_history)='array');
+        UPDATE ai_request_usage SET (model_id,model_version)=(SELECT model_id,model_version FROM ai_analysis_tasks t WHERE t.id=owner_id) WHERE owner_kind='analysis';
+        UPDATE ai_request_usage SET (model_id,model_version)=(SELECT model_id,model_version FROM ai_turns t WHERE t.id=owner_id) WHERE owner_kind='turn';`)
+      if (version < 18n) db.exec(`CREATE TABLE ai_insight_evidence_cards (
+        task_id INTEGER NOT NULL REFERENCES ai_analysis_tasks(id) ON DELETE CASCADE,
+        segment_index INTEGER NOT NULL CHECK(segment_index >= 0),
+        start_message_id INTEGER NOT NULL,
+        end_message_id INTEGER NOT NULL,
+        start_time_ms INTEGER,
+        end_time_ms INTEGER,
+        data TEXT NOT NULL CHECK(json_valid(data)),
+        created_at_ms INTEGER NOT NULL,
+        PRIMARY KEY(task_id, segment_index)
+      ) STRICT;`)
       if ((db.pragma('foreign_key_check') as unknown[]).length) throw new Error('资料库迁移失败，请从备份恢复后重试。')
       db.pragma(`user_version = ${schemaVersion}`)
     }).immediate()

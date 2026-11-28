@@ -88,14 +88,14 @@ it('任务请求等待时运行时间递增，失败后保留同口径的覆盖�
   }
 })
 
-it('有正文的报告在末段之后按保存顺序展示整份报告的限制', () => {
-  const limitations = ['这份材料只涵盖十月。', '无法判断其余月份的安排。']
-  render(<InsightArticle report={{ ...report, limitations }} />)
-  const ending = screen.getByText('你和 ta 一起核对了时间。')
-  const notes = screen.getByRole('complementary', { name: '分析依据限制' })
-  expect(ending.compareDocumentPosition(notes)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
-  expect(within(notes).getAllByRole('paragraph').map(p => p.textContent)).toEqual(limitations)
-  expect(screen.queryByText('阅读完毕')).toBeNull()
+it('旧报告的全局限制不显示，各维度的适用范围仍可在对应观察中阅读', () => {
+  const judgment: InsightJudgment = { dimension: 'JP', direction: null, text: '你和 ta 商量改期。',
+    supportingSources: [], counterexampleSources: [], alternativeExplanations: [], limitations: ['仅凭这次改期无法判断你平时是否喜欢提前安排。'] }
+  render(<InsightArticle report={{ ...report, limitations: ['这份材料只涵盖十月。'], judgments: [judgment] }} />)
+  expect(screen.queryByRole('complementary', { name: '分析依据限制' })).toBeNull()
+  expect(screen.queryByText('这份材料只涵盖十月。')).toBeNull()
+  const dimension = screen.getByRole('heading', { level: 4, name: 'J / P · 暂难判断' }).parentElement!
+  expect(within(dimension).getByText(judgment.limitations[0])).toBeVisible()
 })
 
 it('旧报告只有全局限制时显示正文空状态', () => {
@@ -154,6 +154,28 @@ it('旧报告同一维度的相反观察都可阅读，不合成单一倾向', (
   expect(article.getByText('T · 偏向思考。')).toBeVisible()
   expect(article.getByText('F · 偏向情感。')).toBeVisible()
   expect(article.getByRole('region', { name: 'MBTI 人格倾向' })).toHaveTextContent('????')
+})
+
+it('标记的风险事实与原文入口先于人格预测，未标记的首段保留在个人观察中', async () => {
+  const onOpenCitation = vi.fn()
+  const quote = '我有伤害自己的念头'
+  const saved: InsightReport = { ...report, safetyLead: true,
+    aboutYou: [{ content: [{ text: '你说「' }, { text: quote, citationId: 'citation-1', quoteFragmentIndex: 0, quoteMessageId: '10' },
+      { text: '」，明确表达了当时的自伤想法。' }] }],
+    judgments: [{ dimension: 'EI', direction: null, text: '现有情况无法判断。',
+      supportingSources: [], counterexampleSources: [], alternativeExplanations: [], limitations: [] }] }
+  const { rerender } = render(<InsightArticle report={saved} conversationId="1" onOpenCitation={onOpenCitation} />)
+  const risk = screen.getByText(/明确表达了当时的自伤想法/)
+  const prediction = screen.getByRole('region', { name: 'MBTI 人格倾向' })
+  expect(risk.compareDocumentPosition(prediction)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+  expect(screen.queryByRole('heading', { name: '个人观察' })).toBeNull()
+  const link = screen.getByRole('button', { name: quote })
+  await userEvent.click(link)
+  expect(onOpenCitation).toHaveBeenCalledWith(report.citations[0], link, 0, quote, '10')
+
+  rerender(<InsightArticle report={{ ...saved, safetyLead: undefined }} conversationId="1" />)
+  expect(prediction.compareDocumentPosition(screen.getByText(/明确表达了当时的自伤想法/))).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+  expect(screen.getByRole('heading', { name: '个人观察' })).toBeVisible()
 })
 
 it('分析中长短摘录重叠时保留各自的引语位置，无法摘出短句的有效来源仍可打开', async () => {
@@ -623,4 +645,70 @@ it('列表原位改名保存期间阻止取消和打开另一份报告，回执�
   expect(screen.queryByRole('heading', { name: '关于你' })).not.toBeInTheDocument()
   await act(async () => finish({ ...completed, title: '合作', eventSequence: 4 }))
   expect(screen.getByRole('button', { name: /小林.*合作.*#24/ })).toBeVisible()
+})
+
+
+it('失败洞察换服务商保留任务编号，取消不提交，切换失败后可继续选择', async () => {
+  const user = userEvent.setup()
+  const paused: AnalysisTask = { ...completed, id: '38', report: undefined, state: 'failed', analyzedMessages: 6 }
+  const onContinue = vi.fn().mockRejectedValueOnce({ action: '请检查模型权限后重试。' }).mockResolvedValue(undefined)
+  const models = [{ id: 'm', label: '原模型', providerName: '原服务商' },
+    { id: 'replacement', label: '新模型', providerName: '新服务商', insightThinkingLevels: ['low', 'high'] as const }]
+  render(<InsightsLibrary tasks={[paused]} models={models} conversations={[]} loading={false} error="" retry={() => {}}
+    onSelect={() => {}} onReturn={() => {}} onTask={() => {}} onConversations={() => {}} onRenameBusy={() => {}} onContinue={onContinue} />)
+  await user.click(screen.getByRole('button', { name: '更换模型并继续' }))
+  await user.click(screen.getByRole('combobox', { name: '接续模型' }))
+  await user.click(screen.getByRole('option', { name: /新模型/ }))
+  expect(screen.getByText('新服务商')).toBeVisible()
+  await user.click(screen.getByRole('button', { name: '取消' }))
+  expect(onContinue).not.toHaveBeenCalled()
+  expect(screen.getByText(/6 \/ 12 条/)).toBeVisible()
+  await user.click(screen.getByRole('button', { name: '更换模型并继续' }))
+  await user.click(screen.getByRole('combobox', { name: '接续模型' }))
+  await user.click(screen.getByRole('option', { name: /新模型/ }))
+  await user.click(screen.getByRole('button', { name: '思考强度：默认' }))
+  await user.click(screen.getByRole('option', { name: '高' }))
+  await user.click(screen.getByRole('button', { name: '确认并继续' }))
+  expect(onContinue).toHaveBeenLastCalledWith('38', { modelId: 'replacement', thinkingLevel: 'high' })
+  expect(screen.getByRole('combobox', { name: '接续模型' })).toHaveTextContent('新模型')
+  expect(screen.getByText(/6 \/ 12 条/)).toBeVisible()
+  await user.click(screen.getByRole('button', { name: '确认并继续' }))
+  expect(onContinue).toHaveBeenCalledTimes(2)
+})
+
+it('已完成报告列表与阅读页不再显示生成模型', () => {
+  const task = { ...completed, modelId: 'private-model', modelIdentity: { ...completed.modelIdentity!, label: '生成模型名称' } }
+  const props = { tasks: [task], conversations: [], loading: false, error: '', retry: () => {}, onSelect: () => {},
+    onReturn: () => {}, onTask: () => {}, onConversations: () => {}, onRenameBusy: () => {} }
+  const view = render(<InsightsLibrary {...props} />)
+  expect(screen.queryByText('生成模型名称')).toBeNull()
+  expect(screen.queryByText('模型')).toBeNull()
+  view.rerender(<InsightsLibrary {...props} selectedId={task.id} />)
+  expect(screen.queryByText('生成模型名称')).toBeNull()
+  expect(screen.queryByText('模型')).toBeNull()
+})
+
+
+it('会话浮窗可在原模型失效后换模型接续，取消不更改默认模型', async () => {
+  const user = userEvent.setup()
+  const paused: AnalysisTask = { ...completed, state: 'stopped', analyzedMessages: 6, report: undefined }
+  const resume = vi.fn().mockRejectedValueOnce({ code: 'MODEL_CHANGED', action: '请更换模型后继续。' })
+    .mockResolvedValue({ taskId: paused.id, task: { ...paused, modelId: 'replacement', state: 'running' } })
+  const selectModel = vi.fn()
+  const adapter: ConversationAiAdapter = { ...baseAdapter, models: [...baseAdapter.models, { id: 'replacement', label: '接续模型', providerName: '另一服务商' }],
+    continueAnalysis: resume, selectModel, watchAnalysis: async (_id, publish) => publish(paused) }
+  render(<ConversationWorkspace conversationId="1" title="小林" references={[]} onClearReferences={() => {}} onJumpReference={() => {}}
+    adapter={adapter} openAnalysisOnEntry initialAnalysisTaskId={paused.id}>{({ analysisControl }) => analysisControl}</ConversationWorkspace>)
+  await user.click(await screen.findByRole('button', { name: '继续洞察' }))
+  await user.click(screen.getByRole('button', { name: '更换模型并继续' }))
+  await user.click(screen.getByRole('button', { name: '取消' }))
+  expect(selectModel).not.toHaveBeenCalled()
+  await user.click(screen.getByRole('button', { name: '更换模型并继续' }))
+  await user.click(screen.getByRole('combobox', { name: '接续模型' }))
+  await user.click(screen.getByRole('option', { name: '接续模型' }))
+  await user.click(screen.getByRole('button', { name: '确认并继续' }))
+  expect(resume).toHaveBeenLastCalledWith(paused.id, expect.any(AbortSignal), expect.any(Function), { modelId: 'replacement' })
+  expect(screen.getByText('已提交分析 6 / 12 条')).toBeVisible()
+  expect(selectModel).not.toHaveBeenCalled()
+  expect(adapter.analyze).not.toHaveBeenCalled()
 })

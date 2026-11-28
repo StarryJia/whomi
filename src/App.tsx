@@ -554,7 +554,7 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
         {view === 'cover' ? <HelloCover key={coverKey} name={name} buttonRef={greetingRef} onEnter={enterOverview}>{revealing => overviewContent(!revealing)}</HelloCover>
           : view === 'library' ? <InsightsLibrary tasks={tasks} selectedId={selectedReportId} onSelect={id => { reportOrigin.current = 'library'; setSelectedReportId(id) }}
             conversations={reader.conversations} onReturn={returnFromReport} onTask={(id, taskId) => openConversation(id, { origin: 'library', taskId })}
-            getReport={api?.ai?.getReport}
+            getReport={api?.ai?.getReport} models={(conversationAiAdapter ?? desktopAi)?.models ?? []}
             onConversations={revealConversations}
             arrange={api?.ai?.arrangeAnalysis && (async change => { await api.ai!.arrangeAnalysis(change); refreshReports() })}
             rename={api?.ai?.renameAnalysis && (async (taskId, title) => {
@@ -574,7 +574,7 @@ function HomeShell({ displayName = '', conversations, overview, saveFeedback,
               setTasks(items => items.filter(task => task.id !== id))
             })}
             onStop={api?.ai?.stopAnalysis && (async id => publishTask(await api.ai!.stopAnalysis(id)))}
-            onContinue={api?.ai?.continueAnalysis && (async id => publishTask(await api.ai!.continueAnalysis(id)))}
+            onContinue={api?.ai?.continueAnalysis && (async (id, replacement) => publishTask(await (replacement ? api.ai!.continueAnalysis(id, replacement) : api.ai!.continueAnalysis(id))))}
             loading={reportsLoading} error={reportsError} retry={refreshReports}
             renderSource={queryClient && readInsightCitation && (target => <InsightSourceDialog {...target}
               client={queryClient} readCitation={readInsightCitation} />)} />

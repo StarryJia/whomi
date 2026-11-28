@@ -578,3 +578,15 @@ describe('正式会话 AI 适配器', () => {
     expect(methods.confirmAnalysis).not.toHaveBeenCalled()
   })
 })
+
+
+it('更换模型的恢复请求传递目标配置，状态冲突不能当成切换成功', async () => {
+  const { methods, client } = api()
+  const replacement = { modelId: 'replacement', thinkingLevel: 'high' as const }
+  const adapter = await createConversationAiClient(client)
+  const conflict = { code: 'INVALID_STATE' }
+  methods.continueAnalysis.mockRejectedValueOnce(conflict)
+  await expect(adapter.continueAnalysis!('saved', new AbortController().signal, vi.fn(), replacement)).rejects.toBe(conflict)
+  expect(methods.continueAnalysis).toHaveBeenCalledWith('saved', replacement)
+  expect(methods.getAnalysis).not.toHaveBeenCalled()
+})

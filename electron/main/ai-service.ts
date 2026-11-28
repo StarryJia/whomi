@@ -1,10 +1,16 @@
 import { withInsightClock } from './insight-clock'
 import { insightFailureAction, insightResumeFailureAction } from '../agent/insight-request-failure'
 import { safeFields } from './operation-fields'
-import { generatePiInsight, verifyInsightExcerpts, type PiInsightCheckpoint } from './pi-insight-generation'
+import { generatePiInsight, verifyInsightExcerpts, type InsightReceipt, type PiInsightCheckpoint } from './pi-insight-generation'
+import { generateSegmentedInsight, methodologySegmentBudget, type SegmentedInsightCheckpoint } from './segmented-insight-generation'
+import { planInsightSegments } from './insight-segmentation'
+import type { InsightEvidenceCardRecord } from '../data/ai/insight-evidence-card'
+import { createInsightTraceWriter } from './insight-trace'
 import type { AgentRunInput, AgentRunResult, InsightRequestContext, InsightRuntimeCallbacks } from '../agent/protocol'
 import { defaultPrompts } from '../../src/shared/system-prompts'
 import type { AnalysisContext, TurnContext } from '../data/ai/repository'
+import { fitDialogueInstructions } from './dialogue-instructions'
+import { legacyPrompts } from '../data/ai/legacy-prompts'
 import { acceptedThinking, insightModelProtocol, reasoningCapabilities } from '../agent/reasoning-capabilities'
 import { createHash, randomUUID } from 'node:crypto'
 import type { AiEvent, AiMethods, AiModel, AiThread, AiTurn, AiUsage, AnalysisTask } from '../../src/shared/ai-contract'
@@ -14,7 +20,7 @@ import { createMessageProcessor, type ProcessingMember } from './message-process
 import { defaultProcessing, type ProcessingSettings } from '../../src/shared/settings-contract'
 import type { InsightJudgmentSource, InsightSourceMessage } from '../../src/shared/conversation-insights'
 import { generateInsight } from './insight-generation'
-import { defaultInsightPrompts, INSIGHT_PROMPT_VERSION, type InsightPrompts } from '../data/ai/insight-prompts'
+import { defaultInsightPrompts, legacyStagePrompts } from '../data/ai/insight-prompts'
 import { InsightBudgetError, type InsightCheckpoint } from './insight-checkpoint'
 import { defaultInsightRunLimits } from './insight-policy'
 import { diagnosticErrorCode, type AppError } from './app-error-logs'
@@ -25,6 +31,8 @@ export type RuntimeResult = AgentRunResult
 export type RuntimeRunner = { run(input: RuntimeInput, options: { signal: AbortSignal; onText: (text: string) => void; insight?: InsightRuntimeCallbacks }): Promise<RuntimeResult> }
 export type AiServiceOptions = { storage(method: string, args: unknown[]): Promise<unknown>; runtime: RuntimeRunner; secrets: { encrypt(value: string): string; decrypt(value: string): string }; changed?: (event: AiEvent) => void;
   logError?: (entry: AppError) => void;
+  dataDirectory?: string;
+  writeInsightTrace?: boolean;
   deleteInsightSessions?: (taskIds: readonly string[], removeRecords: () => Promise<void>) => Promise<void>;
   diagnostics?: AiDiagnostics;
   insightAccountAccess?: (model: AiModel, accountId: string, signal: AbortSignal) => Promise<NonNullable<InsightRequestContext['access']>>;
@@ -39,8 +47,9 @@ function minimumTurnOutput(model: AiModel) {
   // Pi 会将 Responses 请求上调至 16；Grok 套餐直接按预算发送。
   return model.protocol === 'openai-responses' && !(model.planAccount && model.planProvider === 'grok-cli') ? 16 : 1
 }
-function availableTurnOutput(input: RuntimeInput, capacity: Awaited<ReturnType<typeof resolveAgentModelCapacity>>) {
-  const estimatedInput = 1000 + Buffer.byteLength(input.prompt) + Buffer.byteLength(input.systemPrompt) + Buffer.byteLength(JSON.stringify(input.history ?? []))
+function availableTurnOutput(input: RuntimeInput, capacity: Awaited<ReturnType<typeof resolveAgentModelCapacity>>,
+  contentTokens = Buffer.byteLength(input.prompt) + Buffer.byteLength(input.systemPrompt) + Buffer.byteLength(JSON.stringify(input.history ?? []))) {
+  const estimatedInput = 1000 + contentTokens
   if (estimatedInput > capacity.maxInputTokens || estimatedInput >= capacity.contextWindow) {
     throw new BoundaryError('CONTEXT_TOO_LARGE', '当前内容超出最大输入长度，请减少内容或选择更大上下文的模型。')
   }
@@ -52,6 +61,8 @@ function availableTurnOutput(input: RuntimeInput, capacity: Awaited<ReturnType<t
 
 
 export function createAiService(options: AiServiceOptions): AiMethods & { deleteConversation(id: string, remove: () => Promise<void>): Promise<void>; hasModelWork(ids: string[]): boolean; isBusy(): boolean; stopModelTasks(ids: string[]): Promise<void>; idle(): Promise<void>; close(): Promise<void>; subscribe(listener: (event: AiEvent) => void): () => void } {
+  const trace = options.dataDirectory && options.writeInsightTrace !== false
+    ? createInsightTraceWriter(options.dataDirectory, error => options.logError?.({ area: 'insight', phase: 'trace', error })) : undefined
   type Work = { key: string; conversationId: string; modelId?: string; abort: AbortController; task: Promise<void> }
   const active = new Map<string, Work>()
   const work = new Set<Work>()
@@ -244,13 +255,17 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
     try {
       const initial = await storage<AnalysisContext>('analysisContext', id)
       analyzedMessages = initial.task.analyzedMessages
-      const checkpoint: InsightCheckpoint | PiInsightCheckpoint | null = initial.checkpoint ? JSON.parse(initial.checkpoint) : null
+      const checkpoint: InsightCheckpoint | PiInsightCheckpoint | SegmentedInsightCheckpoint | null = initial.checkpoint ? JSON.parse(initial.checkpoint) : null
+      if (checkpoint && ![1, 'pi-insight-v1', 'segmented-insight-v1'].includes(checkpoint.version)) {
+        throw new BoundaryError('INVALID_INSIGHT_CHECKPOINT', '洞察进度无法恢复，请重新生成。')
+      }
       const processor = resumeProcessor ?? await analysisProcessor(id, initial.task.conversationId,
-        checkpoint?.version === 'pi-insight-v1' ? checkpoint.processing : initial.processing)
+        checkpoint && checkpoint.version !== 1 ? checkpoint.processing : initial.processing)
       if (signal.aborted) return
-      const values = initial.systemPrompts
-      const prompts: InsightPrompts = values ? { version: INSIGHT_PROMPT_VERSION, reading: values.insightReading, checking: values.insightChecking, writing: values.insightWriting } : defaultInsightPrompts
-      const legacy = checkpoint && checkpoint.version !== 'pi-insight-v1' ? checkpoint : null
+      const values = initial.systemPrompts ?? defaultPrompts
+      const prompts = 'insight' in values ? defaultInsightPrompts : legacyStagePrompts(values)
+      const editablePrompt = 'insight' in values ? values.insight : [prompts.reading, prompts.checking, prompts.writing].join('\n')
+      const legacy = checkpoint?.version === 1 ? checkpoint : null
       if (legacy && !['reading', 'checking', 'writing'].includes(legacy.stage)) {
         throw new BoundaryError('INVALID_INSIGHT_CHECKPOINT', '洞察进度无法恢复，请重新生成。')
       }
@@ -260,12 +275,15 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
       const elapsedSample = { elapsedMs: running.elapsedMs ?? 0, sampledAtMs: Date.now() }
       elapsedSamples.set(id, elapsedSample)
       publish({ kind: 'analysis', snapshot: running })
+      const scopedIds = new Set(initial.snapshot.sources.map(source => source.messageId))
       const read = async (messageIds: readonly string[], excerpts?: readonly InsightJudgmentSource[]) => {
         const sources = await storage<InsightSourceMessage[]>('readInsightSources', { taskId: id, messageIds })
         if (excerpts?.length) verifyInsightExcerpts(sources, excerpts)
         return sources.map(({ memberId, ...source }) => {
           const protectedSource = processor.prepare([{ ...source, memberId, kind: 'text' }])[0]
-          return { ...source, text: protectedSource?.text ?? '', senderName: protectedSource?.senderName ?? '' }
+          const reply = source.replyToMessageId
+          return { ...source, text: protectedSource?.text ?? '', senderName: protectedSource?.senderName ?? '',
+            replyToMessageId: reply !== null && scopedIds.has(reply) ? reply : null }
         })
       }
       async function saveElapsed(elapsedMs: number, sampledAtMs: number) {
@@ -276,23 +294,44 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
           publish({ kind: 'analysis', snapshot })
         }
       }
-      const report = !legacy ? await withInsightClock(elapsedSample.elapsedMs, signal, saveElapsed, (sample, persist) => generatePiInsight({
-        snapshot: initial.snapshot, model: initial.model, conversationId: initial.task.conversationId, thinkingLevel: initial.task.thinkingLevel,
-        prompts, processing: processor.settings, checkpoint: checkpoint?.version === 'pi-insight-v1' ? checkpoint : null, signal, operation, read,
-        onDiagnostic: ({ phase: current, ...facts }) => {
-          phase = current
-          requestFacts = safeFields(facts)
-        },
-        save: (state, receipt) => persist(async () => {
+      const report = !legacy ? await withInsightClock(elapsedSample.elapsedMs, signal, saveElapsed, async (sample, persist) => {
+        const save = (state: PiInsightCheckpoint | SegmentedInsightCheckpoint, receipt?: InsightReceipt, card?: InsightEvidenceCardRecord) => persist(async () => {
           const { elapsedMs, sampledAtMs } = sample()
-          const task = await storage<AnalysisTask>('saveInsightCheckpoint', id, JSON.stringify(state), state.coverage.coveredMessageIds, elapsedMs, ...(receipt ? [receipt] : []))
+          const task = await storage<AnalysisTask>('saveInsightCheckpoint', id, JSON.stringify(state), state.coverage.coveredMessageIds, elapsedMs, receipt, card)
           elapsedSample.elapsedMs = elapsedMs
           elapsedSample.sampledAtMs = sampledAtMs
           analyzedMessages = task.analyzedMessages
           publish({ kind: 'analysis', snapshot: task })
-        }),
-        run: (input, insight) => runInsightSession(input, insight, signal),
-      })) : await generateInsight({ snapshot: initial.snapshot, conversationId: initial.task.conversationId, model: initial.model,
+        })
+        const common = { snapshot: initial.snapshot, model: initial.model, modelSessionKey: initial.modelSessionKey,
+          conversationId: initial.task.conversationId, thinkingLevel: initial.task.thinkingLevel,
+          processing: processor.settings, signal, operation, read, save, trace,
+          onDiagnostic: ({ phase: current, ...facts }: { phase: string } & Record<string, unknown>) => {
+            phase = current
+            requestFacts = safeFields(facts)
+          },
+          run: (input: RuntimeInput, insight: InsightRuntimeCallbacks) => runInsightSession(input, insight, signal),
+        }
+        let segments = checkpoint?.version === 'segmented-insight-v1' ? checkpoint.segments : undefined
+        if (initial.methodology && !checkpoint) {
+          const limits = await resolveAgentModelCapacity({ ...initial.model, protocol: insightModelProtocol(initial.model) }, common.thinkingLevel)
+          const sources: InsightSourceMessage[] = []
+          const refs = initial.snapshot.sources
+          for (let i = 0; i < refs.length; i += 1024) {
+            signal.throwIfAborted()
+            sources.push(...await read(refs.slice(i, i + 1024).map(ref => ref.messageId)))
+          }
+          segments = planInsightSegments(sources, initial.snapshot.timezone, methodologySegmentBudget(limits.maxInputTokens, initial.methodology, editablePrompt))
+        }
+        if (checkpoint?.version === 'segmented-insight-v1' || (segments && segments.length > 1)) {
+          if (!initial.methodology || !segments) throw new BoundaryError('INVALID_INSIGHT_CHECKPOINT', '洞察进度无法恢复，请重新生成。')
+          return generateSegmentedInsight({ ...common, methodology: initial.methodology, editablePrompt, segments,
+            checkpoint: checkpoint?.version === 'segmented-insight-v1' ? checkpoint : null,
+            listCards: () => storage<InsightEvidenceCardRecord[]>('listInsightEvidenceCards', id) })
+        }
+        return generatePiInsight({ ...common, ...(initial.methodology ? { methodology: initial.methodology, editablePrompt } : { prompts }),
+          checkpoint: checkpoint?.version === 'pi-insight-v1' ? checkpoint : null, segments })
+      }) : await generateInsight({ snapshot: initial.snapshot, conversationId: initial.task.conversationId, model: initial.model,
         prompts, limits: defaultInsightRunLimits, checkpoint: legacy, elapsedMs: running.elapsedMs, thinkingLevel: initial.task.thinkingLevel }, {
         signal, onText: () => {},
         prepareNotes: processor?.data,
@@ -359,16 +398,30 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
         context = await storage<TurnContext>('turnContext', id, processing?.settings)
         const processor = processing && createMessageProcessor(processing.settings, processing.members)
         const signature = processing ? hash(processing.settings) : undefined
-        const instruction = `${context.systemPrompt ?? dialogueSystem}\n相关画像：${JSON.stringify(processor ? processor.data(context.profile) : context.profile)}${context.skill ? `\n本轮技能：\n${context.skill.content}` : ''}`
+        const profile = processor ? processor.data(context.profile) : context.profile
+        const dialogueDefault = context.methodology ? dialogueSystem : legacyPrompts.dialogue
         const prompt = JSON.stringify({ question: processor ? processor.text(context.turn.prompt) : context.turn.prompt, references: processor ? processor.messages(context.references, context.referenceBreaks) : context.references })
         // 默认提示词继续使用升级前的断点目录，自定义提示词单独隔离。
         const keyParts = ['thread', context.turn.threadId, context.selfFingerprint, context.model.id, context.model.version, context.skill?.id, context.skill?.version, signature]
-        if (context.systemPrompt && context.systemPrompt !== dialogueSystem) keyParts.push(context.systemPrompt)
+        if (context.methodology) keyParts.push(context.systemPrompt ?? dialogueDefault, context.methodology.fingerprint)
+        else if (context.systemPrompt && context.systemPrompt !== dialogueDefault) keyParts.push(context.systemPrompt)
         const key = hash(keyParts)
         const capacity = await resolveAgentModelCapacity(context.model, context.turn.thinkingLevel)
         const budget = capacity.maxInputTokens - 1000
-        const fixedSize = Buffer.byteLength(instruction + prompt, 'utf8')
-        if (fixedSize > budget) throw new BoundaryError('CONTEXT_TOO_LARGE', '当前问题或引用超出模型容量，请减少引用或选择更大上下文的模型。')
+        const historyBudget = Math.min(budget, capacity.contextWindow - 1000 - minimumTurnOutput(context.model))
+        const promptSize = Buffer.byteLength(prompt)
+        const editable = context.systemPrompt ?? dialogueDefault
+        let instruction: string, instructionSize: number
+        if (context.methodology) {
+          const fitted = fitDialogueInstructions(context.methodology, editable, profile, context.skill?.content, historyBudget - promptSize - 2)
+          instruction = fitted.text
+          instructionSize = fitted.tokens
+        } else {
+          instruction = `${editable}\n相关画像：${JSON.stringify(profile)}${context.skill ? `\n本轮技能：\n${context.skill.content}` : ''}`
+          instructionSize = Buffer.byteLength(instruction)
+        }
+        const fixedSize = instructionSize + promptSize
+        if (fixedSize > historyBudget) throw new BoundaryError('CONTEXT_TOO_LARGE', '当前问题或引用超出模型容量，请减少引用或选择更大上下文的模型。')
         let history = context.history.map(item => {
           const question = processor ? processor.text(item.text) : item.text
           return { role: item.role, text: item.references?.length ? JSON.stringify({ question, references: processor ? processor.messages(item.references, item.referenceBreaks) : item.references }) : question }
@@ -377,10 +430,14 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
         if (signature && checkpoint) {
           try { const saved = JSON.parse(checkpoint); checkpoint = saved.processing === signature && typeof saved.checkpoint === 'string' ? saved.checkpoint : null } catch { checkpoint = null }
         }
-        const historyBudget = Math.min(budget, capacity.contextWindow - 1000 - minimumTurnOutput(context.model))
-        while (history.length && fixedSize + Buffer.byteLength(JSON.stringify(history), 'utf8') > historyBudget) { history = history.slice(2); checkpoint = null }
+        let historySize = Buffer.byteLength(JSON.stringify(history))
+        while (history.length && fixedSize + historySize > historyBudget) {
+          history = history.slice(2)
+          historySize = Buffer.byteLength(JSON.stringify(history))
+          checkpoint = null
+        }
         const input: RuntimeInput = { key, model: context.model, thinkingLevel: context.turn.thinkingLevel, apiKey: await modelSecret(context.model), systemPrompt: instruction, prompt, history, checkpoint }
-        input.outputTokenLimit = availableTurnOutput(input, capacity)
+        input.outputTokenLimit = availableTurnOutput(input, capacity, fixedSize + historySize)
         const response = await runTurnModel(id, context.turn.attempt, input, signal, text => {
           if (signal.aborted) return
           writes = writes.then(async () => { if (!signal.aborted) await saveTurn(id, { text }) })
@@ -504,7 +561,7 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
       if (task.scope) await running?.task.catch(() => {})
       return saveAnalysis(id, { state: 'stopped' }, elapsedSample?.sampledAtMs)
     }),
-    continueAnalysis: id => control(async () => {
+    continueAnalysis: (id, replacement) => control(async () => {
       const current = await storage<AnalysisTask>('getAnalysis', id).catch(error => {
         throw resumePreparationFailure(id, error, aiOperation(options.diagnostics, 'insight', 'generate'))
       })
@@ -518,10 +575,21 @@ export function createAiService(options: AiServiceOptions): AiMethods & { delete
       const operation = aiOperation(options.diagnostics, 'insight', 'generate', recoveredId)
       operation.bind(id, current.createdAtMs)
       try {
+        let selected: (typeof replacement & { version: number }) | undefined
+        if (replacement) {
+          const { model } = await storage<{ model: AiModel }>('modelSecret', replacement.modelId)
+          if (!model.enabled) throw new BoundaryError('INVALID_MODEL', '请选择已启用的模型。')
+          const thinkingLevel = await acceptedThinking({ ...model, protocol: insightModelProtocol(model) }, replacement.thinkingLevel)
+          if (replacement.thinkingLevel && thinkingLevel !== replacement.thinkingLevel) throw new BoundaryError('INVALID_MODEL', '请选择模型支持的思考强度。')
+          await resolveAgentModelCapacity({ ...model, protocol: insightModelProtocol(model) }, thinkingLevel)
+          await modelSecret(model)
+          selected = { modelId: model.id, version: model.version, thinkingLevel }
+        }
         const context = await storage<AnalysisContext>('analysisContext', id)
         const saved = context.checkpoint ? JSON.parse(context.checkpoint) : null
-        const processor = await analysisProcessor(id, current.conversationId, saved?.version === 'pi-insight-v1' ? saved.processing : context.processing)
-        const task = await storage<AnalysisTask>('resumeAnalysis', id)
+        const processor = await analysisProcessor(id, current.conversationId,
+          saved?.version === 'pi-insight-v1' || saved?.version === 'segmented-insight-v1' ? saved.processing : context.processing)
+        const task = await storage<AnalysisTask>('resumeAnalysis', id, ...(selected ? [selected] : []))
         operation.event('recovered', { messageCount: task.totalMessages, readCount: task.analyzedMessages })
         if (!launch(key, task.conversationId, signal => executeAnalysis(id, signal, operation, processor), task.modelId)) operation.end('interrupted')
         return task

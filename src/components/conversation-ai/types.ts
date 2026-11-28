@@ -1,6 +1,6 @@
 import type { ThinkingLevel } from '../../shared/thinking'
 import type { ReferenceRange } from './selection'
-import type { AnalysisPreparation, AnalysisTask, AnalysisUsage, AiState, AiUsage, AiThread, AiThreadSummary, AiModelIdentity, AiMethods, PrepareAnalysisInput } from '../../shared/ai-contract'
+import type { AnalysisPreparation, AnalysisTask, AnalysisUsage, AiState, AiUsage, AiThread, AiThreadSummary, AiModelIdentity, AiMethods, PrepareAnalysisInput, ResumeAnalysisModel } from '../../shared/ai-contract'
 import type { InsightScope } from '../../shared/conversation-insights'
 import type { ModelOption } from './model-selector'
 
@@ -48,7 +48,7 @@ export type ConversationAiAdapter = {
   watchAnalysis?: (conversationId: string, onChange: (task: AnalysisTask) => void, signal: AbortSignal, taskId?:string) => Promise<void>
   stopTurn?: (turnId: string) => Promise<void>
   stopAnalysis?: (taskId: string) => Promise<AnalysisTask | void>
-  continueAnalysis?: (taskId: string, signal: AbortSignal, onProgress: (progress: AnalysisProgress) => void) => Promise<AnalysisResult>
+  continueAnalysis?: (taskId: string, signal: AbortSignal, onProgress: (progress: AnalysisProgress) => void, replacement?: ResumeAnalysisModel) => Promise<AnalysisResult>
   respond(request: ConversationRequest, options: {
     signal: AbortSignal
     onAccepted?: (turn: RestoredConversationTurn) => void

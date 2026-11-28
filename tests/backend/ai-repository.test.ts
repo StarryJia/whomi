@@ -73,6 +73,34 @@ async function task(repository: Awaited<ReturnType<typeof setup>>['repository'],
 }
 function changeSelf(store: Store) { store.writer.exec("UPDATE self_confirmations SET status='revoked'; INSERT INTO self_confirmations(conversation_id,member_id,status,source) VALUES(1,2,'confirmed','user')") }
 
+test('打开对话时不取方法快照，继续提问只取当前回答和最近已完成回答的快照', async () => {
+  const { repository, store } = await setup()
+  const thread = await repository.openThread('1')
+  const ask = (prompt: string) => repository.createTurn({ threadId: thread.id, requestId: prompt, prompt, referenceIds: ['1'], modelId: 'example' })
+  const first = await ask('第一次')
+  await repository.saveTurn(first.id, { state: 'completed', text: '回答一', checkpoint: 'first' })
+  const latest = await ask('第二次')
+  await repository.saveTurn(latest.id, { state: 'completed', text: '回答二', checkpoint: 'latest' })
+  const failed = await ask('第三次')
+  await repository.saveTurn(failed.id, { state: 'failed' })
+  const current = await ask('第四次')
+
+  // 临时视图记录 SQLite 实际读取的快照，不依赖查询的 SQL 写法或耗时。
+  const reads: string[] = []
+  store.reader.function('read_snapshot', (id, snapshot) => { reads.push(String(id)); return snapshot })
+  const columns = store.reader.prepare('PRAGMA main.table_info(ai_turns)').all() as { name: string }[]
+  const selection = columns.map(({ name }) => name === 'methodology_snapshot' ? 'read_snapshot(id, methodology_snapshot) AS methodology_snapshot' : name)
+  store.reader.exec(`CREATE TEMP VIEW ai_turns AS SELECT ${selection.join(',')} FROM main.ai_turns`)
+
+  expect(repository.getThread(thread.id).turns.map(turn => turn.id)).toEqual([first.id, latest.id, failed.id, current.id])
+  expect(reads).toEqual([])
+  const context = repository.turnContext(current.id)
+  expect(context.history.map(message => message.text)).toEqual(['第一次', '回答一', '第二次', '回答二'])
+  expect(context.history[0].references?.[0].id).toBe('1')
+  expect(context.checkpoint).toBe('latest')
+  expect(reads.sort()).toEqual([current.id, latest.id].sort())
+})
+
 test('关系来源仅采用已确认本人以外的唯一单聊成员', async () => {
   const { repository, store } = await setup()
   store.writer.exec(`UPDATE conversations SET title='我和装修进度' WHERE id=1;
@@ -412,4 +440,65 @@ test('confirmations and interrupted analysis cannot mix results from different p
   expect(() => repository.analysisContext(analysis.id)).toThrowError(expect.objectContaining({ code: 'PROMPT_CHANGED' }))
   await expect(repository.resumeAnalysis(analysis.id)).rejects.toMatchObject({ code: 'PROMPT_CHANGED' })
   expect(repository.getAnalysis(analysis.id)).toMatchObject({ state: 'interrupted', analyzedMessages: 1 })
+})
+
+
+test('更换服务商保留断点与进度，并冻结每笔用量所属的模型版本', async () => {
+  const { repository, store } = await setup()
+  const original = await task(repository, 'switch-provider')
+  const checkpoint = JSON.stringify({ version: 'pi-insight-v1', taskId: original.id, checkpoint: 'saved-leaf', coverage: { coveredMessageIds: ['1'], partial: {} } })
+  await repository.saveInsightCheckpoint(original.id, checkpoint, ['1'], 2000)
+  await repository.recordUsage({ ownerKind: 'analysis', ownerId: original.id, requestId: 'old-request', usage: { totalInputTokens: 100, outputTokens: 10 } })
+  await repository.saveAnalysis(original.id, { state: 'failed', error: '额度耗尽' })
+  const replacement = await repository.saveModel({ id: 'other-provider', label: '另一服务商', model: 'example-model', baseUrl: 'http://localhost:9876/v1', contextWindow: 2048, maxTokens: 512, enabled: true }, 'encrypted-other')
+  await repository.resumeAnalysis(original.id, { modelId: replacement.id, version: replacement.version, thinkingLevel: 'low' })
+  expect(repository.getAnalysis(original.id)).toMatchObject({ id: original.id, modelId: replacement.id, thinkingLevel: 'low', analyzedMessages: 1, elapsedMs: 2000, state: 'queued' })
+  expect(repository.analysisContext(original.id)).toMatchObject({ checkpoint, model: replacement, modelSessionKey: JSON.stringify([replacement.id, replacement.version, 'low']) })
+  await repository.recordUsage({ ownerKind: 'analysis', ownerId: original.id, requestId: 'new-request', usage: { totalInputTokens: 50, outputTokens: 5 } })
+  expect(store.reader.prepare('SELECT request_id,model_id,model_version FROM ai_request_usage ORDER BY request_id').all()).toEqual([
+    { request_id: 'new-request', model_id: replacement.id, model_version: 1n }, { request_id: 'old-request', model_id: 'example', model_version: 1n },
+  ])
+  const history = store.reader.prepare('SELECT model_history FROM ai_analysis_tasks WHERE id=?').get(original.id) as { model_history: string }
+  expect(JSON.parse(history.model_history).map((entry: { id: string }) => entry.id)).toEqual(['example', replacement.id])
+})
+
+test('无效或已更新的替换模型不会改变原任务与断点', async () => {
+  const { repository } = await setup()
+  const original = await task(repository, 'invalid-switch')
+  await repository.saveInsightCheckpoint(original.id, 'saved-checkpoint', ['1'], 2000)
+  await repository.saveAnalysis(original.id, { state: 'failed', error: '额度耗尽' })
+  const before = repository.getAnalysis(original.id)
+  await expect(repository.resumeAnalysis(original.id, { modelId: 'missing', version: 1 })).rejects.toMatchObject({ code: 'INVALID_MODEL' })
+  await expect(repository.resumeAnalysis(original.id, { modelId: 'example', version: 999 })).rejects.toMatchObject({ code: 'MODEL_CHANGED' })
+  expect(repository.getAnalysis(original.id)).toEqual(before)
+  expect(repository.analysisContext(original.id).checkpoint).toBe('saved-checkpoint')
+  expect(() => validateAiCall('continueAnalysis', [original.id, { modelId: 'example', thinkingLevel: 'low' }])).not.toThrow()
+  expect(() => validateAiCall('continueAnalysis', [original.id, { modelId: 'example', version: 2 }])).toThrow()
+})
+
+
+test('相同模型再次切换思考强度产生新的容量标识', async () => {
+  const { repository } = await setup()
+  const original = await task(repository, 'switch-thinking')
+  await repository.saveAnalysis(original.id, { state: 'failed' })
+  await repository.resumeAnalysis(original.id, { modelId: 'example', version: 1, thinkingLevel: 'off' })
+  const first = repository.analysisContext(original.id).modelSessionKey
+  await repository.saveAnalysis(original.id, { state: 'stopped' })
+  await repository.resumeAnalysis(original.id, { modelId: 'example', version: 1, thinkingLevel: 'high' })
+  expect(repository.analysisContext(original.id).modelSessionKey).not.toBe(first)
+})
+
+test('升级旧资料库为已有请求补齐原模型归属，断点和用量保持原值', async () => {
+  const { repository, store, path } = await setup()
+  const analysis = await task(repository, 'migration-model-attribution')
+  await repository.saveInsightCheckpoint(analysis.id, 'saved-v16-checkpoint', ['1'], 1234)
+  await repository.recordUsage({ ownerKind: 'analysis', ownerId: analysis.id, requestId: 'original', usage: { totalInputTokens: 100, outputTokens: 10 } })
+  await repository.saveAnalysis(analysis.id, { state: 'failed' })
+  store.writer.exec('DROP TABLE ai_insight_evidence_cards; ALTER TABLE ai_request_usage DROP COLUMN model_id; ALTER TABLE ai_request_usage DROP COLUMN model_version; ALTER TABLE ai_analysis_tasks DROP COLUMN model_history; PRAGMA user_version=16;')
+  store.close()
+  const reopened = openStore(path); cleanup.push(() => reopened.close())
+  const restored = createAiRepository(reopened, async operation => operation())
+  expect(restored.analysisContext(analysis.id).checkpoint).toBe('saved-v16-checkpoint')
+  expect(restored.getAnalysis(analysis.id)).toMatchObject({ analyzedMessages: 1, elapsedMs: 1234, usage: { totalInputTokens: 100, outputTokens: 10 } })
+  expect(reopened.reader.prepare('SELECT model_id,model_version FROM ai_request_usage').get()).toEqual({ model_id: 'example', model_version: 1n })
 })

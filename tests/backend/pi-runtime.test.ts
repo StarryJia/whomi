@@ -7,6 +7,7 @@ import { mkdtempSync, rmSync, writeFileSync, mkdirSync, existsSync } from 'node:
 import { homedir, tmpdir } from 'node:os'
 import { join, resolve, sep } from 'node:path'
 import { PiRuntime } from '../../electron/agent/runtime'
+import { diagnoseInsightFailure, insightFailureAction } from '../../electron/agent/insight-request-failure'
 import type { AiModel } from '../../src/shared/ai-contract'
 import { generateInsight } from '../../electron/main/insight-generation'
 import { generatePiInsight, type PiInsightCheckpoint } from '../../electron/main/pi-insight-generation'
@@ -86,6 +87,11 @@ describe('Pi runtime over a controlled OpenAI compatible service', () => {
     [400, 'invalid_request_error', 'Function tools with reasoning are not supported on Chat Completions. Use Responses or set reasoning_effort to none.', 'INSIGHT_TOOL_REASONING_CONFLICT'],
     [400, 'unsupported_value', "Unsupported value: 'none' for reasoning_effort. Supported values are low, medium, high, xhigh.", 'INSIGHT_REASONING_UNSUPPORTED'],
     [401, 'invalid_api_key', 'Invalid API key', 'INSIGHT_AUTH_FAILED'],
+    [429, 'insufficient_quota', 'Quota exceeded.', 'INSIGHT_QUOTA_EXCEEDED'],
+    [429, 'rate_limit_exceeded', 'Too many requests.', 'INSIGHT_RATE_LIMITED'],
+    [429, 'credit_balance_exhausted', 'No credits.', 'INSIGHT_QUOTA_EXCEEDED'],
+    [429, 'unknown', 'Request rejected.', 'INSIGHT_REQUEST_LIMITED'],
+    [429, 'rate_limit_error', 'Request rejected.', 'INSIGHT_REQUEST_LIMITED'],
     [503, 'server_overloaded', 'The server is overloaded.', 'INSIGHT_PROVIDER_OVERLOADED'],
     [503, 'service_unavailable', 'The service is temporarily unavailable.', 'INSIGHT_SERVICE_UNAVAILABLE'],
     [503, 'server_error', 'Scheduled maintenance.', 'INSIGHT_SERVICE_UNAVAILABLE'],
@@ -98,6 +104,59 @@ describe('Pi runtime over a controlled OpenAI compatible service', () => {
     expect(error).toMatchObject({ code: expected, action: expect.any(String) })
     expect(events.filter(e => e.type === 'request')).toMatchObject([{ responseReceived: true, httpStatus: status, failureCode: expected }])
     expect(JSON.stringify([error, events])).not.toMatch(/sk-private-example|user@example|合成聊天片段|key=secret/)
+  }, 20000)
+
+  it.each([
+    ['insufficient_quota', 'The server is overloaded.', 'INSIGHT_QUOTA_EXCEEDED'],
+    ['unknown', 'You have no credits remaining. Add credits to continue using the API at https://example.org/?key=private', 'INSIGHT_QUOTA_EXCEEDED'],
+    ['rate_limit_exceeded', 'Too many requests.', 'INSIGHT_RATE_LIMITED'],
+    ['credit_balance_exhausted', 'No credits.', 'INSIGHT_QUOTA_EXCEEDED'],
+    ['rate_limit_error', 'Request rejected.', 'INSIGHT_REQUEST_LIMITED'],
+  ])('Responses 流内的 %s 错误明确说明额度或频率限制并保留断点', async (code, message, expected) => {
+    const fixture = overloadFixture()
+    answer = response => {
+      if (requests.length === 3) return frames(response, { type: 'response.failed', response: { status: 'failed', error: { code, message } } })
+      const item = { type: 'function_call', id: 'fc_' + requests.length, call_id: 'call_' + requests.length, name: 'read_messages', arguments: '{}' }
+      frames(response, { type: 'response.output_item.done', output_index: 0, item },
+        { type: 'response.completed', response: { status: 'completed', output: [item], usage: { input_tokens: 15, output_tokens: 5 } } })
+    }
+    await expect(fixture.run()).rejects.toMatchObject({ code: expected })
+    expect(requests).toHaveLength(3)
+    expect(fixture.events.filter(event => event.type === 'request').at(-1)).toMatchObject(
+      { httpStatus: 200, success: false, failureCode: expected })
+    const checkpoint = fixture.states.at(-1)!
+    expect(checkpoint).toMatchObject({ checkpoint: expect.any(String), requests: 3, coverage: { coveredMessageIds: ['1'] } })
+    expect(JSON.stringify(fixture.events)).not.toContain('key=private')
+    const sections = [{ content: [{ text: '周三散步', citationId: 'c1' }] }]
+    const report = { aboutYou: sections, relationship: sections, citations: [{ id: 'c1', fragments: [{ messageIds: ['1'] }] }], limitations: [], judgments: sampleJudgments() }
+    answer = response => {
+      const item = { type: 'message', id: 'msg_1', role: 'assistant', content: [{ type: 'output_text', text: JSON.stringify(report) }] }
+      frames(response, { type: 'response.output_item.done', output_index: 0, item },
+        { type: 'response.completed', response: { status: 'completed', output: [item], usage: { input_tokens: 15, output_tokens: 5 } } })
+    }
+    await expect(fixture.run(checkpoint)).resolves.toMatchObject({
+      aboutYou: sections, relationship: sections,
+      citations: [{ id: 'c1', fragments: [{ sources: [{ messageId: '1' }] }] }],
+    })
+    const sessions = fixture.states.flatMap(state => state.checkpoint ? [JSON.parse(state.checkpoint).sessionFile] : [])
+    expect(new Set(sessions).size).toBe(1)
+  }, 20000)
+
+  it('Anthropic 的消费上限代码优先于 rate_limit_error 并排除私密响应', async () => {
+    answer = response => {
+      response.writeHead(429, { 'Content-Type': 'application/json' })
+      response.end(JSON.stringify({ type: 'error', error: { type: 'rate_limit_error',
+        details: { error_code: 'enforced_spend_limit_reached' }, message: 'Request rejected. sk-private-example' } }))
+    }
+    const events: InsightRuntimeEvent[] = []
+    const error = await new PiRuntime(directory).run({ ...input({ ...model, protocol: 'anthropic-messages' }), purpose: 'insight',
+      insightSession: { processing: defaultProcessing } },
+      { ...options(), insight: { read: vi.fn(), record: async event => { events.push(event) } } }).catch(error => error)
+    expect(error).toMatchObject({ code: 'INSIGHT_QUOTA_EXCEEDED' })
+    expect(events.filter(event => event.type === 'request')).toMatchObject([
+      { responseReceived: true, httpStatus: 429, failureCode: 'INSIGHT_QUOTA_EXCEEDED' },
+    ])
+    expect(JSON.stringify([error, events])).not.toContain('sk-private-example')
   }, 20000)
 
   it('Responses 拒绝 reasoning.effort 时提示调整思考强度', async () => {
@@ -118,6 +177,7 @@ describe('Pi runtime over a controlled OpenAI compatible service', () => {
     [403, 'PERMISSION_DENIED', 'Forbidden', 'INSIGHT_AUTH_FAILED'],
     [503, 'UNAVAILABLE', 'The model is overloaded.', 'INSIGHT_PROVIDER_OVERLOADED'],
     [503, 'UNAVAILABLE', 'Maintenance window', 'INSIGHT_SERVICE_UNAVAILABLE'],
+    [429, 'RESOURCE_EXHAUSTED', 'Quota exceeded.', 'INSIGHT_REQUEST_LIMITED'],
     [0, '', '', 'INSIGHT_CONNECTION_FAILED'],
   ] as const)('Google 服务的 %i/%s 诊断仅使用已确认信息', async (status, googleStatus, detail, code) => {
     answer = response => {
@@ -213,7 +273,7 @@ describe('Pi runtime over a controlled OpenAI compatible service', () => {
         if (stage === 'retry') setTimeout(() => fixture.controller.abort(), 10)
       })
       const expected = {
-        invalid: 'INSIGHT_REQUEST_INCOMPATIBLE', 'unavailable-model': 'MODEL_REQUEST_FAILED', quota: 'MODEL_REQUEST_FAILED',
+        invalid: 'INSIGHT_REQUEST_INCOMPATIBLE', 'unavailable-model': 'MODEL_REQUEST_FAILED', quota: 'INSIGHT_QUOTA_EXCEEDED',
         partial: 'INSIGHT_PROVIDER_OVERLOADED', interrupted: 'MODEL_REQUEST_FAILED', exhausted: 'INSIGHT_PROVIDER_OVERLOADED',
       } as const
       await expect(fixture.run()).rejects.toMatchObject(mode === 'paused' ? { name: 'AbortError' } : { code: expected[mode] })
@@ -316,7 +376,8 @@ describe('Pi runtime over a controlled OpenAI compatible service', () => {
     const span = { messageId: 'm3', start: 0, end: 3, length: 3 }
     const controller = new AbortController()
     const runInput = { ...input(model), purpose: 'insight' as const, insightSession: { processing: defaultProcessing } }
-    const read = vi.fn(async () => ({ page: { status: 'ok' as const, nextCursor: null, messages: [{ id: 'm3', text: '周五见', sentAtMs: 0, senderName: '本人', isSelf: true, replyToMessageId: null }] }, spans: [span] }))
+    const read = vi.fn(async () => ({ page: { status: 'ok' as const, nextCursor: null,
+      transcript: '发言人：我=本人(本人)\n## 1970-01-01\nm3 00:00 我: 周五见' }, spans: [span] }))
     const normalAnswer = answer
     answer = response => {
       if (requests.length === 1) {
@@ -381,7 +442,8 @@ describe('Pi runtime over a controlled OpenAI compatible service', () => {
     const privateFolder = 'synthetic-personal-insight-folder'
     const result = await new PiRuntime(join(directory, privateFolder)).run({ ...input({ ...model, contextWindow: 8000 }), insightSession: { processing: defaultProcessing } }, {
       ...options(), insight: {
-        read: async () => ({ page: { status: 'ok', messages: [{ id: 'm1', isSelf: true, senderName: '本人', text: longMessage, replyToMessageId: null, sentAtMs: 0 }], nextCursor: null }, spans: [span] }),
+        read: async () => ({ page: { status: 'ok', nextCursor: null,
+          transcript: '发言人：我=本人(本人)\n## 1970-01-01\nm1 00:00 我: ' + longMessage }, spans: [span] }),
         record: async event => { events.push(event) },
       },
     })
@@ -609,4 +671,37 @@ describe('Pi runtime over a controlled OpenAI compatible service', () => {
     expect(result).toMatchObject({ stopReason: 'length', text: '{"events":[', usage: { totalInputTokens: 500, outputTokens: 1000 } })
   }, 20000)
 
+})
+
+
+describe('洞察请求限制分类', () => {
+  it.each([
+    ['openai-responses', { code: 'credit_balance_exhausted' }],
+    ['openai-responses', { code: 'organization_spend_limit_exceeded' }],
+    ['openai-responses', { code: 'project_spend_limit_exceeded' }],
+    ['openai-responses', { code: 'organization_usage_limit_exceeded' }],
+    ['anthropic-messages', { type: 'rate_limit_error', details: { error_code: 'enforced_spend_limit_reached' } }],
+  ] as const)('%s 的具体额度代码优先于通用限流信息', (api, details) => {
+    const error = JSON.stringify({ error: { ...details, message: 'Request rejected.' } })
+    expect(diagnoseInsightFailure(api, error, true, 429).failureCode).toBe('INSIGHT_QUOTA_EXCEEDED')
+  })
+
+  it.each([
+    ['openai-responses', '429 Request rejected.', 429],
+    ['anthropic-messages', JSON.stringify({ error: { type: 'rate_limit_error', message: 'Request rejected.' } }), 429],
+    ['anthropic-messages', JSON.stringify({ error: { type: 'rate_limit_error', details: { error_code: 'future_limit' }, message: 'Request rejected.' } }), 429],
+    ['google-generative-ai', JSON.stringify({ error: { code: 429, status: 'RESOURCE_EXHAUSTED', message: 'Quota exceeded.' } }), undefined],
+  ] as const)('%s 缺少具体限制原因时保留未知状态', (api, error, status) => {
+    expect(diagnoseInsightFailure(api, error, true, status).failureCode).toBe('INSIGHT_REQUEST_LIMITED')
+    expect(insightFailureAction('INSIGHT_REQUEST_LIMITED')).toContain('原因未确认')
+  })
+
+  it.each([
+    ['credit_balance_exhausted: No credits.', 'INSIGHT_QUOTA_EXCEEDED'],
+    ['enforced_spend_limit_reached: Limit reached.', 'INSIGHT_QUOTA_EXCEEDED'],
+    ['rate_limit_error: Request rejected.', 'INSIGHT_REQUEST_LIMITED'],
+    ['slow_down: Request rate increased too quickly.', 'INSIGHT_RATE_LIMITED'],
+  ])('流内无结构化字段的错误 %s 仍按具体原因分类', (error, expected) => {
+    expect(diagnoseInsightFailure('openai-responses', error, true, 200).failureCode).toBe(expected)
+  })
 })

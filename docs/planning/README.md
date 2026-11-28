@@ -22,7 +22,7 @@
 | 001 | [不同关系中的对照](ideas/001-cross-relationship-comparison.md) | 待评估 |
 | 002 | [大众熟知人物的白话示例剧本](ideas/002-familiar-character-demo.md) | 待验收 |
 | 003 | [AI 对话模块对齐 Cherry](ideas/003-cherry-chat-alignment.md) | 待验收 |
-| 004 | [对话洞察](ideas/004-conversation-insights.md) | A 版报告阅读页待验收，已验证首屏预测及依据、反例回查。[阅读页实测截图](../designs/conversation-insights/README.md) · [#35 真实模型试验](../research/pi-insights-issue-35-real-model.md) · [#46 异常提示与日志待办](https://github.com/StarryJia/whomi/issues/46) |
+| 004 | [对话洞察](ideas/004-conversation-insights.md) | A 版报告阅读页待验收；Personalysis 0.2.0 已在分支接入会话洞察与 AI 对话并完成离线回归与真实模型对照，待维护者验收。[阅读页实测截图](../designs/conversation-insights/README.md) · [#35 真实模型试验](../research/pi-insights-issue-35-real-model.md) · [#46 异常提示与日志待办](https://github.com/StarryJia/whomi/issues/46) · [Personalysis 接入与验收记录](../designs/personalysis-integration-v1.md) |
 | 005 | [问一问](ideas/005-ask.md) | 后续独立计划，待需求与选型 |
 | 006 | [心事屋](ideas/006-heart-room.md) | 后续独立计划，待需求与选型 |
 

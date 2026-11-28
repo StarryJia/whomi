@@ -13,6 +13,7 @@ import { usePaneDivider } from '../ui/pane-divider'
 import { ManagedRow } from '../ui/managed-row'
 import { ExceptionNotice, ExceptionNoticeScope, useExceptionNotice } from '../ui/exception-notices'
 import { isInsightScope, type InsightScope, type InsightScopePreview } from '../../shared/conversation-insights'
+import { InsightResumeModel } from '../insights/insight-resume-model'
 import { InsightScopeFields } from '../insights/insight-scope-fields'
 import { formatInsightNumber, insightElapsed, insightPercentage, insightRange, insightSpeed, InsightFailureNotice, InsightRing, InsightStatus, InsightTaskDetails, InsightTaskModel, useInsightRunDuration } from '../insights/insight-task'
 import { CherryComposer, clearComposerDraft, clearComposerInputHistory, moveComposerInputHistory, readComposerDraft, useComposerDraft, writeComposerDraft, type CherryComposerHandle } from './cherry/composer'
@@ -774,6 +775,13 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
   const analysisUsage = analysisResult?.usage ?? progress?.usage
   const confirmAnalysis = () => { setPreparation(undefined); setAnalysisConfirming(true); setAnalysisError(''); setPrepareAttempt(value => value + 1) }
   const activeTask = progress?.task
+  const [replacingAnalysisModel, setReplacingAnalysisModel] = useState(false)
+  const replaceAnalysisTrigger = useRef<HTMLButtonElement>(null)
+  useEffect(() => { setReplacingAnalysisModel(false) }, [activeTask?.id, analysisState])
+  function cancelAnalysisReplacement() {
+    setReplacingAnalysisModel(false)
+    requestAnimationFrame(() => replaceAnalysisTrigger.current?.focus())
+  }
   const pauseSupported = !!adapter?.continueAnalysis
   const waitingForStart = analysisState === 'running' && pauseSupported &&
     (!activeTask || !['queued', 'running'].includes(activeTask.state))
@@ -784,6 +792,7 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
   const statusTitle = analysis.stopping ? '正在暂停' : analysis.resuming === 'continue' ? '正在继续'
     : analysis.resuming === 'retry' ? '正在重试' : titles[analysisState]
   const closeAnalysis = () => {
+    setReplacingAnalysisModel(false)
     setAnalysisOpen(false)
     if (analysisState !== 'idle') setAnalysisConfirming(false)
     analysisAnchor.current?.focus()
@@ -892,16 +901,21 @@ export function ConversationWorkspace({ conversationId, initialAnalysisTaskId, o
             ? <InsightFailureNotice task={activeTask} className="conversation-error"
                 actionFailure={analysis.errorOperation && { detail: analysisError, operation: analysis.errorOperation }} />
             : <ExceptionNotice title="会话洞察异常" detail={analysisError} className="conversation-error" />)}
-          <footer>{analysisState === 'running'
+          {replacingAnalysisModel && activeTask && analysis.replaceable ? <InsightResumeModel task={activeTask} models={adapter?.models ?? []}
+            busy={!!analysis.resuming} onCancel={cancelAnalysisReplacement} onContinue={replacement => {
+              void analysis.run(undefined, replacement).then(accepted => { if (accepted) setReplacingAnalysisModel(false) })
+            }} /> : <footer>{analysisState === 'running'
             ? <button type="button" disabled={analysis.stopping || waitingForStart} className="analysis-secondary" onClick={() => { void analysis.stop() }}>
                 {pauseSupported ? <Pause aria-hidden="true" /> : <Square aria-hidden="true" />}{pauseSupported ? '暂停生成' : '停止生成'}</button> : null}
             {analysisState !== 'running' && analysisState !== 'idle' &&
               <button type="button" className="analysis-secondary" disabled={!!analysis.resuming} onClick={again}>{retryBeforeCreation ? '重试生成' : '再次洞察'}</button>}
+            {analysis.replaceable && <button ref={replaceAnalysisTrigger} type="button" className="analysis-secondary" disabled={analysis.stopping || !!analysis.resuming}
+              onClick={() => setReplacingAnalysisModel(true)}>更换模型并继续</button>}
             {analysis.resumable && <button className="analysis-primary" type="button" disabled={analysis.stopping || !!analysis.resuming} onClick={() => { void analysis.run() }}>
               {failure ? <RotateCw aria-hidden="true" /> : <Play aria-hidden="true" />}{failure ? '重试' : '继续洞察'}</button>}
             {reportAvailable &&
               <button type="button" className="analysis-primary" onClick={openReport}>查看报告<ArrowRight aria-hidden="true" /></button>}
-          </footer>
+          </footer>}
         </>}
       </section>
     </Popover>}

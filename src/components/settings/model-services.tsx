@@ -10,7 +10,7 @@ import { presetAccountId } from '../../shared/settings-contract'
 import { listedCherryProviderPresets, type CherryProviderPreset } from '../../vendor/cherry-providers'
 import { changePresetProtocol, PresetDetail, PresetLinks, ProviderAvatar, presetAccounts } from './provider-presets'
 import { defaultModelProtocol, modelProtocols } from '../../shared/model-protocol'
-import { errorText, isModelBusy, Modal, Switch, type LeaveGuard, type RegisterGuard } from './common'
+import { errorText, isModelBusy, LeaveDialog, Modal, Switch, type LeaveGuard, type RegisterGuard } from './common'
 import { ProtocolSelect, ProviderForm, providerErrors } from './provider-form'
 import { ModelEditor, modelChanges, modelInput } from './model-editor'
 import { ProviderAccount, unconfiguredAccount } from './chatgpt-account'
@@ -163,14 +163,14 @@ export function ModelServices({ api, snapshot, setSnapshot, onChanged, registerG
       <button className="ms-button ms-add-provider" disabled={busy} onClick={() => navigate(() => setEditor('new'))}><Plus size={14} />添加服务商</button>
       {listPane.divider}
     </aside>
-    {provider ? <ProviderDetail key={`${provider.id}:${editor ? 'editing' : 'detail'}`} api={api} provider={provider} refreshAccount={refreshAccount} refreshCatalog={refreshCatalog} models={snapshot.models.filter(model => model.providerId === provider.id)} savedProvider={savedProvider} savedModels={savedModels} removedModels={ids => { setSnapshot(current => current && { ...current, models: current.models.filter(model => !ids.includes(model.id)) }); onChanged() }} onBusy={onBusy} registerGuard={guard => { detailGuard.current = guard }} onBack={() => setShowDetail(false)} /> : selectedPreset ? <PresetDetail preset={selectedPreset} onConfigure={() => setEditor('preset')} onBack={() => setShowDetail(false)} /> : <section className="ms-detail ms-empty ms-empty-detail"><p className="ms-hint">添加服务商以配置模型。</p></section>}
+    {provider ? <ProviderDetail key={`${provider.id}:${editor ? 'editing' : 'detail'}`} api={api} provider={provider} refreshAccount={refreshAccount} refreshCatalog={refreshCatalog} models={snapshot.models.filter(model => model.providerId === provider.id)} savedProvider={savedProvider} savedModels={savedModels} removedModels={ids => { setSnapshot(current => current && { ...current, models: current.models.filter(model => !ids.includes(model.id)) }); onChanged() }} onBusy={onBusy} registerGuard={guard => { detailGuard.current = guard }} onBack={() => setShowDetail(false)} onContinueEditing={() => setShowDetail(true)} /> : selectedPreset ? <PresetDetail preset={selectedPreset} onConfigure={() => setEditor('preset')} onBack={() => setShowDetail(false)} /> : <section className="ms-detail ms-empty ms-empty-detail"><p className="ms-hint">添加服务商以配置模型。</p></section>}
     {editor && <ProviderEditor api={api} provider={typeof editor === 'object' ? editor : undefined} preset={editor === 'preset' ? selectedPreset : undefined} onClose={() => setEditor(null)} onSaved={value => { savedProvider(value); setSelectedId(value.id); setShowDetail(true) }} />}
     {notes && <ProviderNotes api={api} provider={notes} onSaved={savedProvider} onClose={() => setNotes(null)} />}
     {removal && <Modal title="删除服务商" help="已有分析报告和对话记录会保留。" busy={busy} onClose={() => setRemoval(null)}><div className="ms-modal-body"><p>删除 {removal.name} 及其模型配置？</p>{error && <ExceptionNotice title="无法删除服务商" detail={error} className="ms-error" />}</div><footer className="ms-modal-footer"><button className="ms-button" disabled={busy} onClick={() => setRemoval(null)}>取消</button><button className="ms-button ms-primary" disabled={busy} onClick={() => void remove()}>{stopRequired ? '停止任务并重试' : '确认删除'}</button></footer></Modal>}
   </div>
 }
 
-function ProviderDetail({ api, provider, refreshAccount, refreshCatalog, models, savedProvider, savedModels, removedModels, registerGuard, onBusy, onBack }: { api: SettingsApi; provider: Provider; refreshAccount: (isCurrent: () => boolean) => Promise<void>; refreshCatalog: (source: Provider) => Promise<void>; models: SettingsModel[]; savedProvider: (value: Provider) => void; savedModels: (value: SettingsModel[]) => void; removedModels: (ids: string[]) => void; registerGuard: RegisterGuard; onBusy: (value: boolean) => void; onBack: () => void }) {
+function ProviderDetail({ api, provider, refreshAccount, refreshCatalog, models, savedProvider, savedModels, removedModels, registerGuard, onBusy, onBack, onContinueEditing }: { api: SettingsApi; provider: Provider; refreshAccount: (isCurrent: () => boolean) => Promise<void>; refreshCatalog: (source: Provider) => Promise<void>; models: SettingsModel[]; savedProvider: (value: Provider) => void; savedModels: (value: SettingsModel[]) => void; removedModels: (ids: string[]) => void; registerGuard: RegisterGuard; onBusy: (value: boolean) => void; onBack: () => void; onContinueEditing: () => void }) {
   const subscriptionId = getSubscriptionId(provider.id)
   const [account, setAccount] = useState<{ state: 'disconnected' | 'pending' | 'connected' | 'unknown'; id?: string }>({ state: 'unknown' })
   const accountState = account.state
@@ -206,20 +206,46 @@ function ProviderDetail({ api, provider, refreshAccount, refreshCatalog, models,
   }, [provider])
   const preset = presetAccounts.get(provider.id)
   const dirty = JSON.stringify(draft) !== JSON.stringify(saved.current)
+  const [leaveAction, setLeaveAction] = useState<(() => void) | null>(null)
+  function clearSaveFailure() {
+    saver.clearFailure()
+    setStopRequired(false)
+  }
   async function commit(next = latest.current) {
     const validation = providerErrors(next); setErrors(validation); if (Object.keys(validation).length) return false
-    if (JSON.stringify(next) === JSON.stringify(saved.current)) return saver.flush()
+    if (JSON.stringify(next) === JSON.stringify(saved.current)) {
+      await saver.flush()
+      if (JSON.stringify(next) === JSON.stringify(saved.current)) {
+        clearSaveFailure()
+        return true
+      }
+    }
     setPicker(false)
     return saver.save(next)
   }
-  function navigate(action: () => void) { if (busy) return; void commit().then(ok => { if (ok) action() }) }
+  async function navigate(action: () => void) {
+    if (busy || leaveAction) return
+    // 失焦可能已经触发保存，先等它完成再决定是否离开。
+    const savedOk = await saver.flush()
+    if ((savedOk || JSON.stringify(latest.current) === JSON.stringify(saved.current)) && await commit()) action()
+    else setLeaveAction(() => action)
+  }
+  function discardAndLeave() {
+    latest.current = saved.current
+    setDraft(saved.current)
+    clearSaveFailure()
+    setErrors({})
+    setError('')
+    setLeaveAction(null)
+    leaveAction?.()
+  }
   useEffect(() => { registerGuard(navigate); return () => registerGuard(null) })
   useEffect(() => { onBusy(busy); return () => onBusy(false) }, [busy, onBusy])
   async function test(model: SettingsModel) { if (accountUnavailable || !await commit() || !isCurrent()) return; setBusy(true); setError(''); setDetections(current => ({ ...current, [model.id]: '检测中…' })); try { await api.testModel(model.id); if (isCurrent()) setDetections(current => ({ ...current, [model.id]: '连接成功' })) } catch (cause) { if (isCurrent()) { setDetections(current => ({ ...current, [model.id]: '检测失败' })); setError(errorText(cause, '检测失败，请检查配置后重试。')) } } finally { modelBusy(false) } }
   async function toggle(model: SettingsModel) { if (accountUnavailable) return; setBusy(true); setError(''); try { const previous = modelInput(model); const saved = await api.saveModel(modelChanges({ ...previous, enabled: !model.enabled }, previous)); if (isCurrent()) savedModels([saved]) } catch (cause) { if (isCurrent()) setError(errorText(cause)) } finally { modelBusy(false) } }
   const filtered = visibleModels.filter(model => `${model.label} ${model.model}`.toLowerCase().includes(modelQuery.toLowerCase()))
   const groups = [...new Set(filtered.map(model => model.group || '模型'))]
-  return <section className="ms-detail" aria-label="服务商配置"><div className="ms-detail-body"><button className="ms-mobile-back ms-text-button" onClick={() => navigate(onBack)}><ArrowLeft size={14} />返回服务商</button>
+  return <><section className="ms-detail" aria-label="服务商配置"><div className="ms-detail-body"><button className="ms-mobile-back ms-text-button" onClick={() => navigate(onBack)}><ArrowLeft size={14} />返回服务商</button>
     {subscriptionId ? <ProviderAccount id={subscriptionId} api={api} provider={provider} refresh={refreshAccount} onConnection={(state, id) => setAccount({ state, id })} /> : <>
     <div className="ms-detail-header"><div className="ms-detail-title">{(provider.image || provider.avatarId || preset) && <ProviderAvatar name={provider.name} image={provider.image} avatarId={provider.avatarId} preset={preset} />}<h2>{provider.name}</h2><SettingHelp name={provider.name}>使用云模型时，数据会发送给所配置的模型服务商。</SettingHelp></div><Switch label="启用服务商" checked={draft.enabled} disabled={busy || saver.pending} onChange={() => { const next = { ...draft, enabled: !draft.enabled }; setDraft(next); void commit(next) }} /></div>
     {preset && <PresetLinks preset={preset} />}
@@ -227,7 +253,7 @@ function ProviderDetail({ api, provider, refreshAccount, refreshCatalog, models,
       <div className="ms-field"><label htmlFor={`${id}-key`}>{provider.hasCredential ? '替换密钥' : '密钥'}</label><div className="settings-key"><input id={`${id}-key`} type={showKey ? 'text' : 'password'} autoComplete="off" spellCheck={false} value={draft.apiKey ?? ''} placeholder={provider.hasCredential ? '已保存密钥' : '输入密钥'} onChange={event => { setDraft(current => ({ ...current, apiKey: event.target.value || undefined })); setPicker(false) }} onBlur={() => { void commit() }} /><button className="ms-icon" type="button" aria-label={showKey ? '隐藏输入的密钥' : '显示输入的密钥'} onClick={() => setShowKey(value => !value)}>{showKey ? <EyeOff size={14} /> : <Eye size={14} />}</button></div>{provider.hasCredential && <button className="ms-text-button settings-fit" disabled={saver.pending} onClick={() => { const next = { ...draft, apiKey: null }; setDraft(next); void commit(next) }}>清除密钥</button>}</div>
       <div className="ms-field"><label htmlFor={`${id}-address`}>接口地址</label><input id={`${id}-address`} value={draft.baseUrl} type="url" aria-invalid={!!errors.baseUrl} onChange={event => { setDraft(current => ({ ...current, baseUrl: event.target.value, ...(current.endpointUrls && { endpointUrls: { ...current.endpointUrls, [current.protocol ?? defaultModelProtocol]: event.target.value } }) })); setPicker(false) }} onBlur={() => { void commit() }} />{errors.baseUrl && <p role="alert" className="ms-error">{errors.baseUrl}</p>}</div>
       {(saver.error || error) && <>
-        <ExceptionNotice title={saver.error ? '无法保存服务商设置' : '模型操作失败'} detail={saver.error || error} className="ms-error" />
+        {!leaveAction && <ExceptionNotice title={saver.error ? '无法保存服务商设置' : '模型操作失败'} detail={saver.error || error} className="ms-error" />}
         {saver.error && <button className="ms-button" disabled={saver.pending} onClick={() => { void (async () => { try { if (stopRequired) await api.stopModelTasks(models.map(model => model.id)); setError(''); await commit() } catch (cause) { setError(errorText(cause)) } })() }}>{stopRequired ? '停止任务并重试' : '重试保存'}</button>}
       </>}
     </div>
@@ -247,4 +273,8 @@ function ProviderDetail({ api, provider, refreshAccount, refreshCatalog, models,
     {picker && !accountUnavailable && <ModelPicker api={api} provider={provider} models={visibleModels} onSynced={() => refreshCatalog(provider)} onClose={() => { if (isCurrent()) setPicker(false) }} onAdded={values => { if (isCurrent()) savedModels(values) }} onRemoved={ids => { if (isCurrent()) removedModels(ids) }} onBusy={modelBusy} />}
     {(editor === 'new' || editedModel) && !accountUnavailable && <ModelEditor api={api} provider={provider} models={visibleModels} existing={editedModel} onClose={() => { if (isCurrent()) setEditor(null) }} onSaved={value => { if (isCurrent()) savedModels([value]) }} />}
   </section>
+    {leaveAction && <LeaveDialog busy={saver.pending} error={saver.error || Object.values(errors)[0]}
+      onContinue={() => { setLeaveAction(null); onContinueEditing() }} onDiscard={discardAndLeave}
+      onSave={async () => { if (await commit()) { setLeaveAction(null); leaveAction() } }} />}
+  </>
 }

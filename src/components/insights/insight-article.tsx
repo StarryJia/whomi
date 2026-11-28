@@ -176,7 +176,9 @@ export function InsightArticle({ report, conversationId, allowSourceExcerpts = t
   if (!observed.length && !report.aboutYou.length && !report.relationship.length) {
     return <article className="insight-prose"><p>这份报告没有分析正文。</p></article>
   }
+  const personalObservations = report.safetyLead ? report.aboutYou.slice(1) : report.aboutYou
   return <article className="insight-prose">
+    {report.safetyLead && paragraphs(report.aboutYou.slice(0, 1))}
     {!!observed.length && <Prediction rows={rows} />}
     <section className="insight-chapter"><h2>关于你</h2>
       {!!observed.length && <section className="insight-analysis">
@@ -187,13 +189,9 @@ export function InsightArticle({ report, conversationId, allowSourceExcerpts = t
             showDirection={item.direction !== direction} conversationId={conversationId} allowSourceExcerpts={allowSourceExcerpts} onOpenCitation={onOpenCitation} />)}
         </div>)}
       </section>}
-      {observed.length > 0 && report.aboutYou.length > 0 ? <section className="insight-personal-observations"><h3>个人观察</h3>
-        {paragraphs(report.aboutYou)}</section> : paragraphs(report.aboutYou)}
+      {observed.length > 0 && personalObservations.length > 0 ? <section className="insight-personal-observations"><h3>个人观察</h3>
+        {paragraphs(personalObservations)}</section> : paragraphs(personalObservations)}
     </section>
     <section className="insight-chapter"><h2>你们的相处</h2>{paragraphs(report.relationship)}</section>
-    {!!report.limitations?.length && <aside className="insight-report-limitations" aria-label="分析依据限制">
-      <strong>分析依据限制</strong>
-      {report.limitations.map((text, index) => <p key={index}>{text}</p>)}
-    </aside>}
   </article>
 }

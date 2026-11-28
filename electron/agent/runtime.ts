@@ -37,9 +37,12 @@ export class PiRuntime {
     const cwd = join(agentDir, 'workspace')
     const sessionDir = join(agentDir, 'sessions', key)
     mkdirSync(cwd, { recursive: true })
-    mkdirSync(sessionDir, { recursive: true })
+    const autonomous = input.insightSession
+    const extracting = autonomous?.mode === 'segment'
+    if (!extracting) mkdirSync(sessionDir, { recursive: true })
     let manager: ReturnType<typeof SessionManager.create>
-    if (input.checkpoint) {
+    if (extracting) manager = SessionManager.inMemory(cwd)
+    else if (input.checkpoint) {
       try {
         const checkpoint = JSON.parse(input.checkpoint) as { sessionFile: unknown; leafId: unknown }
         if (typeof checkpoint.sessionFile !== 'string' || typeof checkpoint.leafId !== 'string' ||
@@ -52,12 +55,13 @@ export class PiRuntime {
       } catch { throw failure('INVALID_CHECKPOINT', '请重新打开对话后重试。') }
     } else manager = SessionManager.create(cwd, sessionDir)
 
-    const provider = `whomi-${key}`
+    // 切换服务商后隔离模型身份，避免重放同名模型的签名推理。
+    const modelKey = input.insightSession?.modelSessionKey
+    const provider = `whomi-${key}${modelKey ? '-' + createHash('sha256').update(modelKey).digest('hex').slice(0, 16) : ''}`
     const modelRuntime = await ModelRuntime.create({
       credentials: { read: async () => undefined, list: async () => [], modify: async (_provider, change) => change(undefined), delete: async () => {} },
       modelsPath: null, refreshOnCreate: false, allowModelNetwork: false,
     })
-    const autonomous = input.insightSession
     if (autonomous && (!options.insight || input.history !== undefined)) throw failure('INVALID_INSIGHT_SESSION', '请重新打开洞察任务。')
     const effectiveModel = useInsightResponses ? { ...input.model, protocol: api } : input.model
     const capabilities = await reasoningCapabilities(effectiveModel)
@@ -87,7 +91,7 @@ export class PiRuntime {
         else manager.appendMessage({ role: 'assistant', content: [{ type: 'text', text: item.text }], api, provider, model: model.id, usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } }, stopReason: 'stop', timestamp: Date.now() })
       }
     }
-    const compaction = autonomous ? {
+    const compaction = autonomous && !autonomous.mode ? {
       enabled: true,
       reserveTokens: limits.contextWindow - limits.maxInputTokens + Math.ceil(limits.maxInputTokens / 5),
       keepRecentTokens: Math.floor(limits.maxInputTokens / 4),
@@ -107,7 +111,7 @@ export class PiRuntime {
       extendResources: () => {},
       reload: async () => {},
     }
-    const reader = autonomous && options.insight ? createInsightTool(options.insight, limits.maxInputTokens, () => {
+    const reader = autonomous && options.insight && !extracting ? createInsightTool(options.insight, limits.maxInputTokens, () => {
       // When usage is unreported, our conservative page estimate can run out before Pi's threshold.
       settingsManager.applyOverrides({ compaction: { ...compaction, reserveTokens: limits.contextWindow } })
     }) : undefined
@@ -129,9 +133,9 @@ export class PiRuntime {
           return supported
         } })
     }
-    const observed = autonomous && options.insight && reader
+    const observed = autonomous && options.insight
       ? observeInsightSession(session, manager, options.insight, autonomous.processing, input.systemPrompt, options.signal, reader,
-        { maxTokens: outputLimit, maxInputTokens: limits.maxInputTokens }, api)
+        { maxTokens: outputLimit, maxInputTokens: limits.maxInputTokens }, api, autonomous.fixedPromptLength, autonomous.mode !== undefined)
       : undefined
     let text = ''
     let firstTokenMs: number | undefined
@@ -150,6 +154,12 @@ export class PiRuntime {
     }
     const unsubscribe = session.subscribe(event => {
       if (reader && event.type === 'compaction_end') settingsManager.applyOverrides({ compaction })
+      if (event.type === 'agent_end' && observed?.isFullyReviewed()) {
+        const last = event.messages.at(-1)
+        // Pi 在 agent_end 后检查阈值。成稿后无需给下一轮腾空间，窗口溢出仍交给 Pi 恢复。
+        if (last?.role === 'assistant' && last.stopReason === 'stop' && !last.content.some(block => block.type === 'toolCall')
+          && !isContextOverflow(last, limits.contextWindow)) settingsManager.applyOverrides({ compaction: { enabled: false } })
+      }
       if (event.type === 'message_update' && event.assistantMessageEvent.type === 'text_delta') {
         if (options.signal.aborted) return
         const delta = event.assistantMessageEvent.delta
@@ -191,6 +201,7 @@ export class PiRuntime {
         throw failure('MODEL_REQUEST_FAILED', '请检查模型服务后重试。')
       }
       const usage = usageSnapshot()
+      if (extracting) return { text: observed!.lastText(), usage, checkpoint: '', ...(stopReason === 'length' && { stopReason: 'length' as const }) }
       const sessionFile = manager.getSessionFile()
       const leafId = manager.getLeafId()
       if (!sessionFile || !leafId) throw failure('SESSION_SAVE_FAILED', '请重试保存对话。')

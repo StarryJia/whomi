@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { defaultPrompts, validatePrompt, type PromptId, type PromptValues } from '../../../src/shared/system-prompts'
-import { readPromptValues } from '../ai/system-prompts'
+import { readPromptValues, type StoredPromptOverrides } from '../ai/system-prompts'
+import { legacyInsightPromptIds } from '../ai/legacy-prompts'
 import type { Store } from '../db/open'
 import type { WriterQueue } from '../import/runner'
 import { saveAiModelVersion } from '../ai/repository'
@@ -72,7 +73,7 @@ export function createSettingsRepository(store: Store, write: WriterQueue) {
         SELECT json_extract(u.data,'$.totalInputTokens') input, json_extract(u.data,'$.outputTokens') output,
                json_extract(u.data,'$.incomplete') incomplete
         FROM ai_request_usage u JOIN owners o ON o.kind=u.owner_kind AND o.id=u.owner_id
-        JOIN ai_model_versions v ON v.model_id=o.model_id AND v.version=o.model_version
+        JOIN ai_model_versions v ON v.model_id=coalesce(u.model_id,o.model_id) AND v.version=coalesce(u.model_version,o.model_version)
         WHERE json_extract(v.data,'$.planProvider')=? AND json_extract(v.data,'$.planAccount')=?
           AND u.request_id!='snapshot' AND u.request_id NOT LIKE 'snapshot:%'
       ) SELECT count(*) requests, sum(input) input, sum(output) output,
@@ -182,7 +183,10 @@ export function createSettingsRepository(store: Store, write: WriterQueue) {
     async savePrompt(id: PromptId, text: string): Promise<PromptValues> {
       validatePrompt(id, text)
       return write(() => {
-        const overrides = setting<Partial<PromptValues>>('systemPrompts', {})
+        const overrides = setting<StoredPromptOverrides>('systemPrompts', {})
+        if (id === 'insight') {
+          for (const legacyId of legacyInsightPromptIds) delete overrides[legacyId]
+        }
         if (text === defaultPrompts[id]) delete overrides[id]
         else overrides[id] = text
         saveSetting('systemPrompts', overrides)

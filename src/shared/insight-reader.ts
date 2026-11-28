@@ -11,7 +11,7 @@ export type InsightReadMessage = {
 }
 
 export type InsightReadPage =
-  | { status: 'ok'; messages: InsightReadMessage[]; nextCursor: string | null }
+  | { status: 'ok'; transcript: string; nextCursor: string | null }
   | { status: 'out_of_scope' | 'source_changed' | 'invalid_request' | 'insufficient_capacity'; message: string }
 
 export type InsightReadSpan = { messageId: string; start: number; end: number; length: number; review?: true }

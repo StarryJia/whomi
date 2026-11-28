@@ -1,4 +1,4 @@
-import { defaultPrompts } from '../../../src/shared/system-prompts'
+import { legacyPrompts, type LegacyInsightPrompts } from './legacy-prompts'
 
 export const INSIGHT_PROMPT_VERSION = 'conversation-insights-v1'
 
@@ -9,12 +9,12 @@ export type InsightPrompts = {
   writing: string
 }
 
-export const defaultInsightPrompts: Readonly<InsightPrompts> = {
-  version: INSIGHT_PROMPT_VERSION,
-  reading: defaultPrompts.insightReading,
-  checking: defaultPrompts.insightChecking,
-  writing: defaultPrompts.insightWriting,
+export function legacyStagePrompts(values: LegacyInsightPrompts): InsightPrompts {
+  return { version: INSIGHT_PROMPT_VERSION, reading: values.insightReading,
+    checking: values.insightChecking, writing: values.insightWriting }
 }
+
+export const defaultInsightPrompts: Readonly<InsightPrompts> = legacyStagePrompts(legacyPrompts)
 
 const protocol = {
   reading: [

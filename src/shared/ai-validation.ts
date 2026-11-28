@@ -2,7 +2,7 @@ import { isOperationId } from './operation-diagnostics'
 import { isSubscriptionId } from './chatgpt-plan'
 import type { AiEvent, AiMethods } from './ai-contract'
 import { BoundaryError, availableSourceWindowFields, listArrangement, localId } from './desktop-validation'
-import { dimensionKeys, insightTitle, isInsightScope, isInsightTimezone, type InsightCitation, type InsightCitationWindow, type InsightJudgment } from './conversation-insights'
+import { dimensionKeys, insightTitle, isInsightScope, isInsightTimezone, type InsightCitation, type InsightCitationWindow, type InsightJudgment, type InsightReport } from './conversation-insights'
 import { isModelProtocol } from './model-protocol'
 
 type Check = (value: unknown) => boolean
@@ -47,7 +47,12 @@ const judgments = array(value => {
   const judgment = value as InsightJudgment
   return judgment.direction === null || judgment.supportingSources.length > 0
 }, 200)
-const insightReport = object({ format: value => value === 'conversation-insights-v1', aboutYou: paragraphs, relationship: paragraphs, citations: array(citation, 2000), limitations: notes, judgments: optional(judgments) })
+const insightReportFields = object({ format: value => value === 'conversation-insights-v1', safetyLead: optional(bool), aboutYou: paragraphs, relationship: paragraphs, citations: array(citation, 2000), limitations: optional(notes), judgments: optional(judgments) })
+const insightReport: Check = value => {
+  if (!insightReportFields(value)) return false
+  const { safetyLead, aboutYou } = value as InsightReport
+  return !safetyLead || !!aboutYou[0]?.content.length
+}
 const modelIdentity = object({ id: key, version: positive, label: text(256, true), model: key })
 const analysis = object({ id: localId, conversationId: localId, conversationTitle: optional(text(100000)), counterpartName: optional(text(100000)), title: optional(value => typeof value === 'string' && insightTitle(value) === value), scope: optional(isInsightScope), timezone: optional(isInsightTimezone), insightContentRevision: optional(revision), insightSelfFingerprint: optional(revision), elapsedMs: optional(count), elapsedSampledAtMs: optional(count), modelId: key, modelIdentity: optional(modelIdentity), createdAtMs: optional(nullable(count)), completedAtMs: optional(nullable(count)), sourceStartTimeMs: optional(nullable(timestamp)), sourceEndTimeMs: optional(nullable(timestamp)), pinned: optional(bool), thinkingLevel: optional(thinking), state, analyzedMessages: count, totalMessages: count, skippedMessages: count, usage: analysisUsage, error: optional(text(2000)), failureOperationId: optional(isOperationId), failureAtMs: optional(count), report: optional(insightReport), valid: bool, eventSequence: count })
 const turn = object({ id: localId, threadId: localId, requestId: key, prompt: text(100000, true), referenceIds: ids, modelId: key, modelIdentity: optional(modelIdentity), thinkingLevel: optional(thinking), skillId: optional(key), text: text(2 * 1024 ** 2), state, attempt: positive, usage, error: optional(text(2000)), eventSequence: count })
@@ -68,7 +73,7 @@ const input: Record<keyof AiMethods, Check[]> = {
   previewInsightScope: [object({ conversationId: localId, scope: optional(isInsightScope) })],
   prepareAnalysis: [object({ conversationId: localId, modelId: key, thinkingLevel: optional(thinking), scope: optional(isInsightScope) })], confirmAnalysis: [object({ token: key, requestId: key })],
   discardAnalysisPreparation: [key],
-  getAnalysis: [localId], listAnalyses: [optional(localId)], arrangeAnalysis: [listArrangement], renameAnalysis: [object({ taskId: localId, title: value => insightTitle(value) !== null })], deleteAnalysis: [localId], stopAnalysis: [localId], continueAnalysis: [localId], getReport: [localId],
+  getAnalysis: [localId], listAnalyses: [optional(localId)], arrangeAnalysis: [listArrangement], renameAnalysis: [object({ taskId: localId, title: value => insightTitle(value) !== null })], deleteAnalysis: [localId], stopAnalysis: [localId], continueAnalysis: [localId, optional(object({ modelId: key, thinkingLevel: optional(thinking) }))], getReport: [localId],
   readInsightCitation: [object({ taskId: localId, citationId: isInsightCitationId, fragmentIndex: count, messageId: optional(localId) })],
   openThread: [localId], listThreads: [localId], createThread: [localId], getThread: [localId], arrangeThread: [localId, listArrangement], deleteThread: [localId, localId], sendTurn: [object({ threadId: localId, requestId: key, prompt: text(100000, true), referenceIds: ids, modelId: key, thinkingLevel: optional(thinking), skillId: optional(key) })], retryTurn: [localId], stopTurn: [localId],
 }
@@ -82,6 +87,7 @@ const output: Record<keyof AiMethods, Check> = {
 export function validateAiCall(method: unknown, args: unknown): asserts method is keyof AiMethods {
   if (typeof method !== 'string' || !Object.hasOwn(input, method)) throw new BoundaryError('INVALID_METHOD')
   if (method === 'listAnalyses' && Array.isArray(args) && args.length === 0) return
+  if (method === 'continueAnalysis' && Array.isArray(args) && args.length === 1 && localId(args[0])) return
   const checks = input[method as keyof AiMethods]
   if (!Array.isArray(args) || args.length !== checks.length || !checks.every((check, index) => check(args[index]))) throw new BoundaryError('INVALID_ARGUMENT')
   if (method === 'saveModel') {

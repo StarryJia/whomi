@@ -221,12 +221,12 @@ export async function createConversationAiClient(api: AiApi, settings?: Settings
     skills: skills.map(({ id, label }) => ({ id, label })),
     async stopTurn(id) { await api.stopTurn(id) },
     stopAnalysis: id => api.stopAnalysis(id),
-    async continueAnalysis(id, signal, onProgress) {
+    async continueAnalysis(id, signal, onProgress, replacement) {
       check(signal)
       let initial: AnalysisTask
-      try { initial = await api.continueAnalysis(id) }
+      try { initial = await (replacement ? api.continueAnalysis(id, replacement) : api.continueAnalysis(id)) }
       catch (error) {
-        if (errorCode(error) !== 'INVALID_STATE') throw error
+        if (replacement || errorCode(error) !== 'INVALID_STATE') throw error
         check(signal)
         initial = await api.getAnalysis(id)
         if (settled(initial.state) && initial.state !== 'completed') throw error

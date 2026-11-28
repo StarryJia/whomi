@@ -5,11 +5,14 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { PiRuntime } from '../../electron/agent/runtime'
 import { addInsightCoverage, createInsightReader } from '../../electron/main/insight-reader'
+import { estimateTranscriptTokens, formatInsightReadPage, formatInsightTranscript } from '../../electron/main/insight-transcript'
 import { createMessageProcessor } from '../../electron/main/message-processing'
-import type { InsightRuntimeEvent } from '../../electron/agent/protocol'
+import { completeReadingInstruction, type InsightRuntimeEvent } from '../../electron/agent/protocol'
 import type { AiModel } from '../../src/shared/ai-contract'
-import type { InsightReadPage } from '../../src/shared/insight-reader'
+import { parseReadResult } from '../desktop/fixtures/pi-insight-model.mjs'
 import { defaultProcessing } from '../../src/shared/settings-contract'
+import { assembleMethodologyPrompt, createMethodologySnapshot } from '../../electron/data/ai/methodology'
+import { defaultPrompts } from '../../src/shared/system-prompts'
 
 type InputItem = { type?: string; id?: string; call_id?: string; output?: unknown; encrypted_content?: string }
 type Request = { input?: InputItem[]; store?: boolean; previous_response_id?: string; messages?: unknown[]; max_output_tokens?: number }
@@ -43,7 +46,7 @@ afterEach(async () => {
   await rm(directory, { recursive: true, force: true })
 })
 
-function responses(response: ServerResponse, items: object[], inputTokens = 25, outputTokens = 12, status: 'completed' | 'incomplete' = 'completed') {
+function responses(response: ServerResponse, items: object[], inputTokens: number | null = 25, outputTokens = 12, status: 'completed' | 'incomplete' = 'completed') {
   response.writeHead(200, { 'content-type': 'text/event-stream' })
   const emit = (event: object) => response.write('data: ' + JSON.stringify(event) + '\n\n')
   for (const [output_index, item] of items.entries()) {
@@ -52,20 +55,86 @@ function responses(response: ServerResponse, items: object[], inputTokens = 25, 
   }
   emit({ type: 'response.' + status, response: { id: 'resp_local', status, output: items,
     ...(status === 'incomplete' ? { incomplete_details: { reason: 'max_output_tokens' } } : {}),
-    usage: { input_tokens: inputTokens, output_tokens: outputTokens } } })
+    ...(inputTokens !== null && { usage: { input_tokens: inputTokens, output_tokens: outputTokens } }) } })
   response.end()
 }
 const textItem = (text: string) => ({ type: 'message', role: 'assistant', id: 'msg_local', content: [{ type: 'output_text', text }] })
 function sample(text: string) {
   const span = { messageId: '1', start: 0, end: text.length, length: text.length }
   const events: InsightRuntimeEvent[] = []
+  const transcript = formatInsightTranscript([{ id: '1', isSelf: true, senderName: '本人', sentAtMs: null, replyToMessageId: null, text }], 'UTC')
   const read = vi.fn(async () => ({ spans: [span], page: { status: 'ok' as const, nextCursor: null,
-    messages: [{ id: '1', isSelf: true, senderName: '本人', sentAtMs: null, replyToMessageId: null, text }] } }))
+    transcript } }))
   return { span, events, options: { signal: AbortSignal.timeout(20000), onText() {},
     insight: { read, record: async (event: InsightRuntimeEvent) => { events.push(event) } } }, read,
     input: { key: 'insight:1', model, purpose: 'insight' as const, insightSession: { processing: defaultProcessing },
       systemPrompt: '仅依据聊天原文回答。', prompt: '开始阅读。' } }
 }
+
+it.each([3300, null])('八千共享窗口用冻结方法读取首条消息，用量回执 %s', async inputTokens => {
+  const { input, options, read } = sample('示例：周末一起散步。')
+  const editable = defaultPrompts.insight
+  const systemPrompt = assembleMethodologyPrompt(createMethodologySnapshot('insight'), editable)
+  const task = { ...input, systemPrompt, model: { ...model, contextWindow: 8192, maxInputTokens: 8192, maxTokens: 1024 },
+    insightSession: { ...input.insightSession, fixedPromptLength: systemPrompt.length - editable.length } }
+  let readBudget = 0
+  answer = (_path, _body, response) => responses(response, requests.length === 1
+    ? [{ type: 'function_call', id: 'fc_read', call_id: 'call_read', name: 'read_messages', arguments: '{}' }]
+    : [textItem('已读完')], inputTokens)
+  const result = await new PiRuntime(directory).run(task, { ...options, insight: { ...options.insight,
+    read: async (_request, available) => { readBudget = available; return read() } } })
+  expect(result.text).toBe('已读完')
+  expect(readBudget).toBeGreaterThan(256)
+  expect(requests).toHaveLength(2)
+  for (const request of requests) {
+    expect(request.max_output_tokens).toBeGreaterThanOrEqual(16)
+    expect(request.max_output_tokens).toBeLessThanOrEqual(1024)
+  }
+}, 30000)
+
+it('模型一直不返回用量时，长中文页仍为下一次回查和输出保留容量', async () => {
+  const first = sample('海'.repeat(4000))
+  const revisit = sample('周五见。')
+  const budgets: number[] = []
+  answer = (_path, _body, response) => {
+    const turn = requests.length
+    responses(response, turn < 3 ? [{ type: 'function_call', id: 'fc_' + turn, call_id: 'call_' + turn,
+      name: 'read_messages', arguments: turn === 1 ? '{}' : '{"messageId":"1"}' }] : [textItem('已核对')], null)
+  }
+  await new PiRuntime(directory).run({ ...first.input, model: { ...model, contextWindow: 16000, maxInputTokens: 12000, maxTokens: 8000 } },
+    { ...first.options, insight: { ...first.options.insight, read: async (args, available) => {
+      budgets.push(available)
+      return args.messageId ? revisit.read() : first.read()
+    } } })
+  expect(requests).toHaveLength(3)
+  expect(requests[1].max_output_tokens).toBe(8000)
+  expect(budgets[1]).toBeGreaterThan(5000)
+  expect(budgets[1]).toBeLessThan(7500)
+}, 30000)
+
+it('长洞察压缩前后完整保留一次 Personalysis 与冻结宿主指令', async () => {
+  const { input, options, events } = sample('合成原文：这次提出邀请，尚未看到后续。'.repeat(1800))
+  const snapshot = createMethodologySnapshot('insight')
+  input.model = { ...model, contextWindow: 32000, maxTokens: 2000 }
+  input.systemPrompt = assembleMethodologyPrompt(snapshot, defaultPrompts.insight)
+  answer = (_path, body, response) => {
+    if (JSON.stringify(body.input?.[0]).includes('context summarization assistant')) responses(response, [textItem('示例摘要：保留邀请和未知回应。')])
+    else if (requests.length === 1) responses(response, [{ type: 'function_call', id: 'fc_read', call_id: 'call_read', name: 'read_messages', arguments: '{}' }], 29000)
+    else responses(response, [textItem('示例成稿')])
+  }
+  const result = await new PiRuntime(directory).run(input, options)
+  expect(result.text).toBe('示例成稿')
+  expect(events.filter(event => event.type === 'request').map(event => event.kind)).toEqual(['inference', 'compaction', 'inference'])
+  expect(requests).toHaveLength(3)
+  expect(JSON.stringify(requests[1])).toContain('报告结构用于最终交稿，本次只生成阅读笔记')
+  for (const request of requests) {
+    const serialized = JSON.stringify(request)
+    expect(serialized.split(JSON.stringify(snapshot.methodology.body).slice(1, -1))).toHaveLength(2)
+    expect(serialized).toContain(JSON.stringify(snapshot.hostAdapter.instructions).slice(1, -1))
+    expect(request.max_output_tokens).toBeGreaterThan(0)
+    expect(request.max_output_tokens).toBeLessThanOrEqual(2000)
+  }
+}, 30000)
 
 it('同一洞察的每次模型请求使用当轮服务地址与凭据', async () => {
   const { input, options, read } = sample('合成原文。'.repeat(1800))
@@ -135,6 +204,50 @@ it('相同原文页的顺读和首次回查分别确认，后续重复回查保�
   expect(wirePages.every(item => !String(item.output).includes('"review"'))).toBe(true)
 }, 30000)
 
+it('成稿沿用阅读请求的完整前缀，成稿提示只附在出站回查结果上', async () => {
+  const quote = '改在周五。\r\n>>>\n2 ta: 这一行也是原话。\r'
+  const { input, options, events, read, span } = sample(quote)
+  answer = (_path, _body, response) => {
+    const turn = requests.length
+    responses(response, turn === 3 ? [textItem('已成稿')] : [{ type: 'function_call',
+      id: 'fc_' + turn, call_id: 'call_' + turn, name: 'read_messages', arguments: turn === 1 ? '{}' : '{"messageId":"1"}' }])
+  }
+  const result = await new PiRuntime(directory).run(input, { ...options, insight: {
+    read: async args => {
+      const page = await read()
+      return args.messageId ? { ...page, spans: [{ ...span, review: true }] } : page
+    },
+    record: async event => {
+      await options.insight.record(event)
+      if (event.type === 'request' && event.kind === 'inference' && event.success && event.spans.length) return { fullyReviewed: 1 }
+    },
+  } })
+  const reading = requests[1].input!, writing = requests[2].input!
+  expect(JSON.stringify(writing[0])).toBe(JSON.stringify(reading[0]))
+  expect(JSON.stringify(writing.slice(0, reading.length))).toBe(JSON.stringify(reading))
+  const raw = String(reading.at(-1)!.output)
+  expect(writing.at(-1)).toMatchObject({ type: 'function_call_output', output: raw + '\n\n' + completeReadingInstruction(1) })
+  expect(parseReadResult(String(writing.at(-1)!.output)).messages).toMatchObject([{ id: '1', speaker: '我', time: null, text: quote }])
+  const { SessionManager } = await import('@earendil-works/pi-coding-agent')
+  const stored = SessionManager.open(JSON.parse(result.checkpoint).sessionFile).getBranch()
+    .flatMap(entry => entry.type === 'message' && entry.message.role === 'toolResult' ? [entry.message.content] : [])
+  expect(stored).toEqual([[{ type: 'text', text: raw }], [{ type: 'text', text: raw }]])
+  expect(events.flatMap(event => event.type === 'request' ? [event.spans] : [])).toEqual([[], [span], [{ ...span, review: true }]])
+}, 30000)
+
+it.each([false, true])('从已读完的进度成稿时，末条用户消息只携带一次成稿提示，原有提示=%s', async alreadyIncluded => {
+  const { input, options } = sample('周五见。')
+  const instruction = completeReadingInstruction(1)
+  const prompt = '请核对报告。' + (alreadyIncluded ? '\n\n' + instruction : '')
+  answer = (_path, _body, response) => responses(response, [textItem('已核对')])
+  await new PiRuntime(directory).run({ ...input, prompt }, { ...options, insight: { ...options.insight,
+    record: async event => event.type === 'checkpoint' ? { fullyReviewed: 1 } : undefined } })
+  const wire = requests[0].input!
+  expect(JSON.stringify(wire[0])).not.toContain(instruction)
+  expect(wire.at(-1)).toMatchObject({ role: 'user' })
+  expect(JSON.stringify(wire.at(-1)).split(instruction)).toHaveLength(2)
+}, 30000)
+
 it('从 Chat Completions 工具断点向 Responses 实际重放相配的调用与原文', async () => {
   const { input, options, events, read, span } = sample('周五见。')
   const controller = new AbortController()
@@ -180,7 +293,7 @@ it('重放真实样本第 27 次请求，将本轮容量留给五个回查目标
   const queries = [['1', 16], ['409', 8], ['434', 0], ['330', 22], ['369', 7]].map(([id, after]) =>
     ({ messageId: String(id), before: 0, after: Number(after) }))
   const { input, options, events } = sample('')
-  const wirePages: InsightReadPage[] = []
+  const wirePages: ReturnType<typeof parseReadResult>[] = []
   let calls = 0
   answer = (_path, body, response) => {
     if (!calls++) {
@@ -189,7 +302,7 @@ it('重放真实样本第 27 次请求，将本轮容量留给五个回查目标
       })), 8922, 384)
     } else {
       for (const item of body.input ?? []) {
-        if (item.type === 'function_call_output') wirePages.push(JSON.parse(String(item.output)))
+        if (item.type === 'function_call_output') wirePages.push(parseReadResult(String(item.output)))
       }
       responses(response, [textItem('已核对')])
     }
@@ -198,7 +311,7 @@ it('重放真实样本第 27 次请求，将本轮容量留给五个回查目标
     { ...options, insight: { ...options.insight, read } })
   expect(wirePages.map(page => page.status === 'ok' ? page.messages.map(message => message.id) : page.status))
     .toEqual(queries.map(query => expect.arrayContaining([query.messageId])))
-  expect(wirePages.reduce((bytes, page) => bytes + Buffer.byteLength(JSON.stringify(page)), 0)).toBeLessThanOrEqual(2566)
+  expect(wirePages.reduce((tokens, page) => tokens + estimateTranscriptTokens(page.raw), 0)).toBeLessThanOrEqual(2566)
   for (const [index, first] of wirePages.entries()) {
     const query = queries[index]
     const ids = []
@@ -206,7 +319,7 @@ it('重放真实样本第 27 次请求，将本轮容量留给五个回查目标
     while (page.status === 'ok') {
       ids.push(...page.messages.map(message => message.id))
       if (!page.nextCursor) break
-      page = (await read({ cursor: page.nextCursor }, 2566)).page
+      page = parseReadResult(formatInsightReadPage((await read({ cursor: page.nextCursor }, 2566)).page))
     }
     expect(ids).toEqual(Array.from({ length: query.after + 1 }, (_, offset) => String(Number(query.messageId) + offset)))
   }
@@ -216,7 +329,7 @@ it('重放真实样本第 27 次请求，将本轮容量留给五个回查目标
   expect(addInsightCoverage(coverage, receipt.spans)).toEqual(coverage)
 }, 30000)
 
-it('328 字节由两处回查共用时，按原编号单独重试可取全长消息', async () => {
+it('两处回查共用小额余量时，按原编号单独重试可取全长消息', async () => {
   const { input, options, events } = sample('')
   const sources = ['到'.repeat(6000), '好'].map((text, index) => ({ id: String(index + 1), revision: 'r', text,
     isSelf: true, senderName: 'U1', sentAtMs: 0, replyToMessageId: null }))
@@ -224,14 +337,14 @@ it('328 字节由两处回查共用时，按原编号单独重试可取全长消
     scope: { kind: 'all' }, timezone: 'UTC', sources: sources.map(s => ({ messageId: s.id, revision: s.revision })) },
   async ids => ids.map(id => sources[Number(id) - 1])))
   const locate = (id: string) => ({ messageId: id, before: 0, after: 0 })
-  const received: InsightReadPage[][] = []
+  const received: ReturnType<typeof parseReadResult>[][] = []
   let turn = 0, sentReads = 0
   answer = (_path, body, response) => {
     if (JSON.stringify(body.input?.[0]).includes('context summarization assistant')) {
       responses(response, [textItem('本次回查 #1 与 #2。')]); return
     }
     const pages = (body.input ?? []).filter(item => item.type === 'function_call_output')
-      .slice(-sentReads).map(item => JSON.parse(String(item.output)) as InsightReadPage)
+      .slice(-sentReads).map(item => parseReadResult(String(item.output)))
     received.push(pages)
     const last = pages.at(-1)
     const args = turn === 0 ? [locate('1'), locate('2')] : turn === 1 ? [locate('1')]
@@ -240,7 +353,7 @@ it('328 字节由两处回查共用时，按原编号单独重试可取全长消
     sentReads = args.length
     const calls = args.map((arg, index) => ({ type: 'function_call', id: `fc_${turn}_${index}`, call_id: `call_${turn}_${index}`,
       name: 'read_messages', arguments: JSON.stringify(arg) }))
-    responses(response, calls, turn++ === 0 ? 11532 : 1000)
+    responses(response, calls, turn++ === 0 ? 11788 : 1000)
   }
   await new PiRuntime(directory).run({ ...input, model: { ...model, contextWindow: 16000, maxTokens: 4000 } },
     { ...options, insight: { ...options.insight, read } })
@@ -255,11 +368,11 @@ it('328 字节由两处回查共用时，按原编号单独重试可取全长消
 it('Pi 把成功推理确认的全读进度送入下一次压缩和成稿推理', async () => {
   const { input, options, read } = sample('周五见。'.repeat(2600))
   let reviewed = false, ordinary = 0
-  const wire: { compacting: boolean; instruction: string }[] = []
+  const wire: { compacting: boolean; instruction: string; tail: string }[] = []
   answer = (_path, body, response) => {
     const instruction = JSON.stringify(body.input?.[0])
     const compacting = instruction.includes('context summarization assistant')
-    wire.push({ compacting, instruction })
+    wire.push({ compacting, instruction, tail: JSON.stringify(body.input?.at(-1)) })
     if (compacting) { responses(response, [textItem('合成阅读笔记')]); return }
     if (++ordinary > 2) { responses(response, [textItem('已完成报告')]); return }
     responses(response, [{ type: 'function_call', id: 'fc_' + ordinary, call_id: 'call_' + ordinary,
@@ -269,9 +382,9 @@ it('Pi 把成功推理确认的全读进度送入下一次压缩和成稿推理'
     if (event.type === 'request' && event.kind === 'inference' && event.success && event.spans.length) reviewed = true
     if (reviewed) return { fullyReviewed: 1 }
   } } })
-  expect(wire.filter(r => !r.compacting).map(r => r.instruction.includes('已完整送阅'))).toEqual([false, false, true])
+  expect(wire.filter(r => !r.compacting).map(r => r.tail.includes('已完整送阅'))).toEqual([false, false, true])
   expect(wire.filter(r => r.compacting).map(r => r.instruction.includes('笔记中记明下一步是成稿'))).toEqual([false, true])
-  expect(wire.at(-1)!.instruction).toContain('无须从头顺读')
+  expect(wire.at(-1)!.tail).toContain('无须从头顺读')
 }, 30000)
 
 it('压缩耗尽输出后从同一断点重开，下一份完整的短摘要才写入会话', async () => {
@@ -341,7 +454,7 @@ it('恢复超出上下文的推理时，以真正阻止恢复的压缩请求归�
 }, 30000)
 
 it.each(['工具页', '压缩笔记'] as const)('按本轮%s中的中文材料为输出留出实际空间', async kind => {
-  const text = '海'.repeat(kind === '工具页' ? 45000 : 1500)
+  const text = '海'.repeat(kind === '工具页' ? 100000 : 1500)
   const { input, options } = sample(kind === '工具页' ? text : 'x'.repeat(4600))
   const task = { ...input, systemPrompt: kind === '压缩笔记' ? text : input.systemPrompt,
     model: { ...model, ...(kind === '工具页' ? { contextWindow: 256000, maxInputTokens: 144000, maxTokens: 128000 }
@@ -362,8 +475,8 @@ it.each(['工具页', '压缩笔记'] as const)('按本轮%s中的中文材料�
   }
   await new PiRuntime(directory).run(task, options)
   expect(JSON.stringify(observed?.input)?.includes('海'.repeat(1000))).toBe(true)
-  expect(observed?.max_output_tokens).toBeGreaterThan(kind === '工具页' ? 100000 : 1024)
-  expect(observed?.max_output_tokens).toBeLessThanOrEqual(kind === '工具页' ? 106000 : 11500)
+  expect(observed?.max_output_tokens).toBeGreaterThan(kind === '工具页' ? 120500 : 1024)
+  expect(observed?.max_output_tokens).toBeLessThanOrEqual(kind === '工具页' ? 121000 : 11500)
 }, 30000)
 
 it.each([
@@ -477,4 +590,94 @@ it.each(signatureCases)('压缩后按脱敏设置重放工具与推理配对：$
     expect(inputItems.indexOf(reasoning!)).toBeLessThan(inputItems.indexOf(call))
   }
   expect(events.filter(event => event.type === 'request').at(-1)?.spans).toEqual([span])
+}, 30000)
+
+
+it.each(['openai-responses', 'anthropic-messages'] as const)('额度失败后更换服务商使用 %s 接续同一原文断点，移除旧签名', async protocol => {
+  const { input, options, events, read, span } = sample('示例原文：周五两点见。')
+  input.model = { ...model, contextWindow: 16000 }
+  answer = (_path, _body, response) => {
+    if (requests.length === 1) responses(response, [
+      { type: 'reasoning', id: 'rs_old', summary: [{ type: 'summary_text', text: '需要回查。' }], encrypted_content: 'old-provider-ciphertext' },
+      { type: 'function_call', id: 'fc_old', call_id: 'call_old', name: 'read_messages', arguments: '{}' },
+    ])
+    else {
+      response.writeHead(429, { 'content-type': 'application/json' })
+      response.end(JSON.stringify({ error: { code: 'insufficient_quota', message: 'Quota exceeded' } }))
+    }
+  }
+  await expect(new PiRuntime(directory).run(input, options)).rejects.toMatchObject({ code: 'INSIGHT_QUOTA_EXCEEDED' })
+  const checkpoint = events.filter(event => event.type === 'checkpoint').at(-1)!.checkpoint
+  const requestCount = requests.length
+  answer = (path, _body, response) => {
+    if (protocol === 'openai-responses') { responses(response, [textItem('已接续')]); return }
+    expect(new URL(path, 'http://localhost').pathname).toBe('/v1/messages')
+    const stream = [
+      { type: 'message_start', message: { id: 'msg_new', type: 'message', role: 'assistant', model: model.model, content: [], usage: { input_tokens: 100, output_tokens: 0 } } },
+      { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '已接续' } },
+      { type: 'content_block_stop', index: 0 },
+      { type: 'message_delta', delta: { stop_reason: 'end_turn' }, usage: { output_tokens: 10 } }, { type: 'message_stop' },
+    ]
+    response.writeHead(200, { 'content-type': 'text/event-stream' })
+    response.end(stream.map(event => 'event: ' + event.type + '\ndata: ' + JSON.stringify(event) + '\n\n').join(''))
+  }
+  const resumed = await new PiRuntime(directory).run({ ...input, checkpoint, model: { ...model, id: 'other-provider', protocol },
+    insightSession: { ...input.insightSession, modelSessionKey: JSON.stringify(['other-provider', 1]) }, prompt: '继续剩余分析。' }, options)
+  expect(resumed.text).toBe('已接续')
+  expect(JSON.parse(resumed.checkpoint).sessionFile).toBe(JSON.parse(checkpoint).sessionFile)
+  const wire = JSON.stringify(requests.slice(requestCount))
+  expect(wire).toContain('示例原文：周五两点见。')
+  expect(wire).not.toContain('old-provider-ciphertext')
+  expect(read).toHaveBeenCalledOnce()
+  expect(events.filter(event => event.type === 'request').at(-1)?.spans).toEqual([span])
+}, 30000)
+
+
+it('替换模型窗口不足以压缩已有历史时明确报错，原断点可继续恢复', async () => {
+  const { input, options, events, read } = sample('合成原文，约好周五见。'.repeat(600))
+  const large = { ...input, model: { ...model, contextWindow: 64000, maxTokens: 1000 } }
+  answer = (_path, _body, response) => responses(response, requests.length === 1
+    ? [{ type: 'function_call', id: 'fc_long', call_id: 'call_long', name: 'read_messages', arguments: '{}' }]
+    : [textItem('已保存阅读笔记。')])
+  const first = await new PiRuntime(directory).run(large, options)
+  const priorEvents = events.length
+  const requestCount = requests.length
+  await expect(new PiRuntime(directory).run({ ...input, checkpoint: first.checkpoint,
+    model: { ...model, id: 'tiny', contextWindow: 2048, maxInputTokens: 1200, maxTokens: 800 },
+    insightSession: { ...input.insightSession, modelSessionKey: 'tiny' } }, options)).rejects.toMatchObject({ code: 'MODEL_CONTEXT_LIMIT' })
+  expect(events.slice(priorEvents)).toContainEqual({ type: 'requestBlocked', kind: expect.stringMatching(/inference|compaction/), code: 'MODEL_CONTEXT_LIMIT' })
+  expect(requests.length).toBe(requestCount)
+  const resumed = await new PiRuntime(directory).run({ ...large, checkpoint: first.checkpoint, prompt: '继续成稿。' }, options)
+  expect(resumed.text).toBe('已保存阅读笔记。')
+  expect(JSON.parse(resumed.checkpoint).sessionFile).toBe(JSON.parse(first.checkpoint).sessionFile)
+  expect(read).toHaveBeenCalledOnce()
+  expect(JSON.stringify(requests.at(-1))).toContain('合成原文，约好周五见。')
+}, 30000)
+
+it.each([
+  { reviewed: true, inputTokens: 5800, summaries: 0 },
+  { reviewed: false, inputTokens: 5800, summaries: 1 },
+  { reviewed: true, inputTokens: 8100, summaries: 1 },
+])('报告结束时全读=$reviewed、输入=$inputTokens，仅按需请求摘要', async ({ reviewed, inputTokens, summaries }) => {
+  const { input, options, events, span } = sample('示例：约好周五见。'.repeat(1000))
+  const report = JSON.stringify({ aboutYou: [{ content: [{ text: '约好周五见。' }] }] })
+  let compactions = 0
+  answer = (_path, body, response) => {
+    if (JSON.stringify(body.input?.[0]).includes('context summarization assistant')) {
+      compactions++
+      responses(response, [textItem('约好周五见。')])
+    } else if (requests.length === 1) {
+      responses(response, [{ type: 'function_call', id: 'fc_read', call_id: 'call_read', name: 'read_messages', arguments: '{}' }])
+    } else responses(response, [textItem(report)], inputTokens)
+  }
+  const result = await new PiRuntime(directory).run(input, { ...options, insight: { ...options.insight, record: async event => {
+    await options.insight.record(event)
+    if (reviewed && event.type === 'request' && event.kind === 'inference' && event.success && event.spans.length) {
+      return { fullyReviewed: 1 }
+    }
+  } } })
+  expect(result.text).toBe(report)
+  expect(events.filter(e => e.type === 'request' && e.kind === 'inference').at(-1)).toMatchObject({ spans: [span] })
+  expect(compactions).toBe(summaries)
+  expect(requests).toHaveLength(2 + summaries)
 }, 30000)

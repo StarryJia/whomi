@@ -1,5 +1,7 @@
 import { isOperationId } from '../../../src/shared/operation-diagnostics'
 import { readPromptValues } from './system-prompts'
+import { createMethodologySnapshot, parseMethodologySnapshot, type MethodologySnapshot } from './methodology'
+import { legacyPrompts } from './legacy-prompts'
 import { defaultProcessing, type ProcessingSettings } from '../../../src/shared/settings-contract'
 import { validateProcessing } from '../settings/validation'
 import { defaultPrompts, type PromptValues } from '../../../src/shared/system-prompts'
@@ -18,24 +20,30 @@ import { isInsightCitation, isInsightCitationId, validateAiCall, validateAiResul
 import { defaultInsightTitle, insightTitle, isInsightReport, isInsightScope, resolveReportCitation, type InsightCitation, type InsightCitationInput, type InsightCitationWindow, type InsightReport, type InsightScope, type InsightScopeInput, type InsightSnapshot, type InsightSourceRef } from '../../../src/shared/conversation-insights'
 import { defaultModelProtocol, isModelProtocol } from '../../../src/shared/model-protocol'
 import { BoundaryError, localId } from '../../../src/shared/desktop-validation'
-import type { AiModel, AiSkill, AiState, AiThread, AiThreadSummary, AiTurn, AiUsage, AnalysisPreparation, AnalysisTask, AnalysisUsage, PrepareAnalysisInput } from '../../../src/shared/ai-contract'
+import type { AiModel, AiSkill, AiState, AiThread, AiThreadSummary, AiTurn, AiUsage, AnalysisPreparation, AnalysisTask, AnalysisUsage, PrepareAnalysisInput, ResumeAnalysisModel } from '../../../src/shared/ai-contract'
 import { threadTitle } from './thread-title'
 import { prepareTurnProfile } from './turn-profile'
+import type { InsightEvidenceCardRecord } from './insight-evidence-card'
 import { captureInsightSources, populateReportExcerpts, previewInsightScope, readCurrentInsightSources, readInsightCitationIds, readInsightSources, type StoredInsightSnapshot, type StoredInsightSourceRef } from './insight-sources'
 
 export type AiSourceMessage = { id: string; senderName: string; text: string; isSelf: boolean; kind: string; sentAtMs: number | null; memberId: string | null }
-export type AnalysisContext = { processing?: ProcessingSettings; systemPrompts?: PromptValues; task: AnalysisTask; model: AiModel; checkpoint: string | null; snapshot: InsightSnapshot }
+type FrozenPromptValues = PromptValues | typeof legacyPrompts
+export type AnalysisContext = { modelSessionKey?: string; methodology?: MethodologySnapshot; processing?: ProcessingSettings; systemPrompts?: FrozenPromptValues; task: AnalysisTask; model: AiModel; checkpoint: string | null; snapshot: InsightSnapshot }
 export type RegisteredSkill = AiSkill & { content: string; enabled?: boolean }
 type TurnReferences = { references: AiSourceMessage[]; referenceBreaks?: string[] }
-export type TurnContext = TurnReferences & { systemPrompt?: string; turn: AiTurn; threadId: string; conversationId: string; model: AiModel; selfFingerprint: string; history: ({ role: 'user' | 'assistant'; text: string } & Partial<TurnReferences>)[]; profile: InsightReport | null; skill: RegisteredSkill | null; checkpoint: string | null }
+export type TurnContext = TurnReferences & { methodology?: MethodologySnapshot; systemPrompt?: string; turn: AiTurn; threadId: string; conversationId: string; model: AiModel; selfFingerprint: string; history: ({ role: 'user' | 'assistant'; text: string } & Partial<TurnReferences>)[]; profile: InsightReport | null; skill: RegisteredSkill | null; checkpoint: string | null }
 type StatePatch = { state?: AiState; error?: string }
 export type AnalysisPatch = StatePatch & Pick<AnalysisTask, 'failureOperationId' | 'failureAtMs'>
 export type TurnPatch = StatePatch & { text?: string; usage?: AiUsage; checkpoint?: string | null }
 export type NewTurn = { thinkingLevel?: ThinkingLevel; threadId: string; requestId: string; prompt: string; referenceIds: string[]; modelId: string; skillId?: string }
 export type ModelInput = Omit<AiModel, 'version' | 'hasCredential'>
 export type UsageRecord = { ownerKind: 'analysis' | 'turn'; ownerId: string; requestId: string; usage: AiUsage }
-type AnalysisRow = { failure_operation_id: string | null; failure_at_ms: bigint | null; title: string | null; elapsed_ms: bigint; prompt_snapshot: string | null; thinking_level: ThinkingLevel | null; id: bigint; conversation_id: bigint; model_id: string; model_version: bigint; created_at_ms: bigint | null; completed_at_ms: bigint | null; pinned: bigint; prompt_version: string; self_fingerprint: string; snapshot_max_id: bigint; state: AiState; total_messages: bigint; skipped_messages: bigint; event_sequence: bigint; error: string | null; checkpoint: string | null }
+type AnalysisRow = { model_history: string; methodology_snapshot: string | null; failure_operation_id: string | null; failure_at_ms: bigint | null; title: string | null; elapsed_ms: bigint; prompt_snapshot: string | null; thinking_level: ThinkingLevel | null; id: bigint; conversation_id: bigint; model_id: string; model_version: bigint; created_at_ms: bigint | null; completed_at_ms: bigint | null; pinned: bigint; prompt_version: string; self_fingerprint: string; snapshot_max_id: bigint; state: AiState; total_messages: bigint; skipped_messages: bigint; event_sequence: bigint; error: string | null; checkpoint: string | null }
 type InsightSnapshotRow = { scope: string; timezone: string; source_start_time_ms: bigint | null; source_end_time_ms: bigint | null; source_text_bytes: bigint | null; created_at_ms: bigint; sources: string }
+const analysisViewColumns = ['id', 'conversation_id', 'self_fingerprint', 'model_id', 'model_version', 'thinking_level', 'title',
+  'created_at_ms', 'completed_at_ms', 'elapsed_ms', 'pinned', 'state', 'total_messages', 'skipped_messages', 'event_sequence',
+  'failure_operation_id', 'failure_at_ms', 'error'] as const
+type AnalysisViewRow = Pick<AnalysisRow, typeof analysisViewColumns[number]>
 type ReportRow = { data: string; content_revision: string | null }
 function readInsightReport(data: string, conversationId: bigint): InsightReport {
   const report = parse<InsightReport>(data)
@@ -68,8 +76,13 @@ function readInsightReport(data: string, conversationId: bigint): InsightReport 
   }
   return { ...report, citations: [...citations.values()] }
 }
-type TurnRow = { system_prompt: string | null; thinking_level: ThinkingLevel | null; id: bigint; thread_id: bigint; request_id: string; prompt: string; reference_ids: string; model_id: string; model_version: bigint; skill: string | null; self_fingerprint: string; text: string; state: AiState; attempt: bigint; event_sequence: bigint; error: string | null; checkpoint: string | null }
+type TurnRow = { methodology_snapshot: string | null; system_prompt: string | null; thinking_level: ThinkingLevel | null; id: bigint; thread_id: bigint; request_id: string; prompt: string; reference_ids: string; model_id: string; model_version: bigint; skill: string | null; self_fingerprint: string; text: string; state: AiState; attempt: bigint; event_sequence: bigint; error: string | null; checkpoint: string | null }
 type ThreadRow = { pinned: bigint; id: bigint; conversation_id: bigint; title: string; created_at_ms: bigint; updated_at_ms: bigint }
+const turnViewColumns = ['id', 'thread_id', 'request_id', 'prompt', 'reference_ids', 'model_id', 'model_version', 'thinking_level',
+  'skill', 'text', 'state', 'attempt', 'event_sequence', 'error'] as const
+type TurnViewRow = Pick<TurnRow, typeof turnViewColumns[number]>
+type TurnHistoryRow = Pick<TurnRow, 'id' | 'prompt' | 'text' | 'reference_ids'>
+type TurnCheckpointRow = Pick<TurnRow, 'model_id' | 'model_version' | 'skill' | 'system_prompt' | 'methodology_snapshot' | 'checkpoint'>
 function threadView(row: ThreadRow): AiThreadSummary { return { pinned: !!row.pinned, id: String(row.id), conversationId: String(row.conversation_id), title: row.title, createdAtMs: Number(row.created_at_ms), updatedAtMs: Number(row.updated_at_ms) } }
 const activeStates = new Set<AiState>(['queued', 'running'])
 const states = new Set<AiState>([...activeStates, 'completed', 'stopped', 'failed', 'interrupted'])
@@ -82,6 +95,17 @@ function key(value: unknown): value is string { return text(value, 256) }
 function object(value: unknown): value is Record<string, unknown> { return !!value && typeof value === 'object' && !Array.isArray(value) }
 function fields(value: unknown, allowed: string[]): asserts value is Record<string, unknown> { if (!object(value) || Object.keys(value).some(field => !allowed.includes(field))) fail('INVALID_ARGUMENT') }
 function parse<T>(value: string): T { return JSON.parse(value) as T }
+function checkpointMethodology(raw: string | null): string | null | undefined {
+  if (raw === null) return null
+  try { return parseMethodologySnapshot(raw, 'dialogue').fingerprint } catch (error) {
+    // An unusable prior checkpoint must not prevent starting a fresh, valid turn.
+    if (error instanceof BoundaryError && error.code === 'METHODOLOGY_SNAPSHOT_INVALID') return undefined
+    throw error
+  }
+}
+function turnPrompt(row: Pick<TurnRow, 'system_prompt' | 'methodology_snapshot'>): string {
+  return row.system_prompt ?? (row.methodology_snapshot === null ? legacyPrompts : defaultPrompts).dialogue
+}
 function insightElapsedAt(row: AnalysisRow, now: number, sampledAtMs?: number) {
   if (sampledAtMs === undefined) return row.elapsed_ms
   if (row.prompt_version !== INSIGHT_PROMPT_VERSION || !Number.isSafeInteger(sampledAtMs) || sampledAtMs < 0) fail('INVALID_INSIGHT_CHECKPOINT')
@@ -253,7 +277,7 @@ export function createAiRepository(store: Store, write: WriterQueue) {
       WHERE m.conversation_id=? AND NOT (${confirmedSelfSql}) LIMIT 2`).all(conversationId) as { name: string }[]
     return candidates.length === 1 ? candidates[0].name.trim() || undefined : undefined
   }
-  function taskView(row: AnalysisRow): AnalysisTask {
+  function taskView(row: AnalysisViewRow): AnalysisTask {
     const coverage = reader.prepare('SELECT count(*) AS n FROM ai_analysis_coverage WHERE task_id=?').get(row.id) as { n: bigint }
     const report = reader.prepare('SELECT data,content_revision FROM ai_reports WHERE task_id=?').get(row.id) as ReportRow | undefined
     const current = identity(String(row.conversation_id))
@@ -285,7 +309,7 @@ export function createAiRepository(store: Store, write: WriterQueue) {
       ...(row.error ? { error: row.error } : {}), ...(report ? { report: readInsightReport(report.data, row.conversation_id) } : {}),
     }
   }
-  function turnView(row: TurnRow): AiTurn {
+  function turnView(row: TurnViewRow): AiTurn {
     const skill = row.skill ? parse<RegisteredSkill>(row.skill) : null
     const snapshot = reader.prepare('SELECT data FROM ai_model_versions WHERE model_id=? AND version=?').get(row.model_id, row.model_version) as { data: string } | undefined
     let modelIdentity: AiTurn['modelIdentity']
@@ -307,8 +331,8 @@ export function createAiRepository(store: Store, write: WriterQueue) {
     fields(record, ['ownerKind', 'ownerId', 'requestId', 'usage'])
     if (!['analysis', 'turn'].includes(record.ownerKind) || !key(record.requestId)) fail('INVALID_ARGUMENT')
     usage(record.usage)
-    if (record.ownerKind === 'analysis') analysisRow(record.ownerId); else turnRow(record.ownerId)
-    db.prepare('INSERT INTO ai_request_usage(owner_kind,owner_id,request_id,data) VALUES(?,?,?,?) ON CONFLICT(owner_kind,owner_id,request_id) DO UPDATE SET data=excluded.data').run(record.ownerKind, id(record.ownerId), record.requestId, JSON.stringify(record.usage))
+    const owner = record.ownerKind === 'analysis' ? analysisRow(record.ownerId) : turnRow(record.ownerId)
+    db.prepare('INSERT INTO ai_request_usage(owner_kind,owner_id,request_id,data,model_id,model_version) VALUES(?,?,?,?,?,?) ON CONFLICT(owner_kind,owner_id,request_id) DO UPDATE SET data=excluded.data').run(record.ownerKind, id(record.ownerId), record.requestId, JSON.stringify(record.usage), owner.model_id, owner.model_version)
   }
   function patchState(patch: TurnPatch, turn = false) {
     fields(patch, ['state', 'error', ...(turn ? ['text', 'usage', 'checkpoint'] : ['failureOperationId', 'failureAtMs'])])
@@ -394,10 +418,10 @@ export function createAiRepository(store: Store, write: WriterQueue) {
         const saved = hasSettings ? db.prepare("SELECT data FROM app_settings WHERE key='processing'").get() as { data: string } | undefined : undefined
         const processing = saved ? parse<ProcessingSettings>(saved.data) : defaultProcessing
         validateProcessing(processing)
-        const taskId = db.prepare(`INSERT INTO ai_analysis_tasks(conversation_id,request_id,preparation_token,model_id,model_version,prompt_version,self_fingerprint,snapshot_max_id,state,total_messages,skipped_messages,created_at_ms,thinking_level,prompt_snapshot,title,processing_snapshot)
-          VALUES(?,?,?,?,?,?,?,?,'queued',?,?,?,?,?,?,?)`).run(id(preparation.conversationId), input.requestId, input.token, model.id, model.version, row.prompt_version, self.fingerprint,
+        const taskId = db.prepare(`INSERT INTO ai_analysis_tasks(conversation_id,request_id,preparation_token,model_id,model_version,prompt_version,self_fingerprint,snapshot_max_id,state,total_messages,skipped_messages,created_at_ms,thinking_level,prompt_snapshot,title,processing_snapshot,methodology_snapshot)
+          VALUES(?,?,?,?,?,?,?,?,'queued',?,?,?,?,?,?,?,?)`).run(id(preparation.conversationId), input.requestId, input.token, model.id, model.version, row.prompt_version, self.fingerprint,
           BigInt(preparation.snapshotMaxId), preparation.analyzableMessages, preparation.totalMessages - preparation.analyzableMessages,
-          now, preparation.thinkingLevel ?? null, JSON.stringify(readPromptValues(db)), defaultInsightTitle, JSON.stringify(processing)).lastInsertRowid
+          now, preparation.thinkingLevel ?? null, JSON.stringify(readPromptValues(db)), defaultInsightTitle, JSON.stringify(processing), JSON.stringify(createMethodologySnapshot('insight'))).lastInsertRowid
         db.prepare('INSERT INTO ai_insight_snapshots(task_id,scope,timezone,created_at_ms,source_start_time_ms,source_end_time_ms,sources,source_text_bytes) VALUES(?,?,?,?,?,?,?,?)')
           .run(taskId, JSON.stringify(snapshot.scope), snapshot.timezone, snapshot.createdAtMs, snapshot.sourceStartTimeMs, snapshot.sourceEndTimeMs, JSON.stringify(snapshot.sources), snapshot.sourceTextBytes ?? null)
         db.prepare('UPDATE ai_preparations SET insight_snapshot=NULL WHERE token=?').run(input.token)
@@ -406,7 +430,12 @@ export function createAiRepository(store: Store, write: WriterQueue) {
       return repository.getAnalysis(taskId)
     },
     getAnalysis(taskId: string): AnalysisTask { return taskView(analysisRow(taskId)) },
-    listAnalyses(conversationId?: string): AnalysisTask[] { if (conversationId !== undefined) conversation(conversationId); return (reader.prepare(`SELECT * FROM ai_analysis_tasks${conversationId === undefined ? '' : ' WHERE conversation_id=?'} ORDER BY pinned DESC,list_rank,id DESC`).all(...(conversationId === undefined ? [] : [id(conversationId)])) as AnalysisRow[]).map(taskView) },
+    listAnalyses(conversationId?: string): AnalysisTask[] {
+      if (conversationId !== undefined) conversation(conversationId)
+      const rows = reader.prepare(`SELECT ${analysisViewColumns.join(',')} FROM ai_analysis_tasks${conversationId === undefined ? '' : ' WHERE conversation_id=?'} ORDER BY pinned DESC,list_rank,id DESC`)
+        .all(...(conversationId === undefined ? [] : [id(conversationId)])) as AnalysisViewRow[]
+      return rows.map(taskView)
+    },
     async arrangeAnalysis(change: ListArrangement): Promise<void> {
       await write(() => db.transaction(() => {
         const row = analysisRow(change.id)
@@ -492,9 +521,11 @@ export function createAiRepository(store: Store, write: WriterQueue) {
       const model = modelSecret(row.model_id, Number(row.model_version)).model
       const { sources, ...snapshot } = insightSnapshot(row)
       return {
+        ...(row.methodology_snapshot === null ? {} : { methodology: parseMethodologySnapshot(row.methodology_snapshot, 'insight') }),
         processing: row.processing_snapshot ? parse<ProcessingSettings>(row.processing_snapshot) : undefined,
-        systemPrompts: row.prompt_snapshot ? parse<PromptValues>(row.prompt_snapshot) : undefined,
+        systemPrompts: row.prompt_snapshot ? parse<FrozenPromptValues>(row.prompt_snapshot) : undefined,
         task: taskView(row), model, checkpoint: row.checkpoint,
+        ...(row.model_history !== '[]' ? { modelSessionKey: JSON.stringify([model.id, model.version, row.thinking_level]) } : {}),
         snapshot: { ...snapshot, sources: sources.map(({ messageId, revision }) => ({ messageId, revision })) },
       }
     },
@@ -521,7 +552,18 @@ export function createAiRepository(store: Store, write: WriterQueue) {
       })
       return repository.getAnalysis(taskId)
     },
-    async saveInsightCheckpoint(taskId: string, checkpoint: string, completedMessageIds: readonly string[], elapsedMs?: number, receipt?: Pick<UsageRecord, 'requestId' | 'usage'>): Promise<AnalysisTask> {
+    listInsightEvidenceCards(taskId: string): InsightEvidenceCardRecord[] {
+      const rows = reader.prepare(`SELECT segment_index, start_message_id, end_message_id, start_time_ms, end_time_ms, data
+        FROM ai_insight_evidence_cards WHERE task_id=? ORDER BY segment_index ASC`).all(id(taskId)) as {
+        segment_index: bigint; start_message_id: bigint; end_message_id: bigint; start_time_ms: bigint | null; end_time_ms: bigint | null; data: string
+      }[]
+      return rows.map(row => ({
+        segmentIndex: Number(row.segment_index), startMessageId: String(row.start_message_id), endMessageId: String(row.end_message_id),
+        startTimeMs: optionalNumber(row.start_time_ms), endTimeMs: optionalNumber(row.end_time_ms), data: parse(row.data),
+      }))
+    },
+    async saveInsightCheckpoint(taskId: string, checkpoint: string, completedMessageIds: readonly string[], elapsedMs?: number,
+      receipt?: Pick<UsageRecord, 'requestId' | 'usage'>, card?: InsightEvidenceCardRecord): Promise<AnalysisTask> {
       if (!text(checkpoint, 16 * 1024 * 1024) || !Array.isArray(completedMessageIds) || completedMessageIds.some(messageId => !localId(messageId)) ||
         (elapsedMs !== undefined && (!Number.isSafeInteger(elapsedMs) || elapsedMs < 0))) fail('INVALID_INSIGHT_CHECKPOINT', '请继续分析。')
       const coverage = new Set(completedMessageIds)
@@ -537,6 +579,20 @@ export function createAiRepository(store: Store, write: WriterQueue) {
         }
         const added = completedMessageIds.filter(messageId => !previous.has(messageId))
         if (added.length) checkedInsightSources(row, snapshot, added)
+        if (card && added.length) {
+          const count = db.prepare('SELECT count(*) FROM ai_insight_evidence_cards WHERE task_id=?').pluck().get(row.id)
+          const range = snapshot.sources.slice(previous.size, coverage.size)
+          if (card.segmentIndex !== Number(count) || range[0]?.messageId !== card.startMessageId ||
+              range.at(-1)?.messageId !== card.endMessageId || range.some(ref => previous.has(ref.messageId) || !coverage.has(ref.messageId))) {
+            fail('INVALID_INSIGHT_CHECKPOINT', '请继续分析。')
+          }
+          db.prepare(`INSERT INTO ai_insight_evidence_cards
+            (task_id,segment_index,start_message_id,end_message_id,start_time_ms,end_time_ms,data,created_at_ms)
+            VALUES (?,?,?,?,?,?,?,?)`).run(row.id, card.segmentIndex, id(card.startMessageId), id(card.endMessageId),
+            card.startTimeMs, card.endTimeMs, JSON.stringify(card.data), Date.now())
+        } else if (card && !isDeepStrictEqual(repository.listInsightEvidenceCards(taskId)[card.segmentIndex], card)) {
+          fail('INVALID_INSIGHT_CHECKPOINT', '请继续分析。')
+        }
         const elapsed = elapsedMs ?? row.elapsed_ms
         if (receipt) insertUsage({ ownerKind: 'analysis', ownerId: taskId, requestId: receipt.requestId, usage: receipt.usage })
         if (!receipt && !added.length && checkpoint === row.checkpoint && BigInt(elapsed) === row.elapsed_ms) return
@@ -565,15 +621,36 @@ export function createAiRepository(store: Store, write: WriterQueue) {
       })())
       return repository.getAnalysis(taskId)
     },
-    async resumeAnalysis(taskId: string): Promise<AnalysisTask> {
-      await write(() => {
+    async resumeAnalysis(taskId: string, replacement?: ResumeAnalysisModel & { version: number }): Promise<AnalysisTask> {
+      if (replacement !== undefined) {
+        fields(replacement, ['modelId', 'version', 'thinkingLevel'])
+        if (!key(replacement.modelId) || !Number.isSafeInteger(replacement.version) || replacement.version < 1 ||
+          (replacement.thinkingLevel !== undefined && !isThinkingLevel(replacement.thinkingLevel))) fail('INVALID_ARGUMENT')
+      }
+      await write(() => db.transaction(() => {
         const row = analysisRow(taskId); assertCurrent(row)
         if (!['stopped', 'failed', 'interrupted'].includes(row.state)) fail('INVALID_STATE')
         insightSnapshot(row)
-        if (!sameModelConfiguration(row.model_id, Number(row.model_version))) fail('MODEL_CHANGED', '模型配置已更新，请重新准备分析。')
+        if (row.methodology_snapshot !== null) parseMethodologySnapshot(row.methodology_snapshot, 'insight')
+        if (!replacement && !sameModelConfiguration(row.model_id, Number(row.model_version))) fail('MODEL_CHANGED', '模型配置已更新，请更换模型后继续洞察。')
         if (db.prepare("SELECT 1 FROM ai_analysis_tasks WHERE conversation_id=? AND state IN ('queued','running')").get(row.conversation_id)) fail('ANALYSIS_BUSY')
+        if (replacement) {
+          const model = enabledModel(replacement.modelId)
+          if (model.version !== replacement.version) fail('MODEL_CHANGED', '模型配置已更新，请重新选择模型。')
+          const history = parse<unknown[]>(row.model_history)
+          const read = taskView(row).analyzedMessages
+          if (!history.length) history.push({ id: row.model_id, version: Number(row.model_version), thinkingLevel: row.thinking_level, atMs: Number(row.created_at_ms ?? 0n), analyzedMessages: 0 })
+          history.push({ id: model.id, version: model.version, thinkingLevel: replacement.thinkingLevel ?? null, atMs: Date.now(), analyzedMessages: read })
+          let checkpoint = row.checkpoint
+          if (checkpoint) {
+            const saved = parse<Record<string, unknown>>(checkpoint)
+            if (saved.version === 1) checkpoint = JSON.stringify({ ...saved, modelId: model.id, modelVersion: model.version })
+          }
+          db.prepare('UPDATE ai_analysis_tasks SET model_id=?,model_version=?,thinking_level=?,model_history=?,checkpoint=? WHERE id=?')
+            .run(model.id, model.version, replacement.thinkingLevel ?? null, JSON.stringify(history), checkpoint, row.id)
+        }
         db.prepare("UPDATE ai_analysis_tasks SET state='queued',error=NULL,failure_operation_id=NULL,failure_at_ms=NULL,event_sequence=event_sequence+1 WHERE id=?").run(row.id)
-      })
+      })())
       return repository.getAnalysis(taskId)
     },
     async openThread(conversationId: string): Promise<AiThread> {
@@ -610,7 +687,8 @@ export function createAiRepository(store: Store, write: WriterQueue) {
     getThread(threadId: string): AiThread {
       const row = reader.prepare('SELECT * FROM ai_threads WHERE id=?').get(id(threadId)) as ThreadRow | undefined
       if (!row) fail('INVALID_THREAD', '请重新打开对话。')
-      return { ...threadView(row), turns: (reader.prepare('SELECT * FROM ai_turns WHERE thread_id=? ORDER BY id').all(row.id) as TurnRow[]).map(turnView) }
+      const turns = reader.prepare(`SELECT ${turnViewColumns.join(',')} FROM ai_turns WHERE thread_id=? ORDER BY id`).all(row.id) as TurnViewRow[]
+      return { ...threadView(row), turns: turns.map(turnView) }
     },
     async createTurn(input: NewTurn): Promise<AiTurn> {
       fields(input, ['threadId', 'requestId', 'prompt', 'referenceIds', 'modelId', 'skillId', 'thinkingLevel']); if (input.thinkingLevel !== undefined && !isThinkingLevel(input.thinkingLevel)) fail('INVALID_ARGUMENT')
@@ -634,7 +712,7 @@ export function createAiRepository(store: Store, write: WriterQueue) {
         }
         if (db.prepare("SELECT 1 FROM ai_turns WHERE thread_id=? AND state IN ('queued','running')").get(id(input.threadId))) fail('TURN_BUSY', '请等待回答完成或先停止回答。')
         const first = !db.prepare('SELECT 1 FROM ai_turns WHERE thread_id=? LIMIT 1').get(id(input.threadId))
-        const turnId = String(db.prepare("INSERT INTO ai_turns(thread_id,request_id,prompt,reference_ids,model_id,model_version,skill,self_fingerprint,state,thinking_level,system_prompt) VALUES(?,?,?,?,?,?,?,?,'queued',?,?)").run(id(input.threadId), input.requestId, input.prompt, JSON.stringify(input.referenceIds), model.id, model.version, skill ? JSON.stringify(skill) : null, self.fingerprint, input.thinkingLevel ?? null, readPromptValues(db).dialogue).lastInsertRowid)
+        const turnId = String(db.prepare("INSERT INTO ai_turns(thread_id,request_id,prompt,reference_ids,model_id,model_version,skill,self_fingerprint,state,thinking_level,system_prompt,methodology_snapshot) VALUES(?,?,?,?,?,?,?,?,'queued',?,?,?)").run(id(input.threadId), input.requestId, input.prompt, JSON.stringify(input.referenceIds), model.id, model.version, skill ? JSON.stringify(skill) : null, self.fingerprint, input.thinkingLevel ?? null, readPromptValues(db).dialogue, JSON.stringify(createMethodologySnapshot('dialogue'))).lastInsertRowid)
         db.prepare('UPDATE ai_threads SET title=CASE WHEN ? THEN ? ELSE title END,updated_at_ms=max(updated_at_ms,?) WHERE id=?').run(first ? 1 : 0, threadTitle(input.prompt), Date.now(), id(input.threadId))
         return turnId
       })())
@@ -644,17 +722,23 @@ export function createAiRepository(store: Store, write: WriterQueue) {
       if (processing !== undefined) validateProcessing(processing)
       const row = turnRow(turnId), conversationId = threadConversation(String(row.thread_id)), self = identity(conversationId)
       if (row.self_fingerprint !== self.fingerprint) fail('IDENTITY_CHANGED', '本人身份已更新，请重新提问。')
-      const previous = reader.prepare("SELECT * FROM ai_turns WHERE thread_id=? AND id<? AND state='completed' AND self_fingerprint=? ORDER BY id").all(row.thread_id, row.id, self.fingerprint) as TurnRow[]
+      const methodology = row.methodology_snapshot === null ? undefined : parseMethodologySnapshot(row.methodology_snapshot, 'dialogue')
+      const previous = reader.prepare(`SELECT id,prompt,text,reference_ids FROM ai_turns
+        WHERE thread_id=? AND id<? AND state='completed' AND self_fingerprint=? ORDER BY id`).all(row.thread_id, row.id, self.fingerprint) as TurnHistoryRow[]
       const history: TurnContext['history'] = []
       for (const turn of previous) {
         const material = sources(conversationId, parse<string[]>(turn.reference_ids))
         history.push({ role: 'user', text: turn.prompt, ...(material.references.length ? material : {}) }, { role: 'assistant', text: turn.text })
       }
-      const latest = previous.at(-1), skill = row.skill ? parse<RegisteredSkill>(row.skill) : null
-      const sameCheckpointContext = latest?.model_id === row.model_id && latest?.model_version === row.model_version && latest?.skill === row.skill && (latest?.system_prompt ?? defaultPrompts.dialogue) === (row.system_prompt ?? defaultPrompts.dialogue)
+      const latestId = previous.at(-1)?.id
+      const latest = latestId === undefined ? undefined : reader.prepare(`SELECT model_id,model_version,skill,system_prompt,methodology_snapshot,checkpoint
+        FROM ai_turns WHERE id=?`).get(latestId) as TurnCheckpointRow | undefined
+      const checkpoint = latest && latest.model_id === row.model_id && latest.model_version === row.model_version && latest.skill === row.skill &&
+        turnPrompt(latest) === turnPrompt(row) && checkpointMethodology(latest.methodology_snapshot) === (methodology?.fingerprint ?? null) ? latest.checkpoint : null
       const profile = repository.listAnalyses(conversationId).find(task => task.state === 'completed' && task.valid && task.report)?.report ?? null
       if (profile) prepareTurnProfile(reader, id(conversationId), profile, processing)
-      return { systemPrompt: row.system_prompt ?? defaultPrompts.dialogue, turn: turnView(row), threadId: String(row.thread_id), conversationId, model: modelSecret(row.model_id, Number(row.model_version)).model, selfFingerprint: self.fingerprint, ...sources(conversationId, parse<string[]>(row.reference_ids)), history, profile, skill, checkpoint: sameCheckpointContext ? latest!.checkpoint : null }
+      const skill = row.skill ? parse<RegisteredSkill>(row.skill) : null
+      return { ...(methodology ? { methodology } : {}), systemPrompt: turnPrompt(row), turn: turnView(row), threadId: String(row.thread_id), conversationId, model: modelSecret(row.model_id, Number(row.model_version)).model, selfFingerprint: self.fingerprint, ...sources(conversationId, parse<string[]>(row.reference_ids)), history, profile, skill, checkpoint }
     },
     async saveTurn(turnId: string, patch: TurnPatch): Promise<AiTurn> {
       patchState(patch, true)
@@ -671,6 +755,7 @@ export function createAiRepository(store: Store, write: WriterQueue) {
     async beginRetryTurn(turnId: string): Promise<AiTurn> {
       await write(() => {
         const row = turnRow(turnId)
+        if (row.methodology_snapshot !== null) parseMethodologySnapshot(row.methodology_snapshot, 'dialogue')
         if (!['stopped', 'failed', 'interrupted'].includes(row.state)) fail('INVALID_STATE')
         const conversationId = threadConversation(String(row.thread_id))
         if (identity(conversationId).fingerprint !== row.self_fingerprint) fail('IDENTITY_CHANGED', '本人身份已更新，请重新提问。')
